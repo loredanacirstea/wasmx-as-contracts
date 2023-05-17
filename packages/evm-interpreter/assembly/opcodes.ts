@@ -24,39 +24,44 @@ opcodesMap.set('jump', jump);
 opcodesMap.set('jumpi', jumpi);
 opcodesMap.set('pop', pop);
 
+opcodesMap.set('loadMemory', loadMemory);
+opcodesMap.set('storeMemory', storeMemory);
 
-// export function loadMemory (ctx: Context, offset: i64) {
-//     const gasCost = getPrice('mload');
-//     jsvm_env.useGas(gasCost);
-//     const result = toBN(jsvm_env.loadMemory(offset));
-//     ctx.stack.push(result);
-//     const changed = {memory: [offset.toNumber(), BN2hex(result), 0]}
-//     logger.debug('MLOAD', [offset], [result], getCache(), ctx.stack, changed, position, gasCost);
-//     return {ctx.stack, position};
-// }
 
-// export function storeMemory (offset, bytes, {ctx.stack, position}) {
-//     const value = BN2uint8arr(bytes);
-//     const {
-//         baseFee,
-//         addl,
-//         highestMemCost,
-//         memoryWordCount
-//     } = getPrice('mstore', {
-//         offset,
-//         length: toBN(value.length),
-//         memWordCount: jsvm_env.memWordCount(),
-//         highestMemCost: jsvm_env.highestMemCost(),
-//     });
-//     jsvm_env.useGas(baseFee);
-//     if (addl) jsvm_env.useGas(addl);
-//     if (highestMemCost) jsvm_env.setHighestMemCost(highestMemCost);
-//     if (memoryWordCount) jsvm_env.setMemWordCount(memoryWordCount);
-//     jsvm_env.storeMemory(value, offset);
-//     const changed = {memory: [offset.toNumber(), value, 1]}
-//     logger.debug('MSTORE', [bytes, offset], [], getCache(), ctx.stack, changed, position, baseFee, addl);
-//     return;
-// }
+export function loadMemory (ctx: Context, inputs: u256[]): void {
+    console.log('loadMemory')
+    // const gasCost = getPrice('mload');
+    // jsvm_env.useGas(gasCost);
+    const offset = inputs[0].toI32();
+    const result = ctx.memory.load(offset, 32)
+    ctx.stack.push(u256.fromBytesBE(result));
+    // const changed = {memory: [offset.toNumber(), BN2hex(result), 0]}
+    // logger.debug('MLOAD', [offset], [result], getCache(), ctx.stack, changed, position, gasCost);
+}
+
+export function storeMemory (ctx: Context, inputs: u256[]): void {
+    console.log('storeMemory')
+    const offset = inputs[0].toI32();
+    const value = inputs[1].toBytes(true);
+    // const {
+    //     baseFee,
+    //     addl,
+    //     highestMemCost,
+    //     memoryWordCount
+    // } = getPrice('mstore', {
+    //     offset,
+    //     length: toBN(value.length),
+    //     memWordCount: jsvm_env.memWordCount(),
+    //     highestMemCost: jsvm_env.highestMemCost(),
+    // });
+    // jsvm_env.useGas(baseFee);
+    // if (addl) jsvm_env.useGas(addl);
+    // if (highestMemCost) jsvm_env.setHighestMemCost(highestMemCost);
+    // if (memoryWordCount) jsvm_env.setMemWordCount(memoryWordCount);
+    ctx.memory.store(value, offset)
+    // const changed = {memory: [offset.toNumber(), value, 1]}
+    // logger.debug('MSTORE', [bytes, offset], [], getCache(), ctx.stack, changed, position, baseFee, addl);
+}
 
 // export function storeMemory8 (offset, bytes, {ctx.stack, position}) {
 //     const gasCost = getPrice('mstore8');
@@ -570,7 +575,7 @@ export function finish (ctx: Context, inputs: u256[]): void {
     ctx.env.currentCall.returnData = result;
     ctx.env.currentCall.returnDataSuccess = 0;
     wasmx.finish(u8ArrayToArrayBuffer(result));
-    throw new Error(ERROR.STOP);
+    // throw new Error(ERROR.STOP);
 }
 
 export function stop (ctx: Context, inputs: u256[]): void {
@@ -928,7 +933,13 @@ export function handlePush (ctx: Context, code: u8): void {
     // jsvm_env.useGas(gasCost);
     // const _position = ctx.pc;
     const no = code - 0x60 + 1;
-    const value = u256.fromBytesBE(ctx.bytecode.slice(ctx.pc, ctx.pc + no));
+    console.log("push");
+    console.log(no.toString())
+    console.log(ctx.bytecode.slice(ctx.pc, ctx.pc + no).toString())
+    const _value = new Array<u8>(32 - no).concat(ctx.bytecode.slice(ctx.pc, ctx.pc + no))
+    console.log(_value.toString())
+    const value = u256.fromBytesBE(_value);
+    console.log(value.toString())
     ctx.stack.push(value);
     ctx.pc += no;
     // logger.debug('PUSH' + no + ' 0x' + value.toString(16).padStart(no*2, '0'), [value], [], getCache(), ctx.stack, undefined, _position, gasCost);
