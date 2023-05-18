@@ -1,56 +1,54 @@
 import { JSON } from "json-as/assembly";
 
-export type Address = u8[]; // 32 bytes
-export type Bytes32 = u8[];
-
 // @ts-ignore
 @serializable
 export class ChainInfoJson {
     denom!: string;
-    chainId!: string; // i64
+    chainId!: i32[];
     chainIdFull!: string;
 }
 
 // @ts-ignore
 @serializable
 export class BlockInfoJson {
-    height!: string; // u64
-    time!: string; // u64
-    gasLimit!: string; // u64
-    hash!: Bytes32;
-    proposer!: Address;
+    height!: i32[];
+    time!: i32[];
+    gasLimit!: i32[];
+    hash!: i32[];
+    proposer!: i32[];
 }
 
 // @ts-ignore
 @serializable
 export class TransactionInfoJson {
     index!: i32;
-    gasPrice!: u8[]; // u256
+    gasPrice!: i32[];
 }
 
 // @ts-ignore
 @serializable
 export class ContractInfoJson {
-    address!: Address;
-    bytecode!: u8[];
+    address!: i32[];
+    bytecode!: i32[];
 }
 
 // @ts-ignore
 @serializable
 export class CurrentCallInfoJson {
-    origin!: Address;
-    sender!: Address;
-    funds!: u8[]; // u256
+    origin!: i32[];
+    sender!: i32[];
+    funds!: i32[];
+    gasLimit!: i32[];
     isQuery!: bool;
-    callData!: u8[];
+    callData!: i32[];
 }
 
 // @ts-ignore
 @serializable
 export class EnvJson {
-    // chain!: ChainInfoJson;
-    // block!: BlockInfoJson;
-    // transaction!: TransactionInfoJson;
+    chain!: ChainInfoJson;
+    block!: BlockInfoJson;
+    transaction!: TransactionInfoJson;
     contract!: ContractInfoJson;
-    // currentCall!: CurrentCallInfoJson;
+    currentCall!: CurrentCallInfoJson;
 }

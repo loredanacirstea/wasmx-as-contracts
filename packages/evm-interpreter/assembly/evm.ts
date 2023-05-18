@@ -1,72 +1,44 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from './wasmx';
 import { BlockInfo, ChainInfo, ContractInfo, CurrentCallInfo, Env, TransactionInfo } from "./types";
+import { EnvJson } from './types_json';
 import { u256 } from "as-bignum/assembly";
-import { arrayBufferTou8Array } from './utils';
+import { arrayBufferTou8Array, i32Toi8Array, i32ArrayToU256 } from './utils';
 
 export function getEnvWrap(): Env {
-    // const envJson = JSON.parse<EnvJson>(String.UTF8.decode(wasmx.getEnv()));
-    // const bytecode = arrayBufferTou8Array(wasmx.getEnv());
-    const bytecode: u8[] = [0x66, 0xee, 0xee, 0xee, 0xee, 0xee, 0xee, 0xee, 0x60, 0x00, 0x52, 0x60, 0x20, 0x60, 0x00, 0xf3];
+    const envJsonStr = String.UTF8.decode(wasmx.getEnv())
+    console.log(envJsonStr)
+    const envJson = JSON.parse<EnvJson>(envJsonStr);
     return new Env(
         new ChainInfo(
-            "",
-            new u256(7000),
-            "wasmx",
+            envJson.chain.denom,
+            i32ArrayToU256(envJson.chain.chainId),
+            envJson.chain.chainIdFull
         ),
         new BlockInfo(
-            new u256(2),
-            new u256(2),
-            new u256(2000000),
-            new u256(2999),
-            new u256(2),
+            i32ArrayToU256(envJson.block.height),
+            i32ArrayToU256(envJson.block.time),
+            i32ArrayToU256(envJson.block.gasLimit),
+            i32ArrayToU256(envJson.block.hash),
+            i32ArrayToU256(envJson.block.proposer),
         ),
         new TransactionInfo(
-            new u256(1),
-            new u256(1000),
+            new u256(envJson.transaction.index),
+            i32ArrayToU256(envJson.transaction.gasPrice),
         ),
         new ContractInfo(
-            new u256(2),
-            bytecode,
+            i32ArrayToU256(envJson.contract.address),
+            i32Toi8Array(envJson.contract.bytecode),
         ),
         new CurrentCallInfo(
-            new u256(2),
-            new u256(2),
-            new u256(0),
-            new u256(100000),
-            true,
-            [],
+            i32ArrayToU256(envJson.currentCall.origin),
+            i32ArrayToU256(envJson.currentCall.sender),
+            i32ArrayToU256(envJson.currentCall.funds),
+            i32ArrayToU256(envJson.currentCall.gasLimit),
+            envJson.currentCall.isQuery,
+            i32Toi8Array(envJson.currentCall.callData),
         ),
     )
-    // return new Env(
-    //     new ChainInfo(
-    //         envJson.chain.denom,
-    //         U64.parseInt(envJson.chain.chainId, 10),
-    //         envJson.chain.chainIdFull
-    //     ),
-    //     new BlockInfo(
-    //         U64.parseInt(envJson.block.height, 10),
-    //         U64.parseInt(envJson.block.time, 10),
-    //         U64.parseInt(envJson.block.gasLimit, 10),
-    //         envJson.block.hash,
-    //         envJson.block.proposer,
-    //     ),
-    //     new TransactionInfo(
-    //         envJson.transaction.index,
-    //         u256.fromBytesBE(envJson.transaction.gasPrice),
-    //     ),
-    //     new ContractInfo(
-    //         envJson.contract.address,
-    //         envJson.contract.bytecode,
-    //     ),
-    //     new CurrentCallInfo(
-    //         envJson.currentCall.origin,
-    //         envJson.currentCall.sender,
-    //         u256.fromBytesBE(envJson.currentCall.funds),
-    //         envJson.currentCall.isQuery,
-    //         envJson.currentCall.callData,
-    //     ),
-    // )
 }
 
 export function sstore(key: u256, value: u256): void {

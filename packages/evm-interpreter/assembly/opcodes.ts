@@ -398,7 +398,6 @@ export function revert (ctx: Context, inputs: u256[]): void {
     }
 }
 
-
 export function handlePush (ctx: Context, code: u8): void {
     ctx.gasmeter.useOpcodeGas('push');
     const no = code - 0x60 + 1;
