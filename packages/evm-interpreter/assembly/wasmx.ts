@@ -1,20 +1,24 @@
-import {
-    Bytes32,
-    Address,
-} from './types';
-
-
 export declare function getEnv(): ArrayBuffer
 
-export declare function storageStore(key: Bytes32, value: Bytes32): void
-export declare function storageLoad(key: Bytes32): Bytes32
+export declare function storageStore(key: ArrayBuffer, value: ArrayBuffer): void
+export declare function storageLoad(key: ArrayBuffer): ArrayBuffer
 
 export declare function log(value: ArrayBuffer): void
 export declare function finish(value: ArrayBuffer): void
 export declare function revert(message: ArrayBuffer): void
 
-// export declare function getExternalBalance(address: Address): u256
+export declare function getExternalBalance(address: ArrayBuffer): ArrayBuffer
+export declare function getExternalCodeSize(address: ArrayBuffer): ArrayBuffer
+export declare function getExternalCodeHash(address: ArrayBuffer): ArrayBuffer
+export declare function getExternalCode(address: ArrayBuffer): ArrayBuffer
+// replace above
+// export declare function getAccount(address: Address): ArrayBuffer
 
+export declare function getBlockHash(number: ArrayBuffer): ArrayBuffer
+
+
+// // TODO
+// export declare function externalCall(): void
 
 // export declare function getAddress(): Address
 // export declare function getCaller(): Address
@@ -28,7 +32,6 @@ export declare function revert(message: ArrayBuffer): void
 //     length: i64,
 // ): ArrayBuffer
 // export declare function getCodeSize(): i32
-// export declare function getExternalCodeSize(): i32
 // export declare function codeCopy(
 //     resultOffset: i64,
 //     codeOffset: i64,
@@ -41,15 +44,8 @@ export declare function revert(message: ArrayBuffer): void
 //     length: i64,
 // ): Address
 
-// export declare function getBlockHash(number: i64): Bytes32
 // export declare function getBlockCoinbase(): Address
 // export declare function getBlockDifficulty(): Bytes32
-// export declare function getAddress(): Address
-// export declare function getAddress(): Address
-// export declare function getAddress(): Address
-
-// // TODO
-// export declare function externalCall(): void
 
 // export declare function call(
 //     gas_limit: i64,
@@ -92,10 +88,6 @@ export declare function revert(message: ArrayBuffer): void
 // ): i32
 // export declare function selfDestruct(address: Address): void
 // export declare function keccak256(offset: i64, length: i64): Bytes32
-// export declare function getAddress(): Address
-// export declare function getAddress(): Address
-// export declare function getAddress(): Address
-
 
 // export declare function useGas(value: u64): void
 // export declare function refundGas(value: u64): void

@@ -1,19 +1,11 @@
 import { u256 } from 'as-bignum/assembly';
 import { Context } from './context';
+import { u8ArrayToArrayBuffer } from './utils';
 import * as ERROR from './error';
 import * as wasmx from './wasmx';
-
-// const {
-//     hexToUint8Array,
-//     toBN,
-//     BN2hex,
-//     BN2uint8arr,
-//     keccak256,
-// }  = require('./utils.js');
-// const evmgas = require('./evmGasPrices');
-// const {getPrice} = evmgas;
-
-// export const opcodesMap = new Map<string,Function>();
+import * as evm from './evm';
+import { EvmLog } from './types';
+import { Memory } from './memory';
 
 type OpcodeFn = (ctx: Context, inputs: u256[]) => void;
 
@@ -29,99 +21,719 @@ opcodesMap.set('storeMemory', storeMemory);
 
 
 export function loadMemory (ctx: Context, inputs: u256[]): void {
-    console.log('loadMemory')
-    // const gasCost = getPrice('mload');
-    // jsvm_env.useGas(gasCost);
+    ctx.gasmeter.useOpcodeGas('mload');
     const offset = inputs[0].toI32();
     const result = ctx.memory.load(offset, 32)
     ctx.stack.push(u256.fromBytesBE(result));
-    // const changed = {memory: [offset.toNumber(), BN2hex(result), 0]}
-    // logger.debug('MLOAD', [offset], [result], getCache(), ctx.stack, changed, position, gasCost);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('MLOAD', [inputs[0].toBytes(true)], [inputs[1].toBytes(true)], ctx.pc);
+    }
 }
 
 export function storeMemory (ctx: Context, inputs: u256[]): void {
-    console.log('storeMemory')
+    // TODO gas cost for memory
     const offset = inputs[0].toI32();
     const value = inputs[1].toBytes(true);
-    // const {
-    //     baseFee,
-    //     addl,
-    //     highestMemCost,
-    //     memoryWordCount
-    // } = getPrice('mstore', {
-    //     offset,
-    //     length: toBN(value.length),
-    //     memWordCount: jsvm_env.memWordCount(),
-    //     highestMemCost: jsvm_env.highestMemCost(),
-    // });
-    // jsvm_env.useGas(baseFee);
-    // if (addl) jsvm_env.useGas(addl);
-    // if (highestMemCost) jsvm_env.setHighestMemCost(highestMemCost);
-    // if (memoryWordCount) jsvm_env.setMemWordCount(memoryWordCount);
     ctx.memory.store(value, offset)
-    // const changed = {memory: [offset.toNumber(), value, 1]}
-    // logger.debug('MSTORE', [bytes, offset], [], getCache(), ctx.stack, changed, position, baseFee, addl);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('MSTORE', [inputs[0].toBytes(true)], [inputs[1].toBytes(true)], ctx.pc);
+    }
 }
 
-// export function storeMemory8 (offset, bytes, {ctx.stack, position}) {
-//     const gasCost = getPrice('mstore8');
-//     jsvm_env.useGas(gasCost);
-//     const value = BN2uint8arr(bytes);
-//     jsvm_env.storeMemory8(value, offset);
-//     const changed = {memory: [offset.toNumber(), value, 1]}
-//     logger.debug('MSTORE8', [bytes, offset], [], getCache(), ctx.stack, changed, position, gasCost);
-//     return;
-// }
+export function storeMemory8 (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('mstore8');
+    const offset = inputs[0].toI32();
+    const value = inputs[1].toBytes(true);
 
-// export function loadMemory (offset, {ctx.stack, position}) {
-//     const gasCost = getPrice('mload');
-//     jsvm_env.useGas(gasCost);
-//     const result = toBN(jsvm_env.loadMemory(offset));
-//     ctx.stack.push(result);
-//     const changed = {memory: [offset.toNumber(), BN2hex(result), 0]}
-//     logger.debug('MLOAD', [offset], [result], getCache(), ctx.stack, changed, position, gasCost);
-//     return {ctx.stack, position};
-// }
+    ctx.memory.store(value, offset)
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('MSTORE8', [inputs[0].toBytes(true)], [inputs[1].toBytes(true)], ctx.pc);
+    }
+}
 
-// export function useGas (amount) {
-//     jsvm_env.useGas(amount);
-//     logger.debug('USEGAS', [amount], [], getCache(), ctx.stack, undefined, position, 0);
-//     return;
-// }
+export function getAddress (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('address');
+    const address = ctx.env.contract.address
+    ctx.stack.push(address);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('ADDRESS', [], [address.toBytes(true)], ctx.pc);
+    }
+}
 
-// export function getAddress ({ctx.stack, position}) {
-//     const gasCost = getPrice('address');
-//     jsvm_env.useGas(gasCost);
-//     const address = toBN(jsvm_env.getAddress());
-//     ctx.stack.push(address);
-//     logger.debug('ADDRESS', [], [address], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
+export function getExternalBalance (ctx: Context, inputs: u256[]): void {
+    // TODO charge less for cached results
+    ctx.gasmeter.useOpcodeGas('balance');
+    const address = inputs[0];
+    const balance = evm.balance(address);
+    ctx.stack.push(balance);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('BALANCE', [address.toBytes(true)], [balance.toBytes(true)], ctx.pc);
+    }
+}
 
-// // result is u128
-// export function getExternalBalance (_address, {ctx.stack, position}){
-//     const {baseFee, addl} = getPrice('balance');
-//     jsvm_env.useGas(baseFee);
-//     jsvm_env.useGas(addl);
-//     const address = BN2uint8arr(_address);
-//     const balance = toBN(jsvm_env.getExternalBalance(address));
-//     ctx.stack.push(balance);
-//     logger.debug('BALANCE', [_address], [balance], getCache(), ctx.stack, undefined, position, baseFee, addl);
-//     return {ctx.stack, position};
-// }
+export function getBlockHash (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('blockhash');
+    const number = inputs[0];
+    const hash = evm.blockhash(number);
+    ctx.stack.push(hash);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('BLOCKHASH', [number.toBytes(true)], [hash.toBytes(true)], ctx.pc);
+    }
+}
 
-// // result i32 Returns 0 on success and 1 on failure
-// export function getBlockHash (number, {ctx.stack, position}) {
-//     const gasCost = getPrice('blockhash');
-//     jsvm_env.useGas(gasCost);
-//     const hash = toBN(jsvm_env.getBlockHash(number));
-//     ctx.stack.push(hash);
-//     logger.debug('BLOCKHASH', [number], [hash], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
+export function callDataCopy (ctx: Context, inputs: u256[]): void {
+    // TODO charge for memory used
+    ctx.gasmeter.useOpcodeGas('calldatacopy');
+    const resultOffset = inputs[0].toI64()
+    const dataOffset = inputs[1].toI64()
+    const length = inputs[2].toI64()
+    const data = Memory.load(ctx.env.currentCall.callData, dataOffset, length);
+    ctx.memory.store(data, resultOffset)
+
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('CALLDATACOPY', [inputs[0].toBytes(true), inputs[1].toBytes(true), inputs[2].toBytes(true)], [data], ctx.pc);
+    }
+}
+
+export function getCallDataSize (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('calldatasize');
+    const value = u256.fromI32(ctx.env.currentCall.callData.length);
+    ctx.stack.push(value)
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('CALLDATASIZE', [value.toBytes(true)], [], ctx.pc);
+    }
+}
+
+export function callDataLoad (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('calldataload');
+    const dataOffset = inputs[0].toI64()
+    const value =  Memory.load(ctx.env.currentCall.callData, dataOffset, 32);
+
+    ctx.stack.push(u256.fromBytesBE(value));
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('CALLDATALOAD', [inputs[0].toBytes(true)], [value], ctx.pc);
+    }
+}
+
+export function storageStore (ctx: Context, inputs: u256[]): void {
+    // TODO charge less for cached value
+    ctx.gasmeter.useOpcodeGas('sstore');
+    evm.sstore(inputs[0], inputs[1]);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('SSTORE', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [], ctx.pc);
+    }
+}
+
+export function storageLoad (ctx: Context, inputs: u256[]): void {
+    // TODO charge less for cached value
+    ctx.gasmeter.useOpcodeGas('sload');
+    const value = evm.sload(inputs[0]);
+    ctx.stack.push(value)
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('SLOAD', [inputs[0].toBytes(true)], [value.toBytes(true)], ctx.pc);
+    }
+}
+
+export function getCaller (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('caller');
+    const address = ctx.env.currentCall.sender;
+    ctx.stack.push(u256.fromBytes(address));
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('CALLER', [], [address.toBytes(true)], ctx.pc);
+    }
+}
+
+export function getCallValue (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('callvalue');
+    const value = ctx.env.currentCall.funds;
+    ctx.stack.push(value);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('CALLVALUE', [], [value.toBytes(true)], ctx.pc);
+    }
+}
+
+export function getCodeSize (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('codesize');
+    const value = u256.fromI32(ctx.env.contract.bytecode.length);
+    ctx.stack.push(value);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('CODESIZE', [], [value.toBytes(true)], ctx.pc);
+    }
+}
+
+export function codeCopy (ctx: Context, inputs: u256[]): void {
+    // TODO charge for memory used
+    ctx.gasmeter.useOpcodeGas('calldatacopy');
+    const resultOffset = inputs[0].toI64()
+    const codeOffset = inputs[1].toI64()
+    const length = inputs[2].toI64()
+    const data = Memory.load(ctx.env.contract.bytecode, codeOffset, length);
+    ctx.memory.store(data, resultOffset)
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('CODECOPY', [inputs[0].toBytes(true), inputs[1].toBytes(true), inputs[2].toBytes(true)], [], ctx.pc);
+    }
+}
+
+export function getBlockCoinbase (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('coinbase');
+    const address = ctx.env.block.proposer
+    ctx.stack.push(address);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('COINBASE', [], [address.toBytes(true)], ctx.pc);
+    }
+}
+
+export function getBlockDifficulty (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('difficulty');
+    const value = ctx.env.block.difficulty;
+    ctx.stack.push(value);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('DIFFICULTY', [], [value.toBytes(true)], ctx.pc);
+    }
+}
+
+export function getExternalCodeSize (ctx: Context, inputs: u256[]): void {
+    // TODO charge less for cached results
+    ctx.gasmeter.useOpcodeGas('extcodesize');
+    const address = inputs[0];
+    const size = evm.extcodesize(address);
+    ctx.stack.push(size);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('EXTCODESIZE', [address.toBytes(true)], [size.toBytes(true)], ctx.pc);
+    }
+}
+
+export function getExternalCodeHash (ctx: Context, inputs: u256[]): void {
+    // TODO charge less for cached results
+    ctx.gasmeter.useOpcodeGas('extcodehash');
+    const address = inputs[0];
+    const size = evm.extcodehash(address);
+    ctx.stack.push(size);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('EXTCODEHASH', [address.toBytes(true)], [size.toBytes(true)], ctx.pc);
+    }
+}
+
+export function externalCodeCopy (ctx: Context, inputs: u256[]): void {
+    // TODO charge for memory used, less for cached account
+    ctx.gasmeter.useOpcodeGas('extcodecopy');
+    const resultOffset = inputs[1].toI64()
+    const codeOffset = inputs[2].toI64()
+    const length = inputs[3].toI64()
+    const code = evm.getExternalCode(inputs[0]);
+    const data = Memory.load(code, codeOffset, length);
+    ctx.memory.store(data, resultOffset)
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('EXTCODECOPY', [inputs[0].toBytes(true), inputs[1].toBytes(true), inputs[2].toBytes(true), inputs[3].toBytes(true)], [], ctx.pc);
+    }
+}
+
+export function getGasLeft (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('gas');
+    const value = ctx.gasmeter.getGasLeft()
+    ctx.stack.push(value);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('GAS', [value.toBytes(true)], [], ctx.pc);
+    }
+}
+
+export function getBlockGasLimit (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('gaslimit');
+    const value = ctx.env.block.gasLimit
+    ctx.stack.push(value);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('GASLIMIT',[], [value.toBytes(true)], ctx.pc);
+    }
+}
+
+export function getTxGasPrice (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('gasprice');
+    const value = ctx.env.transaction.gasPrice;
+    ctx.stack.push(value);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('GASPRICE',[], [value.toBytes(true)], ctx.pc);
+    }
+}
+
+export function getBlockNumber (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('number');
+    const value = ctx.env.block.height;
+    ctx.stack.push(value);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('NUMBER',[], [value.toBytes(true)], ctx.pc);
+    }
+}
+
+export function getBlockTimestamp (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('timestamp');
+    const value = ctx.env.block.height;
+    ctx.stack.push(value);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('TIMESTAMP',[], [value.toBytes(true)], ctx.pc);
+    }
+}
+
+export function getTxOrigin (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('origin');
+    const value = ctx.env.currentCall.origin;
+    ctx.stack.push(value);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('ORIGIN',[], [value.toBytes(true)], ctx.pc);
+    }
+}
+
+export function getReturnDataSize (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('returndatasize');
+    const value = u256.fromI32(ctx.env.currentCall.returnData.length);
+    ctx.stack.push(value)
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('RETURNDATASIZE', [value.toBytes(true)], [], ctx.pc);
+    }
+}
+
+export function getBlockChainId (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('chainid');
+    const value = ctx.env.chain.chainId
+    ctx.stack.push(value)
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('CHAINID', [value.toBytes(true)], [], ctx.pc);
+    }
+}
+
+export function returnDataCopy (ctx: Context, inputs: u256[]): void {
+    // TODO charge for memory used
+    ctx.gasmeter.useOpcodeGas('returndatacopy');
+    const resultOffset = inputs[0].toI64()
+    const dataOffset = inputs[1].toI64()
+    const length = inputs[2].toI64()
+    const data = Memory.load(ctx.env.currentCall.returnData, dataOffset, length);
+    ctx.memory.store(data, resultOffset)
+
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('RETURNDATACOPY', [inputs[0].toBytes(true), inputs[1].toBytes(true), inputs[2].toBytes(true)], [], ctx.pc);
+    }
+}
+
+export function log (ctx: Context, dataOffset: i64, dataLength: i64, topics: u256[]): void {
+    // TODO price based on topics indexed
+    ctx.gasmeter.useOpcodeGas('log');
+    const data = ctx.memory.load(dataOffset, dataLength);
+    const topicsbz = topics.map((v: u256) => {
+        return v.toBytes(true);
+    });
+    ctx.env.currentCall.logs.push(new EvmLog(data, topicsbz))
+
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('LOG', [data, ...topicsbz], [], ctx.pc);
+    }
+}
+
+export function log0 (ctx: Context, inputs: u256[]): void {
+    const dataOffset = inputs[0].toI64();
+    const dataLength = inputs[1].toI64();
+    return log(ctx, dataOffset, dataLength, []);
+}
+
+export function log1 (ctx: Context, inputs: u256[]): void {
+    const dataOffset = inputs[0].toI64();
+    const dataLength = inputs[1].toI64();
+    return log(ctx, dataOffset, dataLength, inputs.slice(2));
+}
+
+export function log2  (ctx: Context, inputs: u256[]): void {
+    const dataOffset = inputs[0].toI64();
+    const dataLength = inputs[1].toI64();
+    return log(ctx, dataOffset, dataLength, inputs.slice(2));
+}
+
+export function log3  (ctx: Context, inputs: u256[]): void {
+    const dataOffset = inputs[0].toI64();
+    const dataLength = inputs[1].toI64();
+    return log(ctx, dataOffset, dataLength, inputs.slice(2));
+}
+
+export function log4  (ctx: Context, inputs: u256[]): void {
+    const dataOffset = inputs[0].toI64();
+    const dataLength = inputs[1].toI64();
+    return log(ctx, dataOffset, dataLength, inputs.slice(2));
+}
+
+export function finish (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('return');
+    const dataOffset = inputs[0];
+    const dataLength = inputs[1];
+    const result = ctx.memory.load(dataOffset.toI32(), dataLength.toI32());
+    ctx.pc = 0;
+    ctx.env.currentCall.returnData = result;
+    ctx.env.currentCall.returnDataSuccess = 0;
+    wasmx.finish(u8ArrayToArrayBuffer(result));
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('RETURN', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result], ctx.pc);
+    }
+}
+
+export function stop (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('return');
+    ctx.pc = 0;
+    ctx.env.currentCall.returnData = [];
+    ctx.env.currentCall.returnDataSuccess = 0;
+    wasmx.finish(new ArrayBuffer(0)); // TODO remove this, its useless
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('STOP', [], [], ctx.pc);
+    }
+}
+
+// Returns 0 on success, 1 on failure and 2 on revert
+export function revert (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('revert');
+    const dataOffset = inputs[0];
+    const dataLength = inputs[1];
+    const result = ctx.memory.load(dataOffset.toI32(), dataLength.toI32());
+    ctx.pc = 0;
+    ctx.env.currentCall.returnData = result;
+    ctx.env.currentCall.returnDataSuccess = 2;
+    wasmx.finish(u8ArrayToArrayBuffer(result)); // TODO remove
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('REVERT', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result], ctx.pc);
+    }
+}
+
+
+export function handlePush (ctx: Context, code: u8): void {
+    ctx.gasmeter.useOpcodeGas('push');
+    const no = code - 0x60 + 1;
+    const _value = new Array<u8>(32 - no).concat(Memory.load(ctx.bytecode, ctx.pc, no))
+    const value = u256.fromBytesBE(_value);
+    ctx.stack.push(value);
+    ctx.pc += no;
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug(`PUSH${no}`, [_value], [], ctx.pc);
+    }
+}
+
+export function handleSwap (ctx: Context, code: u8): void {
+    ctx.gasmeter.useOpcodeGas('swap');
+    const no = code - 0x90 + 1;
+    ctx.stack.swap(no);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug(`SWAP${no}`, [], [], ctx.pc);
+    }
+}
+
+export function handleDup (ctx: Context, code: u8): void {
+    ctx.gasmeter.useOpcodeGas('dup');
+    const no = code - 0x80 + 1;
+    ctx.stack.dup(no);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug(`DUP${no}`, [], [], ctx.pc);
+    }
+}
+
+export function jump (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('jump');
+    const newpos = inputs[0].toI32();
+    if (!newpos && newpos !== 0) {
+        throw new Error(`Invalid JUMP ${newpos}`);
+    }
+    ctx.pc = newpos;
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('JUMP', [inputs[0].toBytes(true)], [], ctx.pc);
+    }
+}
+
+export function jumpi (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('jumpi');
+    const newpos = inputs[0].toI32();
+    // EVM allows any uint256 except from 0 to be interpreted as true
+    const condition = inputs[1].toBool();
+    if (condition) ctx.pc = newpos;
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('JUMPI', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [], ctx.pc);
+    }
+}
+
+export function jumpdest (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('jumpdest');
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('JUMPDEST', [], [], ctx.pc);
+    }
+}
+
+export function pop (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('pop');
+    ctx.stack.pop();
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('POP', [], [], ctx.pc);
+    }
+}
+
+export function add (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('add');
+    const result = evm.add(inputs[0], inputs[1]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('ADD', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+export function sub (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('sub');
+    const result = evm.sub(inputs[0], inputs[1]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('SUB', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+export function mul (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('mul');
+    const result = evm.mul(inputs[0], inputs[1]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('MUL', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+// TODO
+export function div (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('div');
+    const result = evm.div(inputs[0], inputs[1]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('DIV', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+// TODO
+export function sdiv (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('sdiv');
+
+    // const _a = a.fromTwos(256);
+    // const _b = b.fromTwos(256);
+    // if (_b.isZero()) result = toBN(0);
+    // else result = _a.div(_b);
+    const result = evm.sdiv(inputs[0], inputs[1]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('SDIV', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+// TODO
+export function mod (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('mod');
+    // const result = a.abs().mod(b.abs());
+    const result = evm.mod(inputs[0], inputs[1]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('MOD', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+// TODO
+export function smod (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('smod');
+    //     const _a = a.fromTwos(256);
+    //     const _b = b.fromTwos(256);
+    //     if (_b.isZero()) result = toBN(0);
+    //     else result = _a.mod(_b);
+    const result = evm.smod(inputs[0], inputs[1]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('SMOD', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+// TODO
+export function addmod (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('addmod');
+    const result = evm.addmod(inputs[0], inputs[1], inputs[2]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('ADDMOD', [inputs[0].toBytes(true), inputs[1].toBytes(true), inputs[2].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+// TODO
+export function mulmod (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('mulmod');
+    const result = evm.mulmod(inputs[0], inputs[1], inputs[2]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('MULMOD', [inputs[0].toBytes(true), inputs[1].toBytes(true), inputs[2].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+// TODO
+export function exp (ctx: Context, inputs: u256[]): void {
+    // TODO gas cost based on exp
+    ctx.gasmeter.useOpcodeGas('exp');
+    const result = evm.exp(inputs[0], inputs[1]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('EXP', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+// TODO
+export function signextend (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('signextend');
+    const result = evm.signextend(inputs[0], inputs[1]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('SIGNEXTEND', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+export function lt (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('lt');
+    const result = evm.lt(inputs[0], inputs[1]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('LT', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+export function gt (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('gt');
+    const result = evm.gt(inputs[0], inputs[1]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('GT', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+// TODO
+export function slt (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('slt');
+//     const _a = a.fromTwos(256);
+//     const _b = b.fromTwos(256);
+//     let result = _a.lt(_b);
+//     result = toBN(result ? 1 : 0);
+    const result = evm.slt(inputs[0], inputs[1]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('SLT', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+// TODO
+export function sgt (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('sgt');
+//     const _a = a.fromTwos(256);
+//     const _b = b.fromTwos(256);
+//     let result = _a.gt(_b);
+//     result = toBN(result ? 1 : 0);
+    const result = evm.sgt(inputs[0], inputs[1]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('SGT', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+export function eq (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('eq');
+    const result = evm.eq(inputs[0], inputs[1]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('EQ', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+export function iszero (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('iszero');
+    const result = evm.iszero(inputs[0]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('ISZERO', [inputs[0].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+export function and (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('and');
+    const result = evm.and(inputs[0], inputs[1]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('AND', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+export function or (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('or');
+    const result = evm.or(inputs[0], inputs[1]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('OR', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+export function xor (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('xor');
+    const result = evm.xor(inputs[0], inputs[1]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('XOR', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+export function not (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('not');
+    const result = evm.not(inputs[0]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('NOT', [inputs[0].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+export function byte (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('byte');
+    const result = evm.byte(inputs[0], inputs[1]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('BYTE', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+export function shl (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('shl');
+    const result = evm.shl(inputs[0], inputs[1]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('SHL', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+export function shr (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('shr');
+    const result = evm.shr(inputs[0], inputs[1]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('SHR', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+export function sar (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('sar');
+    const result = evm.sar(inputs[0], inputs[1]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('SAR', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result.toBytes(true)], ctx.pc);
+    }
+}
+
+export function keccak256 (ctx: Context, inputs: u256[]): void {
+    // TODO gas units based on data slots
+    ctx.gasmeter.useOpcodeGas('keccak256');
+    const data = ctx.memory.load(inputs[0].toI64(), inputs[1].toI64());
+    const result = new Array<u8>(32);
+
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('KECCAK256', [inputs[0].toBytes(true), inputs[1].toBytes(true)], [result], ctx.pc);
+    }
+}
 
 // // result i32 Returns 0 on success, 1 on failure and 2 on revert
-// export function call (
+// export function call (ctx: Context, inputs: u256[]): void {
 //     gas_limit,
 //     address, // the memory offset to load the address from (address)
 //     value,
@@ -129,8 +741,6 @@ export function storeMemory (ctx: Context, inputs: u256[]): void {
 //     dataLength,
 //     outputOffset,
 //     outputLength,
-//     {ctx.stack, position}
-// ) {
 //     const {baseFee, addl} = getPrice('call', {value});
 //     jsvm_env.useGas(baseFee);
 //     jsvm_env.useGas(addl);
@@ -151,48 +761,6 @@ export function storeMemory (ctx: Context, inputs: u256[]): void {
 //         dataLength,
 //         outputOffset,
 //         outputLength,], [result], getCache(), ctx.stack, undefined, position, baseFee, addl);
-//     return {ctx.stack, position};
-// }
-
-// export function callDataCopy (resultOffset, dataOffset, length, {ctx.stack, position}) {
-//     const {
-//         baseFee,
-//         addl,
-//         highestMemCost,
-//         memoryWordCount
-//     } = getPrice('calldatacopy', {
-//         offset: resultOffset,
-//         length: toBN(length),
-//         memWordCount: jsvm_env.memWordCount(),
-//         highestMemCost: jsvm_env.highestMemCost(),
-//     });
-//     jsvm_env.useGas(baseFee);
-//     if (addl) jsvm_env.useGas(addl);
-//     if (highestMemCost) jsvm_env.setHighestMemCost(highestMemCost);
-//     if (memoryWordCount) jsvm_env.setMemWordCount(memoryWordCount);
-
-//     const result = jsvm_env.callDataCopy(resultOffset, dataOffset, length);
-//     const changed = {memory: [resultOffset.toNumber(), result, 1]};
-//     logger.debug('CALLDATACOPY', [resultOffset, dataOffset, length], [result], getCache(), ctx.stack, changed, position, baseFee, addl);
-//     return;
-// }
-
-// export function getCallDataSize ({ctx.stack, position}) {
-//     const gasCost = getPrice('calldatasize');
-//     jsvm_env.useGas(gasCost);
-//     const result = toBN(jsvm_env.getCallDataSize());
-//     ctx.stack.push(result);
-//     logger.debug('CALLDATASIZE', [], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function callDataLoad (dataOffset, {ctx.stack, position}) {
-//     const gasCost = getPrice('calldataload');
-//     jsvm_env.useGas(gasCost);
-//     const result = toBN(jsvm_env.callDataLoad(dataOffset));
-//     ctx.stack.push(result);
-//     const changed = {memory: [dataOffset.toNumber(), result, 0]};
-//     logger.debug('CALLDATALOAD', [dataOffset], [result], getCache(), ctx.stack, changed, position, gasCost);
 //     return {ctx.stack, position};
 // }
 
@@ -299,97 +867,6 @@ export function storeMemory (ctx: Context, inputs: u256[]): void {
 //     return {ctx.stack, position};
 // }
 
-// export function storageStore (pathOffset, value, {ctx.stack, position}) {
-//     const key = BN2uint8arr(pathOffset);
-//     // TODO correct original value after EIP 2200
-//     const origValue = toBN(jsvm_env.storageLoadOriginal(key));
-//     const currentValue = toBN(jsvm_env.storageLoad(key));
-//     const count = jsvm_env.storageRecords.write(key);
-//     const gasLeft = toBN(jsvm_env.getGasLeft());
-//     const {baseFee, addl, refund} = getPrice('sstore', {count, value, currentValue, origValue, gasLeft});
-//     jsvm_env.useGas(baseFee);
-//     if (addl) jsvm_env.useGas(addl);
-//     if (refund) jsvm_env.refundGas(refund);
-//     jsvm_env.storageStore(key, BN2uint8arr(value));
-//     const changed = {storage: [BN2hex(pathOffset), BN2hex(value), 1]}
-//     logger.debug('SSTORE', [pathOffset, value], [], getCache(), ctx.stack, changed, position, baseFee, addl, refund);
-//     return;
-// }
-
-// export function storageLoad (pathOffset, {ctx.stack, position}) {
-//     const key = BN2uint8arr(pathOffset);
-//     const count = jsvm_env.storageRecords.read(key);
-//     const {baseFee, addl} = getPrice('sload');
-//     jsvm_env.useGas(baseFee);
-//     jsvm_env.useGas(addl);
-//     const result = toBN(jsvm_env.storageLoad(key));
-//     ctx.stack.push(result);
-//     const changed = {storage: [BN2hex(pathOffset), BN2hex(result), 0]}
-//     logger.debug('SLOAD', [pathOffset], [result], getCache(), ctx.stack, changed, position, baseFee, addl);
-//     return {ctx.stack, position};
-// }
-
-// export function getCaller ({ctx.stack, position}) {
-//     const gasCost = getPrice('caller');
-//     jsvm_env.useGas(gasCost);
-//     const address = toBN(jsvm_env.getCaller());
-//     ctx.stack.push(address);
-//     logger.debug('CALLER', [], [address], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function getCallValue ({ctx.stack, position}) {
-//     const gasCost = getPrice('callvalue');
-//     jsvm_env.useGas(gasCost);
-//     const value = toBN(jsvm_env.getCallValue());
-//     ctx.stack.push(value);
-//     logger.debug('CALLVALUE', [], [value], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function codeCopy (resultOffset, codeOffset, length, {ctx.stack, position}) {
-//     const {
-//         baseFee,
-//         addl,
-//         highestMemCost,
-//         memoryWordCount
-//     } = getPrice('codecopy', {
-//         offset: resultOffset,
-//         length: toBN(length),
-//         memWordCount: jsvm_env.memWordCount(),
-//         highestMemCost: jsvm_env.highestMemCost(),
-//     });
-//     jsvm_env.useGas(baseFee);
-//     if (addl) jsvm_env.useGas(addl);
-//     if (highestMemCost) jsvm_env.setHighestMemCost(highestMemCost);
-//     if (memoryWordCount) jsvm_env.setMemWordCount(memoryWordCount);
-
-//     const result = jsvm_env.codeCopy(resultOffset, codeOffset, length);
-//     const changed = {memory: [resultOffset.toNumber(), result, 1]};
-//     logger.debug('CODECOPY', [resultOffset, codeOffset, length], [], getCache(), ctx.stack, changed, position, baseFee, addl);
-//     return;
-// }
-
-// // returns i32 - code size current env
-// export function getCodeSize ({ctx.stack, position}) {
-//     const gasCost = getPrice('codesize');
-//     jsvm_env.useGas(gasCost);
-//     const result = toBN(jsvm_env.getCodeSize());
-//     ctx.stack.push(result);
-//     logger.debug('CODESIZE', [], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// // block’s beneficiary address
-// export function getBlockCoinbase ({ctx.stack, position}) {
-//     const gasCost = getPrice('coinbase');
-//     jsvm_env.useGas(gasCost);
-//     const value = toBN(jsvm_env.getBlockCoinbase());
-//     ctx.stack.push(value);
-//     logger.debug('COINBASE', [], [value], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
 // export function create (
 //     value,
 //     dataOffset,
@@ -408,229 +885,8 @@ export function storeMemory (ctx: Context, inputs: u256[]): void {
 //     return {ctx.stack, position};
 // }
 
-// export function getBlockDifficulty ({ctx.stack, position}) {
-//     const gasCost = getPrice('difficulty');
-//     jsvm_env.useGas(gasCost);
-//     const value = toBN(jsvm_env.getBlockDifficulty());
-//     ctx.stack.push(value);
-//     logger.debug('DIFFICULTY', [], [value], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
 
-// export function externalCodeCopy (
-//     address,
-//     resultOffset,
-//     codeOffset,
-//     dataLength,
-//     {ctx.stack, position}
-// ) {
-//     const {
-//         baseFee,
-//         addl,
-//         highestMemCost,
-//         memoryWordCount
-//     } = getPrice('extcodecopy', {
-//         offset: resultOffset,
-//         length: dataLength,
-//         memWordCount: jsvm_env.memWordCount(),
-//         highestMemCost: jsvm_env.highestMemCost(),
-//     });
-//     jsvm_env.useGas(baseFee);
-//     if (addl) jsvm_env.useGas(addl);
-//     if (highestMemCost) jsvm_env.setHighestMemCost(highestMemCost);
-//     if (memoryWordCount) jsvm_env.setMemWordCount(memoryWordCount);
-
-//     const result = jsvm_env.externalCodeCopy(
-//         BN2uint8arr(address),
-//         resultOffset,
-//         codeOffset,
-//         dataLength,
-//     )
-//     const changed = {memory: [resultOffset.toNumber(), result, 1]};
-//     logger.debug('EXTCODECOPY', [address,
-//         resultOffset,
-//         codeOffset,
-//         dataLength,
-//     ], [], getCache(), ctx.stack, changed, position, baseFee, addl);
-//     return;
-// }
-
-// // Returns extCodeSize i32
-// export function getExternalCodeSize (address, {ctx.stack, position}) {
-//     const {baseFee, addl} = getPrice('extcodesize');
-//     jsvm_env.useGas(baseFee);
-//     jsvm_env.useGas(addl);
-//     const result = toBN(jsvm_env.getExternalCodeSize(BN2uint8arr(address)));
-//     ctx.stack.push(result);
-//     logger.debug('EXTCODESIZE', [address], [result], getCache(), ctx.stack, undefined, position, baseFee, addl);
-//     return {ctx.stack, position};
-// }
-
-// // result gasLeft i64
-// export function getGasLeft ({ctx.stack, position}) {
-//     const gasCost = getPrice('gas');
-//     jsvm_env.useGas(gasCost);
-//     const result = toBN(jsvm_env.getGasLeft());
-//     ctx.stack.push(result);
-//     logger.debug('GAS', [], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// // result blockGasLimit i64
-// export function getBlockGasLimit ({ctx.stack, position}) {
-//     const gasCost = getPrice('gaslimit');
-//     jsvm_env.useGas(gasCost);
-//     const result = toBN(jsvm_env.getBlockGasLimit());
-//     ctx.stack.push(result);
-//     logger.debug('GASLIMIT', [], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function getTxGasPrice ({ctx.stack, position}) {
-//     const gasCost = getPrice('gasprice');
-//     jsvm_env.useGas(gasCost);
-//     const result = toBN(jsvm_env.getTxGasPrice());
-//     ctx.stack.push(result);
-//     logger.debug('GASPRICE', [], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function log (
-//     dataOffset,
-//     dataLength,
-//     ...topics
-// ) {
-//     const {ctx.stack, position} = topics.pop();
-//     const numberOfTopics = topics.length;
-
-//     const {baseFee, addl} = getPrice('log', {topics: toBN(topics.length), length: dataLength});
-//     jsvm_env.useGas(baseFee);
-//     jsvm_env.useGas(addl);
-
-//     jsvm_env.log(
-//         dataOffset,
-//         dataLength,
-//         numberOfTopics,
-//         topics,
-//     );
-//     logger.debug('LOG' + numberOfTopics, [dataOffset,
-//         dataLength,
-//         numberOfTopics,
-//         ...topics
-//     ], [], getCache(), ctx.stack, undefined, position, baseFee, addl);
-//     return;
-// }
-
-// export function log0 (dataOffset, dataLength, ...topics) {
-//     return api.ethereum.log(dataOffset, dataLength, ...topics);
-// }
-
-// export function log1 (dataOffset, dataLength, ...topics) {
-//     return api.ethereum.log(dataOffset, dataLength, ...topics);
-// }
-
-// export function log2 (dataOffset, dataLength, ...topics) {
-//     return api.ethereum.log(dataOffset, dataLength, ...topics);
-// }
-
-// export function log3 (dataOffset, dataLength, ...topics) {
-//     return api.ethereum.log(dataOffset, dataLength, ...topics);
-// }
-
-// export function log4 (dataOffset, dataLength, ...topics) {
-//     return api.ethereum.log(dataOffset, dataLength, ...topics);
-// }
-
-// // result blockNumber i64
-// export function getBlockNumber ({ctx.stack, position}) {
-//     const gasCost = getPrice('number');
-//     jsvm_env.useGas(gasCost);
-//     const result = toBN(jsvm_env.getBlockNumber());
-//     ctx.stack.push(result);
-//     logger.debug('NUMBER', [], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function getTxOrigin ({ctx.stack, position}) {
-//     const gasCost = getPrice('origin');
-//     jsvm_env.useGas(gasCost);
-//     const address = toBN(jsvm_env.getTxOrigin());
-//     ctx.stack.push(address);
-//     logger.debug('ORIGIN', [], [address], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-export function finish (ctx: Context, inputs: u256[]): void {
-    // const gasCost = getPrice('return');
-    // jsvm_env.useGas(gasCost);
-    // const result = jsvm_env.finish(dataOffset, dataLength);
-    // logger.debug('FINISH', [dataOffset, dataLength], [result], getCache(), ctx.stack, undefined, position, gasCost);
-    // finishAction({result, gas: jsvm_env.getGas(), context: jsvm_env.getContext(), logs: jsvm_env.getLogs()});
-
-    const dataOffset = inputs[0];
-    const dataLength = inputs[1];
-
-    const result = ctx.memory.load(dataOffset.toI32(), dataLength.toI32());
-    ctx.pc = 0;
-    ctx.env.currentCall.returnData = result;
-    ctx.env.currentCall.returnDataSuccess = 0;
-    wasmx.finish(u8ArrayToArrayBuffer(result));
-    // throw new Error(ERROR.STOP);
-}
-
-export function stop (ctx: Context, inputs: u256[]): void {
-    // const gasCost = getPrice('stop');
-    // jsvm_env.useGas(gasCost);
-
-    // logger.debug('STOP', [], [], getCache(), ctx.stack, undefined, position, gasCost);
-
-    // finishAction({gas: jsvm_env.getGas(), context: jsvm_env.getContext(), logs: jsvm_env.getLogs()});
-    ctx.pc = 0;
-}
-
-// export function revert (dataOffset, dataLength, {ctx.stack, position}) {
-//     const gasCost = getPrice('revert');
-//     jsvm_env.useGas(gasCost);
-//     const result = jsvm_env.revert(dataOffset, dataLength);
-//     logger.debug('REVERT', [dataOffset, dataLength], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     revertAction({result, gas: jsvm_env.getGas()});
-//     return {ctx.stack, position: 0};
-// }
-
-// // result dataSize i32
-// export function getReturnDataSize ({ctx.stack, position}) {
-//     const gasCost = getPrice('returndatasize');
-//     jsvm_env.useGas(gasCost);
-//     const result = toBN(jsvm_env.getReturnDataSize());
-//     ctx.stack.push(result);
-//     logger.debug('RETURNDATASIZE', [], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function returnDataCopy (resultOffset, dataOffset, length, {ctx.stack, position}) {
-//     const {
-//         baseFee,
-//         addl,
-//         highestMemCost,
-//         memoryWordCount
-//     } = getPrice('returndatacopy', {
-//         offset: resultOffset,
-//         length: toBN(length),
-//         memWordCount: jsvm_env.memWordCount(),
-//         highestMemCost: jsvm_env.highestMemCost(),
-//     });
-//     jsvm_env.useGas(baseFee);
-//     if (addl) jsvm_env.useGas(addl);
-//     if (highestMemCost) jsvm_env.setHighestMemCost(highestMemCost);
-//     if (memoryWordCount) jsvm_env.setMemWordCount(memoryWordCount);
-
-//     const result = jsvm_env.returnDataCopy(resultOffset, dataOffset, length);
-//     const changed = {memory: [resultOffset.toNumber(), result, 1]};
-//     logger.debug('RETURNDATACOPY', [resultOffset, dataOffset, length], [], getCache(), ctx.stack, changed, position, baseFee, addl);
-//     return;
-// }
-
-// export function selfDestruct (address, {ctx.stack, position}) {
+// export function selfDestruct (address, ctx: Context, inputs: u256[]): void {
 //     const gasCost = getPrice('selfdestruct');
 //     jsvm_env.useGas(gasCost);
 //     jsvm_env.selfDestruct(BN2uint8arr(address));
@@ -638,361 +894,6 @@ export function stop (ctx: Context, inputs: u256[]): void {
 //     finishAction({gas: jsvm_env.getGas(), context: jsvm_env.getContext(), logs: jsvm_env.getLogs()});
 //     return {ctx.stack, position: 0};
 // }
-
-// export function getBlockTimestamp ({ctx.stack, position}) {
-//     const gasCost = getPrice('timestamp');
-//     jsvm_env.useGas(gasCost);
-//     const result = toBN(jsvm_env.getBlockTimestamp());
-//     ctx.stack.push(result);
-//     logger.debug('TIMESTAMP', [], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function keccak256 (offset, length, {ctx.stack, position}) => {
-//     const {baseFee, addl} = getPrice('keccak256', {length});
-//     jsvm_env.useGas(baseFee);
-//     jsvm_env.useGas(addl);
-//     const slots = Math.ceil(length.toNumber() / 32);
-//     const data = [...new Array(slots).keys()].map(index => {
-//         const delta = toBN(index * 32);
-//         return jsvm_env.loadMemory(offset.add(delta));
-//     }).reduce((accum, value) => {
-//         return new Uint8Array([...accum, ...value]);
-//     }, []);
-//     const hash = keccak256(data);
-//     const result = toBN(hash);
-//     ctx.stack.push(result);
-//     logger.debug('keccak256', [offset, length], [result], getCache(), ctx.stack, undefined, position, baseFee, addl);
-//     return {ctx.stack, position};
-// }
-
-// export function uint256Max: () => new BN('10000000000000000000000000000000000000000000000000000000000000000', 16),
-// // mimick evm overflow
-// export function add (a, b, {ctx.stack, position}) => {
-//     const gasCost = getPrice('add');
-//     jsvm_env.useGas(gasCost);
-//     const result = a.add(b).mod(api.ethereum.uint256Max());
-//     ctx.stack.push(result);
-//     logger.debug('ADD', [a, b], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function mul (a, b, {ctx.stack, position}) => {
-//     const gasCost = getPrice('mul');
-//     jsvm_env.useGas(gasCost);
-//     const result = a.mul(b).mod(api.ethereum.uint256Max());
-//     ctx.stack.push(result);
-//     logger.debug('MUL', [a, b], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// // mimick evm underflow
-// export function sub (a, b, {ctx.stack, position}) => {
-//     const gasCost = getPrice('sub');
-//     jsvm_env.useGas(gasCost);
-//     const result = a.sub(b).mod(api.ethereum.uint256Max());
-//     ctx.stack.push(result);
-//     logger.debug('SUB', [a, b], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function div (a, b, {ctx.stack, position}) => {
-//     const gasCost = getPrice('div');
-//     jsvm_env.useGas(gasCost);
-//     let result;
-//     if (b.isZero()) result = toBN(0);
-//     else result = a.abs().div(b.abs());
-//     ctx.stack.push(result);
-//     logger.debug('DIV', [a, b], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function sdiv (a, b, {ctx.stack, position}) => {
-//     const gasCost = getPrice('sdiv');
-//     jsvm_env.useGas(gasCost);
-//     let result;
-//     const _a = a.fromTwos(256);
-//     const _b = b.fromTwos(256);
-//     if (_b.isZero()) result = toBN(0);
-//     else result = _a.div(_b);
-//     ctx.stack.push(result);
-//     logger.debug('SDIV', [a, b], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function mod (a, b, {ctx.stack, position}) => {
-//     const gasCost = getPrice('mod');
-//     jsvm_env.useGas(gasCost);
-//     const result = a.abs().mod(b.abs());
-//     ctx.stack.push(result);
-//     logger.debug('MOD', [a, b], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function smod (a, b, {ctx.stack, position}) => {
-//     const gasCost = getPrice('smod');
-//     jsvm_env.useGas(gasCost);
-//     let result;
-//     const _a = a.fromTwos(256);
-//     const _b = b.fromTwos(256);
-//     if (_b.isZero()) result = toBN(0);
-//     else result = _a.mod(_b);
-//     ctx.stack.push(result);
-//     logger.debug('SMOD', [a, b], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function addmod (a, b, c, {ctx.stack, position}) => {
-//     const gasCost = getPrice('addmod');
-//     jsvm_env.useGas(gasCost);
-//     const result = api.ethereum.mod(api.ethereum.add(a, b), c);
-//     ctx.stack.push(result);
-//     logger.debug('ADDMOD', [a, b], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function mulmod (a, b, c, {ctx.stack, position}) => {
-//     const gasCost = getPrice('mulmod');
-//     jsvm_env.useGas(gasCost);
-//     const result = api.ethereum.mod(api.ethereum.mul(a, b), c);
-//     ctx.stack.push(result);
-//     logger.debug('MULMOD', [a, b], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function exp (a, b, {ctx.stack, position}) => {
-//     const {baseFee, addl} = getPrice('exp', {exponent: b});
-//     jsvm_env.useGas(baseFee);
-//     jsvm_env.useGas(addl);
-//     if (b.lt(toBN(0))) return toBN(0);
-//     const result = a.pow(b);
-//     ctx.stack.push(result);
-//     logger.debug('EXP', [a, b], [result], getCache(), ctx.stack, undefined, position, baseFee, addl);
-//     return {ctx.stack, position};
-// }
-
-// export function signextend (size, value, {ctx.stack, position}) => {
-//     const gasCost = getPrice('signextend');
-//     jsvm_env.useGas(gasCost);
-//     const result = value;
-//     ctx.stack.push(result);
-//     logger.debug('SIGNEXTEND', [size, value], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function lt (a, b, {ctx.stack, position}) => {
-//     const gasCost = getPrice('lt');
-//     jsvm_env.useGas(gasCost);
-//     let result = a.abs().lt(b.abs());
-//     result = toBN(result ? 1 : 0);
-//     ctx.stack.push(result);
-//     logger.debug('LT', [a, b], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function gt (a, b, {ctx.stack, position}) => {
-//     const gasCost = getPrice('gt');
-//     jsvm_env.useGas(gasCost);
-//     let result = a.abs().gt(b.abs());
-//     result = toBN(result ? 1 : 0);
-//     ctx.stack.push(result);
-//     logger.debug('GT', [a, b], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function slt (a, b, {ctx.stack, position}) => {
-//     const gasCost = getPrice('slt');
-//     jsvm_env.useGas(gasCost);
-//     const _a = a.fromTwos(256);
-//     const _b = b.fromTwos(256);
-//     let result = _a.lt(_b);
-//     result = toBN(result ? 1 : 0);
-//     ctx.stack.push(result);
-//     logger.debug('SLT', [a, b], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function sgt (a, b, {ctx.stack, position}) => {
-//     const gasCost = getPrice('sgt');
-//     jsvm_env.useGas(gasCost);
-//     const _a = a.fromTwos(256);
-//     const _b = b.fromTwos(256);
-//     let result = _a.gt(_b);
-//     result = toBN(result ? 1 : 0);
-//     ctx.stack.push(result);
-//     logger.debug('SGT', [a, b], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function eq (a, b, {ctx.stack, position}) => {
-//     const gasCost = getPrice('eq');
-//     jsvm_env.useGas(gasCost);
-//     let result = a.eq(b);
-//     result = toBN(result ? 1 : 0);
-//     ctx.stack.push(result);
-//     logger.debug('EQ', [a, b], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function iszero (a, {ctx.stack, position}) => {
-//     const gasCost = getPrice('iszero');
-//     jsvm_env.useGas(gasCost);
-//     let result = a.isZero();
-//     result = toBN(result ? 1 : 0);
-//     ctx.stack.push(result);
-//     logger.debug('ISZERO', [a], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function and (a, b, {ctx.stack, position}) => {
-//     const gasCost = getPrice('and');
-//     jsvm_env.useGas(gasCost);
-//     const result = a.and(b);
-//     ctx.stack.push(result);
-//     logger.debug('AND', [a, b], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function or (a, b, {ctx.stack, position}) => {
-//     const gasCost = getPrice('or');
-//     jsvm_env.useGas(gasCost);
-//     const result = a.or(b);
-//     ctx.stack.push(result);
-//     logger.debug('OR', [a, b], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function xor (a, b, {ctx.stack, position}) => {
-//     const gasCost = getPrice('xor');
-//     jsvm_env.useGas(gasCost);
-//     const result = a.xor(b);
-//     ctx.stack.push(result);
-//     logger.debug('XOR', [a, b], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function not (a, {ctx.stack, position}) => {
-//     const gasCost = getPrice('not');
-//     jsvm_env.useGas(gasCost);
-//     const result = a.notn(256);
-//     ctx.stack.push(result);
-//     logger.debug('NOT', [a], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function byte (nth, bb, {ctx.stack, position}) => {
-//     const gasCost = getPrice('byte');
-//     jsvm_env.useGas(gasCost);
-//     const result = toBN(BN2uint8arr(bb).slice(nth, nth + 1));
-//     ctx.stack.push(result);
-//     logger.debug('BYTE', [bb], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function shl (a, b, {ctx.stack, position}) => {
-//     const gasCost = getPrice('shl');
-//     jsvm_env.useGas(gasCost);
-//     const numberOfBits = a.toNumber();
-//     const result = b.shln(numberOfBits);
-//     result.imaskn(256);  // clear bits with indexes higher or equal to 256
-//     ctx.stack.push(result);
-//     logger.debug('SHL', [a, b], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function shr (a, b, {ctx.stack, position}) => {
-//     const gasCost = getPrice('shr');
-//     jsvm_env.useGas(gasCost);
-//     const result = b.shrn(a.toNumber());
-//     ctx.stack.push(result);
-//     logger.debug('SHR', [a, b], [result], getCache(), ctx.stack, undefined, position, gasCost);
-//     return {ctx.stack, position};
-// }
-
-// export function sar (nobits, value, {ctx.stack, position}) => {
-//     const gasCost = getPrice('sar');
-//     jsvm_env.useGas(gasCost);
-//     const _nobits = nobits.toNumber();
-//     let valueBase2;
-//     if (value.isNeg()) {
-//         valueBase2 = value.toTwos(256).toString(2);
-//     } else {
-//         valueBase2 = value.toString(2).padStart(256, '0');
-//     }
-//     // remove LSB * _nobits
-//     valueBase2 = valueBase2.substring(0, valueBase2.length - _nobits);
-//     // add MSB * _nobits
-//     valueBase2 = valueBase2[0].repeat(_nobits) + valueBase2;
-//     const result = (new BN(valueBase2, 2)).fromTwos(256);
-//     ctx.stack.push(result);
-//     // logger.debug('SAR', [nobits, value], [result], getCache(), ctx.stack, undefined, position, gasCost);
-// }
-
-export function handlePush (ctx: Context, code: u8): void {
-    // const gasCost = getPrice('push');
-    // jsvm_env.useGas(gasCost);
-    // const _position = ctx.pc;
-    const no = code - 0x60 + 1;
-    console.log("push");
-    console.log(no.toString())
-    console.log(ctx.bytecode.slice(ctx.pc, ctx.pc + no).toString())
-    const _value = new Array<u8>(32 - no).concat(ctx.bytecode.slice(ctx.pc, ctx.pc + no))
-    console.log(_value.toString())
-    const value = u256.fromBytesBE(_value);
-    console.log(value.toString())
-    ctx.stack.push(value);
-    ctx.pc += no;
-    // logger.debug('PUSH' + no + ' 0x' + value.toString(16).padStart(no*2, '0'), [value], [], getCache(), ctx.stack, undefined, _position, gasCost);
-}
-
-export function handleSwap (ctx: Context, code: u8): void {
-    // const gasCost = getPrice('swap');
-    // jsvm_env.useGas(gasCost);
-    const no = code - 0x90 + 1;
-    ctx.stack.swap(no);
-}
-
-export function handleDup (ctx: Context, code: u8): void {
-    // const gasCost = getPrice('dup');
-    // jsvm_env.useGas(gasCost);
-    const no = code - 0x80 + 1;
-    ctx.stack.dup(no);
-
-    // logger.debug('DUP' + no, [], [], getCache(), ctx.stack, undefined, position, gasCost);
-}
-
-export function jump (ctx: Context, inputs: u256[]): void {
-    // const gasCost = getPrice('jump');
-    // jsvm_env.useGas(gasCost);
-    const newpos = inputs[0].toI32();
-    if (!newpos && newpos !== 0) throw new Error(`Invalid JUMP ${newpos}`);
-    ctx.pc = newpos;
-
-    // logger.debug('JUMP', [newpos], [], getCache(), ctx.stack, undefined, position, gasCost);
-}
-
-export function jumpi (ctx: Context, inputs: u256[]): void {
-    // const gasCost = getPrice('jumpi');
-    // jsvm_env.useGas(gasCost);
-    const newpos = inputs[0].toI32();
-    // EVM allows any uint256 except from 0 to be interpreted as true
-    const condition = inputs[1].toBool();
-    if (condition) ctx.pc = newpos;
-    // logger.debug('JUMPI', [condition, newpos], [], getCache(), ctx.stack, undefined, _position, gasCost);
-}
-
-// export function jumpdest ({ctx.stack, position}) => {
-//     const gasCost = getPrice('jumpdest');
-//     jsvm_env.useGas(gasCost);
-//     logger.debug('JUMPDEST', [], [], getCache(), ctx.stack, undefined, position, gasCost);
-// }
-
-export function pop (ctx: Context, inputs: u256[]): void {
-    // const gasCost = getPrice('pop');
-    // jsvm_env.useGas(gasCost);
-    ctx.stack.pop();
-    // logger.debug('POP', [], [], getCache(), ctx.stack, undefined, position, gasCost);
-}
 
 // // precompiles
 // export function ecrecover (
@@ -1101,15 +1002,3 @@ export function pop (ctx: Context, inputs: u256[]): void {
 // ) {
 //     throw new Error('blake2f not implemented');
 // }
-
-
-function u8ArrayToArrayBuffer(u8Array: u8[]): ArrayBuffer {
-    const length = u8Array.length;
-    const buffer = new ArrayBuffer(length);
-    const uint8View = Uint8Array.wrap(buffer);
-
-    for (let i = 0; i < length; i++) {
-      uint8View[i] = u8Array[i];
-    }
-    return buffer;
-}

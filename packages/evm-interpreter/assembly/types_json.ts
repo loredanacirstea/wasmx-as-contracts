@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 
-export type Address = u8[];
+export type Address = u8[]; // 32 bytes
 export type Bytes32 = u8[];
 
 // @ts-ignore
@@ -31,7 +31,7 @@ export class TransactionInfoJson {
 // @ts-ignore
 @serializable
 export class ContractInfoJson {
-    // address!: Address;
+    address!: Address;
     bytecode!: u8[];
 }
 
