@@ -1,4 +1,4 @@
-import { u256 } from 'as-bignum/assembly'
+import { BigInt } from "as-bigint/assembly";
 import { Context } from './context';
 import { opByCode } from './opcodes_info';
 import { opcodesMap, handlePush, handleDup, handleSwap } from './opcodes';
@@ -13,7 +13,7 @@ export function interpret(ctx: Context): void {
 function interpretOpcode (ctx: Context): void {
     const bytecode = ctx.env.contract.bytecode;
     let code: u8;
-    const args: u256[] = [];
+    const args: BigInt[] = [];
     if (ctx.pc > bytecode.length) throw new Error(`Invalid pc ${ctx.pc}. Codesize ${bytecode.length}`);
     if (bytecode.length > ctx.pc) {
         code = bytecode[ctx.pc];

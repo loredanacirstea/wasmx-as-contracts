@@ -25,7 +25,7 @@
     "wasmx": "file:tests/wasmx"
   },
   "dependencies": {
-    "as-bignum": "^0.2.31",
+    "as-bigint": "^0.5.3",
     "json-as": "^0.5.36"
   }
 }

@@ -1,9 +1,9 @@
 import { JSON } from "json-as/assembly";
+import { BigInt } from "as-bigint/assembly";
 import * as wasmx from './wasmx';
 import { BlockInfo, ChainInfo, ContractInfo, CurrentCallInfo, Env, TransactionInfo } from "./types";
 import { EnvJson } from './types_json';
-import { u256 } from "as-bignum/assembly";
-import { arrayBufferTou8Array, i32Toi8Array, i32ArrayToU256 } from './utils';
+import { arrayBufferTou8Array, i32Toi8Array, i32ArrayToU256, bigIntToArrayBuffer, u8ArrayToBigInt, bigIntToU8Array32, maskBigInt256 } from './utils';
 
 export function getEnvWrap(): Env {
     const envJsonStr = String.UTF8.decode(wasmx.getEnv())
@@ -23,7 +23,7 @@ export function getEnvWrap(): Env {
             i32ArrayToU256(envJson.block.proposer),
         ),
         new TransactionInfo(
-            new u256(envJson.transaction.index),
+            BigInt.from(envJson.transaction.index),
             i32ArrayToU256(envJson.transaction.gasPrice),
         ),
         new ContractInfo(
@@ -42,153 +42,155 @@ export function getEnvWrap(): Env {
     )
 }
 
-export function sstore(key: u256, value: u256): void {
-    wasmx.storageStore(key.toUint8Array(true).buffer, value.toUint8Array(true).buffer);
+export function sstore(key: BigInt, value: BigInt): void {
+    wasmx.storageStore(bigIntToArrayBuffer(key), bigIntToArrayBuffer(value));
 }
 
-export function sload(key: u256): u256 {
-    const value = wasmx.storageLoad(key.toUint8Array(true).buffer);
-    return u256.fromBytesBE(arrayBufferTou8Array(value))
+export function sload(key: BigInt): BigInt {
+    const value = wasmx.storageLoad(bigIntToArrayBuffer(key));
+    return u8ArrayToBigInt(arrayBufferTou8Array(value))
 }
 
-export function balance(address: u256): u256 {
-    const value = wasmx.getExternalBalance(address.toUint8Array(true).buffer);
-    return u256.fromBytesBE(arrayBufferTou8Array(value));
+export function balance(address: BigInt): BigInt {
+    const value = wasmx.getExternalBalance(bigIntToArrayBuffer(address));
+    return u8ArrayToBigInt(arrayBufferTou8Array(value));
 }
 
-export function extcodesize(address: u256): u256 {
-    const value = wasmx.getExternalCodeSize(address.toUint8Array(true).buffer);
-    return u256.fromBytesBE(arrayBufferTou8Array(value));
+export function extcodesize(address: BigInt): BigInt {
+    const value = wasmx.getExternalCodeSize(bigIntToArrayBuffer(address));
+    return u8ArrayToBigInt(arrayBufferTou8Array(value));
 }
 
-export function extcodehash(address: u256): u256 {
-    const value = wasmx.getExternalCodeHash(address.toUint8Array(true).buffer);
-    return u256.fromBytesBE(arrayBufferTou8Array(value));
+export function extcodehash(address: BigInt): BigInt {
+    const value = wasmx.getExternalCodeHash(bigIntToArrayBuffer(address));
+    return u8ArrayToBigInt(arrayBufferTou8Array(value));
 }
 
-export function blockhash(number: u256): u256 {
-    const value = wasmx.getBlockHash(number.toUint8Array(true).buffer);
-    return u256.fromBytesBE(arrayBufferTou8Array(value));
+export function blockhash(number: BigInt): BigInt {
+    const value = wasmx.getBlockHash(bigIntToArrayBuffer(number));
+    return u8ArrayToBigInt(arrayBufferTou8Array(value));
 }
 
-export function getExternalCode(address: u256): u8[] {
-    const value = wasmx.getExternalCode(address.toUint8Array(true).buffer);
+export function getExternalCode(address: BigInt): u8[] {
+    const value = wasmx.getExternalCode(bigIntToArrayBuffer(address));
     return arrayBufferTou8Array(value);
 }
 
-export function add(a: u256, b: u256): u256 {
-    return u256.add(a, b);
+export function add(a: BigInt, b: BigInt): BigInt {
+    return a.add(b);
 }
 
-export function sub(a: u256, b: u256): u256 {
-    return u256.sub(a, b);
+export function sub(a: BigInt, b: BigInt): BigInt {
+    return a.sub(b);
 }
 
-export function mul(a: u256, b: u256): u256 {
-    return u256.mul(a, b);
+export function mul(a: BigInt, b: BigInt): BigInt {
+    let value = a.mul(b);
+    return maskBigInt256(value);
 }
 
-export function div(a: u256, b: u256): u256 {
-    // return a / b;
-    return new u256(0);
+export function div(a: BigInt, b: BigInt): BigInt {
+    return a.div(b);
 }
 
-export function sdiv(a: u256, b: u256): u256 {
+export function sdiv(a: BigInt, b: BigInt): BigInt {
     // return a / b; // TO DO
-    return new u256(0);
+    return BigInt.from(0);
 }
 
-export function mod(a: u256, b: u256): u256 {
+export function mod(a: BigInt, b: BigInt): BigInt {
     // return a - a / b * b;
-    return new u256(0);
+    return BigInt.from(0);
 }
 
-export function smod(a: u256, b: u256): u256 {
+export function smod(a: BigInt, b: BigInt): BigInt {
     // return a - a / b * b; // TO DO
-    return new u256(0);
+    return BigInt.from(0);
 }
 
-export function exp(a: u256, b: u256): u256 {
+export function exp(a: BigInt, b: BigInt): BigInt {
     // if (b.lt(toBN(0))) return toBN(0);
     // return a ** b; // TO DO
-    return new u256(0);
+    return BigInt.from(0);
 }
 
-export function not(a: u256): u256 {
-    // a.notn(256);
-    return a.not();
+export function not(a: BigInt): BigInt {
+    return a.bitwiseNot();
 }
 
-export function lt(a: u256, b: u256): u256 {
-    return new u256(a < b ? 1 : 0);
+export function lt(a: BigInt, b: BigInt): BigInt {
+    return BigInt.from(a < b ? 1 : 0);
 }
 
-export function gt(a: u256, b: u256): u256 {
-    return new u256(a > b ? 1 : 0);
+export function gt(a: BigInt, b: BigInt): BigInt {
+    return BigInt.from(a > b ? 1 : 0);
 }
 
-export function slt(a: u256, b: u256): u256 {
-    if (a == a.neg()) {
-        return new u256(a > b ? 1 : 0);
-    } else {
-        return new u256(a < b ? 1 : 0);
-    }
+export function slt(a: BigInt, b: BigInt): BigInt {
+    // if (a == a.neg()) {
+    //     return BigInt.from(a > b ? 1 : 0);
+    // } else {
+    //     return BigInt.from(a < b ? 1 : 0);
+    // }
     // TO DO ?
+    return BigInt.from(0)
 }
 
-export function sgt(a: u256, b: u256): u256 {
-    if (a == a.neg()) {
-        return new u256(a < b ? 1 : 0);
-    } else {
-        return new u256(a > b ? 1 : 0);
-    }
+export function sgt(a: BigInt, b: BigInt): BigInt {
+    // if (a == a.neg()) {
+    //     return BigInt.from(a < b ? 1 : 0);
+    // } else {
+    //     return BigInt.from(a > b ? 1 : 0);
+    // }
     // TO DO ?
+    return BigInt.from(0)
 }
 
-export function eq(a: u256, b: u256): u256 {
-    return new u256(a == b ? 1 : 0);
+export function eq(a: BigInt, b: BigInt): BigInt {
+    return BigInt.from(a == b ? 1 : 0);
 }
 
-export function iszero(a: u256): u256 {
-    return new u256(a.isZero() ? 1 : 0);
+export function iszero(a: BigInt): BigInt {
+    return BigInt.from(a.isZero() ? 1 : 0);
 }
 
-export function and(a: u256, b: u256): u256 {
-    return u256.and(a, b);
+export function and(a: BigInt, b: BigInt): BigInt {
+    return a.bitwiseAnd(b);
 }
 
-export function or(a: u256, b: u256): u256 {
-    return u256.or(a, b);
+export function or(a: BigInt, b: BigInt): BigInt {
+    return a.bitwiseOr(b);
 }
 
-export function xor(a: u256, b: u256): u256 {
-    return u256.xor(a, b);
+export function xor(a: BigInt, b: BigInt): BigInt {
+    return a.bitwiseXor(b);
 }
 
-export function byte(a: u256, b: u256): u256 {
-    const arr: Uint8Array = b.toUint8Array();
-    return u256.fromBytes(arr.slice(i32(a.lo1 & 0xffffffff), i32(1)));
-    // TO DO ?  a.lo1 & 0xffffffff
+export function byte(a: BigInt, b: BigInt): BigInt {
+    const arr: u8[] = bigIntToU8Array32(b);
+    const ind = a.toInt32();
+    return u8ArrayToBigInt(arr.slice(ind, ind + 1));
 }
 
-export function shl(shift: u256, value: u256): u256 {
-    if (shift.toI32() > 255) return u256.Zero
-    return u256.shl(value, shift.toI32());
+export function shl(shift: BigInt, value: BigInt): BigInt {
+    if (shift.toInt32() > 255) return BigInt.from(0)
+    return value.leftShift(shift.toInt32());
 }
 
-export function shr(shift: u256, value: u256): u256 {
-    if (shift.toI32() > 255) return u256.Zero
-    return u256.shr(value, shift.toI32());
+export function shr(shift: BigInt, value: BigInt): BigInt {
+    const v = shift.toInt32()
+    if (v > 255) return BigInt.from(0)
+    return value.rightShift(v);
 }
 
 // nobits, value
-export function sar(a: u256, b: u256): u256 {
+export function sar(a: BigInt, b: BigInt): BigInt {
     // if (a == a.neg()) {
     //     return (b >> a.pos()).neg();
     // } else {
     //     return b >> a;
     // }
-    return new u256(0);
+    return BigInt.from(0);
     // TO DO ?
 //    const _nobits = nobits.toNumber();
 //     let valueBase2;
@@ -204,19 +206,19 @@ export function sar(a: u256, b: u256): u256 {
 //     const result = (new BN(valueBase2, 2)).fromTwos(256);
 }
 
-export function addmod(a: u256, b: u256, c: u256): u256 {
-    return mod(u256.add(a, b), c); // TO DO ?
+export function addmod(a: BigInt, b: BigInt, c: BigInt): BigInt {
+    return mod(a.add(b), c); // TO DO ?
 }
 
-export function mulmod(a: u256, b: u256, c: u256): u256 {
+export function mulmod(a: BigInt, b: BigInt, c: BigInt): BigInt {
     // return mod(a * b, c); // TO DO ?
-    return new u256(0);
+    return BigInt.from(0);
 }
 
 // size, value
-export function signextend(a: u256, b: u256): u256 {
+export function signextend(a: BigInt, b: BigInt): BigInt {
     // return a < b; // TO DO
-    return new u256(0);
+    return BigInt.from(0);
 }
 
 // 48

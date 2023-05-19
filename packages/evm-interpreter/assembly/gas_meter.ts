@@ -1,38 +1,38 @@
-import { u256 } from 'as-bignum/assembly';
+import { BigInt } from "as-bigint/assembly";
 import * as ERROR from './error';
 
 export class GasMeter {
-    gasLimit: u256;
-    usedGas: u256;
-    refundedGas: u256;
+    gasLimit: BigInt;
+    usedGas: BigInt;
+    refundedGas: BigInt;
 
-    constructor(gasLimit: u256, usedGas: u256 = new u256(0), refundedGas: u256 = new u256(0)) {
+    constructor(gasLimit: BigInt, usedGas: BigInt = BigInt.from(0), refundedGas: BigInt = BigInt.from(0)) {
         this.gasLimit = gasLimit;
         this.usedGas = usedGas;
         this.refundedGas = refundedGas;
     }
 
-    getGas(): u256 {
-        return u256.sub(this.usedGas, this.refundedGas);
+    getGas(): BigInt {
+        return BigInt.sub(this.usedGas, this.refundedGas);
     }
 
-    getGasLeft(): u256 {
-        const gas = u256.sub(this.gasLimit, this.usedGas)
-        return u256.add(gas, this.refundedGas);
+    getGasLeft(): BigInt {
+        const gas = BigInt.sub(this.gasLimit, this.usedGas)
+        return BigInt.add(gas, this.refundedGas);
     }
 
-    useGas(gas: u256): void {
-        this.usedGas = u256.add(this.usedGas, gas);
+    useGas(gas: BigInt): void {
+        this.usedGas = BigInt.add(this.usedGas, gas);
 
-        if (u256.gt(this.getGas(), this.gasLimit)) {
+        if (BigInt.gt(this.getGas(), this.gasLimit)) {
             throw new Error(`${ERROR.OUT_OF_GAS}. Using ${gas.toString()}. Gas used: ${this.getGas().toString()}. Gas limit: ${this.gasLimit.toString()}`);
         }
     }
 
-    refundGas(gas: u256): void {
+    refundGas(gas: BigInt): void {
         // can be negative due to SSTORE EIP2200;
         if (gas.isZero()) return;
-        this.refundedGas = u256.add(this.refundedGas, gas);
+        this.refundedGas = BigInt.add(this.refundedGas, gas);
     }
 
     clone(): GasMeter {
@@ -40,11 +40,11 @@ export class GasMeter {
     }
 
     useOpcodeGas(opcodeName: string): void {
-        this.useGas(new u256(3));
+        this.useGas(BigInt.from(3));
     }
 
     // TODO
-    getPrice(opcodeName: string): u256 {
-        return new u256(0);
+    getPrice(opcodeName: string): BigInt {
+        return BigInt.from(0);
     }
 }

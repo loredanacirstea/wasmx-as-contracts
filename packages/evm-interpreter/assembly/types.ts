@@ -1,13 +1,13 @@
-import { u256 } from 'as-bignum/assembly';
+import { BigInt } from "as-bigint/assembly";
 
 // TODO typecheck for each
 export type Bytes32 = Array<u8>;
 
 export class ChainInfo {
     denom: string;
-    chainId: u256;
+    chainId: BigInt;
     chainIdFull: string;
-    constructor(denom: string, chainId: u256, chainIdFull: string) {
+    constructor(denom: string, chainId: BigInt, chainIdFull: string) {
         this.denom = denom;
         this.chainId = chainId;
         this.chainIdFull = chainIdFull;
@@ -15,36 +15,36 @@ export class ChainInfo {
 }
 
 export class BlockInfo {
-    height: u256;
-    time: u256;
-    gasLimit: u256;
-    hash: u256;
-    difficulty: u256;
-    proposer: u256;
-    constructor(height: u256, time: u256, gasLimit: u256, hash: u256, proposer: u256) {
+    height: BigInt;
+    time: BigInt;
+    gasLimit: BigInt;
+    hash: BigInt;
+    difficulty: BigInt;
+    proposer: BigInt;
+    constructor(height: BigInt, time: BigInt, gasLimit: BigInt, hash: BigInt, proposer: BigInt) {
         this.height = height;
         this.time = time;
         this.gasLimit = gasLimit;
         this.hash = hash;
         this.proposer = proposer;
-        this.difficulty = new u256(0);
+        this.difficulty = BigInt.from(0);
     }
 }
 
 export class TransactionInfo {
-    index: u256;
-    gasPrice: u256;
-    constructor(index: u256, gasPrice: u256) {
+    index: BigInt;
+    gasPrice: BigInt;
+    constructor(index: BigInt, gasPrice: BigInt) {
         this.index = index;
         this.gasPrice = gasPrice;
     }
 }
 
 export class ContractInfo {
-    address: u256;
+    address: BigInt;
     bytecode: Array<u8>;
-    balance: u256
-    constructor(address: u256, bytecode: Array<u8>, balance: u256) {
+    balance: BigInt
+    constructor(address: BigInt, bytecode: Array<u8>, balance: BigInt) {
         this.address = address;
         this.bytecode = bytecode;
         this.balance = balance;
@@ -61,16 +61,16 @@ export class EvmLog {
 }
 
 export class CurrentCallInfo {
-    origin: u256;
-    sender: u256;
-    funds: u256;
-    gasLimit: u256;
+    origin: BigInt;
+    sender: BigInt;
+    funds: BigInt;
+    gasLimit: BigInt;
     isQuery: bool;
     callData: u8[];
     logs: EvmLog[];
     returnData: u8[] = [];
     returnDataSuccess: u8 = 1; // 0 = success, 1 = revert; 2 = internal error;
-    constructor(origin: u256, sender: u256, funds: u256, gasLimit: u256, isQuery: bool, callData: u8[]) {
+    constructor(origin: BigInt, sender: BigInt, funds: BigInt, gasLimit: BigInt, isQuery: bool, callData: u8[]) {
         this.origin = origin;
         this.sender = sender;
         this.funds = funds;

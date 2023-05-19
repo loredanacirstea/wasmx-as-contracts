@@ -22,7 +22,7 @@ export declare function getBlockHash(number: ArrayBuffer): ArrayBuffer
 
 // export declare function getAddress(): Address
 // export declare function getCaller(): Address
-// export declare function getCallValue(): u256
+// export declare function getCallValue(): BigInt
 // export declare function getCallData(): ArrayBuffer
 // export declare function getCallDataSize(): i64
 // export declare function callDataLoad(): Bytes32
@@ -50,7 +50,7 @@ export declare function getBlockHash(number: ArrayBuffer): ArrayBuffer
 // export declare function call(
 //     gas_limit: i64,
 //     address: Address,
-//     value: u256,
+//     value: BigInt,
 //     dataOffset: i64,
 //     dataLength: i64,
 //     outputOffset: i64,
@@ -75,14 +75,14 @@ export declare function getBlockHash(number: ArrayBuffer): ArrayBuffer
 // export declare function callCode(
 //     gas_limit: i64,
 //     address: Address,
-//     value: u256,
+//     value: BigInt,
 //     dataOffset: i64,
 //     dataLength: i64,
 //     outputOffset: i64,
 //     outputLength: i64,
 // ): i32
 // export declare function create(
-//     value: u256,
+//     value: BigInt,
 //     dataOffset: i64,
 //     dataLength: i64,
 // ): i32

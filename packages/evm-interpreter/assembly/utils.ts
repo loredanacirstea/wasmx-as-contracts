@@ -1,4 +1,4 @@
-import { u256 } from 'as-bignum/assembly';
+import { BigInt } from "as-bigint/assembly";
 
 export function u8ArrayToArrayBuffer(u8Array: u8[]): ArrayBuffer {
     const length = u8Array.length;
@@ -12,7 +12,6 @@ export function u8ArrayToArrayBuffer(u8Array: u8[]): ArrayBuffer {
 }
 
 export function arrayBufferTou8Array(buffer: ArrayBuffer): u8[] {
-    console.log(buffer.toString())
     const length = buffer.byteLength;
     const uint8View = Uint8Array.wrap(buffer);
     const u8Array: u8[] = [];
@@ -35,6 +34,55 @@ export function i32ArrayToBytes32(arr: i32[]): u8[] {
     return addr;
 }
 
-export function i32ArrayToU256(arr: i32[]): u256 {
-    return u256.fromBytesBE(i32ArrayToBytes32(arr));
+export function u8ArrayToHex(arr: u8[]): string {
+    return arr.reduce((accum: string, v: u8) => accum + v.toString(16).padStart(2, '0'), "");
+}
+
+export function bigIntToArrayBuffer(v: BigInt): ArrayBuffer {
+    let value = v.toString(16);
+    if (value.length % 2 == 1) {
+        value = "0" + value
+    }
+    const length = value.length / 2;
+    const buffer = new ArrayBuffer(length);
+    const uint8View = Uint8Array.wrap(buffer);
+    for (let i = 0; i < length; i++) {
+        uint8View[i] = u8(parseInt(value.substr(i, 2*i+2), 16))
+    }
+    return buffer;
+}
+
+export function bigIntToU8Array32(v: BigInt): u8[] {
+    let arr = bigIntToU8Array(v);
+    if (arr.length < 33) {
+        return new Array<u8>(32 - arr.length).concat(arr);
+    }
+    return arr.slice(arr.length - 32);
+}
+
+export function bigIntToU8Array(v: BigInt): u8[] {
+    let value = v.toString(16);
+    if (value.length % 2 == 1) {
+        value = "0" + value
+    }
+    let arr: u8[] = [];
+    for (let i = 0; i < value.length / 2; i++) {
+        arr[i] = u8(parseInt(value.substr(2*i, 2), 16))
+    }
+    return arr;
+}
+
+export function u8ArrayToBigInt(arr: u8[]): BigInt {
+    return BigInt.fromString(u8ArrayToHex(arr), 16);
+}
+
+export function i32ArrayToU256(arr: i32[]): BigInt {
+    return u8ArrayToBigInt(i32ArrayToBytes32(arr));
+}
+
+export function maskBigInt256(v: BigInt): BigInt {
+    // if (v.countBits() <= 256) return v;
+    const value = v.toString(16);
+    if (value.length < 65) return v;
+    return BigInt.fromString(value.substr(value.length - 64), 16);
 }

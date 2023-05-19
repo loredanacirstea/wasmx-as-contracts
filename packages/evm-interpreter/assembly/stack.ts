@@ -1,17 +1,17 @@
-import { u256 } from 'as-bignum/assembly';
+import { BigInt } from "as-bigint/assembly";
 
 export class Stack {
-    stack: Array<u256>;
+    stack: Array<BigInt>;
 
-    constructor(snapshotStack: Array<u256>) {
+    constructor(snapshotStack: Array<BigInt>) {
         this.stack = snapshotStack;
     }
 
-    get(index: u32): u256 {
+    get(index: u32): BigInt {
         return this.stack[index];
     }
 
-    last(): u256 {
+    last(): BigInt {
         return this.stack[this.stack.length - 1];
     }
 
@@ -19,11 +19,11 @@ export class Stack {
         return this.stack.length;
     }
 
-    push(value: u256): void {
+    push(value: BigInt): void {
         this.stack.push(value);
     }
 
-    pop(): u256 {
+    pop(): BigInt {
         return this.stack.pop();
     }
 

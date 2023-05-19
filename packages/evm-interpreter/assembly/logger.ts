@@ -1,5 +1,3 @@
-import { u256 } from 'as-bignum/assembly';
-
 export class OpcodeLog {
     name: string;
     inputs: u8[][] = [];
