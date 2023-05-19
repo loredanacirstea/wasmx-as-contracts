@@ -77,11 +77,14 @@ export function getExternalCode(address: BigInt): u8[] {
 }
 
 export function add(a: BigInt, b: BigInt): BigInt {
-    return a.add(b);
+    return maskBigInt256(a.add(b));
 }
 
 export function sub(a: BigInt, b: BigInt): BigInt {
-    return a.sub(b);
+    if (a.gte(b)) return a.sub(b);
+    // with underflow
+    const diff = b.sub(a);
+    return BigInt.from(1).mulPowTwo(256).sub(diff);
 }
 
 export function mul(a: BigInt, b: BigInt): BigInt {
@@ -99,8 +102,7 @@ export function sdiv(a: BigInt, b: BigInt): BigInt {
 }
 
 export function mod(a: BigInt, b: BigInt): BigInt {
-    // return a - a / b * b;
-    return BigInt.from(0);
+    return a.mod(b);
 }
 
 export function smod(a: BigInt, b: BigInt): BigInt {
@@ -109,9 +111,7 @@ export function smod(a: BigInt, b: BigInt): BigInt {
 }
 
 export function exp(a: BigInt, b: BigInt): BigInt {
-    // if (b.lt(toBN(0))) return toBN(0);
-    // return a ** b; // TO DO
-    return BigInt.from(0);
+    return maskBigInt256(a.pow(b.toInt32()));
 }
 
 export function not(a: BigInt): BigInt {
@@ -119,11 +119,11 @@ export function not(a: BigInt): BigInt {
 }
 
 export function lt(a: BigInt, b: BigInt): BigInt {
-    return BigInt.from(a < b ? 1 : 0);
+    return BigInt.from(a.lt(b) ? 1 : 0);
 }
 
 export function gt(a: BigInt, b: BigInt): BigInt {
-    return BigInt.from(a > b ? 1 : 0);
+    return BigInt.from(a.gt(b) ? 1 : 0);
 }
 
 export function slt(a: BigInt, b: BigInt): BigInt {
@@ -147,7 +147,7 @@ export function sgt(a: BigInt, b: BigInt): BigInt {
 }
 
 export function eq(a: BigInt, b: BigInt): BigInt {
-    return BigInt.from(a == b ? 1 : 0);
+    return BigInt.from(a.eq(b) ? 1 : 0);
 }
 
 export function iszero(a: BigInt): BigInt {
@@ -173,8 +173,9 @@ export function byte(a: BigInt, b: BigInt): BigInt {
 }
 
 export function shl(shift: BigInt, value: BigInt): BigInt {
-    if (shift.toInt32() > 255) return BigInt.from(0)
-    return value.leftShift(shift.toInt32());
+    const v = shift.toInt32()
+    if (v > 255) return BigInt.from(0)
+    return value.leftShift(v);
 }
 
 export function shr(shift: BigInt, value: BigInt): BigInt {
@@ -207,12 +208,11 @@ export function sar(a: BigInt, b: BigInt): BigInt {
 }
 
 export function addmod(a: BigInt, b: BigInt, c: BigInt): BigInt {
-    return mod(a.add(b), c); // TO DO ?
+    return a.add(b).mod(c);
 }
 
 export function mulmod(a: BigInt, b: BigInt, c: BigInt): BigInt {
-    // return mod(a * b, c); // TO DO ?
-    return BigInt.from(0);
+    return a.mul(b).mod(c);
 }
 
 // size, value
