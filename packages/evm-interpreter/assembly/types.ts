@@ -43,9 +43,11 @@ export class TransactionInfo {
 export class ContractInfo {
     address: u256;
     bytecode: Array<u8>;
-    constructor(address: u256, bytecode: Array<u8>) {
+    balance: u256
+    constructor(address: u256, bytecode: Array<u8>, balance: u256) {
         this.address = address;
         this.bytecode = bytecode;
+        this.balance = balance;
     }
 }
 

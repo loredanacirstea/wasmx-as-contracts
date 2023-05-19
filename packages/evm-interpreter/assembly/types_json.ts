@@ -30,6 +30,7 @@ export class TransactionInfoJson {
 export class ContractInfoJson {
     address!: i32[];
     bytecode!: i32[];
+    balance!: i32[];
 }
 
 // @ts-ignore

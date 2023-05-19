@@ -37,7 +37,7 @@ export class Stack {
         if (x >= this.stack.length) {
             throw new Error(`Invalid SWAP${x} ; stack length: ${this.stack.length}`);
         }
-        const index = this.stack.length - x;
+        const index = this.stack.length - x - 1;
         const last = this.pop();
         const middle = this.stack[index];
         const pre = this.stack.slice(0, index);

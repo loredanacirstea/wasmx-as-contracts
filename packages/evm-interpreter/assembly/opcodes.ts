@@ -12,27 +12,101 @@ type OpcodeFn = (ctx: Context, inputs: u256[]) => void;
 export const opcodesMap = new Map<string,OpcodeFn>();
 opcodesMap.set('finish', finish);
 opcodesMap.set('stop', stop);
+opcodesMap.set('revert', revert);
+// opcodesMap.set('invalid', invalid); // TODO
+
 opcodesMap.set('jump', jump);
 opcodesMap.set('jumpi', jumpi);
+opcodesMap.set('jumpdest', jumpdest);
 opcodesMap.set('pop', pop);
+// opcodesMap.set('getMSize', getMSize); // TODO
 
 opcodesMap.set('loadMemory', loadMemory);
 opcodesMap.set('storeMemory', storeMemory);
+opcodesMap.set('storeMemory8', storeMemory8);
+opcodesMap.set('storageLoad', storageLoad);
+opcodesMap.set('storageStore', storageStore);
 
+opcodesMap.set('add', add);
+opcodesMap.set('mul', mul);
+opcodesMap.set('sub', sub);
+opcodesMap.set('div', div);
+opcodesMap.set('sdiv', sdiv);
+opcodesMap.set('mod', mod);
+opcodesMap.set('smod', smod);
+opcodesMap.set('addmod', addmod);
+opcodesMap.set('mulmod', mulmod);
+opcodesMap.set('exp', exp);
+opcodesMap.set('signextend', signextend);
+opcodesMap.set('lt', lt);
+opcodesMap.set('gt', gt);
+opcodesMap.set('slt', slt);
+opcodesMap.set('sgt', sgt);
+opcodesMap.set('eq', eq);
+opcodesMap.set('iszero', iszero);
+opcodesMap.set('and', and);
+opcodesMap.set('or', or);
+opcodesMap.set('xor', xor);
+opcodesMap.set('not', not);
+opcodesMap.set('byte', byte);
+opcodesMap.set('shl', shl);
+opcodesMap.set('shr', shr);
+opcodesMap.set('sar', sar);
+opcodesMap.set('keccak256', keccak256);
+
+opcodesMap.set('getAddress', getAddress);
+opcodesMap.set('getExternalBalance', getExternalBalance);
+opcodesMap.set('getTxOrigin', getTxOrigin);
+opcodesMap.set('getCaller', getCaller);
+opcodesMap.set('getCallValue', getCallValue);
+opcodesMap.set('callDataLoad', callDataLoad);
+opcodesMap.set('getCallDataSize', getCallDataSize);
+opcodesMap.set('callDataCopy', callDataCopy);
+opcodesMap.set('getCodeSize', getCodeSize);
+opcodesMap.set('codeCopy', codeCopy);
+opcodesMap.set('getTxGasPrice', getTxGasPrice);
+opcodesMap.set('getExternalCodeSize', getExternalCodeSize);
+opcodesMap.set('externalCodeCopy', externalCodeCopy);
+opcodesMap.set('getReturnDataSize', getReturnDataSize);
+opcodesMap.set('returnDataCopy', returnDataCopy);
+opcodesMap.set('getExternalCodeHash', getExternalCodeHash);
+opcodesMap.set('getBlockHash', getBlockHash);
+opcodesMap.set('getBlockCoinbase', getBlockCoinbase);
+opcodesMap.set('getBlockTimestamp', getBlockTimestamp);
+opcodesMap.set('getBlockNumber', getBlockNumber);
+opcodesMap.set('getBlockDifficulty', getBlockDifficulty);
+opcodesMap.set('getBlockGasLimit', getBlockGasLimit);
+opcodesMap.set('getBlockChainId', getBlockChainId);
+opcodesMap.set('getSelfBalance', getSelfBalance);
+opcodesMap.set('getGasLeft', getGasLeft);
+
+opcodesMap.set('log0', log0);
+opcodesMap.set('log1', log1);
+opcodesMap.set('log2', log2);
+opcodesMap.set('log3', log3);
+opcodesMap.set('log4', log4);
+
+// opcodesMap.set('call', call);
+// opcodesMap.set('callCode', callCode);
+// opcodesMap.set('callDelegate', callDelegate);
+// opcodesMap.set('callStatic', callStatic);
+// opcodesMap.set('create', create);
+// opcodesMap.set('create2', create2);
+// opcodesMap.set('selfDestruct', selfDestruct);
 
 export function loadMemory (ctx: Context, inputs: u256[]): void {
     ctx.gasmeter.useOpcodeGas('mload');
-    const offset = inputs[0].toI32();
+    const offset = inputs[0].toU32();
     const result = ctx.memory.load(offset, 32)
     ctx.stack.push(u256.fromBytesBE(result));
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('MLOAD', [inputs[0].toBytes(true)], [inputs[1].toBytes(true)], ctx.pc);
+        ctx.logger.debug('MLOAD', [inputs[0].toBytes(true)], [result], ctx.pc);
     }
 }
 
 export function storeMemory (ctx: Context, inputs: u256[]): void {
     // TODO gas cost for memory
-    const offset = inputs[0].toI32();
+    const offset = inputs[0].toU32();
     const value = inputs[1].toBytes(true);
     ctx.memory.store(value, offset)
     if (ctx.logger.isDebug) {
@@ -42,7 +116,7 @@ export function storeMemory (ctx: Context, inputs: u256[]): void {
 
 export function storeMemory8 (ctx: Context, inputs: u256[]): void {
     ctx.gasmeter.useOpcodeGas('mstore8');
-    const offset = inputs[0].toI32();
+    const offset = inputs[0].toU32();
     const value = inputs[1].toBytes(true);
 
     ctx.memory.store(value, offset)
@@ -57,6 +131,15 @@ export function getAddress (ctx: Context, inputs: u256[]): void {
     ctx.stack.push(address);
     if (ctx.logger.isDebug) {
         ctx.logger.debug('ADDRESS', [], [address.toBytes(true)], ctx.pc);
+    }
+}
+
+export function getSelfBalance (ctx: Context, inputs: u256[]): void {
+    ctx.gasmeter.useOpcodeGas('selfbalance');
+    const value = ctx.env.contract.balance
+    ctx.stack.push(value);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('SELFBALANCE', [], [value.toBytes(true)], ctx.pc);
     }
 }
 
@@ -84,9 +167,9 @@ export function getBlockHash (ctx: Context, inputs: u256[]): void {
 export function callDataCopy (ctx: Context, inputs: u256[]): void {
     // TODO charge for memory used
     ctx.gasmeter.useOpcodeGas('calldatacopy');
-    const resultOffset = inputs[0].toI64()
-    const dataOffset = inputs[1].toI64()
-    const length = inputs[2].toI64()
+    const resultOffset = inputs[0].toU32()
+    const dataOffset = inputs[1].toU32()
+    const length = inputs[2].toU32()
     const data = Memory.load(ctx.env.currentCall.callData, dataOffset, length);
     ctx.memory.store(data, resultOffset)
 
@@ -106,7 +189,7 @@ export function getCallDataSize (ctx: Context, inputs: u256[]): void {
 
 export function callDataLoad (ctx: Context, inputs: u256[]): void {
     ctx.gasmeter.useOpcodeGas('calldataload');
-    const dataOffset = inputs[0].toI64()
+    const dataOffset = inputs[0].toU32()
     const value =  Memory.load(ctx.env.currentCall.callData, dataOffset, 32);
 
     ctx.stack.push(u256.fromBytesBE(value));
@@ -164,9 +247,9 @@ export function getCodeSize (ctx: Context, inputs: u256[]): void {
 export function codeCopy (ctx: Context, inputs: u256[]): void {
     // TODO charge for memory used
     ctx.gasmeter.useOpcodeGas('calldatacopy');
-    const resultOffset = inputs[0].toI64()
-    const codeOffset = inputs[1].toI64()
-    const length = inputs[2].toI64()
+    const resultOffset = inputs[0].toU32()
+    const codeOffset = inputs[1].toU32()
+    const length = inputs[2].toU32()
     const data = Memory.load(ctx.env.contract.bytecode, codeOffset, length);
     ctx.memory.store(data, resultOffset)
     if (ctx.logger.isDebug) {
@@ -217,9 +300,9 @@ export function getExternalCodeHash (ctx: Context, inputs: u256[]): void {
 export function externalCodeCopy (ctx: Context, inputs: u256[]): void {
     // TODO charge for memory used, less for cached account
     ctx.gasmeter.useOpcodeGas('extcodecopy');
-    const resultOffset = inputs[1].toI64()
-    const codeOffset = inputs[2].toI64()
-    const length = inputs[3].toI64()
+    const resultOffset = inputs[1].toU32()
+    const codeOffset = inputs[2].toU32()
+    const length = inputs[3].toU32()
     const code = evm.getExternalCode(inputs[0]);
     const data = Memory.load(code, codeOffset, length);
     ctx.memory.store(data, resultOffset)
@@ -303,9 +386,9 @@ export function getBlockChainId (ctx: Context, inputs: u256[]): void {
 export function returnDataCopy (ctx: Context, inputs: u256[]): void {
     // TODO charge for memory used
     ctx.gasmeter.useOpcodeGas('returndatacopy');
-    const resultOffset = inputs[0].toI64()
-    const dataOffset = inputs[1].toI64()
-    const length = inputs[2].toI64()
+    const resultOffset = inputs[0].toU32()
+    const dataOffset = inputs[1].toU32()
+    const length = inputs[2].toU32()
     const data = Memory.load(ctx.env.currentCall.returnData, dataOffset, length);
     ctx.memory.store(data, resultOffset)
 
@@ -314,47 +397,49 @@ export function returnDataCopy (ctx: Context, inputs: u256[]): void {
     }
 }
 
-export function log (ctx: Context, dataOffset: i64, dataLength: i64, topics: u256[]): void {
+export function log (ctx: Context, dataOffset: u32, dataLength: u32, topics: u256[]): void {
     // TODO price based on topics indexed
     ctx.gasmeter.useOpcodeGas('log');
     const data = ctx.memory.load(dataOffset, dataLength);
-    const topicsbz = topics.map((v: u256) => {
-        return v.toBytes(true);
-    });
+    const topicsbz: u8[][] = [];
+    for (let i = 0; i < topics.length; i++) {
+        topicsbz.push(topics[i].toBytes(true));
+    }
     ctx.env.currentCall.logs.push(new EvmLog(data, topicsbz))
 
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('LOG', [data, ...topicsbz], [], ctx.pc);
+        const inputs: u8[][] = [data].concat(topicsbz.reduce((accum: u8[][], value: u8[]) => accum.concat([value]), []));
+        ctx.logger.debug('LOG', inputs, [], ctx.pc);
     }
 }
 
 export function log0 (ctx: Context, inputs: u256[]): void {
-    const dataOffset = inputs[0].toI64();
-    const dataLength = inputs[1].toI64();
+    const dataOffset = inputs[0].toU32();
+    const dataLength = inputs[1].toU32();
     return log(ctx, dataOffset, dataLength, []);
 }
 
 export function log1 (ctx: Context, inputs: u256[]): void {
-    const dataOffset = inputs[0].toI64();
-    const dataLength = inputs[1].toI64();
+    const dataOffset = inputs[0].toU32();
+    const dataLength = inputs[1].toU32();
     return log(ctx, dataOffset, dataLength, inputs.slice(2));
 }
 
 export function log2  (ctx: Context, inputs: u256[]): void {
-    const dataOffset = inputs[0].toI64();
-    const dataLength = inputs[1].toI64();
+    const dataOffset = inputs[0].toU32();
+    const dataLength = inputs[1].toU32();
     return log(ctx, dataOffset, dataLength, inputs.slice(2));
 }
 
 export function log3  (ctx: Context, inputs: u256[]): void {
-    const dataOffset = inputs[0].toI64();
-    const dataLength = inputs[1].toI64();
+    const dataOffset = inputs[0].toU32();
+    const dataLength = inputs[1].toU32();
     return log(ctx, dataOffset, dataLength, inputs.slice(2));
 }
 
 export function log4  (ctx: Context, inputs: u256[]): void {
-    const dataOffset = inputs[0].toI64();
-    const dataLength = inputs[1].toI64();
+    const dataOffset = inputs[0].toU32();
+    const dataLength = inputs[1].toU32();
     return log(ctx, dataOffset, dataLength, inputs.slice(2));
 }
 
@@ -362,7 +447,7 @@ export function finish (ctx: Context, inputs: u256[]): void {
     ctx.gasmeter.useOpcodeGas('return');
     const dataOffset = inputs[0];
     const dataLength = inputs[1];
-    const result = ctx.memory.load(dataOffset.toI32(), dataLength.toI32());
+    const result = ctx.memory.load(dataOffset.toU32(), dataLength.toU32());
     ctx.pc = 0;
     ctx.env.currentCall.returnData = result;
     ctx.env.currentCall.returnDataSuccess = 0;
@@ -388,7 +473,7 @@ export function revert (ctx: Context, inputs: u256[]): void {
     ctx.gasmeter.useOpcodeGas('revert');
     const dataOffset = inputs[0];
     const dataLength = inputs[1];
-    const result = ctx.memory.load(dataOffset.toI32(), dataLength.toI32());
+    const result = ctx.memory.load(dataOffset.toU32(), dataLength.toU32());
     ctx.pc = 0;
     ctx.env.currentCall.returnData = result;
     ctx.env.currentCall.returnDataSuccess = 2;
@@ -723,7 +808,7 @@ export function sar (ctx: Context, inputs: u256[]): void {
 export function keccak256 (ctx: Context, inputs: u256[]): void {
     // TODO gas units based on data slots
     ctx.gasmeter.useOpcodeGas('keccak256');
-    const data = ctx.memory.load(inputs[0].toI64(), inputs[1].toI64());
+    const data = ctx.memory.load(inputs[0].toU32(), inputs[1].toU32());
     const result = new Array<u8>(32);
 
     if (ctx.logger.isDebug) {

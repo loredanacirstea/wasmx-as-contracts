@@ -34,7 +34,7 @@ function interpretOpcode (ctx: Context): void {
     } else if (opByCode.has(code)) {
         const opcode = opByCode.get(code);
         if (!opcodesMap.has(opcode.name)) {
-            throw new Error('No function for opcode ' + code.toString());
+            throw new Error('No function for opcode ' + code.toString() + ' - ' + opcode.name);
         }
 
         for (let i = 0; i < opcode.arity; i++) {

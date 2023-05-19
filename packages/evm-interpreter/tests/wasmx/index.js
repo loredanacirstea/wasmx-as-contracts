@@ -28,6 +28,7 @@ export function getEnv() {
         contract: {
             address: [...hexToUint8Array('39B1BF12E9e21D78F0c76d192c26d47fa710Ec99')],
             bytecode: [...hexToUint8Array('66eeeeeeeeeeeeee60005260206000f3')],
+            balance: [0],
         },
         currentCall: {
             origin: [...hexToUint8Array('39B1BF12E9e21D78F0c76d192c26d47fa710Ec98')],
