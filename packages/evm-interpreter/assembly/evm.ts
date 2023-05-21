@@ -36,7 +36,6 @@ export function getEnvWrap(): Env {
             i32ArrayToU256(envJson.currentCall.sender),
             i32ArrayToU256(envJson.currentCall.funds),
             i32ArrayToU256(envJson.currentCall.gasLimit),
-            envJson.currentCall.isQuery,
             i32Toi8Array(envJson.currentCall.callData),
         ),
     )

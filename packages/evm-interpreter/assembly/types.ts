@@ -65,17 +65,15 @@ export class CurrentCallInfo {
     sender: BigInt;
     funds: BigInt;
     gasLimit: BigInt;
-    isQuery: bool;
     callData: u8[];
     logs: EvmLog[];
     returnData: u8[] = [];
     returnDataSuccess: u8 = 1; // 0 = success, 1 = revert; 2 = internal error;
-    constructor(origin: BigInt, sender: BigInt, funds: BigInt, gasLimit: BigInt, isQuery: bool, callData: u8[]) {
+    constructor(origin: BigInt, sender: BigInt, funds: BigInt, gasLimit: BigInt, callData: u8[]) {
         this.origin = origin;
         this.sender = sender;
         this.funds = funds;
         this.gasLimit = gasLimit;
-        this.isQuery = isQuery;
         this.callData = callData;
         this.logs = [];
     }

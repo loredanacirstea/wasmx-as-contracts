@@ -1,1 +1,1 @@
-export function wasmx_env_1(): void {}
+export function wasmx_wasmx_1(): void {}

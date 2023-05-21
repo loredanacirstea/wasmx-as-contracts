@@ -40,7 +40,6 @@ export class CurrentCallInfoJson {
     sender!: i32[];
     funds!: i32[];
     gasLimit!: i32[];
-    isQuery!: bool;
     callData!: i32[];
 }
 

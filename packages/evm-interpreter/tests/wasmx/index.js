@@ -6,6 +6,15 @@ export function stop(buf) {
     console.log('stop', buf);
 }
 
+export function storageStore(keybuf, valuebuf) {
+    console.log('storageStore', keybuf, valuebuf);
+}
+
+export function storageLoad(buf) {
+    console.log('storageLoad', buf);
+    return [10]
+}
+
 export function getEnv() {
     console.log('getEnv');
     const env = {
