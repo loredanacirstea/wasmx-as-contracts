@@ -254,7 +254,7 @@ export function codeCopy (ctx: Context, inputs: BigInt[]): void {
     const data = Memory.load(ctx.env.contract.bytecode, codeOffset, length);
     ctx.memory.store(data, resultOffset)
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('CODECOPY', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1]), bigIntToU8Array32(inputs[2])], [], ctx.pc);
+        ctx.logger.debug('CODECOPY', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1]), bigIntToU8Array32(inputs[2])], [data], ctx.pc);
     }
 }
 
@@ -517,9 +517,9 @@ export function handleSwap (ctx: Context, code: u8): void {
 export function handleDup (ctx: Context, code: u8): void {
     ctx.gasmeter.useOpcodeGas('dup');
     const no = code - 0x80 + 1;
-    ctx.stack.dup(no);
+    const value = ctx.stack.dup(no);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug(`DUP${no}`, [], [], ctx.pc);
+        ctx.logger.debug(`DUP${no}`, [bigIntToU8Array32(value)], [], ctx.pc);
     }
 }
 

@@ -38,16 +38,13 @@ export function u8ArrayToHex(arr: u8[]): string {
     return arr.reduce((accum: string, v: u8) => accum + v.toString(16).padStart(2, '0'), "");
 }
 
-export function bigIntToArrayBuffer(v: BigInt): ArrayBuffer {
-    let value = v.toString(16);
-    if (value.length % 2 == 1) {
-        value = "0" + value
-    }
-    const length = value.length / 2;
+export function bigIntToArrayBuffer32(v: BigInt): ArrayBuffer {
+    let value = v.toString(16).padStart(64, '0');
+    const length = 32;
     const buffer = new ArrayBuffer(length);
     const uint8View = Uint8Array.wrap(buffer);
     for (let i = 0; i < length; i++) {
-        uint8View[i] = u8(parseInt(value.substr(i, 2*i+2), 16))
+        uint8View[i] = u8(parseInt(value.substr(2*i, 2), 16))
     }
     return buffer;
 }

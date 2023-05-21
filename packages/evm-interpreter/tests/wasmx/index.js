@@ -44,7 +44,6 @@ export function getEnv() {
             sender: [...hexToUint8Array('39B1BF12E9e21D78F0c76d192c26d47fa710Ec98')],
             funds: [...new Uint8Array(32)],
             gasLimit: [0x01, 0x86, 0xa0], // 100000
-            isQuery: true,
             callData: [],
         },
     }

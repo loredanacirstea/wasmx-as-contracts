@@ -3,7 +3,7 @@ import { BigInt } from "as-bigint/assembly";
 import * as wasmx from './wasmx';
 import { BlockInfo, ChainInfo, ContractInfo, CurrentCallInfo, Env, TransactionInfo } from "./types";
 import { EnvJson } from './types_json';
-import { arrayBufferTou8Array, i32Toi8Array, i32ArrayToU256, bigIntToArrayBuffer, u8ArrayToBigInt, bigIntToU8Array32, maskBigInt256 } from './utils';
+import { arrayBufferTou8Array, i32Toi8Array, i32ArrayToU256, bigIntToArrayBuffer32, u8ArrayToBigInt, bigIntToU8Array32, maskBigInt256 } from './utils';
 
 export function getEnvWrap(): Env {
     const envJsonStr = String.UTF8.decode(wasmx.getEnv())
@@ -42,36 +42,36 @@ export function getEnvWrap(): Env {
 }
 
 export function sstore(key: BigInt, value: BigInt): void {
-    wasmx.storageStore(bigIntToArrayBuffer(key), bigIntToArrayBuffer(value));
+    wasmx.storageStore(bigIntToArrayBuffer32(key), bigIntToArrayBuffer32(value));
 }
 
 export function sload(key: BigInt): BigInt {
-    const value = wasmx.storageLoad(bigIntToArrayBuffer(key));
+    const value = wasmx.storageLoad(bigIntToArrayBuffer32(key));
     return u8ArrayToBigInt(arrayBufferTou8Array(value))
 }
 
 export function balance(address: BigInt): BigInt {
-    const value = wasmx.getExternalBalance(bigIntToArrayBuffer(address));
+    const value = wasmx.getExternalBalance(bigIntToArrayBuffer32(address));
     return u8ArrayToBigInt(arrayBufferTou8Array(value));
 }
 
 export function extcodesize(address: BigInt): BigInt {
-    const value = wasmx.getExternalCodeSize(bigIntToArrayBuffer(address));
+    const value = wasmx.getExternalCodeSize(bigIntToArrayBuffer32(address));
     return u8ArrayToBigInt(arrayBufferTou8Array(value));
 }
 
 export function extcodehash(address: BigInt): BigInt {
-    const value = wasmx.getExternalCodeHash(bigIntToArrayBuffer(address));
+    const value = wasmx.getExternalCodeHash(bigIntToArrayBuffer32(address));
     return u8ArrayToBigInt(arrayBufferTou8Array(value));
 }
 
 export function blockhash(number: BigInt): BigInt {
-    const value = wasmx.getBlockHash(bigIntToArrayBuffer(number));
+    const value = wasmx.getBlockHash(bigIntToArrayBuffer32(number));
     return u8ArrayToBigInt(arrayBufferTou8Array(value));
 }
 
 export function getExternalCode(address: BigInt): u8[] {
-    const value = wasmx.getExternalCode(bigIntToArrayBuffer(address));
+    const value = wasmx.getExternalCode(bigIntToArrayBuffer32(address));
     return arrayBufferTou8Array(value);
 }
 

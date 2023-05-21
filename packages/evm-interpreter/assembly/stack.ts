@@ -27,10 +27,11 @@ export class Stack {
         return this.stack.pop();
     }
 
-    dup(x: i32): void {
+    dup(x: i32): BigInt {
         if (x > this.stack.length) throw new Error(`Invalid DUP${x} ; stack length: ${this.stack.length}`);
         const value = this.stack[this.stack.length - x];
         this.stack.push(value);
+        return value;
     }
 
     swap(x: i32): void {
