@@ -19,6 +19,7 @@ opcodesMap.set('jump', jump);
 opcodesMap.set('jumpi', jumpi);
 opcodesMap.set('jumpdest', jumpdest);
 opcodesMap.set('pop', pop);
+opcodesMap.set('push0', pop);
 // opcodesMap.set('getMSize', getMSize); // TODO
 
 opcodesMap.set('loadMemory', loadMemory);
@@ -480,6 +481,15 @@ export function revert (ctx: Context, inputs: BigInt[]): void {
     wasmx.finish(u8ArrayToArrayBuffer(result)); // TODO remove
     if (ctx.logger.isDebug) {
         ctx.logger.debug('REVERT', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [result], ctx.pc);
+    }
+}
+
+export function push0(ctx: Context, code: u8): void {
+    ctx.gasmeter.useOpcodeGas('push0');
+    const value = BigInt.fromInt32(0);
+    ctx.stack.push(value);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('PUSH0', [], [bigIntToU8Array32(value)], ctx.pc);
     }
 }
 

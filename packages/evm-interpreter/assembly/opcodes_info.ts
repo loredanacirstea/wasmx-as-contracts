@@ -86,7 +86,7 @@ opByCode.set(0x58, {name: 'pc', arity: 0});
 opByCode.set(0x59, {name: 'getMSize', arity: 0});
 opByCode.set(0x5a, {name: 'getGasLeft', arity: 0});
 opByCode.set(0x5b, {name: 'jumpdest', arity: 0});
-
+opByCode.set(0x5f, {name: 'push0', arity: 0});
 opByCode.set(0xa0, {name: 'log0', arity: 2});
 opByCode.set(0xa1, {name: 'log1', arity: 3});
 opByCode.set(0xa2, {name: 'log2', arity: 4});
