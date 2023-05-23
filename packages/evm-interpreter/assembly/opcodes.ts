@@ -137,7 +137,7 @@ export function getAddress (ctx: Context, inputs: BigInt[]): void {
 
 export function getSelfBalance (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('selfbalance');
-    const value = ctx.env.contract.balance
+    const value = ctx.env.accountCache.get(ctx.env.contract.address.toString()).balance;
     ctx.stack.push(value);
     if (ctx.logger.isDebug) {
         ctx.logger.debug('SELFBALANCE', [], [bigIntToU8Array32(value)], ctx.pc);
@@ -148,7 +148,7 @@ export function getExternalBalance (ctx: Context, inputs: BigInt[]): void {
     // TODO charge less for cached results
     ctx.gasmeter.useOpcodeGas('balance');
     const address = inputs[0];
-    const balance = evm.balance(address);
+    const balance = evm.balance(ctx, address);
     ctx.stack.push(balance);
     if (ctx.logger.isDebug) {
         ctx.logger.debug('BALANCE', [bigIntToU8Array32(address)], [bigIntToU8Array32(balance)], ctx.pc);
@@ -280,7 +280,7 @@ export function getExternalCodeSize (ctx: Context, inputs: BigInt[]): void {
     // TODO charge less for cached results
     ctx.gasmeter.useOpcodeGas('extcodesize');
     const address = inputs[0];
-    const size = evm.extcodesize(address);
+    const size = evm.extcodesize(ctx, address);
     ctx.stack.push(size);
     if (ctx.logger.isDebug) {
         ctx.logger.debug('EXTCODESIZE', [bigIntToU8Array32(address)], [bigIntToU8Array32(size)], ctx.pc);
@@ -291,7 +291,7 @@ export function getExternalCodeHash (ctx: Context, inputs: BigInt[]): void {
     // TODO charge less for cached results
     ctx.gasmeter.useOpcodeGas('extcodehash');
     const address = inputs[0];
-    const size = evm.extcodehash(address);
+    const size = evm.extcodehash(ctx, address);
     ctx.stack.push(size);
     if (ctx.logger.isDebug) {
         ctx.logger.debug('EXTCODEHASH', [bigIntToU8Array32(address)], [bigIntToU8Array32(size)], ctx.pc);
@@ -304,7 +304,7 @@ export function externalCodeCopy (ctx: Context, inputs: BigInt[]): void {
     const resultOffset = inputs[1].toUInt32()
     const codeOffset = inputs[2].toUInt32()
     const length = inputs[3].toUInt32()
-    const code = evm.getExternalCode(inputs[0]);
+    const code = evm.getExternalCode(ctx, inputs[0]);
     const data = Memory.load(code, codeOffset, length);
     ctx.memory.store(data, resultOffset)
     if (ctx.logger.isDebug) {
@@ -826,140 +826,115 @@ export function keccak256 (ctx: Context, inputs: BigInt[]): void {
     }
 }
 
-// // result i32 Returns 0 on success, 1 on failure and 2 on revert
-// export function call (ctx: Context, inputs: BigInt[]): void {
-//     gas_limit,
-//     address, // the memory offset to load the address from (address)
-//     value,
-//     dataOffset,
-//     dataLength,
-//     outputOffset,
-//     outputLength,
-//     const {baseFee, addl} = getPrice('call', {value});
-//     jsvm_env.useGas(baseFee);
-//     jsvm_env.useGas(addl);
-//     const result = toBN(jsvm_env.call(
-//         gas_limit,
-//         BN2uint8arr(address),
-//         BN2uint8arr(value),
-//         dataOffset,
-//         dataLength,
-//         outputOffset,
-//         outputLength,
-//     ));
-//     ctx.stack.push(result);
-//     logger.debug('CALL', [gas_limit,
-//         address,
-//         value,
-//         dataOffset,
-//         dataLength,
-//         outputOffset,
-//         outputLength,], [result], getCache(), ctx.stack, undefined, position, baseFee, addl);
-//     return {ctx.stack, position};
-// }
+export function call (ctx: Context, inputs: BigInt[]): void {
+    // TODO gas
+    ctx.gasmeter.useOpcodeGas('call');
+    const inptr = inputs[3].toInt64();
+    const insize = inputs[4].toInt64();
+    const outptr = inputs[5].toInt64();
+    const outsize = inputs[6].toInt64();
+    const calldata = ctx.memory.load(inptr, insize);
+    const result = evm.call(ctx, inputs[0], inputs[1], inputs[2], calldata);
 
-// // result i32 Returns 0 on success, 1 on failure and 2 on revert
-// export function callCode (
-//     gas_limit,
-//     address,
-//     value,
-//     dataOffset,
-//     dataLength,
-//     outputOffset,
-//     outputLength,
-//     {ctx.stack, position}
-// ) {
-//     const {baseFee, addl} = getPrice('callcode', {value});
-//     jsvm_env.useGas(baseFee);
-//     jsvm_env.useGas(addl);
-//     const result = toBN(jsvm_env.callCode(
-//         gas_limit,
-//         BN2uint8arr(address),
-//         BN2uint8arr(value),
-//         dataOffset,
-//         dataLength,
-//         outputOffset,
-//         outputLength
-//     ));
-//     ctx.stack.push(result);
-//     logger.debug('CALLCODE', [gas_limit_i64, addressOffset_i32ptr_address, valueOffset_i32ptr_u128, dataOffset_i32ptr_bytes, dataLength_i32], [result], getCache(), ctx.stack, undefined, position, baseFee, addl);
-//     return {ctx.stack, position};
-// }
+    const data = result.data.slice(0, outsize);
+     // 0 = success, 1 = revert; 2 = internal error;
+    const success = BigInt.from(result.success == 0 ? 1 : 0);
+    ctx.memory.store(data, outptr);
+    ctx.stack.push(success);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('CALL', [
+            bigIntToU8Array32(inputs[0]),
+            bigIntToU8Array32(inputs[1]),
+            bigIntToU8Array32(inputs[2]),
+            bigIntToU8Array32(inputs[3]),
+            bigIntToU8Array32(inputs[4]),
+            bigIntToU8Array32(inputs[5]),
+            bigIntToU8Array32(inputs[6]),
+        ], [bigIntToU8Array32(success), data], ctx.pc);
+    }
+}
 
-// // result i32 Returns 0 on success, 1 on failure and 2 on revert
-// export function callDelegate (
-//     gas_limit_i64,
-//     address,
-//     dataOffset,
-//     dataLength,
-//     outputOffset,
-//     outputLength,
-//     {ctx.stack, position}
-// ) {
-//     const {baseFee} = getPrice('delegatecall');
-//     jsvm_env.useGas(baseFee);
-//     const result = toBN(jsvm_env.callDelegate(
-//         gas_limit_i64,
-//         BN2uint8arr(address),
-//         dataOffset,
-//         dataLength,
-//         outputOffset,
-//         outputLength
-//     ));
-//     ctx.stack.push(result);
-//     logger.debug('DELEGATECALL', [
-//         gas_limit_i64,
-//         address,
-//         dataOffset,
-//         dataLength,
-//         outputOffset,
-//         outputLength], [result], getCache(), ctx.stack, undefined, position, baseFee,
-//     );
-//     return {ctx.stack, position};
-// }
+export function callCode (ctx: Context, inputs: BigInt[]): void {
+    // TODO gas
+    ctx.gasmeter.useOpcodeGas('callcode');
+    const inptr = inputs[3].toInt64();
+    const insize = inputs[4].toInt64();
+    const outptr = inputs[5].toInt64();
+    const outsize = inputs[6].toInt64();
+    const calldata = ctx.memory.load(inptr, insize);
+    const result = evm.callCode(ctx, inputs[0], inputs[1], inputs[2], calldata);
 
-// // result Returns 0 on success, 1 on failure and 2 on revert
-// export function callStatic (
-//     gas_limit_i64,
-//     address,
-//     dataOffset,
-//     dataLength,
-//     outputOffset,
-//     outputLength,
-//     {ctx.stack, position}
-// ) {
-//     const {baseFee} = getPrice('staticcall');
-//     jsvm_env.useGas(baseFee);
+    const data = result.data.slice(0, outsize);
+     // 0 = success, 1 = revert; 2 = internal error;
+    const success = BigInt.from(result.success == 0 ? 1 : 0);
+    ctx.memory.store(data, outptr);
+    ctx.stack.push(success);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('CALLCODE', [
+            bigIntToU8Array32(inputs[0]),
+            bigIntToU8Array32(inputs[1]),
+            bigIntToU8Array32(inputs[2]),
+            bigIntToU8Array32(inputs[3]),
+            bigIntToU8Array32(inputs[4]),
+            bigIntToU8Array32(inputs[5]),
+            bigIntToU8Array32(inputs[6]),
+        ], [bigIntToU8Array32(success), data], ctx.pc);
+    }
+}
 
-//     // Even for precompiles we now pay staticcall gas
-//     const addressHex = address.toString(16).padStart(40, '0');
-//     if (precompiles[addressHex]) return api.ethereum[precompiles[addressHex]](
-//         gas_limit_i64,
-//         dataOffset,
-//         dataLength,
-//         outputOffset,
-//         outputLength,
-//         {ctx.stack, position},
-//     );
+export function callDelegate (ctx: Context, inputs: BigInt[]): void {
+    // TODO gas
+    ctx.gasmeter.useOpcodeGas('call');
+    const inptr = inputs[2].toInt64();
+    const insize = inputs[3].toInt64();
+    const outptr = inputs[4].toInt64();
+    const outsize = inputs[5].toInt64();
+    const calldata = ctx.memory.load(inptr, insize);
+    const result = evm.callDelegate(ctx, inputs[0], inputs[1], calldata);
 
-//     const result = toBN(jsvm_env.callStatic(
-//         gas_limit_i64,
-//         BN2uint8arr(address),
-//         dataOffset,
-//         dataLength,
-//         outputOffset,
-//         outputLength
-//     ));
-//     ctx.stack.push(result);
-//     logger.debug('STATICCALL', [
-//         gas_limit_i64,
-//         address,
-//         dataOffset,
-//         dataLength,
-//         outputOffset,
-//         outputLength], [result], getCache(), ctx.stack, undefined, position, baseFee);
-//     return {ctx.stack, position};
-// }
+    const data = result.data.slice(0, outsize);
+     // 0 = success, 1 = revert; 2 = internal error;
+    const success = BigInt.from(result.success == 0 ? 1 : 0);
+    ctx.memory.store(data, outptr);
+    ctx.stack.push(success);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('DELEGATECALL', [
+            bigIntToU8Array32(inputs[0]),
+            bigIntToU8Array32(inputs[1]),
+            bigIntToU8Array32(inputs[2]),
+            bigIntToU8Array32(inputs[3]),
+            bigIntToU8Array32(inputs[4]),
+            bigIntToU8Array32(inputs[5]),
+        ], [bigIntToU8Array32(success), data], ctx.pc);
+    }
+}
+
+export function callStatic (ctx: Context, inputs: BigInt[]): void {
+    // TODO gas
+    ctx.gasmeter.useOpcodeGas('callstatic');
+    const inptr = inputs[2].toInt64();
+    const insize = inputs[3].toInt64();
+    const outptr = inputs[4].toInt64();
+    const outsize = inputs[5].toInt64();
+    const calldata = ctx.memory.load(inptr, insize);
+    const result = evm.callStatic(ctx, inputs[0], inputs[1], calldata);
+
+    const data = result.data.slice(0, outsize);
+     // 0 = success, 1 = revert; 2 = internal error;
+    const success = BigInt.from(result.success == 0 ? 1 : 0);
+    ctx.memory.store(data, outptr);
+    ctx.stack.push(success);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('STATICCALL', [
+            bigIntToU8Array32(inputs[0]),
+            bigIntToU8Array32(inputs[1]),
+            bigIntToU8Array32(inputs[2]),
+            bigIntToU8Array32(inputs[3]),
+            bigIntToU8Array32(inputs[4]),
+            bigIntToU8Array32(inputs[5]),
+        ], [bigIntToU8Array32(success), data], ctx.pc);
+    }
+}
 
 // export function create (
 //     value,

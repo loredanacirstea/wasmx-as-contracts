@@ -1,4 +1,6 @@
 import { BigInt } from "as-bigint/assembly";
+import { getAccountInfo, setAccountInfo } from "./evm";
+import * as errors from './error';
 
 // TODO typecheck for each
 export type Bytes32 = Array<u8>;
@@ -40,14 +42,16 @@ export class TransactionInfo {
     }
 }
 
-export class ContractInfo {
+export class AccountInfo {
     address: BigInt;
-    bytecode: Array<u8>;
     balance: BigInt
-    constructor(address: BigInt, bytecode: Array<u8>, balance: BigInt) {
+    codeHash: BigInt;
+    bytecode: Array<u8>;
+    constructor(address: BigInt, balance: BigInt, codeHash: BigInt, bytecode: u8[]) {
         this.address = address;
-        this.bytecode = bytecode;
         this.balance = balance;
+        this.codeHash = codeHash;
+        this.bytecode = bytecode;
     }
 }
 
@@ -83,13 +87,73 @@ export class Env {
     chain: ChainInfo;
     block: BlockInfo;
     transaction: TransactionInfo;
-    contract: ContractInfo;
+    contract: AccountInfo;
     currentCall: CurrentCallInfo;
-    constructor(chain: ChainInfo, block: BlockInfo, transaction: TransactionInfo, contract: ContractInfo, currentCall: CurrentCallInfo) {
+    accountCache: Map<string,AccountInfo> = new Map<string,AccountInfo>();
+
+    constructor(chain: ChainInfo, block: BlockInfo, transaction: TransactionInfo, contract: AccountInfo, currentCall: CurrentCallInfo) {
         this.chain = chain;
         this.block = block;
         this.transaction = transaction;
         this.contract = contract;
         this.currentCall = currentCall;
+        this.accountCache.set(contract.address.toString(), contract);
+    }
+
+    getAccount(address: BigInt): AccountInfo {
+        if (this.accountCache.has(address.toString())) {
+            return this.accountCache.get(address.toString());
+        }
+        const account = getAccountInfo(address);
+        this.accountCache.set(account.address.toString(), account);
+        return account;
+    }
+
+    setAccount(account: AccountInfo): void {
+        this.accountCache.set(account.address.toString(), account);
+        setAccountInfo(account);
+    }
+
+
+    move(from: BigInt, to: BigInt, amount: BigInt): void {
+        const fromAccount = this.getAccount(from);
+        const toAccount = this.getAccount(to);
+        if (fromAccount.balance.lt(amount)) {
+            throw new Error(errors.NOT_ENOUGH_FUNDS)
+        }
+        fromAccount.balance.sub(amount);
+        toAccount.balance.add(amount);
+        this.setAccount(fromAccount);
+        this.setAccount(toAccount);
+    }
+}
+
+export class CallRequest {
+    to: BigInt; // storage changes
+    from: BigInt;
+    value: BigInt;
+    gasLimit: BigInt;
+    calldata: u8[];
+    bytecode: u8[];
+    codeHash: u8[];
+    isQuery: bool;
+    constructor(to: BigInt, from: BigInt, value: BigInt, gasLimit: BigInt, calldata: u8[], bytecode: u8[], codeHash: u8[], isQuery: bool) {
+        this.to = to;
+        this.from = from;
+        this.value = value;
+        this.gasLimit = gasLimit;
+        this.calldata = calldata;
+        this.bytecode = bytecode;
+        this.codeHash = codeHash;
+        this.isQuery = isQuery;
+    }
+}
+
+export class CallResponse {
+    success: u8;  // 0 = success, 1 = revert; 2 = internal error;
+    data: u8[];
+    constructor(success: u8, data: u8[]) {
+        this.success = success;
+        this.data = data;
     }
 }

@@ -1,9 +1,10 @@
 import { JSON } from "json-as/assembly";
 import { BigInt } from "as-bigint/assembly";
 import * as wasmx from './wasmx';
-import { BlockInfo, ChainInfo, ContractInfo, CurrentCallInfo, Env, TransactionInfo } from "./types";
-import { EnvJson } from './types_json';
-import { arrayBufferTou8Array, i32Toi8Array, i32ArrayToU256, bigIntToArrayBuffer32, u8ArrayToBigInt, bigIntToU8Array32, maskBigInt256 } from './utils';
+import { BlockInfo, ChainInfo, AccountInfo, CurrentCallInfo, Env, TransactionInfo, CallResponse } from "./types";
+import { AccountInfoJson, CallRequestJson, CallResponseJson, EnvJson } from './types_json';
+import { arrayBufferTou8Array, i32ToU8Array, i32ArrayToU256, bigIntToArrayBuffer32, u8ArrayToBigInt, bigIntToU8Array32, maskBigInt256, bigIntToI32Array, u8ToI32Array } from './utils';
+import { Context } from "./context";
 
 export function getEnvWrap(): Env {
     const envJsonStr = String.UTF8.decode(wasmx.getEnv())
@@ -26,17 +27,18 @@ export function getEnvWrap(): Env {
             BigInt.from(envJson.transaction.index),
             i32ArrayToU256(envJson.transaction.gasPrice),
         ),
-        new ContractInfo(
+        new AccountInfo(
             i32ArrayToU256(envJson.contract.address),
-            i32Toi8Array(envJson.contract.bytecode),
             i32ArrayToU256(envJson.contract.balance),
+            i32ArrayToU256(envJson.contract.codeHash),
+            i32ToU8Array(envJson.contract.bytecode),
         ),
         new CurrentCallInfo(
             i32ArrayToU256(envJson.currentCall.origin),
             i32ArrayToU256(envJson.currentCall.sender),
             i32ArrayToU256(envJson.currentCall.funds),
             i32ArrayToU256(envJson.currentCall.gasLimit),
-            i32Toi8Array(envJson.currentCall.callData),
+            i32ToU8Array(envJson.currentCall.callData),
         ),
     )
 }
@@ -50,29 +52,142 @@ export function sload(key: BigInt): BigInt {
     return u8ArrayToBigInt(arrayBufferTou8Array(value))
 }
 
-export function balance(address: BigInt): BigInt {
-    const value = wasmx.getExternalBalance(bigIntToArrayBuffer32(address));
-    return u8ArrayToBigInt(arrayBufferTou8Array(value));
-}
-
-export function extcodesize(address: BigInt): BigInt {
-    const value = wasmx.getExternalCodeSize(bigIntToArrayBuffer32(address));
-    return u8ArrayToBigInt(arrayBufferTou8Array(value));
-}
-
-export function extcodehash(address: BigInt): BigInt {
-    const value = wasmx.getExternalCodeHash(bigIntToArrayBuffer32(address));
-    return u8ArrayToBigInt(arrayBufferTou8Array(value));
-}
-
 export function blockhash(number: BigInt): BigInt {
     const value = wasmx.getBlockHash(bigIntToArrayBuffer32(number));
     return u8ArrayToBigInt(arrayBufferTou8Array(value));
 }
 
-export function getExternalCode(address: BigInt): u8[] {
-    const value = wasmx.getExternalCode(bigIntToArrayBuffer32(address));
-    return arrayBufferTou8Array(value);
+export function getAccountInfo(address: BigInt): AccountInfo {
+    const value = wasmx.getAccount(bigIntToArrayBuffer32(address));
+    const valuestr = String.UTF8.decode(value)
+    console.log(valuestr)
+    const account = JSON.parse<AccountInfoJson>(valuestr);
+    return new AccountInfo(
+        i32ArrayToU256(account.address),
+        i32ArrayToU256(account.balance),
+        i32ArrayToU256(account.codeHash),
+        i32ToU8Array(account.bytecode),
+    );
+}
+
+export function setAccountInfo(account: AccountInfo): void {
+    const acc = new AccountInfoJson(
+        bigIntToU8Array32(account.address),
+        bigIntToU8Array32(account.balance),
+        bigIntToU8Array32(account.codeHash),
+        account.bytecode,
+    );
+    const accountbz = JSON.stringify<AccountInfoJson>(acc);
+    wasmx.setAccount(String.UTF8.encode(accountbz));
+}
+
+export function balance(ctx: Context, address: BigInt): BigInt {
+    return ctx.env.getAccount(address).balance;
+}
+
+export function extcodesize(ctx: Context, address: BigInt): BigInt {
+    return BigInt.from(ctx.env.getAccount(address).bytecode.length);
+}
+
+export function extcodehash(ctx: Context, address: BigInt): BigInt {
+    return ctx.env.getAccount(address).codeHash;
+}
+
+export function getExternalCode(ctx: Context, address: BigInt): u8[] {
+    return ctx.env.getAccount(address).bytecode;
+}
+
+export function call(
+    ctx: Context,
+    gas_limit: BigInt,
+    address: BigInt,
+    value: BigInt,
+    calldata: u8[],
+): CallResponse {
+    const data = new CallRequestJson (
+        bigIntToI32Array(address),
+        bigIntToI32Array(ctx.env.contract.address),
+        bigIntToI32Array(value),
+        bigIntToI32Array(gas_limit),
+        u8ToI32Array(calldata),
+        u8ToI32Array(getExternalCode(ctx, address)),
+        bigIntToI32Array(extcodehash(ctx, address)),
+        false,
+    )
+    const datastr = JSON.stringify<CallRequestJson>(data);
+    const valuebz = wasmx.externalCall(String.UTF8.encode(datastr));
+    const response = JSON.parse<CallResponseJson>(String.UTF8.decode(valuebz));
+    return new CallResponse(response.success, i32ToU8Array(response.data));
+}
+
+export function callDelegate(
+    ctx: Context,
+    gas_limit: BigInt,
+    address: BigInt,
+    calldata: u8[],
+): CallResponse {
+    const bytecode = getExternalCode(ctx, address);
+    const data = new CallRequestJson (
+        bigIntToI32Array(ctx.env.contract.address),
+        bigIntToI32Array(ctx.env.currentCall.sender),
+        bigIntToI32Array( ctx.env.currentCall.funds),
+        bigIntToI32Array(gas_limit),
+        u8ToI32Array(calldata),
+        u8ToI32Array(getExternalCode(ctx, address)),
+        bigIntToI32Array(extcodehash(ctx, address)),
+        false,
+    )
+    const datastr = JSON.stringify<CallRequestJson>(data);
+    const valuebz = wasmx.externalCall(String.UTF8.encode(datastr));
+    const response = JSON.parse<CallResponseJson>(String.UTF8.decode(valuebz));
+    return new CallResponse(response.success, i32ToU8Array(response.data));
+}
+
+export function callStatic(
+    ctx: Context,
+    gas_limit: BigInt,
+    address: BigInt,
+    calldata: u8[],
+): CallResponse {
+    const bytecode = getExternalCode(ctx, address);
+    const data = new CallRequestJson (
+        bigIntToI32Array(address),
+        bigIntToI32Array(ctx.env.contract.address),
+        bigIntToI32Array(BigInt.from(0)),
+        bigIntToI32Array(gas_limit),
+        u8ToI32Array(calldata),
+        u8ToI32Array(getExternalCode(ctx, address)),
+        bigIntToI32Array(extcodehash(ctx, address)),
+        true,
+    )
+    const datastr = JSON.stringify<CallRequestJson>(data);
+    const valuebz = wasmx.externalCall(String.UTF8.encode(datastr));
+    const response = JSON.parse<CallResponseJson>(String.UTF8.decode(valuebz));
+    return new CallResponse(response.success, i32ToU8Array(response.data));
+}
+
+export function callCode(
+    ctx: Context,
+    gas_limit: BigInt,
+    address: BigInt,
+    value: BigInt,
+    calldata: u8[],
+): CallResponse {
+    const bytecode = getExternalCode(ctx, address);
+    const data = new CallRequestJson (
+        bigIntToI32Array(ctx.env.contract.address),
+        bigIntToI32Array(ctx.env.contract.address),
+        bigIntToI32Array(value),
+        bigIntToI32Array(gas_limit),
+        u8ToI32Array(calldata),
+        u8ToI32Array(getExternalCode(ctx, address)),
+        bigIntToI32Array(extcodehash(ctx, address)),
+        false,
+    )
+    const datastr = JSON.stringify<CallRequestJson>(data);
+    const valuebz = wasmx.externalCall(String.UTF8.encode(datastr));
+    const response = JSON.parse<CallResponseJson>(String.UTF8.decode(valuebz));
+    return new CallResponse(response.success, i32ToU8Array(response.data));
 }
 
 export function add(a: BigInt, b: BigInt): BigInt {
