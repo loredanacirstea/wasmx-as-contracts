@@ -211,8 +211,7 @@ export function div(a: BigInt, b: BigInt): BigInt {
 }
 
 export function sdiv(a: BigInt, b: BigInt): BigInt {
-    // return a / b; // TO DO
-    return BigInt.from(0);
+    return twosComplement(a).div(twosComplement(b));
 }
 
 export function mod(a: BigInt, b: BigInt): BigInt {
@@ -220,8 +219,7 @@ export function mod(a: BigInt, b: BigInt): BigInt {
 }
 
 export function smod(a: BigInt, b: BigInt): BigInt {
-    // return a - a / b * b; // TO DO
-    return BigInt.from(0);
+    return twosComplement(a).mod(twosComplement(b));
 }
 
 export function exp(a: BigInt, b: BigInt): BigInt {
@@ -241,23 +239,11 @@ export function gt(a: BigInt, b: BigInt): BigInt {
 }
 
 export function slt(a: BigInt, b: BigInt): BigInt {
-    // if (a == a.neg()) {
-    //     return BigInt.from(a > b ? 1 : 0);
-    // } else {
-    //     return BigInt.from(a < b ? 1 : 0);
-    // }
-    // TO DO ?
-    return BigInt.from(0)
+    return BigInt.from(twosComplement(a).lt(twosComplement(b)) ? 1 : 0);
 }
 
 export function sgt(a: BigInt, b: BigInt): BigInt {
-    // if (a == a.neg()) {
-    //     return BigInt.from(a < b ? 1 : 0);
-    // } else {
-    //     return BigInt.from(a > b ? 1 : 0);
-    // }
-    // TO DO ?
-    return BigInt.from(0)
+    return BigInt.from(twosComplement(a).gt(twosComplement(b)) ? 1 : 0);
 }
 
 export function eq(a: BigInt, b: BigInt): BigInt {
@@ -298,29 +284,6 @@ export function shr(shift: BigInt, value: BigInt): BigInt {
     return value.rightShift(v);
 }
 
-// nobits, value
-export function sar(a: BigInt, b: BigInt): BigInt {
-    // if (a == a.neg()) {
-    //     return (b >> a.pos()).neg();
-    // } else {
-    //     return b >> a;
-    // }
-    return BigInt.from(0);
-    // TO DO ?
-//    const _nobits = nobits.toNumber();
-//     let valueBase2;
-//     if (value.isNeg()) {
-//         valueBase2 = value.toTwos(256).toString(2);
-//     } else {
-//         valueBase2 = value.toString(2).padStart(256, '0');
-//     }
-//     // remove LSB * _nobits
-//     valueBase2 = valueBase2.substring(0, valueBase2.length - _nobits);
-//     // add MSB * _nobits
-//     valueBase2 = valueBase2[0].repeat(_nobits) + valueBase2;
-//     const result = (new BN(valueBase2, 2)).fromTwos(256);
-}
-
 export function addmod(a: BigInt, b: BigInt, c: BigInt): BigInt {
     return a.add(b).mod(c);
 }
@@ -329,10 +292,33 @@ export function mulmod(a: BigInt, b: BigInt, c: BigInt): BigInt {
     return a.mul(b).mod(c);
 }
 
-// size, value
-export function signextend(a: BigInt, b: BigInt): BigInt {
-    // return a < b; // TO DO
-    return BigInt.from(0);
+// nobits, value
+export function sar(bitsno: BigInt, value: BigInt): BigInt {
+    const msb = isNeg(value) ? 1 : 0;
+    const _bitsno = bitsno.toInt32();
+    let v = value.rightShift(_bitsno);
+    if (msb == 0) return v;
+    for (let i = 0; i < _bitsno; i++) {
+        v = v.add(BigInt.from(2).pow(255 - i));
+    }
+    return v;
+}
+
+// sign extend from (i*8+7)th bit counting from least significant
+export function signextend(i: BigInt, x: BigInt): BigInt {
+    const b = i.toInt32();
+    if (b >= 31) return x;
+    const bits = b*8+8;
+    const extbits = 256 - bits;
+
+    let v = x.leftShift(extbits)
+    v = maskBigInt256(v);
+    v = v.rightShift(extbits);
+
+    if (!isNeg(v, bits-1)) return v;
+    const padd = BigInt.from(2).pow(256).sub(1).rightShift(bits).leftShift(bits);
+    v = padd.add(v);
+    return v;
 }
 
 export function keccak256(data: u8[]): BigInt {
@@ -342,3 +328,14 @@ export function keccak256(data: u8[]): BigInt {
     return u8ArrayToBigInt(arrayBufferTou8Array(hash));
 }
 
+function isNeg(a: BigInt, size: i32 = 255): bool {
+    const sign = a.rightShift(size);
+    if (sign.toInt32() === 1) return true;
+    return false;
+}
+
+function twosComplement(a: BigInt): BigInt {
+    if (!isNeg(a)) return a;
+    const abs = BigInt.from(2).pow(256).sub(a);
+    return abs.opposite();
+}
