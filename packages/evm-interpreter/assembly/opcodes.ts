@@ -818,10 +818,10 @@ export function keccak256 (ctx: Context, inputs: BigInt[]): void {
     // TODO gas units based on data slots
     ctx.gasmeter.useOpcodeGas('keccak256');
     const data = ctx.memory.load(inputs[0].toUInt32(), inputs[1].toUInt32());
-    const result = new Array<u8>(32);
-
+    const result = evm.keccak256(data);
+    ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('KECCAK256', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [result], ctx.pc);
+        ctx.logger.debug('KECCAK256', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
     }
 }
 

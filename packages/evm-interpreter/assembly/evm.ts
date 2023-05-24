@@ -335,6 +335,10 @@ export function signextend(a: BigInt, b: BigInt): BigInt {
     return BigInt.from(0);
 }
 
-// 48
-// storage - empty bytes default
-//
+export function keccak256(data: u8[]): BigInt {
+    const _data = new Uint8Array(data.length);
+    _data.set(data);
+    const hash = wasmx.keccak256(_data.buffer);
+    return u8ArrayToBigInt(arrayBufferTou8Array(hash));
+}
+

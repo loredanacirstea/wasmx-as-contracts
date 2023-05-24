@@ -13,6 +13,8 @@ export declare function setAccount(account: ArrayBuffer): void
 
 export declare function externalCall(data: ArrayBuffer): ArrayBuffer
 
+export declare function keccak256(value: ArrayBuffer): ArrayBuffer
+
 // // TODO
 // export declare function create(
 //     value: BigInt,
