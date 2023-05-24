@@ -1,7 +1,6 @@
 import { BigInt } from "as-bigint/assembly";
 import { Context } from './context';
 import { u8ArrayToArrayBuffer, u8ArrayToBigInt, bigIntToU8Array32 } from './utils';
-import * as ERROR from './error';
 import * as wasmx from './wasmx';
 import * as evm from './evm';
 import { EvmLog } from './types';
@@ -87,10 +86,10 @@ opcodesMap.set('log2', log2);
 opcodesMap.set('log3', log3);
 opcodesMap.set('log4', log4);
 
-// opcodesMap.set('call', call);
-// opcodesMap.set('callCode', callCode);
-// opcodesMap.set('callDelegate', callDelegate);
-// opcodesMap.set('callStatic', callStatic);
+opcodesMap.set('call', call);
+opcodesMap.set('callCode', callCode);
+opcodesMap.set('callDelegate', callDelegate);
+opcodesMap.set('callStatic', callStatic);
 // opcodesMap.set('create', create);
 // opcodesMap.set('create2', create2);
 // opcodesMap.set('selfDestruct', selfDestruct);
@@ -394,7 +393,7 @@ export function returnDataCopy (ctx: Context, inputs: BigInt[]): void {
     ctx.memory.store(data, resultOffset)
 
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('RETURNDATACOPY', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1]), bigIntToU8Array32(inputs[2])], [], ctx.pc);
+        ctx.logger.debug('RETURNDATACOPY', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1]), bigIntToU8Array32(inputs[2])], [data], ctx.pc);
     }
 }
 
@@ -478,7 +477,7 @@ export function revert (ctx: Context, inputs: BigInt[]): void {
     ctx.pc = 0;
     ctx.env.currentCall.returnData = result;
     ctx.env.currentCall.returnDataSuccess = 2;
-    wasmx.finish(u8ArrayToArrayBuffer(result)); // TODO remove
+    wasmx.revert(u8ArrayToArrayBuffer(result));
     if (ctx.logger.isDebug) {
         ctx.logger.debug('REVERT', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [result], ctx.pc);
     }
@@ -829,16 +828,19 @@ export function keccak256 (ctx: Context, inputs: BigInt[]): void {
 export function call (ctx: Context, inputs: BigInt[]): void {
     // TODO gas
     ctx.gasmeter.useOpcodeGas('call');
-    const inptr = inputs[3].toInt64();
-    const insize = inputs[4].toInt64();
-    const outptr = inputs[5].toInt64();
-    const outsize = inputs[6].toInt64();
+    const inptr = inputs[3].toUInt32();
+    const insize = inputs[4].toUInt32();
+    const outptr = inputs[5].toUInt32();
+    const outsize = inputs[6].toUInt32();
     const calldata = ctx.memory.load(inptr, insize);
     const result = evm.call(ctx, inputs[0], inputs[1], inputs[2], calldata);
 
+    // 0 = success, 1 = revert; 2 = internal error;
+    ctx.env.currentCall.returnDataSuccess = result.success == 0 ? 1 : 0;
+    ctx.env.currentCall.returnData = result.data;
+
     const data = result.data.slice(0, outsize);
-     // 0 = success, 1 = revert; 2 = internal error;
-    const success = BigInt.from(result.success == 0 ? 1 : 0);
+    const success = BigInt.from(ctx.env.currentCall.returnDataSuccess);
     ctx.memory.store(data, outptr);
     ctx.stack.push(success);
     if (ctx.logger.isDebug) {
@@ -857,16 +859,19 @@ export function call (ctx: Context, inputs: BigInt[]): void {
 export function callCode (ctx: Context, inputs: BigInt[]): void {
     // TODO gas
     ctx.gasmeter.useOpcodeGas('callcode');
-    const inptr = inputs[3].toInt64();
-    const insize = inputs[4].toInt64();
-    const outptr = inputs[5].toInt64();
-    const outsize = inputs[6].toInt64();
+    const inptr = inputs[3].toUInt32();
+    const insize = inputs[4].toUInt32();
+    const outptr = inputs[5].toUInt32();
+    const outsize = inputs[6].toUInt32();
     const calldata = ctx.memory.load(inptr, insize);
     const result = evm.callCode(ctx, inputs[0], inputs[1], inputs[2], calldata);
 
+    // 0 = success, 1 = revert; 2 = internal error;
+    ctx.env.currentCall.returnDataSuccess = result.success == 0 ? 1 : 0;
+    ctx.env.currentCall.returnData = result.data;
+
     const data = result.data.slice(0, outsize);
-     // 0 = success, 1 = revert; 2 = internal error;
-    const success = BigInt.from(result.success == 0 ? 1 : 0);
+    const success = BigInt.from(ctx.env.currentCall.returnDataSuccess);
     ctx.memory.store(data, outptr);
     ctx.stack.push(success);
     if (ctx.logger.isDebug) {
@@ -885,16 +890,19 @@ export function callCode (ctx: Context, inputs: BigInt[]): void {
 export function callDelegate (ctx: Context, inputs: BigInt[]): void {
     // TODO gas
     ctx.gasmeter.useOpcodeGas('call');
-    const inptr = inputs[2].toInt64();
-    const insize = inputs[3].toInt64();
-    const outptr = inputs[4].toInt64();
-    const outsize = inputs[5].toInt64();
+    const inptr = inputs[2].toUInt32();
+    const insize = inputs[3].toUInt32();
+    const outptr = inputs[4].toUInt32();
+    const outsize = inputs[5].toUInt32();
     const calldata = ctx.memory.load(inptr, insize);
     const result = evm.callDelegate(ctx, inputs[0], inputs[1], calldata);
 
+    // 0 = success, 1 = revert; 2 = internal error;
+    ctx.env.currentCall.returnDataSuccess = result.success == 0 ? 1 : 0;
+    ctx.env.currentCall.returnData = result.data;
+
     const data = result.data.slice(0, outsize);
-     // 0 = success, 1 = revert; 2 = internal error;
-    const success = BigInt.from(result.success == 0 ? 1 : 0);
+    const success = BigInt.from(ctx.env.currentCall.returnDataSuccess);
     ctx.memory.store(data, outptr);
     ctx.stack.push(success);
     if (ctx.logger.isDebug) {
@@ -912,16 +920,19 @@ export function callDelegate (ctx: Context, inputs: BigInt[]): void {
 export function callStatic (ctx: Context, inputs: BigInt[]): void {
     // TODO gas
     ctx.gasmeter.useOpcodeGas('callstatic');
-    const inptr = inputs[2].toInt64();
-    const insize = inputs[3].toInt64();
-    const outptr = inputs[4].toInt64();
-    const outsize = inputs[5].toInt64();
+    const inptr = inputs[2].toUInt32();
+    const insize = inputs[3].toUInt32();
+    const outptr = inputs[4].toUInt32();
+    const outsize = inputs[5].toUInt32();
     const calldata = ctx.memory.load(inptr, insize);
     const result = evm.callStatic(ctx, inputs[0], inputs[1], calldata);
 
+    // 0 = success, 1 = revert; 2 = internal error;
+    ctx.env.currentCall.returnDataSuccess = result.success == 0 ? 1 : 0;
+    ctx.env.currentCall.returnData = result.data;
+
     const data = result.data.slice(0, outsize);
-     // 0 = success, 1 = revert; 2 = internal error;
-    const success = BigInt.from(result.success == 0 ? 1 : 0);
+    const success = BigInt.from(ctx.env.currentCall.returnDataSuccess);
     ctx.memory.store(data, outptr);
     ctx.stack.push(success);
     if (ctx.logger.isDebug) {

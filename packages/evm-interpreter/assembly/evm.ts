@@ -117,7 +117,7 @@ export function call(
     const datastr = JSON.stringify<CallRequestJson>(data);
     const valuebz = wasmx.externalCall(String.UTF8.encode(datastr));
     const response = JSON.parse<CallResponseJson>(String.UTF8.decode(valuebz));
-    return new CallResponse(response.success, i32ToU8Array(response.data));
+    return new CallResponse(u8(response.success), i32ToU8Array(response.data));
 }
 
 export function callDelegate(
@@ -140,7 +140,7 @@ export function callDelegate(
     const datastr = JSON.stringify<CallRequestJson>(data);
     const valuebz = wasmx.externalCall(String.UTF8.encode(datastr));
     const response = JSON.parse<CallResponseJson>(String.UTF8.decode(valuebz));
-    return new CallResponse(response.success, i32ToU8Array(response.data));
+    return new CallResponse(u8(response.success), i32ToU8Array(response.data));
 }
 
 export function callStatic(
@@ -163,7 +163,7 @@ export function callStatic(
     const datastr = JSON.stringify<CallRequestJson>(data);
     const valuebz = wasmx.externalCall(String.UTF8.encode(datastr));
     const response = JSON.parse<CallResponseJson>(String.UTF8.decode(valuebz));
-    return new CallResponse(response.success, i32ToU8Array(response.data));
+    return new CallResponse(u8(response.success), i32ToU8Array(response.data));
 }
 
 export function callCode(
@@ -187,7 +187,7 @@ export function callCode(
     const datastr = JSON.stringify<CallRequestJson>(data);
     const valuebz = wasmx.externalCall(String.UTF8.encode(datastr));
     const response = JSON.parse<CallResponseJson>(String.UTF8.decode(valuebz));
-    return new CallResponse(response.success, i32ToU8Array(response.data));
+    return new CallResponse(u8(response.success), i32ToU8Array(response.data));
 }
 
 export function add(a: BigInt, b: BigInt): BigInt {

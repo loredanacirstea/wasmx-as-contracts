@@ -25,7 +25,7 @@ export function getEnv() {
         },
         block: {
             height: 10,
-            time: new Date().getTime() / 1000,
+            time: Math.floor(new Date().getTime() / 1000),
             gasLimit: [0x98, 0x96, 0x80], // 10000000
             hash: [...new Uint8Array(32)],
             proposer: [...new Uint8Array(20)],
@@ -38,6 +38,7 @@ export function getEnv() {
             address: [...hexToUint8Array('39B1BF12E9e21D78F0c76d192c26d47fa710Ec99')],
             bytecode: [...hexToUint8Array('66eeeeeeeeeeeeee60005260206000f3')],
             balance: [0],
+            codeHash: [],
         },
         currentCall: {
             origin: [...hexToUint8Array('39B1BF12E9e21D78F0c76d192c26d47fa710Ec98')],
