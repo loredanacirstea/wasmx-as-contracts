@@ -89,6 +89,10 @@ export function u8ArrayToBigInt(arr: u8[]): BigInt {
     return BigInt.fromString(u8ArrayToHex(arr), 16);
 }
 
+export function arrayBufferToBigInt(buffer: ArrayBuffer): BigInt {
+    return u8ArrayToBigInt(arrayBufferTou8Array(buffer));
+}
+
 export function i32ArrayToU256(arr: i32[]): BigInt {
     return u8ArrayToBigInt(i32ArrayToBytes32(arr));
 }

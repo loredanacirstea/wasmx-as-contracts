@@ -73,6 +73,7 @@ opByCode.set(0x44, {name: 'getBlockDifficulty', arity: 0});
 opByCode.set(0x45, {name: 'getBlockGasLimit', arity: 0});
 opByCode.set(0x46, {name: 'getBlockChainId', arity: 0});
 opByCode.set(0x47, {name: 'getSelfBalance', arity: 0});
+opByCode.set(0x48, {name: 'getBaseFee', arity: 0});
 
 opByCode.set(0x50, {name: 'pop', arity: 0});
 opByCode.set(0x51, {name: 'loadMemory', arity: 1});

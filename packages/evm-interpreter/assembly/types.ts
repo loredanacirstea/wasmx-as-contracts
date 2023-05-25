@@ -1,6 +1,5 @@
 import { BigInt } from "as-bigint/assembly";
-import { getAccountInfo, setAccountInfo } from "./evm";
-import * as errors from './error';
+import { getAccountInfo } from "./evm";
 
 // TODO typecheck for each
 export type Bytes32 = Array<u8>;
@@ -18,14 +17,14 @@ export class ChainInfo {
 
 export class BlockInfo {
     height: BigInt;
-    time: BigInt;
+    timestamp: BigInt;
     gasLimit: BigInt;
     hash: BigInt;
     difficulty: BigInt;
     proposer: BigInt;
-    constructor(height: BigInt, time: BigInt, gasLimit: BigInt, hash: BigInt, proposer: BigInt) {
+    constructor(height: BigInt, timestamp: BigInt, gasLimit: BigInt, hash: BigInt, proposer: BigInt) {
         this.height = height;
-        this.time = time;
+        this.timestamp = timestamp;
         this.gasLimit = gasLimit;
         this.hash = hash;
         this.proposer = proposer;
@@ -44,12 +43,10 @@ export class TransactionInfo {
 
 export class AccountInfo {
     address: BigInt;
-    balance: BigInt
     codeHash: BigInt;
     bytecode: Array<u8>;
-    constructor(address: BigInt, balance: BigInt, codeHash: BigInt, bytecode: u8[]) {
+    constructor(address: BigInt, codeHash: BigInt, bytecode: u8[]) {
         this.address = address;
-        this.balance = balance;
         this.codeHash = codeHash;
         this.bytecode = bytecode;
     }
@@ -107,24 +104,6 @@ export class Env {
         const account = getAccountInfo(address);
         this.accountCache.set(account.address.toString(), account);
         return account;
-    }
-
-    setAccount(account: AccountInfo): void {
-        this.accountCache.set(account.address.toString(), account);
-        setAccountInfo(account);
-    }
-
-
-    move(from: BigInt, to: BigInt, amount: BigInt): void {
-        const fromAccount = this.getAccount(from);
-        const toAccount = this.getAccount(to);
-        if (fromAccount.balance.lt(amount)) {
-            throw new Error(errors.NOT_ENOUGH_FUNDS)
-        }
-        fromAccount.balance.sub(amount);
-        toAccount.balance.add(amount);
-        this.setAccount(fromAccount);
-        this.setAccount(toAccount);
     }
 }
 

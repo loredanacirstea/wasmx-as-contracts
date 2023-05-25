@@ -78,6 +78,7 @@ opcodesMap.set('getBlockDifficulty', getBlockDifficulty);
 opcodesMap.set('getBlockGasLimit', getBlockGasLimit);
 opcodesMap.set('getBlockChainId', getBlockChainId);
 opcodesMap.set('getSelfBalance', getSelfBalance);
+opcodesMap.set('getBaseFee', getBaseFee);
 opcodesMap.set('getGasLeft', getGasLeft);
 
 opcodesMap.set('log0', log0);
@@ -136,7 +137,7 @@ export function getAddress (ctx: Context, inputs: BigInt[]): void {
 
 export function getSelfBalance (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('selfbalance');
-    const value = ctx.env.accountCache.get(ctx.env.contract.address.toString()).balance;
+    const value = evm.balance(ctx.env.contract.address);
     ctx.stack.push(value);
     if (ctx.logger.isDebug) {
         ctx.logger.debug('SELFBALANCE', [], [bigIntToU8Array32(value)], ctx.pc);
@@ -147,10 +148,19 @@ export function getExternalBalance (ctx: Context, inputs: BigInt[]): void {
     // TODO charge less for cached results
     ctx.gasmeter.useOpcodeGas('balance');
     const address = inputs[0];
-    const balance = evm.balance(ctx, address);
+    const balance = evm.balance(address);
     ctx.stack.push(balance);
     if (ctx.logger.isDebug) {
         ctx.logger.debug('BALANCE', [bigIntToU8Array32(address)], [bigIntToU8Array32(balance)], ctx.pc);
+    }
+}
+
+export function getBaseFee(ctx: Context, inputs: BigInt[]): void {
+    ctx.gasmeter.useOpcodeGas('basefee');
+    const value = BigInt.from(0);
+    ctx.stack.push(value);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('BASEFEE', [], [bigIntToU8Array32(value)], ctx.pc);
     }
 }
 
@@ -349,7 +359,7 @@ export function getBlockNumber (ctx: Context, inputs: BigInt[]): void {
 
 export function getBlockTimestamp (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('timestamp');
-    const value = ctx.env.block.height;
+    const value = ctx.env.block.timestamp;
     ctx.stack.push(value);
     if (ctx.logger.isDebug) {
         ctx.logger.debug('TIMESTAMP',[], [bigIntToU8Array32(value)], ctx.pc);
@@ -451,10 +461,10 @@ export function finish (ctx: Context, inputs: BigInt[]): void {
     ctx.pc = 0;
     ctx.env.currentCall.returnData = result;
     ctx.env.currentCall.returnDataSuccess = 0;
-    wasmx.finish(u8ArrayToArrayBuffer(result));
     if (ctx.logger.isDebug) {
         ctx.logger.debug('RETURN', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [result], ctx.pc);
     }
+    wasmx.finish(u8ArrayToArrayBuffer(result));
 }
 
 export function stop (ctx: Context, inputs: BigInt[]): void {
@@ -462,10 +472,10 @@ export function stop (ctx: Context, inputs: BigInt[]): void {
     ctx.pc = 0;
     ctx.env.currentCall.returnData = [];
     ctx.env.currentCall.returnDataSuccess = 0;
-    wasmx.finish(new ArrayBuffer(0)); // TODO remove this, its useless
     if (ctx.logger.isDebug) {
         ctx.logger.debug('STOP', [], [], ctx.pc);
     }
+    wasmx.finish(new ArrayBuffer(0));
 }
 
 // Returns 0 on success, 1 on failure and 2 on revert
@@ -477,10 +487,10 @@ export function revert (ctx: Context, inputs: BigInt[]): void {
     ctx.pc = 0;
     ctx.env.currentCall.returnData = result;
     ctx.env.currentCall.returnDataSuccess = 2;
-    wasmx.revert(u8ArrayToArrayBuffer(result));
     if (ctx.logger.isDebug) {
         ctx.logger.debug('REVERT', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [result], ctx.pc);
     }
+    wasmx.revert(u8ArrayToArrayBuffer(result));
 }
 
 export function push0(ctx: Context, code: u8): void {

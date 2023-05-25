@@ -3,12 +3,12 @@ import { BigInt } from "as-bigint/assembly";
 import * as wasmx from './wasmx';
 import { BlockInfo, ChainInfo, AccountInfo, CurrentCallInfo, Env, TransactionInfo, CallResponse } from "./types";
 import { AccountInfoJson, CallRequestJson, CallResponseJson, EnvJson } from './types_json';
-import { arrayBufferTou8Array, i32ToU8Array, i32ArrayToU256, bigIntToArrayBuffer32, u8ArrayToBigInt, bigIntToU8Array32, maskBigInt256, bigIntToI32Array, u8ToI32Array } from './utils';
-import { Context } from "./context";
+import { arrayBufferTou8Array, i32ToU8Array, i32ArrayToU256, bigIntToArrayBuffer32, u8ArrayToBigInt, bigIntToU8Array32, maskBigInt256, bigIntToI32Array, u8ToI32Array, arrayBufferToBigInt } from './utils';
+import { Context } from './context';
 
 export function getEnvWrap(): Env {
     const envJsonStr = String.UTF8.decode(wasmx.getEnv())
-    console.log(envJsonStr)
+    // console.log(envJsonStr)
     const envJson = JSON.parse<EnvJson>(envJsonStr);
     return new Env(
         new ChainInfo(
@@ -18,7 +18,7 @@ export function getEnvWrap(): Env {
         ),
         new BlockInfo(
             i32ArrayToU256(envJson.block.height),
-            i32ArrayToU256(envJson.block.time),
+            i32ArrayToU256(envJson.block.timestamp),
             i32ArrayToU256(envJson.block.gasLimit),
             i32ArrayToU256(envJson.block.hash),
             i32ArrayToU256(envJson.block.proposer),
@@ -29,7 +29,6 @@ export function getEnvWrap(): Env {
         ),
         new AccountInfo(
             i32ArrayToU256(envJson.contract.address),
-            i32ArrayToU256(envJson.contract.balance),
             i32ArrayToU256(envJson.contract.codeHash),
             i32ToU8Array(envJson.contract.bytecode),
         ),
@@ -64,25 +63,14 @@ export function getAccountInfo(address: BigInt): AccountInfo {
     const account = JSON.parse<AccountInfoJson>(valuestr);
     return new AccountInfo(
         i32ArrayToU256(account.address),
-        i32ArrayToU256(account.balance),
         i32ArrayToU256(account.codeHash),
         i32ToU8Array(account.bytecode),
     );
 }
 
-export function setAccountInfo(account: AccountInfo): void {
-    const acc = new AccountInfoJson(
-        bigIntToU8Array32(account.address),
-        bigIntToU8Array32(account.balance),
-        bigIntToU8Array32(account.codeHash),
-        account.bytecode,
-    );
-    const accountbz = JSON.stringify<AccountInfoJson>(acc);
-    wasmx.setAccount(String.UTF8.encode(accountbz));
-}
-
-export function balance(ctx: Context, address: BigInt): BigInt {
-    return ctx.env.getAccount(address).balance;
+export function balance(address: BigInt): BigInt {
+    const balance = wasmx.getBalance(bigIntToArrayBuffer32(address));
+    return arrayBufferToBigInt(balance);
 }
 
 export function extcodesize(ctx: Context, address: BigInt): BigInt {
@@ -227,7 +215,13 @@ export function exp(a: BigInt, b: BigInt): BigInt {
 }
 
 export function not(a: BigInt): BigInt {
-    return a.bitwiseNot();
+    const base2 = a.toString(2);
+    let result = '';
+    for (let i = 0; i < base2.length; i++) {
+        result += (base2.substr(i, 1) === '0') ? '1' : '0';
+    }
+    result = result.padStart(256, '1');
+    return BigInt.fromString(result, 2);
 }
 
 export function lt(a: BigInt, b: BigInt): BigInt {

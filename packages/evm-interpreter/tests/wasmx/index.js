@@ -25,7 +25,7 @@ export function getEnv() {
         },
         block: {
             height: 10,
-            time: Math.floor(new Date().getTime() / 1000),
+            timestamp: [...hexToUint8Array(Math.floor(new Date().getTime() / 1000).toString(16))],
             gasLimit: [0x98, 0x96, 0x80], // 10000000
             hash: [...new Uint8Array(32)],
             proposer: [...new Uint8Array(20)],
@@ -127,6 +127,15 @@ export function getEnv() {
             callData: [...hexToUint8Array('bb1c8ed40000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000ff99')],
             // 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff99
 
+            // not 2
+            callData: [...hexToUint8Array('d6eddb180000000000000000000000000000000000000000000000000000000000000002')],
+            // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd
+
+            callData: [...hexToUint8Array('d6eddb18000000000000000000000001853fe40b3c24696b156c3460a90238e38e38e38e')],
+            // 0xfffffffffffffffffffffffe7ac01bf4c3db9694ea93cb9f56fdc71c71c71c71
+
+            callData: [...hexToUint8Array('24b60399')],
+            // timestamp
         },
     }
     return encodeToUtf8Array(JSON.stringify(env));

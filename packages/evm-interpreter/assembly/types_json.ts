@@ -12,7 +12,7 @@ export class ChainInfoJson {
 @serializable
 export class BlockInfoJson {
     height!: i32[];
-    time!: i32[];
+    timestamp!: i32[];
     gasLimit!: i32[];
     hash!: i32[];
     proposer!: i32[];
@@ -29,12 +29,10 @@ export class TransactionInfoJson {
 @serializable
 export class AccountInfoJson {
     address!: i32[];
-    balance!: i32[];
     codeHash!: i32[];
     bytecode!: i32[];
-    constructor(address: i32[], balance: i32[], codeHash: i32[], bytecode: i32[]) {
+    constructor(address: i32[], codeHash: i32[], bytecode: i32[]) {
         this.address = address;
-        this.balance = balance;
         this.codeHash = codeHash;
         this.bytecode = bytecode;
     }
