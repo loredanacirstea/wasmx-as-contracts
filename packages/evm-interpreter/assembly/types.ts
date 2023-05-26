@@ -136,3 +136,25 @@ export class CallResponse {
         this.data = data;
     }
 }
+
+export class CreateAccountRequest {
+    bytecode: u8[];
+    balance: BigInt;
+
+    constructor(bytecode: u8[], balance: BigInt) {
+        this.bytecode = bytecode;
+        this.balance = balance;
+    }
+}
+
+export class Create2AccountRequest {
+    bytecode: u8[];
+    balance: BigInt;
+    salt: BigInt;
+
+    constructor(bytecode: u8[], balance: BigInt, salt: BigInt) {
+        this.bytecode = bytecode;
+        this.balance = balance;
+        this.salt = salt;
+    }
+}

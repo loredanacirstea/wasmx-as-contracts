@@ -91,3 +91,29 @@ export class CallResponseJson {
         this.data = data;
     }
 }
+
+// @ts-ignore
+@serializable
+export class CreateAccountRequestJson {
+    bytecode: i32[];
+    balance: i32[];
+
+    constructor(bytecode: i32[], balance: i32[]) {
+        this.bytecode = bytecode;
+        this.balance = balance;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class Create2AccountRequestJson {
+    bytecode: i32[];
+    balance: i32[];
+    salt: i32[];
+
+    constructor(bytecode: i32[], balance: i32[], salt: i32[]) {
+        this.bytecode = bytecode;
+        this.balance = balance;
+        this.salt = salt;
+    }
+}

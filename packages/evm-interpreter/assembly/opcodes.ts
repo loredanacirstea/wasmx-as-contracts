@@ -91,8 +91,8 @@ opcodesMap.set('call', call);
 opcodesMap.set('callCode', callCode);
 opcodesMap.set('callDelegate', callDelegate);
 opcodesMap.set('callStatic', callStatic);
-// opcodesMap.set('create', create);
-// opcodesMap.set('create2', create2);
+opcodesMap.set('create', create);
+opcodesMap.set('create2', create2);
 // opcodesMap.set('selfDestruct', selfDestruct);
 
 export function loadMemory (ctx: Context, inputs: BigInt[]): void {
@@ -957,24 +957,27 @@ export function callStatic (ctx: Context, inputs: BigInt[]): void {
     }
 }
 
-// export function create (
-//     value,
-//     dataOffset,
-//     dataLength,
-//     {ctx.stack, position}
-// ) {
-//     const {baseFee, addl} = getPrice('create', {length: dataLength});
-//     jsvm_env.useGas(baseFee);
-//     jsvm_env.useGas(addl);
-//     const address = toBN(jsvm_env.create(value, dataOffset, dataLength));
-//     ctx.stack.push(address);
-//     logger.debug('CREATE', [value,
-//         dataOffset,
-//         dataLength,
-//     ], [address], getCache(), ctx.stack, undefined, position, baseFee, addl);
-//     return {ctx.stack, position};
-// }
+export function create (ctx: Context, inputs: BigInt[]): void {
+    // todo gas
+    ctx.gasmeter.useOpcodeGas('create');
+    const data = ctx.memory.load(inputs[1].toUInt32(), inputs[2].toUInt32());
+    const address = evm.create(inputs[0], data);
+    ctx.stack.push(address);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('CREATE', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1]), bigIntToU8Array32(inputs[2])], [bigIntToU8Array32(address)], ctx.pc);
+    }
+}
 
+export function create2 (ctx: Context, inputs: BigInt[]): void {
+    // todo gas
+    ctx.gasmeter.useOpcodeGas('create2');
+    const data = ctx.memory.load(inputs[1].toUInt32(), inputs[2].toUInt32());
+    const address = evm.create2(inputs[0], data, inputs[3]);
+    ctx.stack.push(address);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('CREATE2', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1]), bigIntToU8Array32(inputs[2]), bigIntToU8Array32(inputs[3])], [bigIntToU8Array32(address)], ctx.pc);
+    }
+}
 
 // export function selfDestruct (address, ctx: Context, inputs: BigInt[]): void {
 //     const gasCost = getPrice('selfdestruct');
@@ -983,112 +986,4 @@ export function callStatic (ctx: Context, inputs: BigInt[]): void {
 //     logger.debug('SELFDESTRUCT', [address], [], getCache(), ctx.stack, undefined, position, gasCost);
 //     finishAction({gas: jsvm_env.getGas(), context: jsvm_env.getContext(), logs: jsvm_env.getLogs()});
 //     return {ctx.stack, position: 0};
-// }
-
-// // precompiles
-// export function ecrecover (
-//     gas_limit_i64,
-//     dataOffset,
-//     dataLength,
-//     outputOffset,
-//     outputLength,
-//     {ctx.stack, position},
-// ) {
-//     const {baseFee} = getPrice('ecrecover');
-//     jsvm_env.useGas(baseFee);
-
-//     const result = toBN(jsvm_env.ecrecover(
-//         gas_limit_i64,
-//         dataOffset,
-//         dataLength,
-//         outputOffset,
-//         outputLength
-//     ));
-//     if (result.eqn(0)) ctx.stack.push(toBN(0));
-//     else ctx.stack.push(toBN(1));
-//     logger.debug('ECRECOVER', [
-//         gas_limit_i64,
-//         dataOffset,
-//         dataLength,
-//         outputOffset,
-//         outputLength], [result], getCache(), ctx.stack, undefined, position, baseFee);
-
-//     return {ctx.stack, position};
-// }
-
-// export function sha256 (
-//     gas_limit_i64,
-//     dataOffset,
-//     dataLength,
-//     outputOffset,
-//     outputLength,
-//     {ctx.stack, position},
-// ) {
-//     throw new Error('sha256 not implemented');
-// }
-
-// export function ripemd160 (
-//     gas_limit_i64,
-//     dataOffset,
-//     dataLength,
-//     outputOffset,
-//     outputLength,
-//     {ctx.stack, position},
-// ) {
-//     throw new Error('ripemd160 not implemented');
-// }
-
-// export function modexp (
-//     gas_limit_i64,
-//     dataOffset,
-//     dataLength,
-//     outputOffset,
-//     outputLength,
-//     {ctx.stack, position},
-// ) {
-//     throw new Error('modexp not implemented');
-// }
-
-// export function ecadd (
-//     gas_limit_i64,
-//     dataOffset,
-//     dataLength,
-//     outputOffset,
-//     outputLength,
-//     {ctx.stack, position},
-// ) {
-//     throw new Error('ecadd not implemented');
-// }
-
-// export function ecmul (
-//     gas_limit_i64,
-//     dataOffset,
-//     dataLength,
-//     outputOffset,
-//     outputLength,
-//     {ctx.stack, position},
-// ) {
-//     throw new Error('ecmul not implemented');
-// }
-
-// export function ecpairing (
-//     gas_limit_i64,
-//     dataOffset,
-//     dataLength,
-//     outputOffset,
-//     outputLength,
-//     {ctx.stack, position},
-// ) {
-//     throw new Error('ecpairing not implemented');
-// }
-
-// export function blake2f (
-//     gas_limit_i64,
-//     dataOffset,
-//     dataLength,
-//     outputOffset,
-//     outputLength,
-//     {ctx.stack, position},
-// ) {
-//     throw new Error('blake2f not implemented');
 // }

@@ -99,7 +99,7 @@ opByCode.set(0xf1, {name: 'call', arity: 7});
 opByCode.set(0xf2, {name: 'callCode', arity: 7});
 opByCode.set(0xf3, {name: 'finish', arity: 2});
 opByCode.set(0xf4, {name: 'callDelegate', arity: 6});
-opByCode.set(0xf5, {name: 'create2', arity: 3});
+opByCode.set(0xf5, {name: 'create2', arity: 4});
 opByCode.set(0xfa, {name: 'callStatic', arity: 6});
 opByCode.set(0xfd, {name: 'revert', arity: 2});
 opByCode.set(0xfe, {name: 'invalid', arity: 0});

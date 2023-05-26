@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import { BigInt } from "as-bigint/assembly";
 import * as wasmx from './wasmx';
 import { BlockInfo, ChainInfo, AccountInfo, CurrentCallInfo, Env, TransactionInfo, CallResponse } from "./types";
-import { AccountInfoJson, CallRequestJson, CallResponseJson, EnvJson } from './types_json';
+import { AccountInfoJson, CallRequestJson, CallResponseJson, Create2AccountRequestJson, CreateAccountRequestJson, EnvJson } from './types_json';
 import { arrayBufferTou8Array, i32ToU8Array, i32ArrayToU256, bigIntToArrayBuffer32, u8ArrayToBigInt, bigIntToU8Array32, maskBigInt256, bigIntToI32Array, u8ToI32Array, arrayBufferToBigInt } from './utils';
 import { Context } from './context';
 
@@ -176,6 +176,34 @@ export function callCode(
     const valuebz = wasmx.externalCall(String.UTF8.encode(datastr));
     const response = JSON.parse<CallResponseJson>(String.UTF8.decode(valuebz));
     return new CallResponse(u8(response.success), i32ToU8Array(response.data));
+}
+
+export function create(
+    value: BigInt,
+    bytecode: u8[],
+): BigInt {
+    const data = new CreateAccountRequestJson (
+        u8ToI32Array(bytecode),
+        bigIntToI32Array(value),
+    )
+    const datastr = JSON.stringify<CreateAccountRequestJson>(data);
+    const addressbz = wasmx.createAccount(String.UTF8.encode(datastr));
+    return arrayBufferToBigInt(addressbz);
+}
+
+export function create2(
+    value: BigInt,
+    bytecode: u8[],
+    salt: BigInt,
+): BigInt {
+    const data = new Create2AccountRequestJson (
+        u8ToI32Array(bytecode),
+        bigIntToI32Array(value),
+        bigIntToI32Array(salt),
+    )
+    const datastr = JSON.stringify<Create2AccountRequestJson>(data);
+    const addressbz = wasmx.create2Account(String.UTF8.encode(datastr));
+    return arrayBufferToBigInt(addressbz);
 }
 
 export function add(a: BigInt, b: BigInt): BigInt {

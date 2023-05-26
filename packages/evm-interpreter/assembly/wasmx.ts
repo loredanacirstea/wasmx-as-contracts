@@ -10,6 +10,8 @@ export declare function revert(message: ArrayBuffer): void
 export declare function getBlockHash(number: ArrayBuffer): ArrayBuffer
 export declare function getAccount(address: ArrayBuffer): ArrayBuffer
 export declare function getBalance(address: ArrayBuffer): ArrayBuffer
+export declare function createAccount(account: ArrayBuffer): ArrayBuffer
+export declare function create2Account(account: ArrayBuffer): ArrayBuffer
 
 export declare function externalCall(data: ArrayBuffer): ArrayBuffer
 
