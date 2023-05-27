@@ -411,14 +411,9 @@ export function log (ctx: Context, dataOffset: u32, dataLength: u32, topics: Big
     // TODO price based on topics indexed
     ctx.gasmeter.useOpcodeGas('log');
     const data = ctx.memory.load(dataOffset, dataLength);
-    const topicsbz: u8[][] = [];
-    for (let i = 0; i < topics.length; i++) {
-        topicsbz.push(bigIntToU8Array32(topics[i]));
-    }
-    ctx.env.currentCall.logs.push(new EvmLog(data, topicsbz))
-
+    evm.log(data, topics);
     if (ctx.logger.isDebug) {
-        const inputs: u8[][] = [data].concat(topicsbz.reduce((accum: u8[][], value: u8[]) => accum.concat([value]), []));
+        const inputs: u8[][] = [data].concat(topics.reduce((accum: u8[][], value: BigInt) => accum.concat([bigIntToU8Array32(value)]), []));
         ctx.logger.debug('LOG', inputs, [], ctx.pc);
     }
 }

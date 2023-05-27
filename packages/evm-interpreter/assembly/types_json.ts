@@ -117,3 +117,15 @@ export class Create2AccountRequestJson {
         this.salt = salt;
     }
 }
+
+// @ts-ignore
+@serializable
+export class EvmLogJson {
+    type: string = 'ewasm';
+    data: i32[];
+    topics: i32[][];
+    constructor(data: i32[], topics: i32[][]) {
+        this.data = data;
+        this.topics = topics;
+    }
+}

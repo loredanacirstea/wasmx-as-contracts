@@ -67,7 +67,6 @@ export class CurrentCallInfo {
     funds: BigInt;
     gasLimit: BigInt;
     callData: u8[];
-    logs: EvmLog[];
     returnData: u8[] = [];
     returnDataSuccess: u8 = 1; // 0 = success, 1 = revert; 2 = internal error;
     constructor(origin: BigInt, sender: BigInt, funds: BigInt, gasLimit: BigInt, callData: u8[]) {
@@ -76,7 +75,6 @@ export class CurrentCallInfo {
         this.funds = funds;
         this.gasLimit = gasLimit;
         this.callData = callData;
-        this.logs = [];
     }
 }
 
