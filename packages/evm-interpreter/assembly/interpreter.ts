@@ -24,6 +24,9 @@ function interpretOpcode (ctx: Context): void {
     }
     ctx.pc += 1;
     const invalidError = `Invalid opcode ${code}`;
+    if (ctx.logger.isDebug) {
+        console.log("opcode: " + code.toString())
+    }
 
     if (u8(0x60) <= code && code < u8(0x80)) {
         handlePush(ctx, code);

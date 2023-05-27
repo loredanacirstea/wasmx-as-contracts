@@ -85,6 +85,14 @@ export function bigIntToI32Array(v: BigInt): i32[] {
     return arr;
 }
 
+export function bigIntToI32Array32(v: BigInt): i32[] {
+    let arr = bigIntToI32Array(v);
+    if (arr.length < 33) {
+        return new Array<i32>(32 - arr.length).concat(arr);
+    }
+    return arr.slice(arr.length - 32);
+}
+
 export function u8ArrayToBigInt(arr: u8[]): BigInt {
     return BigInt.fromString(u8ArrayToHex(arr), 16);
 }

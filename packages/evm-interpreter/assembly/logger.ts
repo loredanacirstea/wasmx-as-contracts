@@ -23,5 +23,8 @@ export class OpcodeLogger {
     debug(name: string, inputs: u8[][] = [], outputs: u8[][] = [], pc: i32 = 0): void {
         const log = new OpcodeLog(name, inputs, outputs, pc);
         this.logs.push(log);
+        console.log(name);
+        console.log(inputs.toString());
+        console.log(outputs.toString());
     }
 }
