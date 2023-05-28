@@ -1,4 +1,4 @@
-import { BigInt } from "as-bigint/assembly";
+import { BigInt } from "./bn";
 import { Context } from './context';
 import { opByCode } from './opcodes_info';
 import { opcodesMap, handlePush, handleDup, handleSwap } from './opcodes';

@@ -1,4 +1,4 @@
-import { BigInt } from "as-bigint/assembly";
+import { BigInt } from "./bn";
 import { getAccountInfo } from "./evm";
 
 // TODO typecheck for each

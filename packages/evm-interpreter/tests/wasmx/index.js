@@ -6,6 +6,10 @@ export function stop(buf) {
     console.log('stop', buf);
 }
 
+export function revert(buf) {
+    console.log('revert', buf);
+}
+
 export function storageStore(keybuf, valuebuf) {
     console.log('storageStore', keybuf, valuebuf);
 }

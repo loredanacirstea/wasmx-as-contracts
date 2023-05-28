@@ -1,5 +1,5 @@
 import { JSON } from "json-as/assembly";
-import { BigInt } from "as-bigint/assembly";
+import { BigInt } from "./bn";
 import * as wasmx from './wasmx';
 import { BlockInfo, ChainInfo, AccountInfo, CurrentCallInfo, Env, TransactionInfo, CallResponse } from "./types";
 import { AccountInfoJson, CallRequestJson, CallResponseJson, Create2AccountRequestJson, CreateAccountRequestJson, EnvJson, EvmLogJson } from './types_json';
@@ -228,7 +228,7 @@ export function sub(a: BigInt, b: BigInt): BigInt {
     if (a.gte(b)) return a.sub(b);
     // with underflow
     const diff = b.sub(a);
-    return BigInt.from(1).mulPowTwo(256).sub(diff);
+    return BigInt.from(2).pow(256).sub(diff);
 }
 
 export function mul(a: BigInt, b: BigInt): BigInt {
@@ -352,7 +352,7 @@ export function signextend(i: BigInt, x: BigInt): BigInt {
     v = v.rightShift(extbits);
 
     if (!isNeg(v, bits-1)) return v;
-    const padd = BigInt.from(2).pow(256).sub(1).rightShift(bits).leftShift(bits);
+    const padd = BigInt.from(2).pow(256).sub(BigInt.from(1)).rightShift(bits).leftShift(bits);
     v = padd.add(v);
     return v;
 }

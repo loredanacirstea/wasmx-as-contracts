@@ -1,11 +1,7 @@
-import { BigInt } from "as-bigint/assembly";
+import { BigInt } from "./bn";
 
 export class Stack {
-    stack: Array<BigInt>;
-
-    constructor(snapshotStack: Array<BigInt>) {
-        this.stack = snapshotStack;
-    }
+    stack: Array<BigInt> = new Array<BigInt>(2048);
 
     get(index: u32): BigInt {
         return this.stack[index];

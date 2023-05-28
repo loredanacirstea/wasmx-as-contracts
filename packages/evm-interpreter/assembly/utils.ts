@@ -1,4 +1,4 @@
-import { BigInt } from "as-bigint/assembly";
+import { BigInt } from "./bn";
 
 export function u8ArrayToArrayBuffer(u8Array: u8[]): ArrayBuffer {
     const length = u8Array.length;

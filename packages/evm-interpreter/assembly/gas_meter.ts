@@ -1,4 +1,4 @@
-import { BigInt } from "as-bigint/assembly";
+import { BigInt } from "./bn";
 import * as ERROR from './error';
 
 export class GasMeter {
@@ -13,16 +13,16 @@ export class GasMeter {
     }
 
     getGas(): BigInt {
-        return BigInt.sub(this.usedGas, this.refundedGas);
+        return this.usedGas.sub(this.refundedGas);
     }
 
     getGasLeft(): BigInt {
-        const gas = BigInt.sub(this.gasLimit, this.usedGas)
-        return BigInt.add(gas, this.refundedGas);
+        const gas = this.gasLimit.sub(this.usedGas);
+        return gas.add(this.refundedGas);
     }
 
     useGas(gas: BigInt): void {
-        this.usedGas = BigInt.add(this.usedGas, gas);
+        this.usedGas = this.usedGas.add(gas);
 
         if (BigInt.gt(this.getGas(), this.gasLimit)) {
             throw new Error(`${ERROR.OUT_OF_GAS}. Using ${gas.toString()}. Gas used: ${this.getGas().toString()}. Gas limit: ${this.gasLimit.toString()}`);
@@ -32,7 +32,7 @@ export class GasMeter {
     refundGas(gas: BigInt): void {
         // can be negative due to SSTORE EIP2200;
         if (gas.isZero()) return;
-        this.refundedGas = BigInt.add(this.refundedGas, gas);
+        this.refundedGas = this.refundedGas.add(gas);
     }
 
     clone(): GasMeter {

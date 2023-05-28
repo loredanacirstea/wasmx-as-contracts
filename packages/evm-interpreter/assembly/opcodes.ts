@@ -1,9 +1,8 @@
-import { BigInt } from "as-bigint/assembly";
+import { BigInt } from "./bn";
 import { Context } from './context';
 import { u8ArrayToArrayBuffer, u8ArrayToBigInt, bigIntToU8Array32 } from './utils';
 import * as wasmx from './wasmx';
 import * as evm from './evm';
-import { EvmLog } from './types';
 import { Memory } from './memory';
 
 type OpcodeFn = (ctx: Context, inputs: BigInt[]) => void;

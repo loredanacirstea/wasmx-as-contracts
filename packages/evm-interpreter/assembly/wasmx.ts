@@ -18,11 +18,6 @@ export declare function externalCall(data: ArrayBuffer): ArrayBuffer
 export declare function keccak256(value: ArrayBuffer): ArrayBuffer
 
 // // TODO
-// export declare function create(
-//     value: BigInt,
-//     dataOffset: i64,
-//     dataLength: i64,
-// ): i32
 // export declare function selfDestruct(address: Address): void
 // export declare function keccak256(offset: i64, length: i64): Bytes32
 
