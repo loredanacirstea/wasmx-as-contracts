@@ -1,5 +1,7 @@
 import { BigInt } from "./bn";
 
+export const MAX_UINT = BigInt.fromInt32(2).pow(256);
+
 export function u8ArrayToArrayBuffer(u8Array: u8[]): ArrayBuffer {
     const length = u8Array.length;
     const buffer = new ArrayBuffer(length);
@@ -106,8 +108,6 @@ export function i32ArrayToU256(arr: i32[]): BigInt {
 }
 
 export function maskBigInt256(v: BigInt): BigInt {
-    // if (v.countBits() <= 256) return v;
-    const value = v.toString(16);
-    if (value.length < 65) return v;
-    return BigInt.fromString(value.substr(value.length - 64), 16);
+    if (v.lt(MAX_UINT)) return v;
+    return v.mod(MAX_UINT);
 }

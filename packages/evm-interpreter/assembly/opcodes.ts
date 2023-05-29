@@ -17,7 +17,8 @@ opcodesMap.set('jump', jump);
 opcodesMap.set('jumpi', jumpi);
 opcodesMap.set('jumpdest', jumpdest);
 opcodesMap.set('pop', pop);
-opcodesMap.set('push0', pop);
+opcodesMap.set('push0', push0);
+opcodesMap.set('pc', pc);
 // opcodesMap.set('getMSize', getMSize); // TODO
 
 opcodesMap.set('loadMemory', loadMemory);
@@ -117,11 +118,9 @@ export function storeMemory (ctx: Context, inputs: BigInt[]): void {
 export function storeMemory8 (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('mstore8');
     const offset = inputs[0].toUInt32();
-    const value = bigIntToU8Array32(inputs[1]);
-
-    ctx.memory.store(value, offset)
+    ctx.memory.store8(u8(inputs[1].toUInt32()), offset);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('MSTORE8', [bigIntToU8Array32(inputs[0])], [bigIntToU8Array32(inputs[1])], ctx.pc);
+        ctx.logger.debug('MSTORE8', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [], ctx.pc);
     }
 }
 
@@ -487,7 +486,7 @@ export function revert (ctx: Context, inputs: BigInt[]): void {
     wasmx.revert(u8ArrayToArrayBuffer(result));
 }
 
-export function push0(ctx: Context, code: u8): void {
+export function push0(ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('push0');
     const value = BigInt.fromInt32(0);
     ctx.stack.push(value);
@@ -564,6 +563,14 @@ export function pop (ctx: Context, inputs: BigInt[]): void {
     }
 }
 
+export function pc (ctx: Context, inputs: BigInt[]): void {
+    ctx.gasmeter.useOpcodeGas('pc');
+    ctx.stack.push(BigInt.from(ctx.pc));
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('PC', [], [], ctx.pc);
+    }
+}
+
 export function add (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('add');
     const result = evm.add(inputs[0], inputs[1]);
@@ -591,7 +598,6 @@ export function mul (ctx: Context, inputs: BigInt[]): void {
     }
 }
 
-// TODO
 export function div (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('div');
     const result = evm.div(inputs[0], inputs[1]);
@@ -601,7 +607,6 @@ export function div (ctx: Context, inputs: BigInt[]): void {
     }
 }
 
-// TODO
 export function sdiv (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('sdiv');
 
@@ -616,7 +621,6 @@ export function sdiv (ctx: Context, inputs: BigInt[]): void {
     }
 }
 
-// TODO
 export function mod (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('mod');
     // const result = a.abs().mod(b.abs());
@@ -627,13 +631,8 @@ export function mod (ctx: Context, inputs: BigInt[]): void {
     }
 }
 
-// TODO
 export function smod (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('smod');
-    //     const _a = a.fromTwos(256);
-    //     const _b = b.fromTwos(256);
-    //     if (_b.isZero()) result = toBN(0);
-    //     else result = _a.mod(_b);
     const result = evm.smod(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
@@ -641,7 +640,6 @@ export function smod (ctx: Context, inputs: BigInt[]): void {
     }
 }
 
-// TODO
 export function addmod (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('addmod');
     const result = evm.addmod(inputs[0], inputs[1], inputs[2]);
@@ -651,7 +649,6 @@ export function addmod (ctx: Context, inputs: BigInt[]): void {
     }
 }
 
-// TODO
 export function mulmod (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('mulmod');
     const result = evm.mulmod(inputs[0], inputs[1], inputs[2]);
@@ -661,7 +658,6 @@ export function mulmod (ctx: Context, inputs: BigInt[]): void {
     }
 }
 
-// TODO
 export function exp (ctx: Context, inputs: BigInt[]): void {
     // TODO gas cost based on exp
     ctx.gasmeter.useOpcodeGas('exp');
@@ -672,7 +668,6 @@ export function exp (ctx: Context, inputs: BigInt[]): void {
     }
 }
 
-// TODO
 export function signextend (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('signextend');
     const result = evm.signextend(inputs[0], inputs[1]);
@@ -700,13 +695,8 @@ export function gt (ctx: Context, inputs: BigInt[]): void {
     }
 }
 
-// TODO
 export function slt (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('slt');
-//     const _a = a.fromTwos(256);
-//     const _b = b.fromTwos(256);
-//     let result = _a.lt(_b);
-//     result = toBN(result ? 1 : 0);
     const result = evm.slt(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
@@ -714,13 +704,8 @@ export function slt (ctx: Context, inputs: BigInt[]): void {
     }
 }
 
-// TODO
 export function sgt (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('sgt');
-//     const _a = a.fromTwos(256);
-//     const _b = b.fromTwos(256);
-//     let result = _a.gt(_b);
-//     result = toBN(result ? 1 : 0);
     const result = evm.sgt(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {

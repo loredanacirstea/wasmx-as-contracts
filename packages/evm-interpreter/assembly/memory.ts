@@ -23,6 +23,10 @@ export class Memory {
         }
     }
 
+    store8(value: u8, offset: u32): void {
+        this.mem[offset] = value;
+    }
+
     static fill(arr: Array<u8>, maxlength: u32): u8[] {
         if (u32(arr.length) < maxlength) {
             arr = arr.concat(new Array<u8>(maxlength - u32(arr.length)))

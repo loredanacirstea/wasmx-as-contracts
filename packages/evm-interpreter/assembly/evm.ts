@@ -3,7 +3,7 @@ import { BigInt } from "./bn";
 import * as wasmx from './wasmx';
 import { BlockInfo, ChainInfo, AccountInfo, CurrentCallInfo, Env, TransactionInfo, CallResponse } from "./types";
 import { AccountInfoJson, CallRequestJson, CallResponseJson, Create2AccountRequestJson, CreateAccountRequestJson, EnvJson, EvmLogJson } from './types_json';
-import { arrayBufferTou8Array, i32ToU8Array, i32ArrayToU256, bigIntToArrayBuffer32, u8ArrayToBigInt, bigIntToU8Array32, maskBigInt256, bigIntToI32Array, u8ToI32Array, arrayBufferToBigInt, bigIntToI32Array32 } from './utils';
+import { arrayBufferTou8Array, i32ToU8Array, i32ArrayToU256, bigIntToArrayBuffer32, u8ArrayToBigInt, bigIntToU8Array32, maskBigInt256, bigIntToI32Array, u8ToI32Array, arrayBufferToBigInt, bigIntToI32Array32, MAX_UINT } from './utils';
 import { Context } from './context';
 
 export function getEnvWrap(): Env {
@@ -113,7 +113,6 @@ export function callDelegate(
     address: BigInt,
     calldata: u8[],
 ): CallResponse {
-    const bytecode = getExternalCode(ctx, address);
     const data = new CallRequestJson (
         bigIntToI32Array32(ctx.env.contract.address),
         bigIntToI32Array32(ctx.env.currentCall.sender),
@@ -136,7 +135,6 @@ export function callStatic(
     address: BigInt,
     calldata: u8[],
 ): CallResponse {
-    const bytecode = getExternalCode(ctx, address);
     const data = new CallRequestJson (
         bigIntToI32Array32(address),
         bigIntToI32Array32(ctx.env.contract.address),
@@ -160,7 +158,6 @@ export function callCode(
     value: BigInt,
     calldata: u8[],
 ): CallResponse {
-    const bytecode = getExternalCode(ctx, address);
     const data = new CallRequestJson (
         bigIntToI32Array32(ctx.env.contract.address),
         bigIntToI32Array32(ctx.env.contract.address),
@@ -228,7 +225,7 @@ export function sub(a: BigInt, b: BigInt): BigInt {
     if (a.gte(b)) return a.sub(b);
     // with underflow
     const diff = b.sub(a);
-    return BigInt.from(2).pow(256).sub(diff);
+    return MAX_UINT.sub(diff);
 }
 
 export function mul(a: BigInt, b: BigInt): BigInt {
@@ -237,18 +234,22 @@ export function mul(a: BigInt, b: BigInt): BigInt {
 }
 
 export function div(a: BigInt, b: BigInt): BigInt {
+    if (a.isZero() || b.isZero()) return BigInt.fromInt16(0);
     return a.div(b);
 }
 
 export function sdiv(a: BigInt, b: BigInt): BigInt {
+    if (a.isZero() || b.isZero()) return BigInt.fromInt16(0);
     return twosComplement(a).div(twosComplement(b));
 }
 
 export function mod(a: BigInt, b: BigInt): BigInt {
+    if (a.isZero() || b.isZero()) return BigInt.fromInt16(0);
     return a.mod(b);
 }
 
 export function smod(a: BigInt, b: BigInt): BigInt {
+    if (a.isZero() || b.isZero()) return BigInt.fromInt16(0);
     return twosComplement(a).mod(twosComplement(b));
 }
 
@@ -321,11 +322,13 @@ export function shr(shift: BigInt, value: BigInt): BigInt {
 }
 
 export function addmod(a: BigInt, b: BigInt, c: BigInt): BigInt {
-    return a.add(b).mod(c);
+    const value = a.add(b).mod(c);
+    return maskBigInt256(value);
 }
 
 export function mulmod(a: BigInt, b: BigInt, c: BigInt): BigInt {
-    return a.mul(b).mod(c);
+    const value = a.mul(b).mod(c);
+    return maskBigInt256(value);
 }
 
 // nobits, value

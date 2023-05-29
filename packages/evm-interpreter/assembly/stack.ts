@@ -1,4 +1,5 @@
 import { BigInt } from "./bn";
+import { STACK_UNDERFLOW } from "./error";
 
 export class Stack {
     stack: Array<BigInt> = new Array<BigInt>(2048);
@@ -20,12 +21,15 @@ export class Stack {
     }
 
     pop(): BigInt {
+        if (this.stack.length === 0) {
+            throw new Error(STACK_UNDERFLOW);
+        }
         return this.stack.pop();
     }
 
     dup(x: i32): BigInt {
         if (x > this.stack.length) throw new Error(`Invalid DUP${x} ; stack length: ${this.stack.length}`);
-        const value = this.stack[this.stack.length - x];
+        const value = this.stack[this.stack.length - x].copy();
         this.stack.push(value);
         return value;
     }
