@@ -541,7 +541,7 @@ export function jumpi (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('jumpi');
     const newpos = inputs[0].toInt32();
     // EVM allows any uint256 except from 0 to be interpreted as true
-    const condition = inputs[1].toInt32() > 0;
+    const condition = inputs[1].gt(BigInt.fromInt32(0));
     if (condition) ctx.pc = newpos;
     if (ctx.logger.isDebug) {
         ctx.logger.debug('JUMPI', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [], ctx.pc);
