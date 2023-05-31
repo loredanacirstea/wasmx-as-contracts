@@ -4,7 +4,8 @@
       "outFile": "build/debug.wasm",
       "textFile": "build/debug.wat",
       "sourceMap": true,
-      "debug": true
+      "debug": true,
+      "stackSize": 1000000
     },
     "release": {
       "outFile": "build/release.wasm",
@@ -12,8 +13,9 @@
       "sourceMap": true,
       "optimizeLevel": 3,
       "shrinkLevel": 0,
-      "converge": false,
-      "noAssert": false
+      "converge": true,
+      "noAssert": false,
+      "stackSize": 1000000
     }
   },
   "options": {

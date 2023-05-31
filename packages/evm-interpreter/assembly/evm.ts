@@ -349,10 +349,19 @@ export function signextend(i: BigInt, x: BigInt): BigInt {
     return v;
 }
 
-export function keccak256(data: u8[]): BigInt {
-    const _data = new Uint8Array(data.length);
-    _data.set(data);
-    const hash = wasmx.keccak256(_data.buffer);
-    return u8ArrayToBigInt(arrayBufferTou8Array(hash));
+export function keccak256(ctx: Context, data: u8[]): BigInt {
+    // const _data = new Uint8Array(data.length);
+    // _data.set(data);
+    // const hash = wasmx.keccak256(_data.buffer);
+    // return u8ArrayToBigInt(arrayBufferTou8Array(hash));
+    return BigInt.fromU32(0);
 }
 
+// export function keccak256(ctx: Context, data: u8[]): BigInt {
+//     const hash: ArrayBuffer = new ArrayBuffer(32);
+//     const inputOffset = changetype<i32>(data);
+//     const outputOffset = changetype<i32>(hash);
+//     ctx.resetKeccakSpace();
+//     wasmx.keccak256(i32(ctx.keccakOffset), inputOffset, data.length, outputOffset);
+//    return BigInt.fromArrayBuffer(hash, 32, false);
+// }

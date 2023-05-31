@@ -25,7 +25,6 @@
     "wasmx": "file:tests/wasmx"
   },
   "dependencies": {
-    "as-bigint": "^0.5.3",
-    "json-as": "^0.5.36"
+    "json-as": "github:loredanacirstea/as-json"
   }
 }

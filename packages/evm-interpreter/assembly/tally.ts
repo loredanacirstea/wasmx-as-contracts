@@ -113,11 +113,11 @@ export class tally {
         return tally.xor(this, b);
     }
 
-    shl(b: i32): tally {
+    shl(b: u32): tally {
         return tally.shl(this, b);
     }
 
-    shr(b: i32, maxbits: i32 = 256): tally {
+    shr(b: u32, maxbits: u32 = 256): tally {
         return tally.shr(this, b, maxbits);
     }
 
@@ -146,7 +146,7 @@ export class tally {
     }
 
     // bitsno
-    sar(b: tally, maxbits: i32 = 256): tally {
+    sar(b: tally, maxbits: u32 = 256): tally {
         return tally.sar(this, b, maxbits);
     }
 
@@ -206,7 +206,7 @@ export class tally {
         return arr;
     }
 
-    toString(radix: i32 = 0): string {
+    toString(radix: u32 = 0): string {
         return tally.toString(this, radix);
     }
 
@@ -220,10 +220,6 @@ export class tally {
         const part = this.toU8Array().slice(0, byteLength);
         return tally.fromU8Array(part, byteLength);
     }
-
-    // static fromI32(value: i32, size: i32 = 32): tally {
-    //     return tally.fromU32(u32(value));
-    // }
 
     static fromU32(value: u32, size: i32 = 32): tally {
         const v = new tally(size);
@@ -503,7 +499,7 @@ export class tally {
         return c;
     }
 
-    static sar(value: tally, bitsno: tally, maxbits: i32 = 256): tally {
+    static sar(value: tally, bitsno: tally, maxbits: u32 = 256): tally {
         const msb = tally.isNeg(value) ? 1 : 0;
         const _bitsno = bitsno.toInt32();
         let v = value.shr(_bitsno);
@@ -666,21 +662,21 @@ export class tally {
         return b
     }
 
-    static shl(a: tally, b: i32): tally {
+    static shl(a: tally, b: u32): tally {
         const c = tally.fromU32(2).pown(b);
         return tally.mul(a, c);
     }
 
     // big endian shr: division
-    static shr(a: tally, b: i32, maxbits: i32 = 256): tally {
+    static shr(a: tally, b: u32, maxbits: u32 = 256): tally {
         let c = new tally(a.a32.byteLength);
         const shiftAmount = u32(b % 32);
-        const offset = i32(b / 32);
+        const offset = u32(b / 32);
         c.a32.set(a.a32.slice(offset), 0);
         return tally.fromU32Array(tally.shiftRightUint32Array(c.a32, shiftAmount, maxbits));
     }
 
-    private static shiftRightUint32Array(array: Uint32Array, shiftAmount: u32, maxbits: i32): Uint32Array {
+    private static shiftRightUint32Array(array: Uint32Array, shiftAmount: u32, maxbits: u32): Uint32Array {
         const length = array.length;
         const shiftOffset = shiftAmount % maxbits;
         const carryOffset = maxbits - shiftOffset;
@@ -762,7 +758,7 @@ export class tally {
         return tally.div(tally.mul(a, b), tally.gcd(a, b))
     }
 
-    static toString(a: tally, radix: i32 = 0): string {
+    static toString(a: tally, radix: u32 = 0): string {
         if (radix == 16) return u8ArrayToHex(a.toU8ArrayBe());
         return a.a8.toString();
     }

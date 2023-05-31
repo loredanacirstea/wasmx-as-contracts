@@ -15,12 +15,12 @@ export declare function create2Account(account: ArrayBuffer): ArrayBuffer
 
 export declare function externalCall(data: ArrayBuffer): ArrayBuffer
 
-export declare function keccak256(value: ArrayBuffer): ArrayBuffer
+// export declare function keccak256(contextOffset: i32, inputOffset: i32, inputLength: i32, outputOffset: i32): void
+// export declare function keccak256(value: ArrayBuffer): ArrayBuffer
+
 
 // // TODO
 // export declare function selfDestruct(address: Address): void
-// export declare function keccak256(offset: i64, length: i64): Bytes32
-
 // export declare function useGas(value: u64): void
 // export declare function refundGas(value: u64): void
 
