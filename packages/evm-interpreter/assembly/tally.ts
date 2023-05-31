@@ -8,13 +8,15 @@ export class tally {
     a16: Uint16Array;
     a8: Uint8Array;
 
-    constructor(size: i32 = 32) {
-        const buf = new ArrayBuffer(size);
+    constructor(buf: ArrayBuffer, littleEndian: bool = true) {
         this.buf = buf;
         // this.a64 = Uint64Array.wrap(buf);
         this.a32 = Uint32Array.wrap(buf);
         this.a16 = Uint16Array.wrap(buf);
         this.a8 = Uint8Array.wrap(buf);
+        if (!littleEndian) {
+            this.a8.reverse();
+        }
     }
 
     setU32(value: u32): void {
@@ -234,23 +236,27 @@ export class tally {
         return tally.fromU8Array(part, byteLength);
     }
 
+    static empty(byteLength: i32 = 32): tally {
+        const buf = new ArrayBuffer(byteLength);
+        return new tally(buf);
+    }
+
     static fromU32(value: u32, size: i32 = 32): tally {
-        const v = new tally(size);
+        const v = tally.empty(size);
         v.setU32(value);
         return v;
     }
 
     static fromU64(value: u64, size: i32 = 32): tally {
-        const v = new tally(size);
+        const v = tally.empty(size);
         v.setU64(value);
         return v;
     }
 
-    // TODO constructor should receive an ArrayBuffer
     static fromArrayBuffer(value: ArrayBuffer, bytesLength: i32 = 32, littleEndian: bool = true): tally {
         if (bytesLength == 0) bytesLength = value.byteLength;
         if (bytesLength < value.byteLength) throw new Error("invalid length");
-        const v = new tally(bytesLength);
+        const v = tally.empty(bytesLength);
         v.buf = value;
         if (!littleEndian) {
             v.a8.reverse();
@@ -260,7 +266,7 @@ export class tally {
 
     static fromU8Array(value: Array<u8>, bytesLength: i32 = 32, littleEndian: bool = true): tally {
         if (bytesLength < value.length) throw new Error("invalid length");
-        const v = new tally(bytesLength);
+        const v = tally.empty(bytesLength);
         if (littleEndian) {
             v.a8.set(value);
         } else {
@@ -272,7 +278,7 @@ export class tally {
     static fromU16Array(value: Uint16Array, bytesLength: i32 = 0): tally {
         if (bytesLength == 0) bytesLength = value.byteLength;
         if (bytesLength < value.byteLength) throw new Error("invalid length");
-        const v = new tally(bytesLength);
+        const v = tally.empty(bytesLength);
         v.a16.set(value);
         return v;
     }
@@ -281,7 +287,7 @@ export class tally {
         // console.log("-fromU32Array-" + bytesLength.toString() + "--" + value.toString());
         if (bytesLength == 0) bytesLength = value.byteLength;
         if (bytesLength < value.byteLength) throw new Error("invalid length");
-        const v = new tally(bytesLength);
+        const v = tally.empty(bytesLength);
         v.a32.set(value);
         return v;
     }
@@ -290,14 +296,14 @@ export class tally {
     //     console.log("-fromU64Array-" + value.toString());
     //     if (bytesLength == 0) bytesLength = value.byteLength;
     //     if (bytesLength < value.byteLength) throw new Error("invalid length");
-    //     const v = new tally(bytesLength);
+    //     const v = tally.empty(bytesLength);
     //     v.a64.set(value);
     //     return v;
     // }
 
     static add(a: tally, b: tally): tally {
         let l = i32(Math.max(a.a32.byteLength, b.a32.byteLength));
-        let c = new tally(l+4);
+        let c = tally.empty(l+4);
         const len = i32(Math.ceil(l/4));
         for (let i=0; i<len; i++) {
             let t: u64 = (a.a32.length > i ? a.a32[i] : 0) + (b.a32.length > i ? b.a32[i] : 0);
@@ -315,7 +321,7 @@ export class tally {
 
     static mul(a: tally, b: tally): tally {
         let mlen = a.a32.byteLength + b.a32.byteLength
-        let c = new tally(mlen)
+        let c = tally.empty(mlen)
         let carry: u32 = 0;
         let temp: u64 = 0;
         for (let i=0; i<a.a16.length; i++) {
@@ -352,7 +358,7 @@ export class tally {
 
     static sub(a: tally, b: tally): tally {
         let l = Math.max(a.a32.byteLength, b.a32.byteLength)
-        let c = new tally(i32(l))
+        let c = tally.empty(i32(l))
         let _a = a.clone();
         for (let i=0;i<Math.ceil(l/4);i++) {
             // console.log("-sub-" + i.toString())
@@ -387,10 +393,10 @@ export class tally {
         let set = new Uint16Array(mlen);
 
         if (tally.isZero(b) || tally.isZero(a)) {
-            return [new tally(32), new tally(32)]
+            return [tally.empty(32), tally.empty(32)]
         }
         if (tally.__gt(b, a, mlen - 1)) {
-          return [new tally(32), tally.fromU16Array(a.a16.slice(0), a.a16.byteLength)];
+          return [tally.empty(32), tally.fromU16Array(a.a16.slice(0), a.a16.byteLength)];
         }
 
         const slen = significantLength16(b.a16);
@@ -449,7 +455,7 @@ export class tally {
         }
         const prod1 = tally.mul(t2, tally.fromU32(catMax, 32));
         if (tally.eq(prod1, t1)) {
-            return new FindDiv(catMax, new tally(32));
+            return new FindDiv(catMax, tally.empty(32));
         }
         if (tally.lt(prod1, t1)) {
             return new FindDiv(catMax, tally.sub(t1, prod1));
@@ -534,7 +540,7 @@ export class tally {
     }
 
     static lt_t(a: tally, b: tally): tally {
-        let c = new tally(a.a32.byteLength)
+        let c = tally.empty(a.a32.byteLength)
         c.a8[0] = tally.__lt(a,b,a.a32.length-1)? 1:0
         return c;
     }
@@ -555,13 +561,13 @@ export class tally {
     }
 
     static gt_t(a: tally, b: tally): tally {
-        let c = new tally(a.a32.byteLength)
+        let c = tally.empty(a.a32.byteLength)
         c.a8[0] = tally.gt(a,b)? 1:0
         return c
     }
 
     static gte_t(a: tally, b: tally): tally {
-        let c = new tally(a.a32.byteLength)
+        let c = tally.empty(a.a32.byteLength)
         c.a8[0] = tally.gte(a,b)? 1:0
         return c
     }
@@ -585,7 +591,7 @@ export class tally {
     }
 
     static eq_t(a: tally, b: tally): tally {
-        let c = new tally(a.a32.byteLength)
+        let c = tally.empty(a.a32.byteLength)
         c.a8[0] = tally.eq(a, b)? 1 : 0
         return c;
     }
@@ -610,7 +616,7 @@ export class tally {
     }
 
     static slt_t(a: tally, b: tally): tally {
-        let c = new tally(a.a32.byteLength)
+        let c = tally.empty(a.a32.byteLength)
         c.a8[0] = tally.slt(a, b) ? 1 : 0;
         return c;
     }
@@ -624,13 +630,13 @@ export class tally {
     }
 
     static sgt_t(a: tally, b: tally): tally {
-        let c = new tally(a.a32.byteLength)
+        let c = tally.empty(a.a32.byteLength)
         c.a8[0] = tally.sgt(a, b) ? 1 : 0;
         return c;
     }
 
     static isZero_t(a: tally): tally {
-        let c = new tally(a.a32.byteLength)
+        let c = tally.empty(a.a32.byteLength)
         c.a8[0] = tally.isZero(a) ? 1 : 0;
         return c;
     }
@@ -644,7 +650,7 @@ export class tally {
     }
 
     static and(a: tally, b: tally): tally {
-        let c = new tally(a.a32.byteLength)
+        let c = tally.empty(a.a32.byteLength)
         for (let i=0;i<c.a32.length;i++) {
             c.a32[i] = a.a32[i] & b.a32[i];
         }
@@ -652,7 +658,7 @@ export class tally {
     }
 
     static or(a: tally, b: tally): tally {
-        let c = new tally(a.a32.byteLength)
+        let c = tally.empty(a.a32.byteLength)
         for (let i=0;i<c.a32.length;i++) {
             c.a32[i] = a.a32[i] | b.a32[i];
         }
@@ -660,7 +666,7 @@ export class tally {
     }
 
     static xor(a: tally, b: tally): tally {
-        let c = new tally(a.a32.byteLength)
+        let c = tally.empty(a.a32.byteLength)
         for (let i=0;i<c.a32.length;i++) {
             c.a32[i] = a.a32[i] ^ b.a32[i];
         }
@@ -668,7 +674,7 @@ export class tally {
     }
 
     static not(a: tally): tally {
-        let b = new tally(a.a32.byteLength)
+        let b = tally.empty(a.a32.byteLength)
         for (let i=0;i<a.a32.length;i++) {
             b.a32[i] = ~ a.a32[i]
         }
@@ -682,7 +688,7 @@ export class tally {
 
     // big endian shr: division
     static shr(a: tally, b: u32): tally {
-        let c = new tally(a.a32.byteLength);
+        let c = tally.empty(a.a32.byteLength);
         const shiftAmount = u32(b % 32);
         const offset = u32(b / 32);
         c.a32.set(a.a32.slice(offset), 0);
@@ -705,16 +711,12 @@ export class tally {
         return array;
     }
 
-    static empty(length: i32 = 32): tally {
-        return new tally(length);
-    }
-
     static neg(a: tally): tally {
         return tally.sub(tally.empty(), a);
     }
 
     static isNeg_t(a: tally): tally {
-        return tally.isNeg(a) ? tally.fromU32(u32(1), 32) : new tally(32);
+        return tally.isNeg(a) ? tally.fromU32(u32(1), 32) : tally.empty(32);
     }
 
     static isNeg(a: tally): bool {
@@ -726,7 +728,7 @@ export class tally {
     }
 
     static isOne_t(a: tally): tally {
-        let c = new tally(a.a32.byteLength)
+        let c = tally.empty(a.a32.byteLength)
         c.a8[0] = tally.isOne(a) ? 1 : 0;
         return c;
     }
@@ -741,7 +743,7 @@ export class tally {
     }
 
     static isEven_t(a: tally): tally {
-        let c = new tally(a.a32.byteLength)
+        let c = tally.empty(a.a32.byteLength)
         c.a8[0] = tally.isEven(a) ? 1 : 0;
         return c;
     }
@@ -751,7 +753,7 @@ export class tally {
     }
 
     static isOdd_t(a: tally): tally {
-        let c = new tally(a.a32.byteLength)
+        let c = tally.empty(a.a32.byteLength)
         c.a8[0] = tally.isOdd(a) ? 1 : 0;
         return c;
     }
@@ -816,7 +818,7 @@ export class tally {
     //     let size = Math.max(32, arr.length);
     //     if (size % 4 > 0) size += (4 - size % 4);
     //     arr = new Uint8Array([...arr.reverse()].concat(new Array(size - arr.length).fill(0)));
-    //     return new tally(arr);
+    //     return tally.empty(arr);
     // }
 }
 

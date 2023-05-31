@@ -48,12 +48,12 @@ export function sstore(key: BigInt, value: BigInt): void {
 
 export function sload(key: BigInt): BigInt {
     const value = wasmx.storageLoad(key.toArrayBufferBe());
-    return u8ArrayToBigInt(arrayBufferTou8Array(value))
+    return new BigInt(value, false);
 }
 
 export function blockhash(number: BigInt): BigInt {
     const value = wasmx.getBlockHash(number.toArrayBufferBe());
-    return u8ArrayToBigInt(arrayBufferTou8Array(value));
+    return new BigInt(value, false);
 }
 
 export function getAccountInfo(address: BigInt): AccountInfo {
@@ -69,7 +69,7 @@ export function getAccountInfo(address: BigInt): AccountInfo {
 
 export function balance(address: BigInt): BigInt {
     const balance = wasmx.getBalance(address.toArrayBufferBe());
-    return BigInt.fromArrayBuffer(balance, 32, false);
+    return new BigInt(balance, false);
 }
 
 export function extcodesize(ctx: Context, address: BigInt): BigInt {
@@ -355,7 +355,7 @@ export function keccak256(data: u8[]): BigInt {
     const _data = new Uint8Array(data.length);
     _data.set(data);
     const hash = wasmx.keccak256(_data.buffer);
-    return u8ArrayToBigInt(arrayBufferTou8Array(hash));
+    return new BigInt(hash, false);
 }
 
 // export function keccak256(ctx: Context, data: u8[]): BigInt {
