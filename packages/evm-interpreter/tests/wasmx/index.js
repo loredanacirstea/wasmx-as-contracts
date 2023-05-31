@@ -207,24 +207,27 @@ export function getEnv() {
             // 0xfffffffffffffffffffffffe7ac01bf4c3db9694ea93cb9f56fdc71c71c71c71
 
             // allopcodes mulmod
+            // 0x09d11b1a5ef44f6bf02bd225b55c04d38a737d99f3c378456b4f5f7cf9c1fe03
+            // 0x18b6a4a190a001b085f7996423266d84c00642b0caddbf68dd258dcbeb112fc6
+            // 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
             callData: [...hexToUint8Array('ab3300c309d11b1a5ef44f6bf02bd225b55c04d38a737d99f3c378456b4f5f7cf9c1fe0318b6a4a190a001b085f7996423266d84c00642b0caddbf68dd258dcbeb112fc6ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')],
             // 0xd01bd8fe6e7023551201ddb79c4827f4aefa22eb509a8c43ad0bc45a67f9b430
 
-            // // allopcodes addmod
-            // callData: [...hexToUint8Array('d957a80709d11b1a5ef44f6bf02bd225b55c04d38a737d99f3c378456b4f5f7cf9c1fe0318b6a4a190a001b085f7996423266d84c00642b0caddbf68dd258dcbeb112fc6ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')],
-            // // 0x2287bfbbef94511c76236b89d88272584a79c04abea137ae4874ed48e4d32dc9
+            // allopcodes addmod
+            callData: [...hexToUint8Array('d957a80709d11b1a5ef44f6bf02bd225b55c04d38a737d99f3c378456b4f5f7cf9c1fe0318b6a4a190a001b085f7996423266d84c00642b0caddbf68dd258dcbeb112fc6ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')],
+            // 0x2287bfbbef94511c76236b89d88272584a79c04abea137ae4874ed48e4d32dc9
 
-            // // and
-            // callData: [...hexToUint8Array('8491293f0000000000ffff000fffffffffffffffffffffffffffffffffffffffffffffff09d11b1a5ef44f6bf02bd225b55c04d38a737d99f3c378456b4f5f7cf9c1fe03')],
-            // // 0x0000000000f44f00002bd225b55c04d38a737d99f3c378456b4f5f7cf9c1fe03
+            // and
+            callData: [...hexToUint8Array('8491293f0000000000ffff000fffffffffffffffffffffffffffffffffffffffffffffff09d11b1a5ef44f6bf02bd225b55c04d38a737d99f3c378456b4f5f7cf9c1fe03')],
+            // 0x0000000000f44f00002bd225b55c04d38a737d99f3c378456b4f5f7cf9c1fe03
 
-            // // or
-            // callData: [...hexToUint8Array('3f8d65580000000000ffff000fffffffffffffffffffffffffffffffffffffffffffffff09d11b1a5ef44f6bf02bd225b55c04d38a737d99f3c378456b4f5f7cf9c1fe03')],
-            // // 0x09d11b1a5effff6bffffffffffffffffffffffffffffffffffffffffffffffff
+            // or
+            callData: [...hexToUint8Array('3f8d65580000000000ffff000fffffffffffffffffffffffffffffffffffffffffffffff09d11b1a5ef44f6bf02bd225b55c04d38a737d99f3c378456b4f5f7cf9c1fe03')],
+            // 0x09d11b1a5effff6bffffffffffffffffffffffffffffffffffffffffffffffff
 
-            // // xor
-            // callData: [...hexToUint8Array('27401a410000000000ffff000fffffffffffffffffffffffffffffffffffffffffffffff09d11b1a5ef44f6bf02bd225b55c04d38a737d99f3c378456b4f5f7cf9c1fe03')],
-            // // 0x09d11b1a5e0bb06bffd42dda4aa3fb2c758c82660c3c87ba94b0a083063e01fc
+            // xor
+            callData: [...hexToUint8Array('27401a410000000000ffff000fffffffffffffffffffffffffffffffffffffffffffffff09d11b1a5ef44f6bf02bd225b55c04d38a737d99f3c378456b4f5f7cf9c1fe03')],
+            // 0x09d11b1a5e0bb06bffd42dda4aa3fb2c758c82660c3c87ba94b0a083063e01fc
 
             // callData: [...hexToUint8Array('24b60399')],
             // // timestamp

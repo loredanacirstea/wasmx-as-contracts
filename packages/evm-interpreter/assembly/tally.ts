@@ -1,5 +1,5 @@
-const MAX32: i64 = i64(Math.pow(2, 32));
-const MAX16: i32 = i32(Math.pow(2, 16));
+const MAX32: u64 = u64(Math.pow(2, 32));
+const MAX16: u32 = u32(Math.pow(2, 16));
 
 export class tally {
     buf: ArrayBuffer;
@@ -53,7 +53,7 @@ export class tally {
         return tally.pow(this, b);
     }
 
-    pown(b: i64): tally {
+    pown(b: u64): tally {
         return tally.pown(this, b);
     }
 
@@ -154,11 +154,11 @@ export class tally {
         return this.a32[0];
     }
 
-    toUInt32(): u32 {
+    toU32(): u32 {
         return u32(this.toInt32());
     }
 
-    toInt64(): i64 {
+    toU64(): u64 {
         return this.a32[0] + this.a32[1] * MAX32;
     }
 
@@ -206,8 +206,8 @@ export class tally {
         return arr;
     }
 
-    toString(): string {
-        return tally.toString(this);
+    toString(radix: i32 = 0): string {
+        return tally.toString(this, radix);
     }
 
     clone(): tally {
@@ -221,9 +221,9 @@ export class tally {
         return tally.fromU8Array(part, byteLength);
     }
 
-    static fromI32(value: i32, size: i32 = 32): tally {
-        return tally.fromU32(u32(value));
-    }
+    // static fromI32(value: i32, size: i32 = 32): tally {
+    //     return tally.fromU32(u32(value));
+    // }
 
     static fromU32(value: u32, size: i32 = 32): tally {
         const v = new tally(size);
@@ -291,14 +291,14 @@ export class tally {
         let c = new tally(l+4);
         const len = i32(Math.ceil(l/4));
         for (let i=0; i<len; i++) {
-            let t: i64 = (a.a32.length > i ? a.a32[i] : 0) + (b.a32.length > i ? b.a32[i] : 0);
+            let t: u64 = (a.a32.length > i ? a.a32[i] : 0) + (b.a32.length > i ? b.a32[i] : 0);
             if (t > (MAX32 - 1)){
                 c.a32[i+1] = 1
             }
             c.a32[i] = u32((c.a32[i] + t) % MAX32);
         }
         if (c.a32[len] > 0) {
-            console.log("overflow")
+            console.log("add overflow")
             return c;
         }
         return tally.fromU32Array(c.a32.slice(0, c.a32.length-1), l);
@@ -307,21 +307,21 @@ export class tally {
     static mul(a: tally, b: tally): tally {
         let mlen = a.a32.byteLength + b.a32.byteLength
         let c = new tally(mlen)
-        let carry: i32 = 0;
-        let temp: i64 = 0;
+        let carry: u32 = 0;
+        let temp: u64 = 0;
         for (let i=0; i<a.a16.length; i++) {
             carry = 0
             for (let j=0; j<b.a16.length; j++) {
-                temp = i64(c.a16[i + j]) + i64(carry) + i64(a.a16[i]) * i64(b.a16[j])
-                carry = i32(Math.floor(f64(temp) / MAX16));
-                c.a16[i + j] = u32(temp % i64(MAX16))
+                temp = u64(c.a16[i + j]) + u64(carry) + u64(a.a16[i]) * u64(b.a16[j])
+                carry = u32(Math.floor(f64(temp) / MAX16));
+                c.a16[i + j] = u32(temp % u64(MAX16))
             }
             c.a16[i + b.a16.length] = carry
         }
         if (carry) {
-            console.log("overflow");
+            console.log("mul overflow");
         }
-        const len = i32(Math.max(significantLength32(c.a32), 32));
+        const len = significantLength32(c.a32);
         if (len < c.a32.length) {
             c = tally.fromU32Array(c.a32.slice(0, len));
         }
@@ -329,13 +329,13 @@ export class tally {
     }
 
     static pow(a: tally, b: tally): tally {
-        const power = b.toInt64();
+        const power = b.toU64();
         return tally.pown(a, power);
     }
 
-    static pown(a: tally, power: i64): tally {
+    static pown(a: tally, power: u64): tally {
         let result = a.clone();
-        for (let i = 1; i < power; i++) {
+        for (let i: u64 = 1; i < power; i++) {
             result = tally.mul(result, a);
         }
         return result;
@@ -350,7 +350,7 @@ export class tally {
             const i_a = _a.a32.length > i ? _a.a32[i] : 0;
             const ib = b.a32.length > i ? b.a32[i] : 0;
             let u = i_a < ib
-            let t: i64 = i64(i_a)
+            let t: u64 = u64(i_a)
             if (u) {
                 _a = tally._carry(_a,i+1)
                 t = t +  MAX32
@@ -425,20 +425,20 @@ export class tally {
         const t1 = tally.fromU16Array(n1);
         const len1 = significantLength16(n1);
         const len2 = significantLength16(n2);
-        let catMax: i32;
+        let catMax: u32;
 
         if (len1 < len2) {
             return new FindDiv(0, t1);
         }
         if (len2 === len1) {
-            catMax = i32(Math.floor((i32(n1[len1 - 1]) + 1) / i32(n2[len2-1])));
+            catMax = u32(Math.floor((u32(n1[len1 - 1]) + 1) / u32(n2[len2-1])));
         }
         else {
-            const divident = i32(n1[len1 - 1]) * MAX16 + i32(n1[len1 - 2]);
-            const cat = i32(Math.floor(divident / i32(n2[len2-1])));
-            catMax = cat < MAX16 ? cat : MAX16 - 1;
+            const divident: u32 = u32(n1[len1 - 1]) * MAX16 + u32(n1[len1 - 2]);
+            const cat: u32 = u32(Math.floor(divident / u32(n2[len2-1])));
+            catMax = cat < MAX16 ? cat : (MAX16 - 1);
         }
-        const prod1 = tally.mul(t2, tally.fromI32(catMax, 32));
+        const prod1 = tally.mul(t2, tally.fromU32(catMax, 32));
         if (tally.eq(prod1, t1)) {
             return new FindDiv(catMax, new tally(32));
         }
@@ -446,26 +446,26 @@ export class tally {
             return new FindDiv(catMax, tally.sub(t1, prod1));
         }
 
-        const catMin = i32(Math.floor(i32(n1[len1 - 1]) / (i32(n2[len2-1]) + 1)));
+        const catMin = u32(Math.floor(u32(n1[len1 - 1]) / (u32(n2[len2-1]) + 1)));
 
         catMax = tally.__findDiv_(t2, t1, catMax + 1, catMin);
         return new FindDiv(catMax, tally.sub(t1, tally.mul(t2, tally.fromU32(u32(catMax), 32))));
     }
 
-    static __findDiv_(q: tally, value: tally, max: i32, min: i32): i32 {
-        const current = i32(Math.floor((max + min) / 2));
+    static __findDiv_(q: tally, value: tally, max: u32, min: u32): u32 {
+        const current = u32(Math.floor((max + min) / 2));
         return tally.__findDiv(q, value, max, min, current)
     }
 
-    static __findDiv(q: tally, value: tally, max: i32, min: i32, current: i32): i32 {
+    static __findDiv(q: tally, value: tally, max: u32, min: u32, current: u32): u32 {
         const v = tally.mul(q, tally.fromU32(u32(current), 32));
         if (tally.eq(v, value)) return current;
         if (tally.gt(v, value)) {
-            const next = i32(Math.floor((current + min) / 2));
+            const next = u32(Math.floor((current + min) / 2));
             if (next === current) return next;
             return tally.__findDiv(q, value, current, min, next);
         }
-        const next = i32(Math.floor((current + max) / 2))
+        const next = u32(Math.floor((current + max) / 2))
         if (next === current) return next;
         return tally.__findDiv(q, value, max, current, next);
     }
@@ -509,14 +509,14 @@ export class tally {
         let v = value.shr(_bitsno);
         if (msb == 0) return v;
         for (let i = 0; i < _bitsno; i++) {
-            v = v.add(tally.fromI32(2).pown(maxbits - 1 - i));
+            v = v.add(tally.fromU32(2).pown(maxbits - 1 - i));
         }
         return v;
     }
 
     static addmod(a: tally, b: tally, c: tally): tally {
         let d = tally.add(a, b)
-        return tally.mod(d,c)
+        return tally.mod(d, c)
     }
 
     static mulmod(a: tally, b: tally, c: tally): tally {
@@ -667,7 +667,7 @@ export class tally {
     }
 
     static shl(a: tally, b: i32): tally {
-        const c = tally.fromI32(2).pown(b);
+        const c = tally.fromU32(2).pown(b);
         return tally.mul(a, c);
     }
 
@@ -762,7 +762,8 @@ export class tally {
         return tally.div(tally.mul(a, b), tally.gcd(a, b))
     }
 
-    static toString(a: tally): string {
+    static toString(a: tally, radix: i32 = 0): string {
+        if (radix == 16) return u8ArrayToHex(a.toU8ArrayBe());
         return a.a8.toString();
     }
 
@@ -811,9 +812,9 @@ export class tally {
 export default tally;
 
 class FindDiv {
-    catMax: i32;
+    catMax: u32;
     v: tally;
-    constructor(catMax: i32, v: tally) {
+    constructor(catMax: u32, v: tally) {
         this.catMax = catMax;
         this.v = v;
     }
@@ -842,6 +843,10 @@ function significantLength16(value: Uint16Array): i32 {
         if (value[i] !== 0) return i + 1;
     }
     return 0;
+}
+
+export function u8ArrayToHex(arr: u8[]): string {
+    return arr.reduce((accum: string, v: u8) => accum + v.toString(16).padStart(2, '0'), "");
 }
 
 // function removeZerosLeft(value: string) {

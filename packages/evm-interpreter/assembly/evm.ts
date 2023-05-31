@@ -24,7 +24,7 @@ export function getEnvWrap(): Env {
             i32ArrayToU256(envJson.block.proposer),
         ),
         new TransactionInfo(
-            BigInt.fromI32(envJson.transaction.index),
+            BigInt.fromU32(envJson.transaction.index),
             i32ArrayToU256(envJson.transaction.gasPrice),
         ),
         new AccountInfo(
@@ -73,7 +73,7 @@ export function balance(address: BigInt): BigInt {
 }
 
 export function extcodesize(ctx: Context, address: BigInt): BigInt {
-    return BigInt.fromI32(ctx.env.getAccount(address).bytecode.length);
+    return BigInt.fromU32(ctx.env.getAccount(address).bytecode.length);
 }
 
 export function extcodehash(ctx: Context, address: BigInt): BigInt {
@@ -138,7 +138,7 @@ export function callStatic(
     const data = new CallRequestJson (
         bigIntToI32Array32(address),
         bigIntToI32Array32(ctx.env.contract.address),
-        bigIntToI32Array32(BigInt.fromI32(0)),
+        bigIntToI32Array32(BigInt.fromU32(0)),
         bigIntToI32Array32(gas_limit),
         u8ToI32Array(calldata),
         u8ToI32Array(getExternalCode(ctx, address)),
@@ -234,22 +234,22 @@ export function mul(a: BigInt, b: BigInt): BigInt {
 }
 
 export function div(a: BigInt, b: BigInt): BigInt {
-    if (a.isZero() || b.isZero()) return BigInt.fromI32(0);
+    if (a.isZero() || b.isZero()) return BigInt.fromU32(0);
     return a.div(b);
 }
 
 export function sdiv(a: BigInt, b: BigInt): BigInt {
-    if (a.isZero() || b.isZero()) return BigInt.fromI32(0);
+    if (a.isZero() || b.isZero()) return BigInt.fromU32(0);
     return a.sdiv(b);
 }
 
 export function mod(a: BigInt, b: BigInt): BigInt {
-    if (a.isZero() || b.isZero()) return BigInt.fromI32(0);
+    if (a.isZero() || b.isZero()) return BigInt.fromU32(0);
     return a.mod(b);
 }
 
 export function smod(a: BigInt, b: BigInt): BigInt {
-    if (a.isZero() || b.isZero()) return BigInt.fromI32(0);
+    if (a.isZero() || b.isZero()) return BigInt.fromU32(0);
     return a.smod(b);
 }
 
@@ -305,29 +305,29 @@ export function byte(a: BigInt, b: BigInt): BigInt {
 
 export function shl(shift: BigInt, value: BigInt): BigInt {
     const v = shift.toInt32()
-    if (v > 255) return BigInt.fromI32(0)
+    if (v > 255) return BigInt.fromU32(0)
     return value.shl(v).mask(32);
 }
 
 export function shr(shift: BigInt, value: BigInt): BigInt {
     const v = shift.toInt32()
-    if (v > 255) return BigInt.fromI32(0)
+    if (v > 255) return BigInt.fromU32(0)
     return value.shr(v, 256);
 }
 
 export function addmod(a: BigInt, b: BigInt, c: BigInt): BigInt {
-    const value = a.add(b).mod(c);
+    const value = BigInt.addmod(a, b, c);
     return value.mask(32);
 }
 
 export function mulmod(a: BigInt, b: BigInt, c: BigInt): BigInt {
-    const value = a.mul(b).mod(c);
+    const value = BigInt.mulmod(a, b, c);
     return value.mask(32);
 }
 
 // nobits, value
 export function sar(bitsno: BigInt, value: BigInt): BigInt {
-    if (value.isZero()) return BigInt.fromI32(0);
+    if (value.isZero()) return BigInt.fromU32(0);
     return value.sar(bitsno, 256);
 }
 
@@ -344,7 +344,7 @@ export function signextend(i: BigInt, x: BigInt): BigInt {
     v = v.shr(extbits, 256);
 
     if (!isneg) return v;
-    const padd = BigInt.fromI32(2).pown(256).sub(BigInt.fromI32(1)).shr(bits, 256).shl(bits);
+    const padd = BigInt.fromU32(2).pown(256).sub(BigInt.fromU32(1)).shr(bits, 256).shl(bits);
     v = padd.add(v);
     return v;
 }

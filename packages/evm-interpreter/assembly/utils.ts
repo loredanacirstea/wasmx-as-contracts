@@ -1,7 +1,7 @@
 import { BigInt } from "./bn";
 
 export function maxUint(): BigInt {
-    return BigInt.fromI32(2).pown(256);
+    return BigInt.fromU32(2).pown(256);
 }
 
 export function u8ArrayToArrayBuffer(u8Array: u8[]): ArrayBuffer {
