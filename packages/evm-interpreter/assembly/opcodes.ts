@@ -155,7 +155,7 @@ export function getExternalBalance (ctx: Context, inputs: BigInt[]): void {
 
 export function getBaseFee(ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('basefee');
-    const value = BigInt.from(0);
+    const value = BigInt.fromI32(0);
     ctx.stack.push(value);
     if (ctx.logger.isDebug) {
         ctx.logger.debug('BASEFEE', [], [bigIntToU8Array32(value)], ctx.pc);
@@ -188,7 +188,7 @@ export function callDataCopy (ctx: Context, inputs: BigInt[]): void {
 
 export function getCallDataSize (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('calldatasize');
-    const value = BigInt.fromInt32(ctx.env.currentCall.callData.length);
+    const value = BigInt.fromI32(ctx.env.currentCall.callData.length);
     ctx.stack.push(value)
     if (ctx.logger.isDebug) {
         ctx.logger.debug('CALLDATASIZE', [bigIntToU8Array32(value)], [], ctx.pc);
@@ -199,10 +199,10 @@ export function callDataLoad (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('calldataload');
     const dataOffset = inputs[0].toUInt32()
     const value =  Memory.load(ctx.env.currentCall.callData, dataOffset, 32);
-
-    ctx.stack.push(u8ArrayToBigInt(value));
+    const _value = u8ArrayToBigInt(value);
+    ctx.stack.push(_value);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('CALLDATALOAD', [bigIntToU8Array32(inputs[0])], [value], ctx.pc);
+        ctx.logger.debug('CALLDATALOAD', [bigIntToU8Array32(inputs[0])], [bigIntToU8Array32(_value)], ctx.pc);
     }
 }
 
@@ -245,7 +245,7 @@ export function getCallValue (ctx: Context, inputs: BigInt[]): void {
 
 export function getCodeSize (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('codesize');
-    const value = BigInt.fromInt32(ctx.env.contract.bytecode.length);
+    const value = BigInt.fromI32(ctx.env.contract.bytecode.length);
     ctx.stack.push(value);
     if (ctx.logger.isDebug) {
         ctx.logger.debug('CODESIZE', [], [bigIntToU8Array32(value)], ctx.pc);
@@ -375,7 +375,7 @@ export function getTxOrigin (ctx: Context, inputs: BigInt[]): void {
 
 export function getReturnDataSize (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('returndatasize');
-    const value = BigInt.fromInt32(ctx.env.currentCall.returnData.length);
+    const value = BigInt.fromI32(ctx.env.currentCall.returnData.length);
     ctx.stack.push(value)
     if (ctx.logger.isDebug) {
         ctx.logger.debug('RETURNDATASIZE', [bigIntToU8Array32(value)], [], ctx.pc);
@@ -488,7 +488,7 @@ export function revert (ctx: Context, inputs: BigInt[]): void {
 
 export function push0(ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('push0');
-    const value = BigInt.fromInt32(0);
+    const value = BigInt.fromI32(0);
     ctx.stack.push(value);
     if (ctx.logger.isDebug) {
         ctx.logger.debug('PUSH0', [], [bigIntToU8Array32(value)], ctx.pc);
@@ -503,7 +503,7 @@ export function handlePush (ctx: Context, code: u8): void {
     ctx.stack.push(value);
     ctx.pc += no;
     if (ctx.logger.isDebug) {
-        ctx.logger.debug(`PUSH${no}`, [_value], [], ctx.pc);
+        ctx.logger.debug(`PUSH${no}`, [bigIntToU8Array32(value)], [], ctx.pc);
     }
 }
 
@@ -541,7 +541,7 @@ export function jumpi (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('jumpi');
     const newpos = inputs[0].toInt32();
     // EVM allows any uint256 except from 0 to be interpreted as true
-    const condition = inputs[1].gt(BigInt.fromInt32(0));
+    const condition = inputs[1].gt(BigInt.fromI32(0));
     if (condition) ctx.pc = newpos;
     if (ctx.logger.isDebug) {
         ctx.logger.debug('JUMPI', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [], ctx.pc);
@@ -565,7 +565,7 @@ export function pop (ctx: Context, inputs: BigInt[]): void {
 
 export function pc (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('pc');
-    ctx.stack.push(BigInt.from(ctx.pc));
+    ctx.stack.push(BigInt.fromI32(ctx.pc));
     if (ctx.logger.isDebug) {
         ctx.logger.debug('PC', [], [], ctx.pc);
     }
@@ -829,7 +829,7 @@ export function call (ctx: Context, inputs: BigInt[]): void {
     ctx.env.currentCall.returnData = result.data;
 
     const data = result.data.slice(0, outsize);
-    const success = BigInt.from(ctx.env.currentCall.returnDataSuccess);
+    const success = BigInt.fromI32(ctx.env.currentCall.returnDataSuccess);
     ctx.memory.store(data, outptr);
     ctx.stack.push(success);
     if (ctx.logger.isDebug) {
@@ -860,7 +860,7 @@ export function callCode (ctx: Context, inputs: BigInt[]): void {
     ctx.env.currentCall.returnData = result.data;
 
     const data = result.data.slice(0, outsize);
-    const success = BigInt.from(ctx.env.currentCall.returnDataSuccess);
+    const success = BigInt.fromI32(ctx.env.currentCall.returnDataSuccess);
     ctx.memory.store(data, outptr);
     ctx.stack.push(success);
     if (ctx.logger.isDebug) {
@@ -891,7 +891,7 @@ export function callDelegate (ctx: Context, inputs: BigInt[]): void {
     ctx.env.currentCall.returnData = result.data;
 
     const data = result.data.slice(0, outsize);
-    const success = BigInt.from(ctx.env.currentCall.returnDataSuccess);
+    const success = BigInt.fromI32(ctx.env.currentCall.returnDataSuccess);
     ctx.memory.store(data, outptr);
     ctx.stack.push(success);
     if (ctx.logger.isDebug) {
@@ -921,7 +921,7 @@ export function callStatic (ctx: Context, inputs: BigInt[]): void {
     ctx.env.currentCall.returnData = result.data;
 
     const data = result.data.slice(0, outsize);
-    const success = BigInt.from(ctx.env.currentCall.returnDataSuccess);
+    const success = BigInt.fromI32(ctx.env.currentCall.returnDataSuccess);
     ctx.memory.store(data, outptr);
     ctx.stack.push(success);
     if (ctx.logger.isDebug) {

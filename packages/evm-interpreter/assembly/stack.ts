@@ -33,7 +33,7 @@ export class Stack {
 
     dup(x: i32): BigInt {
         if (x > this.len) throw new Error(`Invalid DUP${x} ; stack length: ${this.len}`);
-        const value = this.stack[this.len - x].copy();
+        const value = this.stack[this.len - x].clone();
         this.push(value);
         return value;
     }

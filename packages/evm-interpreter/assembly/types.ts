@@ -28,7 +28,7 @@ export class BlockInfo {
         this.gasLimit = gasLimit;
         this.hash = hash;
         this.proposer = proposer;
-        this.difficulty = BigInt.from(0);
+        this.difficulty = BigInt.fromI32(0);
     }
 }
 

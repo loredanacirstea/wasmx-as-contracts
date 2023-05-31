@@ -1,6 +1,8 @@
 import { BigInt } from "./bn";
 
-export const MAX_UINT = BigInt.fromInt32(2).pow(256);
+export function maxUint(): BigInt {
+    return BigInt.fromI32(2).pown(256);
+}
 
 export function u8ArrayToArrayBuffer(u8Array: u8[]): ArrayBuffer {
     const length = u8Array.length;
@@ -44,51 +46,27 @@ export function u8ArrayToHex(arr: u8[]): string {
     return arr.reduce((accum: string, v: u8) => accum + v.toString(16).padStart(2, '0'), "");
 }
 
-export function bigIntToArrayBuffer32(v: BigInt): ArrayBuffer {
-    let value = v.toString(16).padStart(64, '0');
-    const length = 32;
-    const buffer = new ArrayBuffer(length);
-    const uint8View = Uint8Array.wrap(buffer);
-    for (let i = 0; i < length; i++) {
-        uint8View[i] = u8(parseInt(value.substr(2*i, 2), 16))
-    }
-    return buffer;
-}
+export function hexToU8(value: string): u8[] {
+    const arr: u8[] = [];
+    if (value.length % 2 == 1) value = "0" + value;
+    value = value.padStart(64, '0');
 
-export function bigIntToU8Array32(v: BigInt): u8[] {
-    let arr = bigIntToU8Array(v);
-    if (arr.length < 33) {
-        return new Array<u8>(32 - arr.length).concat(arr);
-    }
-    return arr.slice(arr.length - 32);
-}
-
-export function bigIntToU8Array(v: BigInt): u8[] {
-    let value = v.toString(16);
-    if (value.length % 2 == 1) {
-        value = "0" + value
-    }
-    let arr: u8[] = [];
     for (let i = 0; i < value.length / 2; i++) {
         arr[i] = u8(parseInt(value.substr(2*i, 2), 16))
     }
     return arr;
 }
 
-export function bigIntToI32Array(v: BigInt): i32[] {
-    let value = v.toString(16);
-    if (value.length % 2 == 1) {
-        value = "0" + value
+export function bigIntToU8Array32(v: BigInt): u8[] {
+    let arr = v.toU8ArrayBe();
+    if (arr.length < 33) {
+        return new Array<u8>(32 - arr.length).concat(arr);
     }
-    let arr: i32[] = [];
-    for (let i = 0; i < value.length / 2; i++) {
-        arr[i] = i32(parseInt(value.substr(2*i, 2), 16))
-    }
-    return arr;
+    return arr.slice(arr.length - 32);
 }
 
 export function bigIntToI32Array32(v: BigInt): i32[] {
-    let arr = bigIntToI32Array(v);
+    let arr = v.toI32ArrayBe();
     if (arr.length < 33) {
         return new Array<i32>(32 - arr.length).concat(arr);
     }
@@ -96,18 +74,9 @@ export function bigIntToI32Array32(v: BigInt): i32[] {
 }
 
 export function u8ArrayToBigInt(arr: u8[]): BigInt {
-    return BigInt.fromString(u8ArrayToHex(arr), 16);
-}
-
-export function arrayBufferToBigInt(buffer: ArrayBuffer): BigInt {
-    return u8ArrayToBigInt(arrayBufferTou8Array(buffer));
+    return BigInt.fromU8Array(arr, arr.length, false);
 }
 
 export function i32ArrayToU256(arr: i32[]): BigInt {
     return u8ArrayToBigInt(i32ArrayToBytes32(arr));
-}
-
-export function maskBigInt256(v: BigInt): BigInt {
-    if (v.lt(MAX_UINT)) return v;
-    return v.mod(MAX_UINT);
 }
