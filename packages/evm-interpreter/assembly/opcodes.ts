@@ -99,9 +99,10 @@ export function loadMemory (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('mload');
     const offset = inputs[0].toU32();
     const result = ctx.memory.load(offset, 32)
-    ctx.stack.push(u8ArrayToBigInt(result));
+    const value = u8ArrayToBigInt(result);
+    ctx.stack.push(value);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('MLOAD', [bigIntToU8Array32(inputs[0])], [result], ctx.pc);
+        ctx.logger.debug('MLOAD', [bigIntToU8Array32(inputs[0])], [bigIntToU8Array32(value)], ctx.pc);
     }
 }
 
@@ -807,7 +808,7 @@ export function keccak256 (ctx: Context, inputs: BigInt[]): void {
     // TODO gas units based on data slots
     ctx.gasmeter.useOpcodeGas('keccak256');
     const data = ctx.memory.load(inputs[0].toU32(), inputs[1].toU32());
-    const result = evm.keccak256(ctx, data);
+    const result = evm.keccak256(data);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
         ctx.logger.debug('KECCAK256', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);

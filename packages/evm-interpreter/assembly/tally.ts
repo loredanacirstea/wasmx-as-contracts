@@ -117,8 +117,8 @@ export class tally {
         return tally.shl(this, b);
     }
 
-    shr(b: u32, maxbits: u32 = 256): tally {
-        return tally.shr(this, b, maxbits);
+    shr(b: u32): tally {
+        return tally.shr(this, b);
     }
 
     neg(): tally {
@@ -155,7 +155,7 @@ export class tally {
     }
 
     toU32(): u32 {
-        return u32(this.toInt32());
+        return this.a32[0];
     }
 
     toU64(): u64 {
@@ -182,6 +182,19 @@ export class tally {
             arr[i] = this.a8[len - 1 - i];
         }
         return arr;
+    }
+
+    toArrayBuffer(littleEndian: bool = true): ArrayBuffer {
+        if (littleEndian) return this.toArrayBufferLe();
+        return this.toArrayBufferBe();
+    }
+
+    toArrayBufferLe(): ArrayBuffer {
+        return this.buf
+    }
+
+    toArrayBufferBe(): ArrayBuffer {
+        return this.a8.slice(0).reverse().buffer;
     }
 
     toI32Array(littleEndian: bool = true): Array<i32> {
@@ -668,18 +681,20 @@ export class tally {
     }
 
     // big endian shr: division
-    static shr(a: tally, b: u32, maxbits: u32 = 256): tally {
+    static shr(a: tally, b: u32): tally {
         let c = new tally(a.a32.byteLength);
         const shiftAmount = u32(b % 32);
         const offset = u32(b / 32);
         c.a32.set(a.a32.slice(offset), 0);
-        return tally.fromU32Array(tally.shiftRightUint32Array(c.a32, shiftAmount, maxbits));
+        return tally.fromU32Array(tally.shiftRightUint32Array(c.a32, shiftAmount));
     }
 
-    private static shiftRightUint32Array(array: Uint32Array, shiftAmount: u32, maxbits: u32): Uint32Array {
+    private static shiftRightUint32Array(array: Uint32Array, shiftAmount: u32): Uint32Array {
+        if (shiftAmount == 0) return array;
         const length = array.length;
-        const shiftOffset = shiftAmount % maxbits;
-        const carryOffset = maxbits - shiftOffset;
+        const shiftOffset = shiftAmount % 32;
+        const carryOffset = 32 - shiftOffset;
+
         let carry = 0;
         for (let i = length - 1; i >= 0; i--) {
           const currentValue = array[i];

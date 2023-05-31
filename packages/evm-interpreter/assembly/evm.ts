@@ -43,21 +43,21 @@ export function getEnvWrap(): Env {
 }
 
 export function sstore(key: BigInt, value: BigInt): void {
-    wasmx.storageStore(key.buf, value.buf);
+    wasmx.storageStore(key.toArrayBufferBe(), value.toArrayBufferBe());
 }
 
 export function sload(key: BigInt): BigInt {
-    const value = wasmx.storageLoad(key.buf);
+    const value = wasmx.storageLoad(key.toArrayBufferBe());
     return u8ArrayToBigInt(arrayBufferTou8Array(value))
 }
 
 export function blockhash(number: BigInt): BigInt {
-    const value = wasmx.getBlockHash(number.buf);
+    const value = wasmx.getBlockHash(number.toArrayBufferBe());
     return u8ArrayToBigInt(arrayBufferTou8Array(value));
 }
 
 export function getAccountInfo(address: BigInt): AccountInfo {
-    const value = wasmx.getAccount(address.buf);
+    const value = wasmx.getAccount(address.toArrayBufferBe());
     const valuestr = String.UTF8.decode(value)
     const account = JSON.parse<AccountInfoJson>(valuestr);
     return new AccountInfo(
@@ -68,7 +68,7 @@ export function getAccountInfo(address: BigInt): AccountInfo {
 }
 
 export function balance(address: BigInt): BigInt {
-    const balance = wasmx.getBalance(address.buf);
+    const balance = wasmx.getBalance(address.toArrayBufferBe());
     return BigInt.fromArrayBuffer(balance, 32, false);
 }
 
@@ -304,15 +304,17 @@ export function byte(a: BigInt, b: BigInt): BigInt {
 }
 
 export function shl(shift: BigInt, value: BigInt): BigInt {
-    const v = shift.toInt32()
+    if (shift.isZero()) return value;
+    const v = shift.toU32()
     if (v > 255) return BigInt.fromU32(0)
     return value.shl(v).mask(32);
 }
 
 export function shr(shift: BigInt, value: BigInt): BigInt {
-    const v = shift.toInt32()
+    if (shift.isZero()) return value;
+    const v = shift.toU32()
     if (v > 255) return BigInt.fromU32(0)
-    return value.shr(v, 256);
+    return value.shr(v);
 }
 
 export function addmod(a: BigInt, b: BigInt, c: BigInt): BigInt {
@@ -333,29 +335,36 @@ export function sar(bitsno: BigInt, value: BigInt): BigInt {
 
 // sign extend from (i*8+7)th bit counting from least significant
 export function signextend(i: BigInt, x: BigInt): BigInt {
-    const b = i.toInt32();
+    const b = i.toU32();
     if (b >= 31) return x;
-    const bits = b*8+8;
-    const extbits = 256 - bits;
+    const bits: u32 = b*8+8;
+    const extbits: u32 = u32(256) - bits;
 
     let v = x.shl(extbits)
     v = v.mask(32);
     const isneg = v.isNeg();
-    v = v.shr(extbits, 256);
+    v = v.shr(extbits);
 
     if (!isneg) return v;
-    const padd = BigInt.fromU32(2).pown(256).sub(BigInt.fromU32(1)).shr(bits, 256).shl(bits);
+    const padd = BigInt.fromU32(2).pown(256).sub(BigInt.fromU32(1)).shr(bits).shl(bits);
     v = padd.add(v);
     return v;
 }
 
-export function keccak256(ctx: Context, data: u8[]): BigInt {
-    // const _data = new Uint8Array(data.length);
-    // _data.set(data);
-    // const hash = wasmx.keccak256(_data.buffer);
-    // return u8ArrayToBigInt(arrayBufferTou8Array(hash));
-    return BigInt.fromU32(0);
+export function keccak256(data: u8[]): BigInt {
+    const _data = new Uint8Array(data.length);
+    _data.set(data);
+    const hash = wasmx.keccak256(_data.buffer);
+    return u8ArrayToBigInt(arrayBufferTou8Array(hash));
 }
+
+// export function keccak256(ctx: Context, data: u8[]): BigInt {
+//     // const _data = new Uint8Array(data.length);
+//     // _data.set(data);
+//     // const hash = wasmx.keccak256(_data.buffer);
+//     // return u8ArrayToBigInt(arrayBufferTou8Array(hash));
+//     return BigInt.fromU32(0);
+// }
 
 // export function keccak256(ctx: Context, data: u8[]): BigInt {
 //     const hash: ArrayBuffer = new ArrayBuffer(32);
