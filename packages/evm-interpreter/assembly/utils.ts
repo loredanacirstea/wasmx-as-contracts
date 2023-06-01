@@ -66,7 +66,7 @@ export function bigIntToU8Array32(v: BigInt): u8[] {
 }
 
 export function bigIntToI32Array32(v: BigInt): i32[] {
-    let arr = v.toI32ArrayBe();
+    let arr = u8ToI32Array(v.toU8ArrayBe());
     if (arr.length < 33) {
         return new Array<i32>(32 - arr.length).concat(arr);
     }

@@ -184,7 +184,7 @@ export function create(
     )
     const datastr = JSON.stringify<CreateAccountRequestJson>(data);
     const addressbz = wasmx.createAccount(String.UTF8.encode(datastr));
-    return BigInt.fromArrayBuffer(addressbz, 32, false);
+    return new BigInt(addressbz, false);
 }
 
 export function create2(
@@ -199,7 +199,7 @@ export function create2(
     )
     const datastr = JSON.stringify<Create2AccountRequestJson>(data);
     const addressbz = wasmx.create2Account(String.UTF8.encode(datastr));
-    return BigInt.fromArrayBuffer(addressbz, 32, false);
+    return new BigInt(addressbz, false);
 }
 
 export function log(
@@ -372,5 +372,5 @@ export function keccak256(data: u8[]): BigInt {
 //     const outputOffset = changetype<i32>(hash);
 //     ctx.resetKeccakSpace();
 //     wasmx.keccak256(i32(ctx.keccakOffset), inputOffset, data.length, outputOffset);
-//    return BigInt.fromArrayBuffer(hash, 32, false);
+//    return new BigInt(hash, false);
 // }

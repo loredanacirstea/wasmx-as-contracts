@@ -3,7 +3,9 @@ import { Context } from './context';
 import { opByCode } from './opcodes_info';
 import { opcodesMap, handlePush, handleDup, handleSwap } from './opcodes';
 
+var step = 0;
 export function interpret(ctx: Context): void {
+    step += 1;
     interpretOpcode(ctx);
     if (ctx.pc > 0) {
         interpret(ctx);
@@ -25,7 +27,7 @@ function interpretOpcode (ctx: Context): void {
     ctx.pc += 1;
     const invalidError = `Invalid opcode ${code}`;
     if (ctx.logger.isDebug) {
-        console.log("opcode: " + code.toString())
+        console.log("opcode: " + code.toString() + "--" + (ctx.pc-1).toString() + "--" + step.toString());
     }
 
     if (u8(0x60) <= code && code < u8(0x80)) {
