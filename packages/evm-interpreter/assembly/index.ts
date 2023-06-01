@@ -8,6 +8,8 @@ import { GasMeter } from './gas_meter';
 
 export function wasmx_wasmx_2(): void {}
 
+export function instantiate(): void {}
+
 export function main(): u8[] {
   const stack = new Stack();
   const memory = new Memory([]);
