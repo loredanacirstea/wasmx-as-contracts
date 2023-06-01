@@ -3,7 +3,7 @@ import { BigInt } from "./bn";
 import * as wasmx from './wasmx';
 import { BlockInfo, ChainInfo, AccountInfo, CurrentCallInfo, Env, TransactionInfo, CallResponse } from "./types";
 import { AccountInfoJson, CallRequestJson, CallResponseJson, Create2AccountRequestJson, CreateAccountRequestJson, EnvJson, EvmLogJson } from './types_json';
-import { arrayBufferTou8Array, i32ToU8Array, i32ArrayToU256, bigIntToArrayBuffer32, u8ArrayToBigInt, bigIntToU8Array32, maskBigInt256, bigIntToI32Array, u8ToI32Array, arrayBufferToBigInt, bigIntToI32Array32, MAX_UINT } from './utils';
+import { arrayBufferTou8Array, i32ToU8Array, i32ArrayToU256, u8ArrayToBigInt, bigIntToU8Array32, u8ToI32Array, bigIntToI32Array32, maxUint } from './utils';
 import { Context } from './context';
 
 export function getEnvWrap(): Env {
@@ -24,7 +24,7 @@ export function getEnvWrap(): Env {
             i32ArrayToU256(envJson.block.proposer),
         ),
         new TransactionInfo(
-            BigInt.from(envJson.transaction.index),
+            BigInt.fromU32(envJson.transaction.index),
             i32ArrayToU256(envJson.transaction.gasPrice),
         ),
         new AccountInfo(
@@ -43,21 +43,21 @@ export function getEnvWrap(): Env {
 }
 
 export function sstore(key: BigInt, value: BigInt): void {
-    wasmx.storageStore(bigIntToArrayBuffer32(key), bigIntToArrayBuffer32(value));
+    wasmx.storageStore(key.toArrayBufferBe(), value.toArrayBufferBe());
 }
 
 export function sload(key: BigInt): BigInt {
-    const value = wasmx.storageLoad(bigIntToArrayBuffer32(key));
-    return u8ArrayToBigInt(arrayBufferTou8Array(value))
+    const value = wasmx.storageLoad(key.toArrayBufferBe());
+    return new BigInt(value, false);
 }
 
 export function blockhash(number: BigInt): BigInt {
-    const value = wasmx.getBlockHash(bigIntToArrayBuffer32(number));
-    return u8ArrayToBigInt(arrayBufferTou8Array(value));
+    const value = wasmx.getBlockHash(number.toArrayBufferBe());
+    return new BigInt(value, false);
 }
 
 export function getAccountInfo(address: BigInt): AccountInfo {
-    const value = wasmx.getAccount(bigIntToArrayBuffer32(address));
+    const value = wasmx.getAccount(address.toArrayBufferBe());
     const valuestr = String.UTF8.decode(value)
     const account = JSON.parse<AccountInfoJson>(valuestr);
     return new AccountInfo(
@@ -68,12 +68,12 @@ export function getAccountInfo(address: BigInt): AccountInfo {
 }
 
 export function balance(address: BigInt): BigInt {
-    const balance = wasmx.getBalance(bigIntToArrayBuffer32(address));
-    return arrayBufferToBigInt(balance);
+    const balance = wasmx.getBalance(address.toArrayBufferBe());
+    return new BigInt(balance, false);
 }
 
 export function extcodesize(ctx: Context, address: BigInt): BigInt {
-    return BigInt.from(ctx.env.getAccount(address).bytecode.length);
+    return BigInt.fromU32(ctx.env.getAccount(address).bytecode.length);
 }
 
 export function extcodehash(ctx: Context, address: BigInt): BigInt {
@@ -138,7 +138,7 @@ export function callStatic(
     const data = new CallRequestJson (
         bigIntToI32Array32(address),
         bigIntToI32Array32(ctx.env.contract.address),
-        bigIntToI32Array32(BigInt.from(0)),
+        bigIntToI32Array32(BigInt.fromU32(0)),
         bigIntToI32Array32(gas_limit),
         u8ToI32Array(calldata),
         u8ToI32Array(getExternalCode(ctx, address)),
@@ -184,7 +184,7 @@ export function create(
     )
     const datastr = JSON.stringify<CreateAccountRequestJson>(data);
     const addressbz = wasmx.createAccount(String.UTF8.encode(datastr));
-    return arrayBufferToBigInt(addressbz);
+    return new BigInt(addressbz, false);
 }
 
 export function create2(
@@ -199,7 +199,7 @@ export function create2(
     )
     const datastr = JSON.stringify<Create2AccountRequestJson>(data);
     const addressbz = wasmx.create2Account(String.UTF8.encode(datastr));
-    return arrayBufferToBigInt(addressbz);
+    return new BigInt(addressbz, false);
 }
 
 export function log(
@@ -218,77 +218,71 @@ export function log(
 }
 
 export function add(a: BigInt, b: BigInt): BigInt {
-    return maskBigInt256(a.add(b));
+    return a.add(b).mask(32);
 }
 
 export function sub(a: BigInt, b: BigInt): BigInt {
     if (a.gte(b)) return a.sub(b);
     // with underflow
     const diff = b.sub(a);
-    return MAX_UINT.sub(diff);
+    return maxUint().sub(diff);
 }
 
 export function mul(a: BigInt, b: BigInt): BigInt {
     let value = a.mul(b);
-    return maskBigInt256(value);
+    return value.mask(32);
 }
 
 export function div(a: BigInt, b: BigInt): BigInt {
-    if (a.isZero() || b.isZero()) return BigInt.fromInt16(0);
+    if (a.isZero() || b.isZero()) return BigInt.fromU32(0);
     return a.div(b);
 }
 
 export function sdiv(a: BigInt, b: BigInt): BigInt {
-    if (a.isZero() || b.isZero()) return BigInt.fromInt16(0);
-    return twosComplement(a).div(twosComplement(b));
+    if (a.isZero() || b.isZero()) return BigInt.fromU32(0);
+    return a.sdiv(b);
 }
 
 export function mod(a: BigInt, b: BigInt): BigInt {
-    if (a.isZero() || b.isZero()) return BigInt.fromInt16(0);
+    if (a.isZero() || b.isZero()) return BigInt.fromU32(0);
     return a.mod(b);
 }
 
 export function smod(a: BigInt, b: BigInt): BigInt {
-    if (a.isZero() || b.isZero()) return BigInt.fromInt16(0);
-    return twosComplement(a).mod(twosComplement(b));
+    if (a.isZero() || b.isZero()) return BigInt.fromU32(0);
+    return a.smod(b);
 }
 
 export function exp(a: BigInt, b: BigInt): BigInt {
-    return maskBigInt256(a.pow(b.toInt32()));
+    return a.pow(b).mask(32);
 }
 
 export function not(a: BigInt): BigInt {
-    const base2 = a.toString(2);
-    let result = '';
-    for (let i = 0; i < base2.length; i++) {
-        result += (base2.substr(i, 1) === '0') ? '1' : '0';
-    }
-    result = result.padStart(256, '1');
-    return BigInt.fromString(result, 2);
+    return BigInt.not(a);
 }
 
 export function lt(a: BigInt, b: BigInt): BigInt {
-    return BigInt.from(a.lt(b) ? 1 : 0);
+    return a.lt_t(b);
 }
 
 export function gt(a: BigInt, b: BigInt): BigInt {
-    return BigInt.from(a.gt(b) ? 1 : 0);
+    return a.gt_t(b);
 }
 
 export function slt(a: BigInt, b: BigInt): BigInt {
-    return BigInt.from(twosComplement(a).lt(twosComplement(b)) ? 1 : 0);
+    return a.slt_t(b);
 }
 
 export function sgt(a: BigInt, b: BigInt): BigInt {
-    return BigInt.from(twosComplement(a).gt(twosComplement(b)) ? 1 : 0);
+    return a.sgt_t(b);
 }
 
 export function eq(a: BigInt, b: BigInt): BigInt {
-    return BigInt.from(a.eq(b) ? 1 : 0);
+    return a.eq_t(b);
 }
 
 export function iszero(a: BigInt): BigInt {
-    return BigInt.from(a.isZero() ? 1 : 0);
+    return a.isZero_t();
 }
 
 export function and(a: BigInt, b: BigInt): BigInt {
@@ -310,52 +304,49 @@ export function byte(a: BigInt, b: BigInt): BigInt {
 }
 
 export function shl(shift: BigInt, value: BigInt): BigInt {
-    const v = shift.toInt32()
-    if (v > 255) return BigInt.from(0)
-    return value.leftShift(v);
+    if (shift.isZero()) return value;
+    const v = shift.toU32()
+    if (v > 255) return BigInt.fromU32(0)
+    return value.shl(v).mask(32);
 }
 
 export function shr(shift: BigInt, value: BigInt): BigInt {
-    const v = shift.toInt32()
-    if (v > 255) return BigInt.from(0)
-    return value.rightShift(v);
+    if (shift.isZero()) return value;
+    const v = shift.toU32()
+    if (v > 255) return BigInt.fromU32(0)
+    return value.shr(v);
 }
 
 export function addmod(a: BigInt, b: BigInt, c: BigInt): BigInt {
-    const value = a.add(b).mod(c);
-    return maskBigInt256(value);
+    const value = BigInt.addmod(a, b, c);
+    return value.mask(32);
 }
 
 export function mulmod(a: BigInt, b: BigInt, c: BigInt): BigInt {
-    const value = a.mul(b).mod(c);
-    return maskBigInt256(value);
+    const value = BigInt.mulmod(a, b, c);
+    return value.mask(32);
 }
 
 // nobits, value
 export function sar(bitsno: BigInt, value: BigInt): BigInt {
-    const msb = isNeg(value) ? 1 : 0;
-    const _bitsno = bitsno.toInt32();
-    let v = value.rightShift(_bitsno);
-    if (msb == 0) return v;
-    for (let i = 0; i < _bitsno; i++) {
-        v = v.add(BigInt.from(2).pow(255 - i));
-    }
-    return v;
+    if (value.isZero()) return BigInt.fromU32(0);
+    return value.sar(bitsno, 256);
 }
 
 // sign extend from (i*8+7)th bit counting from least significant
 export function signextend(i: BigInt, x: BigInt): BigInt {
-    const b = i.toInt32();
+    const b = i.toU32();
     if (b >= 31) return x;
-    const bits = b*8+8;
-    const extbits = 256 - bits;
+    const bits: u32 = b*8+8;
+    const extbits: u32 = u32(256) - bits;
 
-    let v = x.leftShift(extbits)
-    v = maskBigInt256(v);
-    v = v.rightShift(extbits);
+    let v = x.shl(extbits)
+    v = v.mask(32);
+    const isneg = v.isNeg();
+    v = v.shr(extbits);
 
-    if (!isNeg(v, bits-1)) return v;
-    const padd = BigInt.from(2).pow(256).sub(BigInt.from(1)).rightShift(bits).leftShift(bits);
+    if (!isneg) return v;
+    const padd = BigInt.fromU32(2).pown(256).sub(BigInt.fromU32(1)).shr(bits).shl(bits);
     v = padd.add(v);
     return v;
 }
@@ -364,17 +355,22 @@ export function keccak256(data: u8[]): BigInt {
     const _data = new Uint8Array(data.length);
     _data.set(data);
     const hash = wasmx.keccak256(_data.buffer);
-    return u8ArrayToBigInt(arrayBufferTou8Array(hash));
+    return new BigInt(hash, false);
 }
 
-function isNeg(a: BigInt, size: i32 = 255): bool {
-    const sign = a.rightShift(size);
-    if (sign.toInt32() === 1) return true;
-    return false;
-}
+// export function keccak256(ctx: Context, data: u8[]): BigInt {
+//     // const _data = new Uint8Array(data.length);
+//     // _data.set(data);
+//     // const hash = wasmx.keccak256(_data.buffer);
+//     // return u8ArrayToBigInt(arrayBufferTou8Array(hash));
+//     return BigInt.fromU32(0);
+// }
 
-function twosComplement(a: BigInt): BigInt {
-    if (!isNeg(a)) return a;
-    const abs = BigInt.from(2).pow(256).sub(a);
-    return abs.opposite();
-}
+// export function keccak256(ctx: Context, data: u8[]): BigInt {
+//     const hash: ArrayBuffer = new ArrayBuffer(32);
+//     const inputOffset = changetype<i32>(data);
+//     const outputOffset = changetype<i32>(hash);
+//     ctx.resetKeccakSpace();
+//     wasmx.keccak256(i32(ctx.keccakOffset), inputOffset, data.length, outputOffset);
+//    return new BigInt(hash, false);
+// }

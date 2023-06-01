@@ -5,6 +5,7 @@ import { Memory } from './memory';
 import { GasMeter } from './gas_meter';
 
 export class Context {
+    keccakOffset: usize; // 1024 bytes reserved context space
     stack: Stack;
     memory: Memory;
     env: Env;
@@ -20,5 +21,10 @@ export class Context {
         this.logger = logger;
         this.bytecode = env.contract.bytecode;
         this.gasmeter = gasmeter;
+        this.keccakOffset = heap.alloc(1024);
+    }
+
+    resetKeccakSpace(): void {
+        memory.fill(this.keccakOffset, 0, 1024);
     }
 }

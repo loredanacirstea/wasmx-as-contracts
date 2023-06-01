@@ -6,7 +6,7 @@ export class GasMeter {
     usedGas: BigInt;
     refundedGas: BigInt;
 
-    constructor(gasLimit: BigInt, usedGas: BigInt = BigInt.from(0), refundedGas: BigInt = BigInt.from(0)) {
+    constructor(gasLimit: BigInt, usedGas: BigInt = BigInt.fromU32(0), refundedGas: BigInt = BigInt.fromU32(0)) {
         this.gasLimit = gasLimit;
         this.usedGas = usedGas;
         this.refundedGas = refundedGas;
@@ -40,11 +40,11 @@ export class GasMeter {
     }
 
     useOpcodeGas(opcodeName: string): void {
-        this.useGas(BigInt.from(3));
+        this.useGas(BigInt.fromU32(3));
     }
 
     // TODO
     getPrice(opcodeName: string): BigInt {
-        return BigInt.from(0);
+        return BigInt.fromU32(0);
     }
 }
