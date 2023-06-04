@@ -54,6 +54,11 @@ opcodesMap.set('shr', shr);
 opcodesMap.set('sar', sar);
 opcodesMap.set('keccak256', keccak256);
 
+opcodesMap.set('mathsqrt', mathsqrt);
+opcodesMap.set('mathlogn', mathlogn);
+opcodesMap.set('mathlog10', mathlog10);
+opcodesMap.set('mathlog2', mathlog2);
+
 opcodesMap.set('getAddress', getAddress);
 opcodesMap.set('getExternalBalance', getExternalBalance);
 opcodesMap.set('getTxOrigin', getTxOrigin);
@@ -812,6 +817,42 @@ export function keccak256 (ctx: Context, inputs: BigInt[]): void {
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
         ctx.logger.debug('KECCAK256', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+    }
+}
+
+export function mathsqrt (ctx: Context, inputs: BigInt[]): void {
+    ctx.gasmeter.useOpcodeGas('mathsqrt');
+    const result = evm.mathsqrt(inputs[0]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('MATHSQRT', [bigIntToU8Array32(inputs[0])], [bigIntToU8Array32(result)], ctx.pc);
+    }
+}
+
+export function mathlogn (ctx: Context, inputs: BigInt[]): void {
+    ctx.gasmeter.useOpcodeGas('mathlogn');
+    const result = evm.mathlogn(inputs[0]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('MATHLOGN', [bigIntToU8Array32(inputs[0])], [bigIntToU8Array32(result)], ctx.pc);
+    }
+}
+
+export function mathlog10 (ctx: Context, inputs: BigInt[]): void {
+    ctx.gasmeter.useOpcodeGas('mathlog10');
+    const result = evm.mathlog10(inputs[0]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('MATHLOG10', [bigIntToU8Array32(inputs[0])], [bigIntToU8Array32(result)], ctx.pc);
+    }
+}
+
+export function mathlog2 (ctx: Context, inputs: BigInt[]): void {
+    ctx.gasmeter.useOpcodeGas('mathlog2');
+    const result = evm.mathlog2(inputs[0]);
+    ctx.stack.push(result);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('MATHLOG2', [bigIntToU8Array32(inputs[0])], [bigIntToU8Array32(result)], ctx.pc);
     }
 }
 

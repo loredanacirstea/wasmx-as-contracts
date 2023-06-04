@@ -48,6 +48,11 @@ opByCode.set(0x1d, {name: 'sar', arity: 2});
 
 opByCode.set(0x20, {name: 'keccak256', arity: 2});
 
+opByCode.set(0x21, {name: 'mathsqrt', arity: 1});
+opByCode.set(0x22, {name: 'mathlogn', arity: 1});
+opByCode.set(0x23, {name: 'mathlog10', arity: 1});
+opByCode.set(0x24, {name: 'mathlog2', arity: 1});
+
 opByCode.set(0x30, {name: 'getAddress', arity: 0});
 opByCode.set(0x31, {name: 'getExternalBalance', arity: 1});
 opByCode.set(0x32, {name: 'getTxOrigin', arity: 0});

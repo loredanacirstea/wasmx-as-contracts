@@ -351,6 +351,30 @@ export function signextend(i: BigInt, x: BigInt): BigInt {
     return v;
 }
 
+export function mathsqrt(a: BigInt): BigInt {
+    const a_ = f64(a.toU64());
+    const b = sqrt(a_);
+    return BigInt.fromU64(u64(Math.floor(b)));
+}
+
+export function mathlogn(a: BigInt): BigInt {
+    const a_ = f64(a.toU64());
+    const b = Math.log(a_);
+    return BigInt.fromU64(u64(Math.floor(b)));
+}
+
+export function mathlog10(a: BigInt): BigInt {
+    const a_ = f64(a.toU64());
+    const b = Math.log10(a_);
+    return BigInt.fromU64(u64(Math.floor(b)));
+}
+
+export function mathlog2(a: BigInt): BigInt {
+    const a_ = f64(a.toU64());
+    const b = Math.log2(a_);
+    return BigInt.fromU64(u64(Math.floor(b)));
+}
+
 export function keccak256(data: u8[]): BigInt {
     const _data = new Uint8Array(data.length);
     _data.set(data);

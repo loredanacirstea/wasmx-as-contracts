@@ -68,6 +68,19 @@ export function getEnv() {
 
             // bytecode: [...hexToUint8Array(curveBytecode.runtime)],
 
+            // sqrt test
+            // 600e61000e600039600e6000f3006000352160005260206000f3
+            bytecode: [...hexToUint8Array("6000352160005260206000f3")],
+
+            // logn test
+            bytecode: [...hexToUint8Array("6000352260005260206000f3")],
+
+            // log2 test
+            bytecode: [...hexToUint8Array("6000352460005260206000f3")],
+
+            // log10 test
+            bytecode: [...hexToUint8Array("6000352360005260206000f3")],
+
             balance: [0],
             codeHash: [],
         },
@@ -269,6 +282,9 @@ export function getEnv() {
 
             // // fibonacci fibInternal(9)
             // callData: [...hexToUint8Array('b19602740000000000000000000000000000000000000000000000000000000000000008')],
+
+            // sqrt
+            callData: [...hexToUint8Array('0000000000000000000000000000000000000000000000000000000000000100')],
         },
     }
     return encodeToUtf8Array(JSON.stringify(env));
