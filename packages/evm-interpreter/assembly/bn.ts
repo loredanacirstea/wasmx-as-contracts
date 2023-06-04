@@ -1,1 +1,1 @@
-export { tally as BigInt } from './tally';
+export { tally as BigInt } from 'as-tally/assembly';

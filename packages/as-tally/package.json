@@ -1,7 +1,7 @@
 {
-  "name": "@ark-us/wasmx-as-evm-interpreter",
+  "name": "as-tally",
   "version": "0.0.1",
-  "description": "",
+  "description": "BigInt for AssemblyScript",
   "main": "index.js",
   "scripts": {
     "test": "node tests",
@@ -10,22 +10,27 @@
     "asbuild": "npm run asbuild:debug && npm run asbuild:release",
     "start": "npx serve ."
   },
-  "author": "",
+  "keywords": [
+    "u128",
+    "u256",
+    "bignum",
+    "bigint",
+    "biginteger",
+    "fixed",
+    "wasm",
+    "webassembly",
+    "assemblyscript"
+  ],
+  "author": "Loredana Cirstea",
   "license": "GPL-3.0-or-later",
+  "devDependencies": {
+    "assemblyscript": "^0.27.5"
+  },
   "type": "module",
   "exports": {
     ".": {
       "import": "./build/release.js",
       "types": "./build/release.d.ts"
     }
-  },
-  "devDependencies": {
-    "assemblyscript": "^0.27.5",
-    "visitor-as": "^0.11.4",
-    "wasmx": "file:tests/wasmx"
-  },
-  "dependencies": {
-    "as-tally": "file:../as-tally",
-    "json-as": "github:loredanacirstea/as-json"
   }
 }
