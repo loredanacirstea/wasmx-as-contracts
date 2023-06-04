@@ -186,6 +186,19 @@ export class tally {
         return arr;
     }
 
+    toArrayBuffer(littleEndian: bool = true): ArrayBuffer {
+        if (littleEndian) return this.toArrayBufferLe();
+        return this.toArrayBufferBe();
+    }
+
+    toArrayBufferLe(): ArrayBuffer {
+        return this.buf
+    }
+
+    toArrayBufferBe(): ArrayBuffer {
+        return this.a8.slice(0).reverse().buffer;
+    }
+
     toI32Array(littleEndian: bool = true): Array<i32> {
         if (littleEndian) return this.toI32ArrayLe();
         return this.toI32ArrayBe();
@@ -206,32 +219,6 @@ export class tally {
             arr[i] = i32(this.a32[len - 1 - i]);
         }
         return arr;
-    }
-
-    toArrayBuffer(littleEndian: bool = true): ArrayBuffer {
-        if (littleEndian) return this.toArrayBufferLe();
-        return this.toArrayBufferBe();
-    }
-
-    toArrayBufferLe(): ArrayBuffer {
-        return this.buf
-    }
-
-    toArrayBufferBe(): ArrayBuffer {
-        return this.a8.slice(0).reverse().buffer;
-    }
-
-    toUint8Array(littleEndian: bool = true): Uint8Array {
-        if (littleEndian) return this.toUint8ArrayLe();
-        return this.toUint8ArrayBe();
-    }
-
-    toUint8ArrayLe(): Uint8Array {
-        return this.a8;
-    }
-
-    toUint8ArrayBe(): Uint8Array {
-        return this.a8.slice(0).reverse();
     }
 
     toString(radix: u32 = 0): string {
@@ -277,14 +264,6 @@ export class tally {
         return v;
     }
 
-    static fromUint8Array(value: Uint8Array, bytesLength: i32 = 0): tally {
-        if (bytesLength == 0) bytesLength = value.byteLength;
-        if (bytesLength < value.byteLength) throw new Error("invalid length");
-        const v = tally.empty(bytesLength);
-        v.a8.set(value);
-        return v;
-    }
-
     static fromUint16Array(value: Uint16Array, bytesLength: i32 = 0): tally {
         if (bytesLength == 0) bytesLength = value.byteLength;
         if (bytesLength < value.byteLength) throw new Error("invalid length");
@@ -294,6 +273,7 @@ export class tally {
     }
 
     static fromUint32Array(value: Uint32Array, bytesLength: i32 = 0): tally {
+        // console.log("-fromUint32Array-" + bytesLength.toString() + "--" + value.toString());
         if (bytesLength == 0) bytesLength = value.byteLength;
         if (bytesLength < value.byteLength) throw new Error("invalid length");
         const v = tally.empty(bytesLength);
