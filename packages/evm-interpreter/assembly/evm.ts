@@ -202,7 +202,7 @@ export function create2(
     return new BigInt(addressbz, false);
 }
 
-export function log(
+export function log_evm(
     data: u8[],
     topics: BigInt[],
 ): void {

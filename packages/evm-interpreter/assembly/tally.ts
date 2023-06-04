@@ -28,7 +28,7 @@ export class tally {
         // arr[i] = c % MAX_VALUES.max32
         // c = Math.floor(c / MAX_VALUES.max32)
         this.a32[0] = u32(value % MAX32);
-        this.a32[1] = u32(Math.floor(value / MAX32));
+        this.a32[1] = u32(Math.floor(f64(value) / f64(MAX32)));
     }
 
     add(b: tally): tally {
@@ -250,17 +250,6 @@ export class tally {
     static fromU64(value: u64, size: i32 = 32): tally {
         const v = tally.empty(size);
         v.setU64(value);
-        return v;
-    }
-
-    static fromArrayBuffer(value: ArrayBuffer, bytesLength: i32 = 32, littleEndian: bool = true): tally {
-        if (bytesLength == 0) bytesLength = value.byteLength;
-        if (bytesLength < value.byteLength) throw new Error("invalid length");
-        const v = tally.empty(bytesLength);
-        v.buf = value;
-        if (!littleEndian) {
-            v.a8.reverse();
-        }
         return v;
     }
 

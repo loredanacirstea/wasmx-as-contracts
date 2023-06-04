@@ -406,11 +406,11 @@ export function returnDataCopy (ctx: Context, inputs: BigInt[]): void {
     }
 }
 
-export function log (ctx: Context, dataOffset: u32, dataLength: u32, topics: BigInt[]): void {
+export function log_evm (ctx: Context, dataOffset: u32, dataLength: u32, topics: BigInt[]): void {
     // TODO price based on topics indexed
     ctx.gasmeter.useOpcodeGas('log');
     const data = ctx.memory.load(dataOffset, dataLength);
-    evm.log(data, topics);
+    evm.log_evm(data, topics);
     if (ctx.logger.isDebug) {
         const inputs: u8[][] = [data].concat(topics.reduce((accum: u8[][], value: BigInt) => accum.concat([bigIntToU8Array32(value)]), []));
         ctx.logger.debug('LOG', inputs, [], ctx.pc);
@@ -420,31 +420,31 @@ export function log (ctx: Context, dataOffset: u32, dataLength: u32, topics: Big
 export function log0 (ctx: Context, inputs: BigInt[]): void {
     const dataOffset = inputs[0].toU32();
     const dataLength = inputs[1].toU32();
-    return log(ctx, dataOffset, dataLength, []);
+    return log_evm(ctx, dataOffset, dataLength, []);
 }
 
 export function log1 (ctx: Context, inputs: BigInt[]): void {
     const dataOffset = inputs[0].toU32();
     const dataLength = inputs[1].toU32();
-    return log(ctx, dataOffset, dataLength, inputs.slice(2));
+    return log_evm(ctx, dataOffset, dataLength, inputs.slice(2));
 }
 
 export function log2  (ctx: Context, inputs: BigInt[]): void {
     const dataOffset = inputs[0].toU32();
     const dataLength = inputs[1].toU32();
-    return log(ctx, dataOffset, dataLength, inputs.slice(2));
+    return log_evm(ctx, dataOffset, dataLength, inputs.slice(2));
 }
 
 export function log3  (ctx: Context, inputs: BigInt[]): void {
     const dataOffset = inputs[0].toU32();
     const dataLength = inputs[1].toU32();
-    return log(ctx, dataOffset, dataLength, inputs.slice(2));
+    return log_evm(ctx, dataOffset, dataLength, inputs.slice(2));
 }
 
 export function log4  (ctx: Context, inputs: BigInt[]): void {
     const dataOffset = inputs[0].toU32();
     const dataLength = inputs[1].toU32();
-    return log(ctx, dataOffset, dataLength, inputs.slice(2));
+    return log_evm(ctx, dataOffset, dataLength, inputs.slice(2));
 }
 
 export function finish (ctx: Context, inputs: BigInt[]): void {
