@@ -27,6 +27,14 @@ export class Memory {
         this.mem[offset] = value;
     }
 
+    storeUint8Array(part: Uint8Array, offset: u32): void {
+        const maxlength = offset + part.length;
+        part = Memory.fillUint8Array(part, maxlength);
+        for (let i = 0; i < part.length; i++) {
+            this.mem[i + offset] = part[i];
+        }
+    }
+
     static fill(arr: Array<u8>, maxlength: u32): u8[] {
         if (u32(arr.length) < maxlength) {
             arr = arr.concat(new Array<u8>(maxlength - u32(arr.length)))
@@ -38,5 +46,20 @@ export class Memory {
         const maxlength = offset + length;
         arr = Memory.fill(arr, maxlength);
         return arr.slice(offset, maxlength);
+    }
+
+    static loadFromUint8Array(arr: Uint8Array, offset: u32, length: u32): Uint8Array {
+        const maxlength = offset + length;
+        arr = Memory.fillUint8Array(arr, maxlength);
+        return arr.slice(offset, maxlength);
+    }
+
+    static fillUint8Array(arr: Uint8Array, maxlength: u32): Uint8Array {
+        if (u32(arr.length) < maxlength) {
+            const newarr = new Uint8Array(maxlength);
+            newarr.set(arr);
+            return newarr;
+        }
+        return arr
     }
 }

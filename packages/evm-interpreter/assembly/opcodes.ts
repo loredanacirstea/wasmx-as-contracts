@@ -1,6 +1,6 @@
 import { BigInt } from "./bn";
 import { Context } from './context';
-import { u8ArrayToArrayBuffer, u8ArrayToBigInt, bigIntToU8Array32 } from './utils';
+import { u8ArrayToArrayBuffer, u8ArrayToBigInt, u8ToUint8Array } from './utils';
 import * as wasmx from './wasmx';
 import * as evm from './evm';
 import { Memory } from './memory';
@@ -102,17 +102,17 @@ export function loadMemory (ctx: Context, inputs: BigInt[]): void {
     const value = u8ArrayToBigInt(result);
     ctx.stack.push(value);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('MLOAD', [bigIntToU8Array32(inputs[0])], [bigIntToU8Array32(value)], ctx.pc);
+        ctx.logger.debug('MLOAD', [inputs[0].toUint8ArrayBe()], [value.toUint8ArrayBe()], ctx.pc);
     }
 }
 
 export function storeMemory (ctx: Context, inputs: BigInt[]): void {
     // TODO gas cost for memory
     const offset = inputs[0].toU32();
-    const value = bigIntToU8Array32(inputs[1]);
-    ctx.memory.store(value, offset)
+    const value = inputs[1].toUint8ArrayBe();
+    ctx.memory.storeUint8Array(value, offset)
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('MSTORE', [bigIntToU8Array32(inputs[0])], [bigIntToU8Array32(inputs[1])], ctx.pc);
+        ctx.logger.debug('MSTORE', [inputs[0].toUint8ArrayBe()], [inputs[1].toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -121,7 +121,7 @@ export function storeMemory8 (ctx: Context, inputs: BigInt[]): void {
     const offset = inputs[0].toU32();
     ctx.memory.store8(u8(inputs[1].toU32()), offset);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('MSTORE8', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [], ctx.pc);
+        ctx.logger.debug('MSTORE8', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [], ctx.pc);
     }
 }
 
@@ -130,7 +130,7 @@ export function getAddress (ctx: Context, inputs: BigInt[]): void {
     const address = ctx.env.contract.address
     ctx.stack.push(address);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('ADDRESS', [], [bigIntToU8Array32(address)], ctx.pc);
+        ctx.logger.debug('ADDRESS', [], [address.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -139,7 +139,7 @@ export function getSelfBalance (ctx: Context, inputs: BigInt[]): void {
     const value = evm.balance(ctx.env.contract.address);
     ctx.stack.push(value);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('SELFBALANCE', [], [bigIntToU8Array32(value)], ctx.pc);
+        ctx.logger.debug('SELFBALANCE', [], [value.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -150,7 +150,7 @@ export function getExternalBalance (ctx: Context, inputs: BigInt[]): void {
     const balance = evm.balance(address);
     ctx.stack.push(balance);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('BALANCE', [bigIntToU8Array32(address)], [bigIntToU8Array32(balance)], ctx.pc);
+        ctx.logger.debug('BALANCE', [address.toUint8ArrayBe()], [balance.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -159,7 +159,7 @@ export function getBaseFee(ctx: Context, inputs: BigInt[]): void {
     const value = BigInt.fromU32(0);
     ctx.stack.push(value);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('BASEFEE', [], [bigIntToU8Array32(value)], ctx.pc);
+        ctx.logger.debug('BASEFEE', [], [value.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -169,7 +169,7 @@ export function getBlockHash (ctx: Context, inputs: BigInt[]): void {
     const hash = evm.blockhash(number);
     ctx.stack.push(hash);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('BLOCKHASH', [bigIntToU8Array32(number)], [bigIntToU8Array32(hash)], ctx.pc);
+        ctx.logger.debug('BLOCKHASH', [number.toUint8ArrayBe()], [hash.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -179,11 +179,11 @@ export function callDataCopy (ctx: Context, inputs: BigInt[]): void {
     const resultOffset = inputs[0].toU32()
     const dataOffset = inputs[1].toU32()
     const length = inputs[2].toU32()
-    const data = Memory.load(ctx.env.currentCall.callData, dataOffset, length);
-    ctx.memory.store(data, resultOffset)
+    const data = Memory.loadFromUint8Array(ctx.env.currentCall.callData, dataOffset, length);
+    ctx.memory.storeUint8Array(data, resultOffset)
 
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('CALLDATACOPY', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1]), bigIntToU8Array32(inputs[2])], [data], ctx.pc);
+        ctx.logger.debug('CALLDATACOPY', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe(), inputs[2].toUint8ArrayBe()], [data], ctx.pc);
     }
 }
 
@@ -192,18 +192,18 @@ export function getCallDataSize (ctx: Context, inputs: BigInt[]): void {
     const value = BigInt.fromU32(ctx.env.currentCall.callData.length);
     ctx.stack.push(value)
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('CALLDATASIZE', [bigIntToU8Array32(value)], [], ctx.pc);
+        ctx.logger.debug('CALLDATASIZE', [value.toUint8ArrayBe()], [], ctx.pc);
     }
 }
 
 export function callDataLoad (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('calldataload');
     const dataOffset = inputs[0].toU32()
-    const value =  Memory.load(ctx.env.currentCall.callData, dataOffset, 32);
-    const _value = u8ArrayToBigInt(value);
+    const value =  Memory.loadFromUint8Array(ctx.env.currentCall.callData, dataOffset, 32);
+    const _value = BigInt.fromUint8Array(value, 32, false);
     ctx.stack.push(_value);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('CALLDATALOAD', [bigIntToU8Array32(inputs[0])], [bigIntToU8Array32(_value)], ctx.pc);
+        ctx.logger.debug('CALLDATALOAD', [inputs[0].toUint8ArrayBe()], [value], ctx.pc);
     }
 }
 
@@ -212,7 +212,7 @@ export function storageStore (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('sstore');
     evm.sstore(inputs[0], inputs[1]);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('SSTORE', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [], ctx.pc);
+        ctx.logger.debug('SSTORE', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [], ctx.pc);
     }
 }
 
@@ -222,7 +222,7 @@ export function storageLoad (ctx: Context, inputs: BigInt[]): void {
     const value = evm.sload(inputs[0]);
     ctx.stack.push(value)
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('SLOAD', [bigIntToU8Array32(inputs[0])], [bigIntToU8Array32(value)], ctx.pc);
+        ctx.logger.debug('SLOAD', [inputs[0].toUint8ArrayBe()], [value.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -231,7 +231,7 @@ export function getCaller (ctx: Context, inputs: BigInt[]): void {
     const address = ctx.env.currentCall.sender;
     ctx.stack.push(address);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('CALLER', [], [bigIntToU8Array32(address)], ctx.pc);
+        ctx.logger.debug('CALLER', [], [address.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -240,7 +240,7 @@ export function getCallValue (ctx: Context, inputs: BigInt[]): void {
     const value = ctx.env.currentCall.funds;
     ctx.stack.push(value);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('CALLVALUE', [], [bigIntToU8Array32(value)], ctx.pc);
+        ctx.logger.debug('CALLVALUE', [], [value.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -249,7 +249,7 @@ export function getCodeSize (ctx: Context, inputs: BigInt[]): void {
     const value = BigInt.fromU32(ctx.env.contract.bytecode.length);
     ctx.stack.push(value);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('CODESIZE', [], [bigIntToU8Array32(value)], ctx.pc);
+        ctx.logger.debug('CODESIZE', [], [value.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -259,10 +259,10 @@ export function codeCopy (ctx: Context, inputs: BigInt[]): void {
     const resultOffset = inputs[0].toU32()
     const codeOffset = inputs[1].toU32()
     const length = inputs[2].toU32()
-    const data = Memory.load(ctx.env.contract.bytecode, codeOffset, length);
-    ctx.memory.store(data, resultOffset)
+    const data = Memory.loadFromUint8Array(ctx.env.contract.bytecode, codeOffset, length);
+    ctx.memory.storeUint8Array(data, resultOffset)
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('CODECOPY', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1]), bigIntToU8Array32(inputs[2])], [data], ctx.pc);
+        ctx.logger.debug('CODECOPY', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe(), inputs[2].toUint8ArrayBe()], [data], ctx.pc);
     }
 }
 
@@ -271,7 +271,7 @@ export function getBlockCoinbase (ctx: Context, inputs: BigInt[]): void {
     const address = ctx.env.block.proposer
     ctx.stack.push(address);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('COINBASE', [], [bigIntToU8Array32(address)], ctx.pc);
+        ctx.logger.debug('COINBASE', [], [address.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -280,7 +280,7 @@ export function getBlockDifficulty (ctx: Context, inputs: BigInt[]): void {
     const value = ctx.env.block.difficulty;
     ctx.stack.push(value);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('DIFFICULTY', [], [bigIntToU8Array32(value)], ctx.pc);
+        ctx.logger.debug('DIFFICULTY', [], [value.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -291,7 +291,7 @@ export function getExternalCodeSize (ctx: Context, inputs: BigInt[]): void {
     const size = evm.extcodesize(ctx, address);
     ctx.stack.push(size);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('EXTCODESIZE', [bigIntToU8Array32(address)], [bigIntToU8Array32(size)], ctx.pc);
+        ctx.logger.debug('EXTCODESIZE', [address.toUint8ArrayBe()], [size.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -302,7 +302,7 @@ export function getExternalCodeHash (ctx: Context, inputs: BigInt[]): void {
     const size = evm.extcodehash(ctx, address);
     ctx.stack.push(size);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('EXTCODEHASH', [bigIntToU8Array32(address)], [bigIntToU8Array32(size)], ctx.pc);
+        ctx.logger.debug('EXTCODEHASH', [address.toUint8ArrayBe()], [size.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -313,10 +313,10 @@ export function externalCodeCopy (ctx: Context, inputs: BigInt[]): void {
     const codeOffset = inputs[2].toU32()
     const length = inputs[3].toU32()
     const code = evm.getExternalCode(ctx, inputs[0]);
-    const data = Memory.load(code, codeOffset, length);
-    ctx.memory.store(data, resultOffset)
+    const data = Memory.loadFromUint8Array(code, codeOffset, length);
+    ctx.memory.storeUint8Array(data, resultOffset)
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('EXTCODECOPY', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1]), bigIntToU8Array32(inputs[2]), bigIntToU8Array32(inputs[3])], [], ctx.pc);
+        ctx.logger.debug('EXTCODECOPY', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe(), inputs[2].toUint8ArrayBe(), inputs[3].toUint8ArrayBe()], [], ctx.pc);
     }
 }
 
@@ -325,7 +325,7 @@ export function getGasLeft (ctx: Context, inputs: BigInt[]): void {
     const value = ctx.gasmeter.getGasLeft()
     ctx.stack.push(value);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('GAS', [bigIntToU8Array32(value)], [], ctx.pc);
+        ctx.logger.debug('GAS', [value.toUint8ArrayBe()], [], ctx.pc);
     }
 }
 
@@ -334,7 +334,7 @@ export function getBlockGasLimit (ctx: Context, inputs: BigInt[]): void {
     const value = ctx.env.block.gasLimit
     ctx.stack.push(value);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('GASLIMIT',[], [bigIntToU8Array32(value)], ctx.pc);
+        ctx.logger.debug('GASLIMIT',[], [value.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -343,7 +343,7 @@ export function getTxGasPrice (ctx: Context, inputs: BigInt[]): void {
     const value = ctx.env.transaction.gasPrice;
     ctx.stack.push(value);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('GASPRICE',[], [bigIntToU8Array32(value)], ctx.pc);
+        ctx.logger.debug('GASPRICE',[], [value.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -352,7 +352,7 @@ export function getBlockNumber (ctx: Context, inputs: BigInt[]): void {
     const value = ctx.env.block.height;
     ctx.stack.push(value);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('NUMBER',[], [bigIntToU8Array32(value)], ctx.pc);
+        ctx.logger.debug('NUMBER',[], [value.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -361,7 +361,7 @@ export function getBlockTimestamp (ctx: Context, inputs: BigInt[]): void {
     const value = ctx.env.block.timestamp;
     ctx.stack.push(value);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('TIMESTAMP',[], [bigIntToU8Array32(value)], ctx.pc);
+        ctx.logger.debug('TIMESTAMP',[], [value.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -370,7 +370,7 @@ export function getTxOrigin (ctx: Context, inputs: BigInt[]): void {
     const value = ctx.env.currentCall.origin;
     ctx.stack.push(value);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('ORIGIN',[], [bigIntToU8Array32(value)], ctx.pc);
+        ctx.logger.debug('ORIGIN',[], [value.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -379,7 +379,7 @@ export function getReturnDataSize (ctx: Context, inputs: BigInt[]): void {
     const value = BigInt.fromU32(ctx.env.currentCall.returnData.length);
     ctx.stack.push(value)
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('RETURNDATASIZE', [bigIntToU8Array32(value)], [], ctx.pc);
+        ctx.logger.debug('RETURNDATASIZE', [value.toUint8ArrayBe()], [], ctx.pc);
     }
 }
 
@@ -388,7 +388,7 @@ export function getBlockChainId (ctx: Context, inputs: BigInt[]): void {
     const value = ctx.env.chain.chainId
     ctx.stack.push(value)
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('CHAINID', [bigIntToU8Array32(value)], [], ctx.pc);
+        ctx.logger.debug('CHAINID', [value.toUint8ArrayBe()], [], ctx.pc);
     }
 }
 
@@ -398,11 +398,11 @@ export function returnDataCopy (ctx: Context, inputs: BigInt[]): void {
     const resultOffset = inputs[0].toU32()
     const dataOffset = inputs[1].toU32()
     const length = inputs[2].toU32()
-    const data = Memory.load(ctx.env.currentCall.returnData, dataOffset, length);
-    ctx.memory.store(data, resultOffset)
+    const data = Memory.loadFromUint8Array(ctx.env.currentCall.returnData, dataOffset, length);
+    ctx.memory.storeUint8Array(data, resultOffset)
 
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('RETURNDATACOPY', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1]), bigIntToU8Array32(inputs[2])], [data], ctx.pc);
+        ctx.logger.debug('RETURNDATACOPY', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe(), inputs[2].toUint8ArrayBe()], [data], ctx.pc);
     }
 }
 
@@ -410,9 +410,11 @@ export function log_evm (ctx: Context, dataOffset: u32, dataLength: u32, topics:
     // TODO price based on topics indexed
     ctx.gasmeter.useOpcodeGas('log');
     const data = ctx.memory.load(dataOffset, dataLength);
-    evm.log_evm(data, topics);
+    const _data = u8ToUint8Array(data);
+    const _topics = topics.reduce((accum: Array<Uint8Array>, value: BigInt) => accum.concat([value.toUint8ArrayBe()]), []);
+    evm.log_evm(_data, _topics);
     if (ctx.logger.isDebug) {
-        const inputs: u8[][] = [data].concat(topics.reduce((accum: u8[][], value: BigInt) => accum.concat([bigIntToU8Array32(value)]), []));
+        const inputs: Array<Uint8Array> = [_data].concat(_topics);
         ctx.logger.debug('LOG', inputs, [], ctx.pc);
     }
 }
@@ -452,11 +454,12 @@ export function finish (ctx: Context, inputs: BigInt[]): void {
     const dataOffset = inputs[0];
     const dataLength = inputs[1];
     const result = ctx.memory.load(dataOffset.toU32(), dataLength.toU32());
+    const _result = u8ToUint8Array(result);
     ctx.pc = 0;
-    ctx.env.currentCall.returnData = result;
+    ctx.env.currentCall.returnData = _result;
     ctx.env.currentCall.returnDataSuccess = 0;
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('RETURN', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [result], ctx.pc);
+        ctx.logger.debug('RETURN', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [_result], ctx.pc);
     }
     wasmx.finish(u8ArrayToArrayBuffer(result));
 }
@@ -464,7 +467,7 @@ export function finish (ctx: Context, inputs: BigInt[]): void {
 export function stop (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('return');
     ctx.pc = 0;
-    ctx.env.currentCall.returnData = [];
+    ctx.env.currentCall.returnData = new Uint8Array(0);
     ctx.env.currentCall.returnDataSuccess = 0;
     if (ctx.logger.isDebug) {
         ctx.logger.debug('STOP', [], [], ctx.pc);
@@ -478,11 +481,12 @@ export function revert (ctx: Context, inputs: BigInt[]): void {
     const dataOffset = inputs[0];
     const dataLength = inputs[1];
     const result = ctx.memory.load(dataOffset.toU32(), dataLength.toU32());
+    const _result = u8ToUint8Array(result);
     ctx.pc = 0;
-    ctx.env.currentCall.returnData = result;
+    ctx.env.currentCall.returnData = _result;
     ctx.env.currentCall.returnDataSuccess = 2;
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('REVERT', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [result], ctx.pc);
+        ctx.logger.debug('REVERT', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [_result], ctx.pc);
     }
     wasmx.revert(u8ArrayToArrayBuffer(result));
 }
@@ -492,19 +496,20 @@ export function push0(ctx: Context, inputs: BigInt[]): void {
     const value = BigInt.fromU32(0);
     ctx.stack.push(value);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('PUSH0', [], [bigIntToU8Array32(value)], ctx.pc);
+        ctx.logger.debug('PUSH0', [], [value.toUint8ArrayBe()], ctx.pc);
     }
 }
 
 export function handlePush (ctx: Context, code: u8): void {
     ctx.gasmeter.useOpcodeGas('push');
     const no = code - 0x60 + 1;
-    const _value = new Array<u8>(32 - no).concat(Memory.load(ctx.bytecode, ctx.pc, no))
-    const value = u8ArrayToBigInt(_value);
+    const _value = new Uint8Array(32);
+    _value.set(Memory.loadFromUint8Array(ctx.bytecode, ctx.pc, no), 32 - no);
+    const value = BigInt.fromUint8Array(_value, 32, false);
     ctx.stack.push(value);
     ctx.pc += no;
     if (ctx.logger.isDebug) {
-        ctx.logger.debug(`PUSH${no}`, [bigIntToU8Array32(value)], [], ctx.pc);
+        ctx.logger.debug(`PUSH${no}`, [_value], [], ctx.pc);
     }
 }
 
@@ -522,7 +527,7 @@ export function handleDup (ctx: Context, code: u8): void {
     const no = code - 0x80 + 1;
     const value = ctx.stack.dup(no);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug(`DUP${no}`, [bigIntToU8Array32(value)], [], ctx.pc);
+        ctx.logger.debug(`DUP${no}`, [value.toUint8ArrayBe()], [], ctx.pc);
     }
 }
 
@@ -534,7 +539,7 @@ export function jump (ctx: Context, inputs: BigInt[]): void {
     }
     ctx.pc = newpos;
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('JUMP', [bigIntToU8Array32(inputs[0])], [], ctx.pc);
+        ctx.logger.debug('JUMP', [inputs[0].toUint8ArrayBe()], [], ctx.pc);
     }
 }
 
@@ -545,7 +550,7 @@ export function jumpi (ctx: Context, inputs: BigInt[]): void {
     const condition = inputs[1].gt(BigInt.fromU32(0));
     if (condition) ctx.pc = newpos;
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('JUMPI', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [], ctx.pc);
+        ctx.logger.debug('JUMPI', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [], ctx.pc);
     }
 }
 
@@ -577,7 +582,7 @@ export function add (ctx: Context, inputs: BigInt[]): void {
     const result = evm.add(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('ADD', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('ADD', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -586,7 +591,7 @@ export function sub (ctx: Context, inputs: BigInt[]): void {
     const result = evm.sub(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('SUB', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('SUB', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -595,7 +600,7 @@ export function mul (ctx: Context, inputs: BigInt[]): void {
     const result = evm.mul(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('MUL', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('MUL', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -604,7 +609,7 @@ export function div (ctx: Context, inputs: BigInt[]): void {
     const result = evm.div(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('DIV', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('DIV', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -618,7 +623,7 @@ export function sdiv (ctx: Context, inputs: BigInt[]): void {
     const result = evm.sdiv(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('SDIV', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('SDIV', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -628,7 +633,7 @@ export function mod (ctx: Context, inputs: BigInt[]): void {
     const result = evm.mod(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('MOD', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('MOD', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -637,7 +642,7 @@ export function smod (ctx: Context, inputs: BigInt[]): void {
     const result = evm.smod(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('SMOD', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('SMOD', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -646,7 +651,7 @@ export function addmod (ctx: Context, inputs: BigInt[]): void {
     const result = evm.addmod(inputs[0], inputs[1], inputs[2]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('ADDMOD', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1]), bigIntToU8Array32(inputs[2])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('ADDMOD', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe(), inputs[2].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -655,7 +660,7 @@ export function mulmod (ctx: Context, inputs: BigInt[]): void {
     const result = evm.mulmod(inputs[0], inputs[1], inputs[2]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('MULMOD', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1]), bigIntToU8Array32(inputs[2])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('MULMOD', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe(), inputs[2].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -665,7 +670,7 @@ export function exp (ctx: Context, inputs: BigInt[]): void {
     const result = evm.exp(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('EXP', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('EXP', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -674,7 +679,7 @@ export function signextend (ctx: Context, inputs: BigInt[]): void {
     const result = evm.signextend(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('SIGNEXTEND', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('SIGNEXTEND', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -683,7 +688,7 @@ export function lt (ctx: Context, inputs: BigInt[]): void {
     const result = evm.lt(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('LT', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('LT', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -692,7 +697,7 @@ export function gt (ctx: Context, inputs: BigInt[]): void {
     const result = evm.gt(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('GT', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('GT', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -701,7 +706,7 @@ export function slt (ctx: Context, inputs: BigInt[]): void {
     const result = evm.slt(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('SLT', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('SLT', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -710,7 +715,7 @@ export function sgt (ctx: Context, inputs: BigInt[]): void {
     const result = evm.sgt(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('SGT', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('SGT', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -719,7 +724,7 @@ export function eq (ctx: Context, inputs: BigInt[]): void {
     const result = evm.eq(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('EQ', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('EQ', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -728,7 +733,7 @@ export function iszero (ctx: Context, inputs: BigInt[]): void {
     const result = evm.iszero(inputs[0]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('ISZERO', [bigIntToU8Array32(inputs[0])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('ISZERO', [inputs[0].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -737,7 +742,7 @@ export function and (ctx: Context, inputs: BigInt[]): void {
     const result = evm.and(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('AND', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('AND', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -746,7 +751,7 @@ export function or (ctx: Context, inputs: BigInt[]): void {
     const result = evm.or(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('OR', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('OR', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -755,7 +760,7 @@ export function xor (ctx: Context, inputs: BigInt[]): void {
     const result = evm.xor(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('XOR', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('XOR', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -764,7 +769,7 @@ export function not (ctx: Context, inputs: BigInt[]): void {
     const result = evm.not(inputs[0]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('NOT', [bigIntToU8Array32(inputs[0])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('NOT', [inputs[0].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -773,7 +778,7 @@ export function byte (ctx: Context, inputs: BigInt[]): void {
     const result = evm.byte(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('BYTE', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('BYTE', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -782,7 +787,7 @@ export function shl (ctx: Context, inputs: BigInt[]): void {
     const result = evm.shl(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('SHL', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('SHL', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -791,7 +796,7 @@ export function shr (ctx: Context, inputs: BigInt[]): void {
     const result = evm.shr(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('SHR', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('SHR', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -800,7 +805,7 @@ export function sar (ctx: Context, inputs: BigInt[]): void {
     const result = evm.sar(inputs[0], inputs[1]);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('SAR', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('SAR', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -811,7 +816,7 @@ export function keccak256 (ctx: Context, inputs: BigInt[]): void {
     const result = evm.keccak256(data);
     ctx.stack.push(result);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('KECCAK256', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1])], [bigIntToU8Array32(result)], ctx.pc);
+        ctx.logger.debug('KECCAK256', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe()], [result.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -823,7 +828,7 @@ export function call (ctx: Context, inputs: BigInt[]): void {
     const outptr = inputs[5].toU32();
     const outsize = inputs[6].toU32();
     const calldata = ctx.memory.load(inptr, insize);
-    const result = evm.call(ctx, inputs[0], inputs[1], inputs[2], calldata);
+    const result = evm.call(ctx, inputs[0], inputs[1], inputs[2], u8ToUint8Array(calldata));
 
     // 0 = success, 1 = revert; 2 = internal error;
     ctx.env.currentCall.returnDataSuccess = result.success == 0 ? 1 : 0;
@@ -831,18 +836,18 @@ export function call (ctx: Context, inputs: BigInt[]): void {
 
     const data = result.data.slice(0, outsize);
     const success = BigInt.fromU32(ctx.env.currentCall.returnDataSuccess);
-    ctx.memory.store(data, outptr);
+    ctx.memory.storeUint8Array(data, outptr);
     ctx.stack.push(success);
     if (ctx.logger.isDebug) {
         ctx.logger.debug('CALL', [
-            bigIntToU8Array32(inputs[0]),
-            bigIntToU8Array32(inputs[1]),
-            bigIntToU8Array32(inputs[2]),
-            bigIntToU8Array32(inputs[3]),
-            bigIntToU8Array32(inputs[4]),
-            bigIntToU8Array32(inputs[5]),
-            bigIntToU8Array32(inputs[6]),
-        ], [bigIntToU8Array32(success), data], ctx.pc);
+            inputs[0].toUint8ArrayBe(),
+            inputs[1].toUint8ArrayBe(),
+            inputs[2].toUint8ArrayBe(),
+            inputs[3].toUint8ArrayBe(),
+            inputs[4].toUint8ArrayBe(),
+            inputs[5].toUint8ArrayBe(),
+            inputs[6].toUint8ArrayBe(),
+        ], [success.toUint8ArrayBe(), data], ctx.pc);
     }
 }
 
@@ -854,7 +859,7 @@ export function callCode (ctx: Context, inputs: BigInt[]): void {
     const outptr = inputs[5].toU32();
     const outsize = inputs[6].toU32();
     const calldata = ctx.memory.load(inptr, insize);
-    const result = evm.callCode(ctx, inputs[0], inputs[1], inputs[2], calldata);
+    const result = evm.callCode(ctx, inputs[0], inputs[1], inputs[2], u8ToUint8Array(calldata));
 
     // 0 = success, 1 = revert; 2 = internal error;
     ctx.env.currentCall.returnDataSuccess = result.success == 0 ? 1 : 0;
@@ -862,18 +867,18 @@ export function callCode (ctx: Context, inputs: BigInt[]): void {
 
     const data = result.data.slice(0, outsize);
     const success = BigInt.fromU32(ctx.env.currentCall.returnDataSuccess);
-    ctx.memory.store(data, outptr);
+    ctx.memory.storeUint8Array(data, outptr);
     ctx.stack.push(success);
     if (ctx.logger.isDebug) {
         ctx.logger.debug('CALLCODE', [
-            bigIntToU8Array32(inputs[0]),
-            bigIntToU8Array32(inputs[1]),
-            bigIntToU8Array32(inputs[2]),
-            bigIntToU8Array32(inputs[3]),
-            bigIntToU8Array32(inputs[4]),
-            bigIntToU8Array32(inputs[5]),
-            bigIntToU8Array32(inputs[6]),
-        ], [bigIntToU8Array32(success), data], ctx.pc);
+            inputs[0].toUint8ArrayBe(),
+            inputs[1].toUint8ArrayBe(),
+            inputs[2].toUint8ArrayBe(),
+            inputs[3].toUint8ArrayBe(),
+            inputs[4].toUint8ArrayBe(),
+            inputs[5].toUint8ArrayBe(),
+            inputs[6].toUint8ArrayBe(),
+        ], [success.toUint8ArrayBe(), data], ctx.pc);
     }
 }
 
@@ -885,7 +890,7 @@ export function callDelegate (ctx: Context, inputs: BigInt[]): void {
     const outptr = inputs[4].toU32();
     const outsize = inputs[5].toU32();
     const calldata = ctx.memory.load(inptr, insize);
-    const result = evm.callDelegate(ctx, inputs[0], inputs[1], calldata);
+    const result = evm.callDelegate(ctx, inputs[0], inputs[1], u8ToUint8Array(calldata));
 
     // 0 = success, 1 = revert; 2 = internal error;
     ctx.env.currentCall.returnDataSuccess = result.success == 0 ? 1 : 0;
@@ -893,17 +898,17 @@ export function callDelegate (ctx: Context, inputs: BigInt[]): void {
 
     const data = result.data.slice(0, outsize);
     const success = BigInt.fromU32(ctx.env.currentCall.returnDataSuccess);
-    ctx.memory.store(data, outptr);
+    ctx.memory.storeUint8Array(data, outptr);
     ctx.stack.push(success);
     if (ctx.logger.isDebug) {
         ctx.logger.debug('DELEGATECALL', [
-            bigIntToU8Array32(inputs[0]),
-            bigIntToU8Array32(inputs[1]),
-            bigIntToU8Array32(inputs[2]),
-            bigIntToU8Array32(inputs[3]),
-            bigIntToU8Array32(inputs[4]),
-            bigIntToU8Array32(inputs[5]),
-        ], [bigIntToU8Array32(success), data], ctx.pc);
+            inputs[0].toUint8ArrayBe(),
+            inputs[1].toUint8ArrayBe(),
+            inputs[2].toUint8ArrayBe(),
+            inputs[3].toUint8ArrayBe(),
+            inputs[4].toUint8ArrayBe(),
+            inputs[5].toUint8ArrayBe(),
+        ], [success.toUint8ArrayBe(), data], ctx.pc);
     }
 }
 
@@ -915,7 +920,7 @@ export function callStatic (ctx: Context, inputs: BigInt[]): void {
     const outptr = inputs[4].toU32();
     const outsize = inputs[5].toU32();
     const calldata = ctx.memory.load(inptr, insize);
-    const result = evm.callStatic(ctx, inputs[0], inputs[1], calldata);
+    const result = evm.callStatic(ctx, inputs[0], inputs[1], u8ToUint8Array(calldata));
 
     // 0 = success, 1 = revert; 2 = internal error;
     ctx.env.currentCall.returnDataSuccess = result.success == 0 ? 1 : 0;
@@ -923,17 +928,17 @@ export function callStatic (ctx: Context, inputs: BigInt[]): void {
 
     const data = result.data.slice(0, outsize);
     const success = BigInt.fromU32(ctx.env.currentCall.returnDataSuccess);
-    ctx.memory.store(data, outptr);
+    ctx.memory.storeUint8Array(data, outptr);
     ctx.stack.push(success);
     if (ctx.logger.isDebug) {
         ctx.logger.debug('STATICCALL', [
-            bigIntToU8Array32(inputs[0]),
-            bigIntToU8Array32(inputs[1]),
-            bigIntToU8Array32(inputs[2]),
-            bigIntToU8Array32(inputs[3]),
-            bigIntToU8Array32(inputs[4]),
-            bigIntToU8Array32(inputs[5]),
-        ], [bigIntToU8Array32(success), data], ctx.pc);
+            inputs[0].toUint8ArrayBe(),
+            inputs[1].toUint8ArrayBe(),
+            inputs[2].toUint8ArrayBe(),
+            inputs[3].toUint8ArrayBe(),
+            inputs[4].toUint8ArrayBe(),
+            inputs[5].toUint8ArrayBe(),
+        ], [success.toUint8ArrayBe(), data], ctx.pc);
     }
 }
 
@@ -941,10 +946,10 @@ export function create (ctx: Context, inputs: BigInt[]): void {
     // todo gas
     ctx.gasmeter.useOpcodeGas('create');
     const data = ctx.memory.load(inputs[1].toU32(), inputs[2].toU32());
-    const address = evm.create(inputs[0], data);
+    const address = evm.create(inputs[0], u8ToUint8Array(data));
     ctx.stack.push(address);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('CREATE', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1]), bigIntToU8Array32(inputs[2])], [bigIntToU8Array32(address)], ctx.pc);
+        ctx.logger.debug('CREATE', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe(), inputs[2].toUint8ArrayBe()], [address.toUint8ArrayBe()], ctx.pc);
     }
 }
 
@@ -952,10 +957,10 @@ export function create2 (ctx: Context, inputs: BigInt[]): void {
     // todo gas
     ctx.gasmeter.useOpcodeGas('create2');
     const data = ctx.memory.load(inputs[1].toU32(), inputs[2].toU32());
-    const address = evm.create2(inputs[0], data, inputs[3]);
+    const address = evm.create2(inputs[0], u8ToUint8Array(data), inputs[3]);
     ctx.stack.push(address);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('CREATE2', [bigIntToU8Array32(inputs[0]), bigIntToU8Array32(inputs[1]), bigIntToU8Array32(inputs[2]), bigIntToU8Array32(inputs[3])], [bigIntToU8Array32(address)], ctx.pc);
+        ctx.logger.debug('CREATE2', [inputs[0].toUint8ArrayBe(), inputs[1].toUint8ArrayBe(), inputs[2].toUint8ArrayBe(), inputs[3].toUint8ArrayBe()], [address.toUint8ArrayBe()], ctx.pc);
     }
 }
 

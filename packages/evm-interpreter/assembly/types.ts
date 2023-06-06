@@ -1,9 +1,12 @@
+import { JSON } from "json-as/assembly";
 import { BigInt } from "./bn";
 import { getAccountInfo } from "./evm";
 
 // TODO typecheck for each
 export type Bytes32 = Array<u8>;
 
+// @ts-ignore
+@serializable
 export class ChainInfo {
     denom: string;
     chainId: BigInt;
@@ -15,6 +18,8 @@ export class ChainInfo {
     }
 }
 
+// @ts-ignore
+@serializable
 export class BlockInfo {
     height: BigInt;
     timestamp: BigInt;
@@ -32,6 +37,8 @@ export class BlockInfo {
     }
 }
 
+// @ts-ignore
+@serializable
 export class TransactionInfo {
     index: BigInt;
     gasPrice: BigInt;
@@ -41,35 +48,42 @@ export class TransactionInfo {
     }
 }
 
+// @ts-ignore
+@serializable
 export class AccountInfo {
     address: BigInt;
     codeHash: BigInt;
-    bytecode: Array<u8>;
-    constructor(address: BigInt, codeHash: BigInt, bytecode: u8[]) {
+    bytecode: Uint8Array;
+    constructor(address: BigInt, codeHash: BigInt, bytecode: Uint8Array) {
         this.address = address;
         this.codeHash = codeHash;
         this.bytecode = bytecode;
     }
 }
 
+// @ts-ignore
+@serializable
 export class EvmLog {
-    data: u8[];
-    topics: u8[][];
-    constructor(data: u8[], topics: u8[][]) {
+    type: string = 'ewasm';
+    data: Uint8Array;
+    topics: Array<Uint8Array>;
+    constructor(data: Uint8Array, topics: Array<Uint8Array>) {
         this.data = data;
         this.topics = topics;
     }
 }
 
+// @ts-ignore
+@serializable
 export class CurrentCallInfo {
     origin: BigInt;
     sender: BigInt;
     funds: BigInt;
     gasLimit: BigInt;
-    callData: u8[];
-    returnData: u8[] = [];
+    callData: Uint8Array;
+    returnData!: Uint8Array;
     returnDataSuccess: u8 = 1; // 0 = success, 1 = revert; 2 = internal error;
-    constructor(origin: BigInt, sender: BigInt, funds: BigInt, gasLimit: BigInt, callData: u8[]) {
+    constructor(origin: BigInt, sender: BigInt, funds: BigInt, gasLimit: BigInt, callData: Uint8Array) {
         this.origin = origin;
         this.sender = sender;
         this.funds = funds;
@@ -78,6 +92,8 @@ export class CurrentCallInfo {
     }
 }
 
+// @ts-ignore
+@serializable
 export class Env {
     chain: ChainInfo;
     block: BlockInfo;
@@ -105,16 +121,18 @@ export class Env {
     }
 }
 
+// @ts-ignore
+@serializable
 export class CallRequest {
     to: BigInt; // storage changes
     from: BigInt;
     value: BigInt;
     gasLimit: BigInt;
-    calldata: u8[];
-    bytecode: u8[];
-    codeHash: u8[];
+    calldata: Uint8Array;
+    bytecode: Uint8Array;
+    codeHash: BigInt;
     isQuery: bool;
-    constructor(to: BigInt, from: BigInt, value: BigInt, gasLimit: BigInt, calldata: u8[], bytecode: u8[], codeHash: u8[], isQuery: bool) {
+    constructor(to: BigInt, from: BigInt, value: BigInt, gasLimit: BigInt, calldata: Uint8Array, bytecode: Uint8Array, codeHash: BigInt, isQuery: bool) {
         this.to = to;
         this.from = from;
         this.value = value;
@@ -126,31 +144,37 @@ export class CallRequest {
     }
 }
 
+// @ts-ignore
+@serializable
 export class CallResponse {
     success: u8;  // 0 = success, 1 = revert; 2 = internal error;
-    data: u8[];
-    constructor(success: u8, data: u8[]) {
+    data: Uint8Array;
+    constructor(success: u8, data: Uint8Array) {
         this.success = success;
         this.data = data;
     }
 }
 
+// @ts-ignore
+@serializable
 export class CreateAccountRequest {
-    bytecode: u8[];
+    bytecode: Uint8Array;
     balance: BigInt;
 
-    constructor(bytecode: u8[], balance: BigInt) {
+    constructor(bytecode: Uint8Array, balance: BigInt) {
         this.bytecode = bytecode;
         this.balance = balance;
     }
 }
 
+// @ts-ignore
+@serializable
 export class Create2AccountRequest {
-    bytecode: u8[];
+    bytecode: Uint8Array;
     balance: BigInt;
     salt: BigInt;
 
-    constructor(bytecode: u8[], balance: BigInt, salt: BigInt) {
+    constructor(bytecode: Uint8Array, balance: BigInt, salt: BigInt) {
         this.bytecode = bytecode;
         this.balance = balance;
         this.salt = salt;

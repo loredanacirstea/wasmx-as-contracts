@@ -277,11 +277,15 @@ export class tally {
         return v;
     }
 
-    static fromUint8Array(value: Uint8Array, bytesLength: i32 = 0): tally {
+    static fromUint8Array(value: Uint8Array, bytesLength: i32 = 0, littleEndian: bool = true): tally {
         if (bytesLength == 0) bytesLength = value.byteLength;
         if (bytesLength < value.byteLength) throw new Error("invalid length");
         const v = tally.empty(bytesLength);
-        v.a8.set(value);
+        if (littleEndian) {
+            v.a8.set(value);
+        } else {
+            v.a8.set(value.reverse());
+        }
         return v;
     }
 

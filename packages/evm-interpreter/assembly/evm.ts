@@ -1,45 +1,21 @@
 import { JSON } from "json-as/assembly";
 import { BigInt } from "./bn";
 import * as wasmx from './wasmx';
-import { BlockInfo, ChainInfo, AccountInfo, CurrentCallInfo, Env, TransactionInfo, CallResponse } from "./types";
-import { AccountInfoJson, CallRequestJson, CallResponseJson, Create2AccountRequestJson, CreateAccountRequestJson, EnvJson, EvmLogJson } from './types_json';
-import { arrayBufferTou8Array, i32ToU8Array, i32ArrayToU256, u8ArrayToBigInt, bigIntToU8Array32, u8ToI32Array, bigIntToI32Array32, maxUint } from './utils';
+import {
+    BlockInfo, ChainInfo, AccountInfo,
+    CurrentCallInfo, Env,
+    TransactionInfo, CallResponse,
+    CallRequest,
+    Create2AccountRequest, CreateAccountRequest,
+    EvmLog,
+} from "./types";
+import { arrayBufferTou8Array, i32ToU8Array, i32ArrayToU256, u8ArrayToBigInt, u8ToI32Array, bigIntToI32Array32, bigIntToU8Array32, maxUint } from './utils';
 import { Context } from './context';
 
 export function getEnvWrap(): Env {
     const envJsonStr = String.UTF8.decode(wasmx.getEnv())
     // console.log(envJsonStr)
-    const envJson = JSON.parse<EnvJson>(envJsonStr);
-    return new Env(
-        new ChainInfo(
-            envJson.chain.denom,
-            i32ArrayToU256(envJson.chain.chainId),
-            envJson.chain.chainIdFull
-        ),
-        new BlockInfo(
-            i32ArrayToU256(envJson.block.height),
-            i32ArrayToU256(envJson.block.timestamp),
-            i32ArrayToU256(envJson.block.gasLimit),
-            i32ArrayToU256(envJson.block.hash),
-            i32ArrayToU256(envJson.block.proposer),
-        ),
-        new TransactionInfo(
-            BigInt.fromU32(envJson.transaction.index),
-            i32ArrayToU256(envJson.transaction.gasPrice),
-        ),
-        new AccountInfo(
-            i32ArrayToU256(envJson.contract.address),
-            i32ArrayToU256(envJson.contract.codeHash),
-            i32ToU8Array(envJson.contract.bytecode),
-        ),
-        new CurrentCallInfo(
-            i32ArrayToU256(envJson.currentCall.origin),
-            i32ArrayToU256(envJson.currentCall.sender),
-            i32ArrayToU256(envJson.currentCall.funds),
-            i32ArrayToU256(envJson.currentCall.gasLimit),
-            i32ToU8Array(envJson.currentCall.callData),
-        ),
-    )
+    return JSON.parse<Env>(envJsonStr);
 }
 
 export function sstore(key: BigInt, value: BigInt): void {
@@ -59,11 +35,11 @@ export function blockhash(number: BigInt): BigInt {
 export function getAccountInfo(address: BigInt): AccountInfo {
     const value = wasmx.getAccount(address.toArrayBufferBe());
     const valuestr = String.UTF8.decode(value)
-    const account = JSON.parse<AccountInfoJson>(valuestr);
+    const account = JSON.parse<AccountInfo>(valuestr);
     return new AccountInfo(
-        i32ArrayToU256(account.address),
-        i32ArrayToU256(account.codeHash),
-        i32ToU8Array(account.bytecode),
+        account.address,
+        account.codeHash,
+        account.bytecode,
     );
 }
 
@@ -80,7 +56,7 @@ export function extcodehash(ctx: Context, address: BigInt): BigInt {
     return ctx.env.getAccount(address).codeHash;
 }
 
-export function getExternalCode(ctx: Context, address: BigInt): u8[] {
+export function getExternalCode(ctx: Context, address: BigInt): Uint8Array {
     return ctx.env.getAccount(address).bytecode;
 }
 
@@ -89,66 +65,66 @@ export function call(
     gas_limit: BigInt,
     address: BigInt,
     value: BigInt,
-    calldata: u8[],
+    calldata: Uint8Array,
 ): CallResponse {
-    const data = new CallRequestJson (
-        bigIntToI32Array32(address),
-        bigIntToI32Array32(ctx.env.contract.address),
-        bigIntToI32Array32(value),
-        bigIntToI32Array32(gas_limit),
-        u8ToI32Array(calldata),
-        u8ToI32Array(getExternalCode(ctx, address)),
-        bigIntToI32Array32(extcodehash(ctx, address)),
+    const data = new CallRequest(
+        address,
+        ctx.env.contract.address,
+        value,
+        gas_limit,
+        calldata,
+        getExternalCode(ctx, address),
+        extcodehash(ctx, address),
         false,
     )
-    const datastr = JSON.stringify<CallRequestJson>(data);
+    const datastr = JSON.stringify<CallRequest>(data);
     const valuebz = wasmx.externalCall(String.UTF8.encode(datastr));
-    const response = JSON.parse<CallResponseJson>(String.UTF8.decode(valuebz));
-    return new CallResponse(u8(response.success), i32ToU8Array(response.data));
+    const response = JSON.parse<CallResponse>(String.UTF8.decode(valuebz));
+    return new CallResponse(u8(response.success), response.data);
 }
 
 export function callDelegate(
     ctx: Context,
     gas_limit: BigInt,
     address: BigInt,
-    calldata: u8[],
+    calldata: Uint8Array,
 ): CallResponse {
-    const data = new CallRequestJson (
-        bigIntToI32Array32(ctx.env.contract.address),
-        bigIntToI32Array32(ctx.env.currentCall.sender),
-        bigIntToI32Array32( ctx.env.currentCall.funds),
-        bigIntToI32Array32(gas_limit),
-        u8ToI32Array(calldata),
-        u8ToI32Array(getExternalCode(ctx, address)),
-        bigIntToI32Array32(extcodehash(ctx, address)),
+    const data = new CallRequest(
+        ctx.env.contract.address,
+        ctx.env.currentCall.sender,
+        ctx.env.currentCall.funds,
+        gas_limit,
+        calldata,
+        getExternalCode(ctx, address),
+        extcodehash(ctx, address),
         false,
     )
-    const datastr = JSON.stringify<CallRequestJson>(data);
+    const datastr = JSON.stringify<CallRequest>(data);
     const valuebz = wasmx.externalCall(String.UTF8.encode(datastr));
-    const response = JSON.parse<CallResponseJson>(String.UTF8.decode(valuebz));
-    return new CallResponse(u8(response.success), i32ToU8Array(response.data));
+    const response = JSON.parse<CallResponse>(String.UTF8.decode(valuebz));
+    return new CallResponse(u8(response.success), response.data);
 }
 
 export function callStatic(
     ctx: Context,
     gas_limit: BigInt,
     address: BigInt,
-    calldata: u8[],
+    calldata: Uint8Array,
 ): CallResponse {
-    const data = new CallRequestJson (
-        bigIntToI32Array32(address),
-        bigIntToI32Array32(ctx.env.contract.address),
-        bigIntToI32Array32(BigInt.fromU32(0)),
-        bigIntToI32Array32(gas_limit),
-        u8ToI32Array(calldata),
-        u8ToI32Array(getExternalCode(ctx, address)),
-        bigIntToI32Array32(extcodehash(ctx, address)),
+    const data = new CallRequest(
+        address,
+        ctx.env.contract.address,
+        BigInt.fromU32(0),
+        gas_limit,
+        calldata,
+        getExternalCode(ctx, address),
+        extcodehash(ctx, address),
         true,
     )
-    const datastr = JSON.stringify<CallRequestJson>(data);
+    const datastr = JSON.stringify<CallRequest>(data);
     const valuebz = wasmx.externalCall(String.UTF8.encode(datastr));
-    const response = JSON.parse<CallResponseJson>(String.UTF8.decode(valuebz));
-    return new CallResponse(u8(response.success), i32ToU8Array(response.data));
+    const response = JSON.parse<CallResponse>(String.UTF8.decode(valuebz));
+    return new CallResponse(u8(response.success), response.data);
 }
 
 export function callCode(
@@ -156,64 +132,51 @@ export function callCode(
     gas_limit: BigInt,
     address: BigInt,
     value: BigInt,
-    calldata: u8[],
+    calldata: Uint8Array,
 ): CallResponse {
-    const data = new CallRequestJson (
-        bigIntToI32Array32(ctx.env.contract.address),
-        bigIntToI32Array32(ctx.env.contract.address),
-        bigIntToI32Array32(value),
-        bigIntToI32Array32(gas_limit),
-        u8ToI32Array(calldata),
-        u8ToI32Array(getExternalCode(ctx, address)),
-        bigIntToI32Array32(extcodehash(ctx, address)),
+    const data = new CallRequest(
+        ctx.env.contract.address,
+        ctx.env.contract.address,
+        value,
+        gas_limit,
+        calldata,
+        getExternalCode(ctx, address),
+        extcodehash(ctx, address),
         false,
     )
-    const datastr = JSON.stringify<CallRequestJson>(data);
+    const datastr = JSON.stringify<CallRequest>(data);
     const valuebz = wasmx.externalCall(String.UTF8.encode(datastr));
-    const response = JSON.parse<CallResponseJson>(String.UTF8.decode(valuebz));
-    return new CallResponse(u8(response.success), i32ToU8Array(response.data));
+    const response = JSON.parse<CallResponse>(String.UTF8.decode(valuebz));
+    return new CallResponse(u8(response.success), response.data);
 }
 
 export function create(
     value: BigInt,
-    bytecode: u8[],
+    bytecode: Uint8Array,
 ): BigInt {
-    const data = new CreateAccountRequestJson (
-        u8ToI32Array(bytecode),
-        bigIntToI32Array32(value),
-    )
-    const datastr = JSON.stringify<CreateAccountRequestJson>(data);
+    const data = new CreateAccountRequest(bytecode, value)
+    const datastr = JSON.stringify<CreateAccountRequest>(data);
     const addressbz = wasmx.createAccount(String.UTF8.encode(datastr));
     return new BigInt(addressbz, false);
 }
 
 export function create2(
     value: BigInt,
-    bytecode: u8[],
+    bytecode: Uint8Array,
     salt: BigInt,
 ): BigInt {
-    const data = new Create2AccountRequestJson (
-        u8ToI32Array(bytecode),
-        bigIntToI32Array32(value),
-        bigIntToI32Array32(salt),
-    )
-    const datastr = JSON.stringify<Create2AccountRequestJson>(data);
+    const data = new Create2AccountRequest (bytecode, value, salt)
+    const datastr = JSON.stringify<Create2AccountRequest>(data);
     const addressbz = wasmx.create2Account(String.UTF8.encode(datastr));
     return new BigInt(addressbz, false);
 }
 
 export function log_evm(
-    data: u8[],
-    topics: BigInt[],
+    data: Uint8Array,
+    topics: Array<Uint8Array>,
 ): void {
-    const _topics: i32[][] = topics.map((v: BigInt): i32[] => {
-        return bigIntToI32Array32(v);
-    });
-    const logs = new EvmLogJson (
-        u8ToI32Array(data),
-        _topics,
-    )
-    const logstr = JSON.stringify<EvmLogJson>(logs);
+    const logs = new EvmLog(data, topics)
+    const logstr = JSON.stringify<EvmLog>(logs);
     wasmx.log(String.UTF8.encode(logstr));
 }
 

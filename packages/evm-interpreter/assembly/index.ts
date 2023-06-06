@@ -10,7 +10,7 @@ export function wasmx_wasmx_2(): void {}
 
 export function instantiate(): void {}
 
-export function main(): u8[] {
+export function main(): Uint8Array {
   const stack = new Stack();
   const memory = new Memory([]);
   const env = getEnvWrap();

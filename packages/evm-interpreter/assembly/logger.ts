@@ -1,11 +1,11 @@
-import { u8ArrayToHex } from "./utils";
+import { uint8ArrayToHex } from "./utils";
 
 export class OpcodeLog {
     name: string;
-    inputs: u8[][] = [];
-    outputs: u8[][] = [];
+    inputs: Array<Uint8Array> = [];
+    outputs: Array<Uint8Array> = [];
     pc: i32 = 0;
-    constructor(name: string, inputs: u8[][] = [], outputs: u8[][] = [], pc: i32 = 0) {
+    constructor(name: string, inputs: Array<Uint8Array> = [], outputs: Array<Uint8Array> = [], pc: i32 = 0) {
         this.name = name;
         this.inputs = inputs;
         this.outputs = outputs;
@@ -22,7 +22,7 @@ export class OpcodeLogger {
         if (this.level === 'debug') this.isDebug = true;
     }
 
-    debug(name: string, inputs: u8[][] = [], outputs: u8[][] = [], pc: i32 = 0): void {
+    debug(name: string, inputs: Array<Uint8Array> = [], outputs: Array<Uint8Array> = [], pc: i32 = 0): void {
         const log = new OpcodeLog(name, inputs, outputs, pc);
         this.logs.push(log);
         console.log("op: " + name);
@@ -31,6 +31,6 @@ export class OpcodeLogger {
     }
 }
 
-function toHex(arr: u8[][]): string[] {
-    return arr.map((v: u8[]) => u8ArrayToHex(v));
+function toHex(arr: Array<Uint8Array>): string[] {
+    return arr.map((v: Uint8Array) => uint8ArrayToHex(v));
 }
