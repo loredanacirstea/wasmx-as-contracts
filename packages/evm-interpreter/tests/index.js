@@ -1,6 +1,6 @@
 import assert from "assert";
-import { benchmark, runf, LOG, u8ArrayToHex } from './utils.js';
-import { hexToUint8Array, encodeToUtf8Array } from './wasmx.js';
+import { benchmark, runf, LOG, u8ArrayToHex, paddLeft } from './utils.js';
+import { hexToUint8Array } from './wasmx.js';
 import * as curveBytecode from './data/curve.js';
 import * as fibBytecode from './data/fib.js';
 import * as allopsBytecode from './data/allops.js';
@@ -13,26 +13,26 @@ const baseenv = {
     },
     block: {
         height: 10,
-        timestamp: [...hexToUint8Array(Math.floor(new Date().getTime() / 1000).toString(16))],
-        gasLimit: [0x98, 0x96, 0x80], // 10000000
+        timestamp: [...paddLeft(hexToUint8Array(Math.floor(new Date().getTime() / 1000).toString(16)))],
+        gasLimit: paddLeft([0x98, 0x96, 0x80]), // 10000000
         hash: [...new Uint8Array(32)],
-        proposer: [...new Uint8Array(20)],
+        proposer: [...new Uint8Array(32)],
     },
     transaction: {
-        index: [2],
+        index: paddLeft([2]),
         gasPrice: [...new Uint8Array(32)],
     },
     contract: {
-        address: [...hexToUint8Array('39B1BF12E9e21D78F0c76d192c26d47fa710Ec99')],
+        address: [...paddLeft(hexToUint8Array('39B1BF12E9e21D78F0c76d192c26d47fa710Ec99'))],
         bytecode: [...hexToUint8Array(fibBytecode.runtime)],
-        balance: [0],
-        codeHash: [],
+        balance: paddLeft([0]),
+        codeHash: paddLeft([]),
     },
     currentCall: {
-        origin: [...hexToUint8Array('39B1BF12E9e21D78F0c76d192c26d47fa710Ec98')],
-        sender: [...hexToUint8Array('39B1BF12E9e21D78F0c76d192c26d47fa710Ec98')],
+        origin: [...paddLeft(hexToUint8Array('39B1BF12E9e21D78F0c76d192c26d47fa710Ec98'))],
+        sender: [...paddLeft(hexToUint8Array('39B1BF12E9e21D78F0c76d192c26d47fa710Ec98'))],
         funds: [...new Uint8Array(32)],
-        gasLimit: [0x01, 0x86, 0xa0], // 100000
+        gasLimit: paddLeft([0x01, 0x86, 0xa0]), // 100000
         // fibonacci fibInternal(9)
         callData: [...hexToUint8Array('b19602740000000000000000000000000000000000000000000000000000000000000005')],
 

@@ -1,4 +1,4 @@
-import { LOG } from './utils.js';
+import { LOG, paddLeft } from './utils.js';
 
 export function wasmx(storageMap, env, logType = LOG.error) {
     function finish(buf) {
@@ -60,7 +60,7 @@ export function wasmx(storageMap, env, logType = LOG.error) {
     }
 
     function externalCall(buf) {
-        return [];
+        return paddLeft(new Uint8Array(0));
     }
 
     function getAccount(buf) {
@@ -68,9 +68,9 @@ export function wasmx(storageMap, env, logType = LOG.error) {
             console.log('-host-getAccount', [...new Uint8Array(buf)]);
         }
         return encodeToUtf8Array(JSON.stringify({
-            balance: [0],
-            codeHash: [],
-            bytecode: [...hexToUint8Array(curveBytecode.runtime)],
+            address: [...new Uint8Array(buf)],
+            codeHash: paddLeft([]),
+            bytecode: paddLeft([]),
         }));
     }
 
