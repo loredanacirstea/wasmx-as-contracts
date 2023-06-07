@@ -52,7 +52,7 @@ export function wasmx(storageMap, env, logType = LOG.error) {
     }
 
     function createAccount(buf) {
-        return [];
+        return [...paddLeft(hexToUint8Array('8dac21225dd5b0c174c4976fa8b6019bbf19aaf8'))]
     }
 
     function create2Account(buf) {
@@ -60,7 +60,10 @@ export function wasmx(storageMap, env, logType = LOG.error) {
     }
 
     function externalCall(buf) {
-        return paddLeft(new Uint8Array(0));
+        return encodeToUtf8Array(JSON.stringify({
+            success: 0,
+            data: [1, 2, 3, 4],
+        }));
     }
 
     function getAccount(buf) {

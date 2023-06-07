@@ -15,7 +15,11 @@ import { Context } from './context';
 export function getEnvWrap(): Env {
     const envJsonStr = String.UTF8.decode(wasmx.getEnv())
     // console.log(envJsonStr)
-    return JSON.parse<Env>(envJsonStr);
+    const env = JSON.parse<Env>(envJsonStr);
+    // the JSON decoder does not call the constructor
+    env.init();
+    env.block.difficulty = BigInt.empty();
+    return env;
 }
 
 export function sstore(key: BigInt, value: BigInt): void {
@@ -56,7 +60,7 @@ export function extcodehash(ctx: Context, address: BigInt): BigInt {
     return ctx.env.getAccount(address).codeHash;
 }
 
-export function getExternalCode(ctx: Context, address: BigInt): Uint8Array {
+export function getExternalCode(ctx: Context, address: BigInt): u8[] {
     return ctx.env.getAccount(address).bytecode;
 }
 
@@ -80,7 +84,7 @@ export function call(
     const datastr = JSON.stringify<CallRequest>(data);
     const valuebz = wasmx.externalCall(String.UTF8.encode(datastr));
     const response = JSON.parse<CallResponse>(String.UTF8.decode(valuebz));
-    return new CallResponse(u8(response.success), response.data);
+    return new CallResponse(response.success, response.data);
 }
 
 export function callDelegate(
@@ -102,7 +106,7 @@ export function callDelegate(
     const datastr = JSON.stringify<CallRequest>(data);
     const valuebz = wasmx.externalCall(String.UTF8.encode(datastr));
     const response = JSON.parse<CallResponse>(String.UTF8.decode(valuebz));
-    return new CallResponse(u8(response.success), response.data);
+    return new CallResponse(response.success, response.data);
 }
 
 export function callStatic(
@@ -124,7 +128,7 @@ export function callStatic(
     const datastr = JSON.stringify<CallRequest>(data);
     const valuebz = wasmx.externalCall(String.UTF8.encode(datastr));
     const response = JSON.parse<CallResponse>(String.UTF8.decode(valuebz));
-    return new CallResponse(u8(response.success), response.data);
+    return new CallResponse(response.success, response.data);
 }
 
 export function callCode(
@@ -147,7 +151,7 @@ export function callCode(
     const datastr = JSON.stringify<CallRequest>(data);
     const valuebz = wasmx.externalCall(String.UTF8.encode(datastr));
     const response = JSON.parse<CallResponse>(String.UTF8.decode(valuebz));
-    return new CallResponse(u8(response.success), response.data);
+    return new CallResponse(response.success, response.data);
 }
 
 export function create(

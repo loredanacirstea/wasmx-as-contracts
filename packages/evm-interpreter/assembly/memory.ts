@@ -29,7 +29,7 @@ export class Memory {
 
     storeUint8Array(part: Uint8Array, offset: u32): void {
         const maxlength = offset + part.length;
-        part = Memory.fillUint8Array(part, maxlength);
+        this.fill(maxlength);
         for (let i = 0; i < part.length; i++) {
             this.mem[i + offset] = part[i];
         }

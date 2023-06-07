@@ -374,6 +374,7 @@ export class tally {
     }
 
     static pown(a: tally, power: u64): tally {
+        if (power == 0) return tally.fromU32(1);
         let result = a.clone();
         for (let i: u64 = 1; i < power; i++) {
             result = tally.mul(result, a);
@@ -800,9 +801,10 @@ export class tally {
         return tally.div(tally.mul(a, b), tally.gcd(a, b))
     }
 
-    static toString(a: tally, radix: u32 = 0): string {
+    // this is used by as-json to stringify BigInt
+    static toString(a: tally, radix: u32 = 0, littleEndian: bool = false): string {
         if (radix == 16) return u8ArrayToHex(a.toU8ArrayBe());
-        if (radix == 0) return a.a8.toString();
+        if (radix == 0) return "[" + a.a8.slice(0).reverse().toString() + "]";
         throw new Error("invalid radix");
     }
 

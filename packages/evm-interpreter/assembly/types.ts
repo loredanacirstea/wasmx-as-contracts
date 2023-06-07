@@ -25,7 +25,7 @@ export class BlockInfo {
     timestamp: BigInt;
     gasLimit: BigInt;
     hash: BigInt;
-    difficulty: BigInt;
+    difficulty: BigInt = BigInt.empty();
     proposer: BigInt;
     constructor(height: BigInt, timestamp: BigInt, gasLimit: BigInt, hash: BigInt, proposer: BigInt) {
         this.height = height;
@@ -33,16 +33,15 @@ export class BlockInfo {
         this.gasLimit = gasLimit;
         this.hash = hash;
         this.proposer = proposer;
-        this.difficulty = BigInt.fromU32(0);
     }
 }
 
 // @ts-ignore
 @serializable
 export class TransactionInfo {
-    index: BigInt;
+    index: u32;
     gasPrice: BigInt;
-    constructor(index: BigInt, gasPrice: BigInt) {
+    constructor(index: u32, gasPrice: BigInt) {
         this.index = index;
         this.gasPrice = gasPrice;
     }
@@ -53,8 +52,8 @@ export class TransactionInfo {
 export class AccountInfo {
     address: BigInt;
     codeHash: BigInt;
-    bytecode: Uint8Array;
-    constructor(address: BigInt, codeHash: BigInt, bytecode: Uint8Array) {
+    bytecode: u8[];
+    constructor(address: BigInt, codeHash: BigInt, bytecode: u8[]) {
         this.address = address;
         this.codeHash = codeHash;
         this.bytecode = bytecode;
@@ -108,7 +107,12 @@ export class Env {
         this.transaction = transaction;
         this.contract = contract;
         this.currentCall = currentCall;
-        this.accountCache.set(contract.address.toString(), contract);
+        this.init();
+    }
+
+    init(): void {
+        this.accountCache = new Map<string,AccountInfo>();
+        this.accountCache.set(this.contract.address.toString(), this.contract);
     }
 
     getAccount(address: BigInt): AccountInfo {
@@ -129,10 +133,10 @@ export class CallRequest {
     value: BigInt;
     gasLimit: BigInt;
     calldata: Uint8Array;
-    bytecode: Uint8Array;
+    bytecode: u8[];
     codeHash: BigInt;
     isQuery: bool;
-    constructor(to: BigInt, from: BigInt, value: BigInt, gasLimit: BigInt, calldata: Uint8Array, bytecode: Uint8Array, codeHash: BigInt, isQuery: bool) {
+    constructor(to: BigInt, from: BigInt, value: BigInt, gasLimit: BigInt, calldata: Uint8Array, bytecode: u8[], codeHash: BigInt, isQuery: bool) {
         this.to = to;
         this.from = from;
         this.value = value;

@@ -8,12 +8,12 @@ import * as allopsBytecode from './data/allops.js';
 const baseenv = {
     chain: {
         denom: "amyt",
-        chainId: [0x1b, 0x58], // 7000,
+        chainId: paddLeft([0x1b, 0x58]), // 7000,
         chainIdFull: "mythos_7000-1",
     },
     block: {
-        height: 10,
-        timestamp: [...paddLeft(hexToUint8Array(Math.floor(new Date().getTime() / 1000).toString(16)))],
+        height: paddLeft([10]),
+        timestamp: [...paddLeft(hexToUint8Array(Math.floor(new Date().getTime()*1000000).toString(16)))],
         gasLimit: paddLeft([0x98, 0x96, 0x80]), // 10000000
         hash: [...new Uint8Array(32)],
         proposer: [...new Uint8Array(32)],
@@ -93,6 +93,11 @@ const testCases = [
                 name: 'sub',
                 value: 'f090359a00000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000006',
                 result: 'fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe'
+            },
+            {
+                name: 'exp_',
+                value: '630834b500000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000',
+                result: '0000000000000000000000000000000000000000000000000000000000000001',
             },
             {
                 name: 'sdiv -4 / 2',
@@ -292,6 +297,21 @@ const testCases = [
                 name: 'timestamp',
                 value: '24b60399',
             },
+            {
+                name: 'calldatasize',
+                value: '584a4504112233',
+                result: '0000000000000000000000000000000000000000000000000000000000000007',
+            },
+            {
+                name: 'codesize',
+                value: 'fcca1ca2',
+                result: '0000000000000000000000000000000000000000000000000000000000001f41',
+            },
+            {
+                name: 'call',
+                value: 'cce14e6b000000000000000000000000000000000000000000000000000000000001d4c000000000000000000000000039b1bf12e9e21d78f0c76d192c26d47fa710ec98000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+                result: '',
+            },
         ]
     },
     {
@@ -302,6 +322,17 @@ const testCases = [
                 name: '5',
                 value: 'b19602740000000000000000000000000000000000000000000000000000000000000005',
                 result: '0000000000000000000000000000000000000000000000000000000000000005'
+            },
+        ]
+    },
+    {
+        name: 'deployment',
+        bytecode: allopsBytecode.deployment,
+        calldatas: [
+            {
+                name: 'deployment',
+                value: '0x',
+                result: allopsBytecode.runtime,
             },
         ]
     },

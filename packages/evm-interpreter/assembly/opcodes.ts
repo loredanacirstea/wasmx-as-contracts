@@ -1,6 +1,6 @@
 import { BigInt } from "./bn";
 import { Context } from './context';
-import { u8ArrayToArrayBuffer, u8ArrayToBigInt, u8ToUint8Array } from './utils';
+import { u8ArrayToArrayBuffer, u8ArrayToBigInt, u8ArrayToHex, u8ToUint8Array, uint8ArrayToHex } from './utils';
 import * as wasmx from './wasmx';
 import * as evm from './evm';
 import { Memory } from './memory';
@@ -112,7 +112,7 @@ export function storeMemory (ctx: Context, inputs: BigInt[]): void {
     const value = inputs[1].toUint8ArrayBe(32);
     ctx.memory.storeUint8Array(value, offset)
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('MSTORE', [inputs[0].toUint8ArrayBe(32)], [inputs[1].toUint8ArrayBe(32)], ctx.pc);
+        ctx.logger.debug('MSTORE', [inputs[0].toUint8ArrayBe(32), inputs[1].toUint8ArrayBe(32)], [], ctx.pc);
     }
 }
 
@@ -203,7 +203,7 @@ export function callDataLoad (ctx: Context, inputs: BigInt[]): void {
     const _value = BigInt.fromUint8Array(value, 32, false);
     ctx.stack.push(_value);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('CALLDATALOAD', [inputs[0].toUint8ArrayBe(32)], [value], ctx.pc);
+        ctx.logger.debug('CALLDATALOAD', [inputs[0].toUint8ArrayBe(32)], [_value.toUint8ArrayBe(32)], ctx.pc);
     }
 }
 
@@ -259,10 +259,10 @@ export function codeCopy (ctx: Context, inputs: BigInt[]): void {
     const resultOffset = inputs[0].toU32()
     const codeOffset = inputs[1].toU32()
     const length = inputs[2].toU32()
-    const data = Memory.loadFromUint8Array(ctx.env.contract.bytecode, codeOffset, length);
-    ctx.memory.storeUint8Array(data, resultOffset)
+    const data = Memory.load(ctx.env.contract.bytecode, codeOffset, length);
+    ctx.memory.store(data, resultOffset)
     if (ctx.logger.isDebug) {
-        ctx.logger.debug('CODECOPY', [inputs[0].toUint8ArrayBe(32), inputs[1].toUint8ArrayBe(32), inputs[2].toUint8ArrayBe(32)], [data], ctx.pc);
+        ctx.logger.debug('CODECOPY', [inputs[0].toUint8ArrayBe(32), inputs[1].toUint8ArrayBe(32), inputs[2].toUint8ArrayBe(32)], [u8ToUint8Array(data)], ctx.pc);
     }
 }
 
@@ -313,8 +313,8 @@ export function externalCodeCopy (ctx: Context, inputs: BigInt[]): void {
     const codeOffset = inputs[2].toU32()
     const length = inputs[3].toU32()
     const code = evm.getExternalCode(ctx, inputs[0]);
-    const data = Memory.loadFromUint8Array(code, codeOffset, length);
-    ctx.memory.storeUint8Array(data, resultOffset)
+    const data = Memory.load(code, codeOffset, length);
+    ctx.memory.store(data, resultOffset)
     if (ctx.logger.isDebug) {
         ctx.logger.debug('EXTCODECOPY', [inputs[0].toUint8ArrayBe(32), inputs[1].toUint8ArrayBe(32), inputs[2].toUint8ArrayBe(32), inputs[3].toUint8ArrayBe(32)], [], ctx.pc);
     }
@@ -358,7 +358,8 @@ export function getBlockNumber (ctx: Context, inputs: BigInt[]): void {
 
 export function getBlockTimestamp (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('timestamp');
-    const value = ctx.env.block.timestamp;
+    // timestamp is in nanoseconds
+    const value = BigInt.fromU64(ctx.env.block.timestamp.toU64() / 1000000000);
     ctx.stack.push(value);
     if (ctx.logger.isDebug) {
         ctx.logger.debug('TIMESTAMP',[], [value.toUint8ArrayBe(32)], ctx.pc);
@@ -504,12 +505,12 @@ export function handlePush (ctx: Context, code: u8): void {
     ctx.gasmeter.useOpcodeGas('push');
     const no = code - 0x60 + 1;
     const _value = new Uint8Array(32);
-    _value.set(Memory.loadFromUint8Array(ctx.bytecode, ctx.pc, no), 32 - no);
+    _value.set(Memory.load(ctx.env.contract.bytecode, ctx.pc, no), 32 - no);
     const value = BigInt.fromUint8Array(_value, 32, false);
     ctx.stack.push(value);
     ctx.pc += no;
     if (ctx.logger.isDebug) {
-        ctx.logger.debug(`PUSH${no}`, [_value], [], ctx.pc);
+        ctx.logger.debug(`PUSH${no}`, [value.toUint8ArrayBe(32)], [], ctx.pc);
     }
 }
 
@@ -527,7 +528,7 @@ export function handleDup (ctx: Context, code: u8): void {
     const no = code - 0x80 + 1;
     const value = ctx.stack.dup(no);
     if (ctx.logger.isDebug) {
-        ctx.logger.debug(`DUP${no}`, [value.toUint8ArrayBe(32)], [], ctx.pc);
+        ctx.logger.debug(`DUP${no}`, [], [value.toUint8ArrayBe(32)], ctx.pc);
     }
 }
 
