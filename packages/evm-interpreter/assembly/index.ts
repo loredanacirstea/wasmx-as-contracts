@@ -13,7 +13,7 @@ export function instantiate(): void {}
 
 export function main(): u8[] {
     const stack = new Stack();
-    const memory = new Memory([]);
+    const memory = new Memory();
     const env = getEnvWrap();
     const logger = new OpcodeLogger("error");
     const gasmeter = new GasMeter(env.currentCall.gasLimit);
