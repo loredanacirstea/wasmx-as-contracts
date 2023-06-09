@@ -11,7 +11,7 @@ export const opcodesMap = new Map<string,OpcodeFn>();
 opcodesMap.set('finish', finish);
 opcodesMap.set('stop', stop);
 opcodesMap.set('revert', revert);
-// opcodesMap.set('invalid', invalid); // TODO
+opcodesMap.set('invalid', invalid); // TODO
 
 opcodesMap.set('jump', jump);
 opcodesMap.set('jumpi', jumpi);
@@ -19,7 +19,7 @@ opcodesMap.set('jumpdest', jumpdest);
 opcodesMap.set('pop', pop);
 opcodesMap.set('push0', push0);
 opcodesMap.set('pc', pc);
-// opcodesMap.set('getMSize', getMSize); // TODO
+opcodesMap.set('getMSize', getMSize); // TODO
 
 opcodesMap.set('loadMemory', loadMemory);
 opcodesMap.set('storeMemory', storeMemory);
@@ -578,6 +578,15 @@ export function pc (ctx: Context, inputs: BigInt[]): void {
     }
 }
 
+export function getMSize (ctx: Context, inputs: BigInt[]): void {
+    ctx.gasmeter.useOpcodeGas('msize');
+    const value = BigInt.fromU32(u32(ctx.memory.endUsedPointer));
+    ctx.stack.push(value);
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('MSIZE', [], [value.toUint8ArrayBe(32)], ctx.pc);
+    }
+}
+
 export function add (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('add');
     const result = evm.add(inputs[0], inputs[1]);
@@ -963,6 +972,13 @@ export function create2 (ctx: Context, inputs: BigInt[]): void {
     if (ctx.logger.isDebug) {
         ctx.logger.debug('CREATE2', [inputs[0].toUint8ArrayBe(32), inputs[1].toUint8ArrayBe(32), inputs[2].toUint8ArrayBe(32), inputs[3].toUint8ArrayBe(32)], [address.toUint8ArrayBe(32)], ctx.pc);
     }
+}
+
+export function invalid(ctx: Context, inputs: BigInt[]): void {
+    if (ctx.logger.isDebug) {
+        ctx.logger.debug('INVALID', [], [], ctx.pc);
+    }
+    wasmx.revert(new ArrayBuffer(0));
 }
 
 // export function selfDestruct (address, ctx: Context, inputs: BigInt[]): void {
