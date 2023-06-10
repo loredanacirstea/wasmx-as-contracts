@@ -221,17 +221,29 @@ export class tally {
         return this.a8.slice(0).reverse().buffer;
     }
 
-    toUint8Array(littleEndian: bool = true): Uint8Array {
-        if (littleEndian) return this.toUint8ArrayLe();
-        return this.toUint8ArrayBe();
+    toUint8Array(littleEndian: bool = true, size: i32 = 0): Uint8Array {
+        if (littleEndian) return this.toUint8ArrayLe(size);
+        return this.toUint8ArrayBe(size);
     }
 
-    toUint8ArrayLe(): Uint8Array {
-        return this.a8;
+    toUint8ArrayLe(size: i32 = 0): Uint8Array {
+        if (size === 0) return this.a8.slice(0);;
+        if (size > this.a8.byteLength) {
+            const newarr = new Uint8Array(size);
+            newarr.set(this.a8);
+            return newarr;
+        }
+        return this.a8.slice(0, size);
     }
 
-    toUint8ArrayBe(): Uint8Array {
-        return this.a8.slice(0).reverse();
+    toUint8ArrayBe(size: i32 = 0): Uint8Array {
+        if (size === 0) return this.a8.slice(0).reverse();
+        if (size > this.a8.byteLength) {
+            const newarr = new Uint8Array(size);
+            newarr.set(this.a8.slice(0).reverse(), size - this.a8.byteLength);
+            return newarr;
+        }
+        return this.a8.slice(0, size).reverse();
     }
 
     toString(radix: u32 = 0): string {
@@ -277,11 +289,15 @@ export class tally {
         return v;
     }
 
-    static fromUint8Array(value: Uint8Array, bytesLength: i32 = 0): tally {
+    static fromUint8Array(value: Uint8Array, bytesLength: i32 = 0, littleEndian: bool = true): tally {
         if (bytesLength == 0) bytesLength = value.byteLength;
         if (bytesLength < value.byteLength) throw new Error("invalid length");
         const v = tally.empty(bytesLength);
-        v.a8.set(value);
+        if (littleEndian) {
+            v.a8.set(value);
+        } else {
+            v.a8.set(value.reverse());
+        }
         return v;
     }
 
@@ -358,6 +374,7 @@ export class tally {
     }
 
     static pown(a: tally, power: u64): tally {
+        if (power == 0) return tally.fromU32(1);
         let result = a.clone();
         for (let i: u64 = 1; i < power; i++) {
             result = tally.mul(result, a);
@@ -784,9 +801,19 @@ export class tally {
         return tally.div(tally.mul(a, b), tally.gcd(a, b))
     }
 
-    static toString(a: tally, radix: u32 = 0): string {
+    // this is used by as-json to stringify BigInt
+    static toString(a: tally, radix: u32 = 0, littleEndian: bool = false): string {
         if (radix == 16) return u8ArrayToHex(a.toU8ArrayBe());
-        return a.a8.toString();
+        if (radix == 0) return "[" + a.a8.slice(0).reverse().toString() + "]";
+        throw new Error("invalid radix");
+    }
+
+    static fromString(value: string, radix: u32 = 16): tally {
+        if (radix == 16) {
+            const arr = hexToU8(value);
+            return tally.fromU8Array(arr);
+        }
+        throw new Error("invalid radix");
     }
 
     // static random(l: i32): tally {
@@ -795,39 +822,6 @@ export class tally {
     //     arr8[i] = Math.floor(Math.random()*255)
     //   }
     //   return tally.fromU8Array(arr8);
-    // }
-
-    // toString (encoding, size) {
-    //     encoding = typeof encoding === 'number' ? ('base' + encoding) : encoding;
-    //     encoding = encoding || 'base10';
-    //     size = size || this.a8.byteLength;
-    //     const value = this.a8.slice(0, size).reverse();
-    //     let val = toString(value, encoding);
-    //     if (encoding === 'base16') {
-    //       if (size) val = val.padStart(size, '0');
-    //     }
-    //     else if (encoding === 'base10') {
-    //       val = removeZerosLeft(val);
-    //     }
-    //     return val;
-    // }
-
-    // toNumber () {
-    //   const hex = this.toString(16);
-    //   return parseInt(hex, 16);
-    // }
-
-    // static fromString (value, encoding = 'base16') {
-    //     encoding = typeof encoding === 'number' ? ('base' + encoding) : encoding;
-    //     if (encoding === 'base16') {
-    //       if (value.slice(0, 2) === '0x') value = value.slice(2);
-    //       if (value.length % 2 > 0) value = '0' + value;
-    //     }
-    //     let arr = fromString(value, encoding);
-    //     let size = Math.max(32, arr.length);
-    //     if (size % 4 > 0) size += (4 - size % 4);
-    //     arr = new Uint8Array([...arr.reverse()].concat(new Array(size - arr.length).fill(0)));
-    //     return tally.empty(arr);
     // }
 }
 
@@ -869,6 +863,17 @@ function significantLength16(value: Uint16Array): i32 {
 
 export function u8ArrayToHex(arr: u8[]): string {
     return arr.reduce((accum: string, v: u8) => accum + v.toString(16).padStart(2, '0'), "");
+}
+
+export function hexToU8(value: string): u8[] {
+    const arr: u8[] = [];
+    if (value.substr(0, 2) == "0x") value = value.substr(2);
+    if (value.length % 2 == 1) value = "0" + value;
+
+    for (let i = 0; i < value.length / 2; i++) {
+        arr[i] = u8(parseInt(value.substr(2*i, 2), 16))
+    }
+    return arr;
 }
 
 // function removeZerosLeft(value: string) {

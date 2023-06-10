@@ -11,7 +11,6 @@ export class Context {
     env: Env;
     logger: OpcodeLogger;
     gasmeter: GasMeter;
-    bytecode: Array<u8>; // cached value for easy access
     pc: i32 = 0; // program counter
 
     constructor(stack: Stack, memory: Memory, env: Env, logger: OpcodeLogger, gasmeter: GasMeter) {
@@ -19,7 +18,6 @@ export class Context {
         this.memory = memory;
         this.env = env;
         this.logger = logger;
-        this.bytecode = env.contract.bytecode;
         this.gasmeter = gasmeter;
         this.keccakOffset = heap.alloc(1024);
     }

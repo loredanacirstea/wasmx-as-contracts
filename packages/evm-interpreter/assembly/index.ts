@@ -5,18 +5,19 @@ import { interpret } from './interpreter';
 import { Context } from './context';
 import { Memory } from './memory';
 import { GasMeter } from './gas_meter';
+import { arrayBufferTou8Array } from './utils';
 
 export function wasmx_wasmx_2(): void {}
 
 export function instantiate(): void {}
 
 export function main(): u8[] {
-  const stack = new Stack();
-  const memory = new Memory([]);
-  const env = getEnvWrap();
-  const logger = new OpcodeLogger("error");
-  const gasmeter = new GasMeter(env.currentCall.gasLimit);
-  const ctx = new Context(stack, memory, env, logger, gasmeter);
-  interpret(ctx);
-  return ctx.env.currentCall.returnData;
+    const stack = new Stack();
+    const memory = new Memory([]);
+    const env = getEnvWrap();
+    const logger = new OpcodeLogger("error");
+    const gasmeter = new GasMeter(env.currentCall.gasLimit);
+    const ctx = new Context(stack, memory, env, logger, gasmeter);
+    interpret(ctx);
+    return arrayBufferTou8Array(ctx.env.currentCall.returnData.buffer);
 }

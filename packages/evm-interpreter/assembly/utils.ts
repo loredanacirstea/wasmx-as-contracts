@@ -42,6 +42,16 @@ export function i32ArrayToBytes32(arr: i32[]): u8[] {
     return addr;
 }
 
+export function uint8ArrayToHex(arr: Uint8Array): string {
+    return arr.reduce((accum: string, v: u8) => accum + v.toString(16).padStart(2, '0'), "");
+}
+
+export function u8ToUint8Array(arr: u8[]): Uint8Array {
+    const newarr = new Uint8Array(arr.length);
+    newarr.set(arr);
+    return newarr;
+}
+
 export function u8ArrayToHex(arr: u8[]): string {
     return arr.reduce((accum: string, v: u8) => accum + v.toString(16).padStart(2, '0'), "");
 }
