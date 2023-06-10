@@ -1,5 +1,6 @@
 export class Memory {
     mem: Array<u8>;
+    msize: u32 = 0;
 
     constructor(snapshotMem: Array<u8>) {
         this.mem = snapshotMem;
@@ -21,10 +22,14 @@ export class Memory {
         for (let i = 0; i < part.length; i++) {
             this.mem[i + offset] = part[i];
         }
+        if (this.msize < maxlength) {
+            this.msize = maxlength;
+        }
     }
 
     store8(value: u8, offset: u32): void {
         this.mem[offset] = value;
+        this.msize += 1;
     }
 
     storeUint8Array(part: Uint8Array, offset: u32): void {
@@ -32,6 +37,9 @@ export class Memory {
         this.fill(maxlength);
         for (let i = 0; i < part.length; i++) {
             this.mem[i + offset] = part[i];
+        }
+        if (this.msize < maxlength) {
+            this.msize = maxlength;
         }
     }
 

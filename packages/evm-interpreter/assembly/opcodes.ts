@@ -11,7 +11,7 @@ export const opcodesMap = new Map<string,OpcodeFn>();
 opcodesMap.set('finish', finish);
 opcodesMap.set('stop', stop);
 opcodesMap.set('revert', revert);
-opcodesMap.set('invalid', invalid); // TODO
+opcodesMap.set('invalid', invalid);
 
 opcodesMap.set('jump', jump);
 opcodesMap.set('jumpi', jumpi);
@@ -19,7 +19,7 @@ opcodesMap.set('jumpdest', jumpdest);
 opcodesMap.set('pop', pop);
 opcodesMap.set('push0', push0);
 opcodesMap.set('pc', pc);
-opcodesMap.set('getMSize', getMSize); // TODO
+opcodesMap.set('getMSize', getMSize);
 
 opcodesMap.set('loadMemory', loadMemory);
 opcodesMap.set('storeMemory', storeMemory);
@@ -580,7 +580,7 @@ export function pc (ctx: Context, inputs: BigInt[]): void {
 
 export function getMSize (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('msize');
-    const value = BigInt.fromU32(u32(ctx.memory.endUsedPointer));
+    const value = BigInt.fromU32(u32(ctx.memory.msize));
     ctx.stack.push(value);
     if (ctx.logger.isDebug) {
         ctx.logger.debug('MSIZE', [], [value.toUint8ArrayBe(32)], ctx.pc);
