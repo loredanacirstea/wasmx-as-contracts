@@ -328,10 +328,14 @@ export class tally {
 
     static add(a: tally, b: tally): tally {
         let l = i32(Math.max(a.a32.byteLength, b.a32.byteLength));
-        let c = tally.empty(l+4);
         const len = i32(Math.ceil(l/4));
+        let c = tally.empty((len+1)*4);
+        let _a = tally.empty(len * 4);
+        _a.a32.set(a.a32, 0);
+        let _b = tally.empty(len * 4);
+        _b.a32.set(b.a32, 0);
         for (let i=0; i<len; i++) {
-            let t: u64 = (a.a32.length > i ? a.a32[i] : 0) + (b.a32.length > i ? b.a32[i] : 0);
+            let t: u64 = u64(_a.a32[i]) + u64(_b.a32[i]);
             if (t > (MAX32 - 1)){
                 c.a32[i+1] = 1
             }
@@ -341,7 +345,7 @@ export class tally {
             console.log("add overflow")
             return c;
         }
-        return tally.fromUint32Array(c.a32.slice(0, c.a32.length-1), l);
+        return tally.fromUint32Array(c.a32.slice(0, c.a32.length-1), len * 4);
     }
 
     static mul(a: tally, b: tally): tally {
@@ -383,20 +387,20 @@ export class tally {
     }
 
     static sub(a: tally, b: tally): tally {
-        let l = Math.max(a.a32.byteLength, b.a32.byteLength)
-        let c = tally.empty(i32(l))
-        let _a = a.clone();
+        let l = i32(Math.max(a.a32.byteLength, b.a32.byteLength))
+        let c = tally.empty(l)
+        let _a = tally.empty(l)
+        _a.a8.set(a.a8, 0)
+        let _b = tally.empty(l)
+        _b.a8.set(b.a8, 0)
         for (let i=0;i<Math.ceil(l/4);i++) {
-            // console.log("-sub-" + i.toString())
-            const i_a = _a.a32.length > i ? _a.a32[i] : 0;
-            const ib = b.a32.length > i ? b.a32[i] : 0;
-            let u = i_a < ib
-            let t: u64 = u64(i_a)
+            let u = _a.a32[i] < _b.a32[i]
+            let t: u64 = u64(_a.a32[i])
             if (u) {
                 _a = tally._carry(_a,i+1)
                 t = t +  MAX32
             }
-            c.a32[i] = u32(t - ib)
+            c.a32[i] = u32(t - _b.a32[i])
         }
         return c;
     }
@@ -624,10 +628,14 @@ export class tally {
 
     static eq(a: tally, b: tally): bool {
         let t = true
-        let l = Math.max(a.a32.length, b.a32.length)
+        let l = i32(Math.max(a.a32.length, b.a32.length))
+        let _a = tally.empty(l * 4)
+        _a.a8.set(a.a8, 0)
+        let _b = tally.empty(l * 4)
+        _b.a8.set(b.a8, 0)
         for (let i=0;i<l;i++) {
-            const av = a.a32.length > i ? a.a32[i] : 0;
-            const bv = b.a32.length > i ? b.a32[i] : 0;
+            const av = _a.a32[i];
+            const bv = _b.a32[i];
             t = t && bv === av;
         }
         return t
@@ -676,25 +684,40 @@ export class tally {
     }
 
     static and(a: tally, b: tally): tally {
-        let c = tally.empty(a.a32.byteLength)
+        let l = i32(Math.max(a.a32.byteLength, b.a32.byteLength))
+        let c = tally.empty(l)
+        let _a = tally.empty(l)
+        _a.a8.set(a.a8, 0)
+        let _b = tally.empty(l)
+        _b.a8.set(b.a8, 0)
         for (let i=0;i<c.a32.length;i++) {
-            c.a32[i] = a.a32[i] & b.a32[i];
+            c.a32[i] = _a.a32[i] & _b.a32[i];
         }
         return c;
     }
 
     static or(a: tally, b: tally): tally {
-        let c = tally.empty(a.a32.byteLength)
+        let l = i32(Math.max(a.a32.byteLength, b.a32.byteLength))
+        let c = tally.empty(l)
+        let _a = tally.empty(l)
+        _a.a8.set(a.a8, 0)
+        let _b = tally.empty(l)
+        _b.a8.set(b.a8, 0)
         for (let i=0;i<c.a32.length;i++) {
-            c.a32[i] = a.a32[i] | b.a32[i];
+            c.a32[i] = _a.a32[i] | _b.a32[i];
         }
         return c;
     }
 
     static xor(a: tally, b: tally): tally {
-        let c = tally.empty(a.a32.byteLength)
+        let l = i32(Math.max(a.a32.byteLength, b.a32.byteLength))
+        let c = tally.empty(l)
+        let _a = tally.empty(l)
+        _a.a8.set(a.a8, 0)
+        let _b = tally.empty(l)
+        _b.a8.set(b.a8, 0)
         for (let i=0;i<c.a32.length;i++) {
-            c.a32[i] = a.a32[i] ^ b.a32[i];
+            c.a32[i] = _a.a32[i] ^ _b.a32[i];
         }
         return c;
     }

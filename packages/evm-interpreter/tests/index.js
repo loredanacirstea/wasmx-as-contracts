@@ -65,6 +65,11 @@ const testCases = [
         bytecode: allopsBytecode.runtime,
         calldatas: [
             {
+                name: 'add',
+                value: 'd1cbf1c509d11b1a5ef44f6bf02bd225b55c04d38a737d99f3c378456b4f5f7cf9c1fe0318b6a4a190a001b085f7996423266d84c00642b0caddbf68dd258dcbeb112fc6',
+                result: '2287bfbbef94511c76236b89d88272584a79c04abea137ae4874ed48e4d32dc9',
+            },
+            {
                 name: 'address_',
                 value: '758aa8ad',
                 result: '00000000000000000000000039b1bf12e9e21d78f0c76d192c26d47fa710ec99',
@@ -254,6 +259,11 @@ const testCases = [
                 name: 'and',
                 value: '8491293f0000000000ffff000fffffffffffffffffffffffffffffffffffffffffffffff09d11b1a5ef44f6bf02bd225b55c04d38a737d99f3c378456b4f5f7cf9c1fe03',
                 result: '0000000000f44f00002bd225b55c04d38a737d99f3c378456b4f5f7cf9c1fe03',
+            },
+            {
+                name: 'or',
+                value: '3f8d65580000000000ffff000fffffffffffffffffffffffffffffffffffffffffffffff09d11b1a5ef44f6bf02bd225b55c04d38a737d99f3c378456b4f5f7cf9c1fe03',
+                result: '09d11b1a5effff6bffffffffffffffffffffffffffffffffffffffffffffffff',
             },
             {
                 name: 'or',
