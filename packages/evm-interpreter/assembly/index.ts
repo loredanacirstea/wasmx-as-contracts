@@ -7,7 +7,7 @@ import { Memory } from './memory';
 import { GasMeter } from './gas_meter';
 import { arrayBufferTou8Array } from './utils';
 
-export function wasmx_wasmx_2(): void {}
+export function wasmx_env_2(): void {}
 
 export function instantiate(): void {}
 

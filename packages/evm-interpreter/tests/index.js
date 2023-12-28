@@ -48,7 +48,7 @@ async function test() {
         for (let j = 0; j < testcase.calldatas.length; j++) {
             const calldata = testcase.calldatas[j];
             env.currentCall.callData = [...hexToUint8Array(calldata.value)];
-            const [result, timeTaken] = await benchmark(runf, storageMap, env, LOG.error);
+            const [result, timeTaken] = await benchmark(runf, storageMap, env, LOG.debug);
             console.log(`Execution time: ${testcase.name} - ${calldata.name}: ${timeTaken} milliseconds`);
             if (calldata.result) {
                 const resulthex = u8ArrayToHex(result);
