@@ -2,6 +2,7 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmxwrap from './wasmx_wrap';
 import * as wasmx from './wasmx';
+import { LoggerDebug } from "./wasmx_wrap";
 
 import {
   EventObject,
@@ -29,7 +30,6 @@ import * as storage from './storage';
 import * as actionsCounter from "./actions_counter";
 import * as actionsErc20 from "./actions_erc20";
 import * as actionsRaft from "./actions_raft";
-import { LoggerDebug } from "./consensus_wrap";
 
 const REVERT_IF_UNEXPECTED_STATE = false;
 

@@ -1,9 +1,5 @@
 import assert from "assert";
-// import { describe, it } from "test";
-// import { describe, it } from 'node:test';
-// import { create, getCurrentState, getContextValue, transition, run } from "../build/debug.js";
-import { load, LOG } from './wasmx.js';
-import { parseMachine, uint8ArrayToHex, numToUint8Array32 } from './utils.js';
+import { parseMachine, uint8ArrayToHex, decodeFromUtf8Array, runFnWrapped } from './utils.js';
 import {
   machineConfig2,
   machineConfig2Orig,
@@ -18,39 +14,6 @@ import {
 } from './data.js';
 
 let currentState, value;
-
-function runFnWrapped (storage = {}, env = {}) {
-    return async function (fnName, config, args, runfn = "main") {
-        let calldata;
-        const config_ = encodeToUtf8Array(JSON.stringify(config));
-        if (runfn === "main") {
-          calldata = encodeToUtf8Array(JSON.stringify({[fnName]: args}));
-        } else {
-          calldata = args;
-        }
-        calldata = new Uint8Array([
-          ...numToUint8Array32(config_.length),
-          ...config_,
-          ...numToUint8Array32(calldata.length),
-          ...calldata,
-        ])
-
-        const defaultSender = encodeToUtf8Array("sender");
-        const defaultContract = encodeToUtf8Array("contract");
-        env = {
-            ...env,
-            currentCall: {
-                sender: defaultSender,
-                contract: defaultContract,
-                ...env.currentCall,
-                callData: calldata,
-            }
-        }
-        const instance = await load(storage, env, LOG.debug);
-        return instance[runfn]();
-    }
-}
-
 async function runTests() {
 
     let machineConfig, machineConfigStr, implementationsStr;
@@ -294,8 +257,9 @@ async function runTests() {
     let txstr;
 
     // [temp] setup values
-    // {"chain_id":"mythos_7000-14","consensus_params":{"block":{"max_bytes":22020096,"max_gas":-1},"evidence":{"max_age_num_blocks":100000,"max_age_duration":172800000000000,"max_bytes":1048576},"validator":{"pub_key_types":["ed25519"]},"version":{"app":0},"abci":{"vote_extensions_enable_height":0}},"validators":[{"address":"467F6127246A6E40B59899258DF08F857145B9CB","pub_key":"shBx7GuXCf7T+HwGwffE93xWOCkIwzPpp/oKkMq3hqw=","voting_power":100000000000000,"proposer_priority":0}],"app_hash":"47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=","last_results_hash":"47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=","version":{"consensus":{"block":0,"app":0},"software":""},"validator_address":"467F6127246A6E40B59899258DF08F857145B9CB","validator_privkey":"LdBVBItkqjNrSqwDaFgxZaO7n8rN01dJ6I3BQ/9LTTyyEHHsa5cJ/tP4fAbB98T3fFY4KQjDM+mn+gqQyreGrA==","validator_pubkey":"shBx7GuXCf7T+HwGwffE93xWOCkIwzPpp/oKkMq3hqw="}
-    const initChainSetup = "eyJjaGFpbl9pZCI6Im15dGhvc183MDAwLTE0IiwiY29uc2Vuc3VzX3BhcmFtcyI6eyJibG9jayI6eyJtYXhfYnl0ZXMiOjIyMDIwMDk2LCJtYXhfZ2FzIjotMX0sImV2aWRlbmNlIjp7Im1heF9hZ2VfbnVtX2Jsb2NrcyI6MTAwMDAwLCJtYXhfYWdlX2R1cmF0aW9uIjoxNzI4MDAwMDAwMDAwMDAsIm1heF9ieXRlcyI6MTA0ODU3Nn0sInZhbGlkYXRvciI6eyJwdWJfa2V5X3R5cGVzIjpbImVkMjU1MTkiXX0sInZlcnNpb24iOnsiYXBwIjowfSwiYWJjaSI6eyJ2b3RlX2V4dGVuc2lvbnNfZW5hYmxlX2hlaWdodCI6MH19LCJ2YWxpZGF0b3JzIjpbeyJhZGRyZXNzIjoiNDY3RjYxMjcyNDZBNkU0MEI1OTg5OTI1OERGMDhGODU3MTQ1QjlDQiIsInB1Yl9rZXkiOiJzaEJ4N0d1WENmN1QrSHdHd2ZmRTkzeFdPQ2tJd3pQcHAvb0trTXEzaHF3PSIsInZvdGluZ19wb3dlciI6MTAwMDAwMDAwMDAwMDAwLCJwcm9wb3Nlcl9wcmlvcml0eSI6MH1dLCJhcHBfaGFzaCI6IjQ3REVRcGo4SEJTYSsvVEltVys1SkNldVFlUmttNU5NcEpXWkczaFN1RlU9IiwibGFzdF9yZXN1bHRzX2hhc2giOiI0N0RFUXBqOEhCU2ErL1RJbVcrNUpDZXVRZVJrbTVOTXBKV1pHM2hTdUZVPSIsInZlcnNpb24iOnsiY29uc2Vuc3VzIjp7ImJsb2NrIjowLCJhcHAiOjB9LCJzb2Z0d2FyZSI6IiJ9LCJ2YWxpZGF0b3JfYWRkcmVzcyI6IjQ2N0Y2MTI3MjQ2QTZFNDBCNTk4OTkyNThERjA4Rjg1NzE0NUI5Q0IiLCJ2YWxpZGF0b3JfcHJpdmtleSI6IkxkQlZCSXRrcWpOclNxd0RhRmd4WmFPN244ck4wMWRKNkkzQlEvOUxUVHl5RUhIc2E1Y0ovdFA0ZkFiQjk4VDNmRlk0S1FqRE0rbW4rZ3FReXJlR3JBPT0iLCJ2YWxpZGF0b3JfcHVia2V5Ijoic2hCeDdHdVhDZjdUK0h3R3dmZkU5M3hXT0NrSXd6UHBwL29La01xM2hxdz0ifQ=="
+    const wasmx_blocks_contract = btoa("wasmx_blocks")
+    const initChainSetupStr = `{"chain_id":"mythos_7000-14","consensus_params":{"block":{"max_bytes":22020096,"max_gas":-1},"evidence":{"max_age_num_blocks":100000,"max_age_duration":172800000000000,"max_bytes":1048576},"validator":{"pub_key_types":["ed25519"]},"version":{"app":0},"abci":{"vote_extensions_enable_height":0}},"validators":[{"address":"467F6127246A6E40B59899258DF08F857145B9CB","pub_key":"shBx7GuXCf7T+HwGwffE93xWOCkIwzPpp/oKkMq3hqw=","voting_power":100000000000000,"proposer_priority":0}],"app_hash":"47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=","last_results_hash":"47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=","version":{"consensus":{"block":0,"app":0},"software":""},"validator_address":"467F6127246A6E40B59899258DF08F857145B9CB","validator_privkey":"LdBVBItkqjNrSqwDaFgxZaO7n8rN01dJ6I3BQ/9LTTyyEHHsa5cJ/tP4fAbB98T3fFY4KQjDM+mn+gqQyreGrA==","validator_pubkey":"shBx7GuXCf7T+HwGwffE93xWOCkIwzPpp/oKkMq3hqw=","wasmx_blocks_contract":"${wasmx_blocks_contract}"}`
+    const initChainSetup = btoa(initChainSetupStr)
     await runFnOwner("run", machine, {event: {type: "setupNode", params: [{key: "currentNodeId", value: "0"},{key: "nodeIPs", value: "[\"0.0.0.0:8090\",\"0.0.0.0:8090\"]"},{key: "initChainSetup", value: initChainSetup}]}});
 
     await runFnOwner("run", machine, {event: {type: "change", params: []}});
@@ -362,33 +326,3 @@ async function runTests() {
 }
 
 runTests();
-
-export function encodeToUtf8Array(str) {
-    const encoder = new TextEncoder();
-    return encoder.encode(str);
-}
-
-export function decodeFromUtf8Array(arr) {
-    if (!(arr instanceof ArrayBuffer)) arr = new Uint8Array(arr).buffer;
-    const encoder = new TextDecoder();
-    return encoder.decode(arr);
-}
-
-export function hexToUint8Array(hexString) {
-    const encodedString = hexString.match(/.{1,2}/g).map(byte => parseInt(byte, 16));
-    return new Uint8Array(encodedString);
-}
-
-// function name() public view returns (string)
-// function symbol() public view returns (string)
-// function decimals() public view returns (uint8)
-// function totalSupply() public view returns (uint256)
-// function balanceOf(address _owner) public view returns (uint256 balance)
-// function transfer(address _to, uint256 _value) public returns (bool success)
-// function transferFrom(address _from, address _to, uint256 _value) public returns (bool success)
-// function approve(address _spender, uint256 _value) public returns (bool success)
-// function allowance(address _owner, address _spender) public view returns (uint256 remaining)
-
-
-// event Transfer(address indexed _from, address indexed _to, uint256 _value)
-// event Approval(address indexed _owner, address indexed _spender, uint256 _value)

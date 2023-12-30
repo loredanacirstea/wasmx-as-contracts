@@ -122,6 +122,60 @@ export function wasmx(storageMap, env, logType = LOG.error) {
         return env.ReturnData || new Uint8Array(0);
     }
 
+    function call(buf) {
+        if (logType > 0) {
+            console.log('-host-call', [...new Uint8Array(buf)]);
+        }
+        const req = JSON.parse(decodeFromUtf8Array(buf));
+        console.log("--call", req);
+        return env.contracts[req.to](req.calldata, req.isQuery);
+    }
+
+    function MerkleHash(buf) {
+        if (logType > 0) {
+            console.log('-host-MerkleHash', [...new Uint8Array(buf)]);
+        }
+        return new Uint8Array(0);
+    }
+
+    function ed25519Verify(buf) {
+        if (logType > 0) {
+            console.log('-host-ed25519Verify', [...new Uint8Array(buf)]);
+        }
+        return 1;
+    }
+
+    function ed25519Sign(buf) {
+        if (logType > 0) {
+            console.log('-host-ed25519Sign', [...new Uint8Array(buf)]);
+        }
+        return 1;
+    }
+
+    function LoggerDebug(buf) {
+        if (logType > 0) {
+            console.log('-host-LoggerDebug', [...new Uint8Array(buf)]);
+        }
+        const req = JSON.parse(decodeFromUtf8Array(buf));
+        console.debug(req.msg, ...req.parts);
+    }
+
+    function LoggerInfo(buf) {
+        if (logType > 0) {
+            console.log('-host-LoggerInfo', [...new Uint8Array(buf)]);
+        }
+        const req = JSON.parse(decodeFromUtf8Array(buf));
+        console.info(req.msg, ...req.parts);
+    }
+
+    function LoggerError(buf) {
+        if (logType > 0) {
+            console.log('-host-LoggerError', [...new Uint8Array(buf)]);
+        }
+        const req = JSON.parse(decodeFromUtf8Array(buf));
+        console.error(req.msg, ...req.parts);
+    }
+
     return {
         finish,
         stop,
@@ -133,6 +187,7 @@ export function wasmx(storageMap, env, logType = LOG.error) {
         getCaller,
         getAddress,
         getBalance,
+        call,
         log,
         grpcRequest,
         startTimeout,
@@ -140,6 +195,12 @@ export function wasmx(storageMap, env, logType = LOG.error) {
         sha256,
         setReturnData,
         getReturnData,
+        MerkleHash,
+        ed25519Verify,
+        ed25519Sign,
+        LoggerDebug,
+        LoggerInfo,
+        LoggerError,
     }
 }
 
@@ -184,38 +245,12 @@ export function consensus(storageMap, env, logType = LOG.error) {
         return encodeToUtf8Array(JSON.stringify(resp));
     }
 
-    function MerkleHash(buf) {
-        if (logType > 0) {
-            console.log('-host-MerkleHash', [...new Uint8Array(buf)]);
-        }
-        return new Uint8Array(0);
-    }
-
-    function LoggerDebug(buf) {
-        const req = JSON.parse(decodeFromUtf8Array(buf));
-        console.debug(req.msg, ...req.parts);
-    }
-
-    function LoggerInfo(buf) {
-        const req = JSON.parse(decodeFromUtf8Array(buf));
-        console.info(req.msg, ...req.parts);
-    }
-
-    function LoggerError(buf) {
-        const req = JSON.parse(decodeFromUtf8Array(buf));
-        console.error(req.msg, ...req.parts);
-    }
-
     return {
         PrepareProposal,
         ProcessProposal,
         FinalizeBlock,
         Commit,
         CheckTx,
-        MerkleHash,
-        LoggerDebug,
-        LoggerInfo,
-        LoggerError,
     }
 }
 

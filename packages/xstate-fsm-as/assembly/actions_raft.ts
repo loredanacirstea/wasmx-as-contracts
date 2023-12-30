@@ -1,20 +1,23 @@
 import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64, encode } from "as-base64/assembly";
+import * as wblocks from "wasmx-blocks/assembly/types";
+import * as wblockscalld from "wasmx-blocks/assembly/calldata";
 import * as wasmxwrap from './wasmx_wrap';
 import * as wasmx from './wasmx';
 import * as consensuswrap from './consensus_wrap';
-import * as consensus from './consensus';
 import * as storage from './storage';
+import { LoggerDebug, LoggerInfo, LoggerError } from "./wasmx_wrap";
 
 import {
   EventObject,
   ActionParam,
+  CallRequest,
+  CallResponse,
 } from './types';
 import { hexToUint8Array, revert, parseInt32, parseInt64, i32ToUint8ArrayBE, uint8ArrayToHex, i64ToUint8ArrayBE, base64ToHex, hex64ToBase64 } from "./utils";
-import { LogEntry, TransactionResponse, AppendEntry, AppendEntryResponse, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse } from "./types_raft";
+import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, AppendEntryResponse, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse } from "./types_raft";
 import * as typestnd from "./types_tendermint";
 import { Base64String } from "./types";
-import { LoggerDebug, LoggerError } from "./consensus";
 
 // Docs: https://raft.github.io/raft.pdf
 
@@ -97,9 +100,7 @@ const MAX_TX_BYTES = "max_tx_bytes";
 // const PREV_LOG_INDEX = "prevLogIndex";
 
 //// blockchain
-const TX_INDEXER = "tx_";
 
-const PARAMS_KEY = "consensus_params";
 const VALIDATORS_KEY = "validators";
 const STATE_KEY = "state";
 
@@ -125,7 +126,7 @@ export function registeredCheck(
     if (termId < 2) {
         return;
     }
-    consensuswrap.LoggerInfo("trying to register node IP with Leader", []);
+    LoggerInfo("trying to register node IP with Leader", []);
 
     // send updateNode to all ips except us
     const nodeId = getCurrentNodeId();
@@ -141,7 +142,7 @@ export function registeredCheck(
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(updateMsgStr)));
     const msgstr = `{"run":{"event":{"type":"nodeUpdate","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
     const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
-    consensuswrap.LoggerInfo("register request", ["req", msgstr])
+    LoggerInfo("register request", ["req", msgstr])
 
     // we send the request to the same contract
     const contract = wasmx.getAddress();
@@ -149,15 +150,15 @@ export function registeredCheck(
     for (let i = 0; i < ips.length; i++) {
         // don't send to ourselves or to removed nodes
         if (i == nodeId || ips[i] == "") continue;
-        consensuswrap.LoggerInfo("register request", ["IP", ips[i]])
+        LoggerInfo("register request", ["IP", ips[i]])
         const response = wasmxwrap.grpcRequest(ips[i], Uint8Array.wrap(contract), msgBase64);
-        consensuswrap.LoggerInfo("register response", ["error", response.error, "data", response.data])
+        LoggerInfo("register response", ["error", response.error, "data", response.data])
         if (response.error.length > 0 || response.data.length == 0) {
             return
         }
         const resp = JSON.parse<UpdateNodeResponse>(response.data);
         if (resp.nodeIPs[resp.nodeId] != nodeIp) {
-            consensuswrap.LoggerError("register node response has wrong ip", ["expected", nodeIp]);
+            LoggerError("register node response has wrong ip", ["expected", nodeIp]);
             revert(`register node response has wrong ip`)
         }
         const allvalidStr = String.UTF8.decode(decodeBase64(resp.validators).buffer);
@@ -194,31 +195,31 @@ export function updateNodeAndReturn(
         revert("updateNodeAndReturn: empty signature");
     }
     const entryStr = String.UTF8.decode(decodeBase64(entryBase64).buffer);
-    consensuswrap.LoggerDebug("updateNodeAndReturn", ["entry", entryStr, "signature", signature])
+    LoggerDebug("updateNodeAndReturn", ["entry", entryStr, "signature", signature])
     let entry: NodeUpdate = JSON.parse<NodeUpdate>(entryStr);
 
-    consensuswrap.LoggerInfo("update node", ["ip", entry.ip, "type", entry.type.toString(), "validator_info", "index", entry.index.toString(), entry.validator_info])
+    LoggerInfo("update node", ["ip", entry.ip, "type", entry.type.toString(), "validator_info", "index", entry.index.toString(), entry.validator_info])
 
     const ips = getNodeIPs();
     let entryIndex = entry.index;
 
     if (entry.type == NODE_UPDATE_ADD) {
         if (entry.validator_info == "") {
-            consensuswrap.LoggerError("validator info missing from node update", ["ip", entry.ip])
+            LoggerError("validator info missing from node update", ["ip", entry.ip])
             return;
         }
         // make it idempotent & don't add same ip multiple times
         if (ips.includes(entry.ip)) {
-            consensuswrap.LoggerDebug("ip already included", ["ip", entry.ip])
+            LoggerDebug("ip already included", ["ip", entry.ip])
             return;
         }
         entryIndex = ips.length;
 
         // verify signature and store the new validator
         const validatorInfo = JSON.parse<typestnd.ValidatorInfo>(String.UTF8.decode(decodeBase64(entry.validator_info).buffer))
-        const isSender = consensuswrap.ed25519Verify(validatorInfo.pub_key, signature, entryStr);
+        const isSender = wasmxwrap.ed25519Verify(validatorInfo.pub_key, signature, entryStr);
         if (!isSender) {
-            consensuswrap.LoggerError("signature verification failed", ["nodeIndex", entryIndex.toString(), "nodeIp", entry.ip]);
+            LoggerError("signature verification failed", ["nodeIndex", entryIndex.toString(), "nodeIp", entry.ip]);
             return;
         }
 
@@ -230,7 +231,7 @@ export function updateNodeAndReturn(
         // verify signature
         const isSender = verifyMessage(entryIndex, signature, entryStr);
         if (!isSender) {
-            consensuswrap.LoggerError("signature verification failed", ["nodeIndex", entryIndex.toString(), "nodeIp", entry.ip]);
+            LoggerError("signature verification failed", ["nodeIndex", entryIndex.toString(), "nodeIp", entry.ip]);
             return;
         }
     }
@@ -256,7 +257,7 @@ export function updateNodeAndReturn(
         ips[entryIndex] = entry.ip;
     }
 
-    consensuswrap.LoggerInfo("node updates", ["ips", ips.join(",")])
+    LoggerInfo("node updates", ["ips", ips.join(",")])
     setNodeIPs(ips);
 }
 
@@ -287,14 +288,14 @@ export function forwardTxsToLeader(
         limit = 5;
     }
     const txs = mempool.txs.slice(0, limit);
-    consensuswrap.LoggerDebug("forwarding txs to leader", ["nodeId", nodeId.toString(), "nodeIp", nodeIp, "count", limit.toString()])
+    LoggerDebug("forwarding txs to leader", ["nodeId", nodeId.toString(), "nodeIp", nodeIp, "count", limit.toString()])
 
     for (let i = 0; i < limit; i++) {
         const tx = txs[0];
         const msgstr = `{"run":{"event":{"type":"newTransaction","params":[{"key": "transaction","value":"${tx}"}]}}}`
         const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
         const response = wasmxwrap.grpcRequest(nodeIp, Uint8Array.wrap(contract), msgBase64);
-        consensuswrap.LoggerDebug("forwarding tx to leader", ["nodeId", nodeId.toString(), "nodeIp", nodeIp, "batch", i.toString(), "error", response.error])
+        LoggerDebug("forwarding tx to leader", ["nodeId", nodeId.toString(), "nodeIp", nodeIp, "batch", i.toString(), "error", response.error])
 
         if (response.error.length == 0) {
             mempool.txs.splice(i, 1);
@@ -303,7 +304,7 @@ export function forwardTxsToLeader(
         // should never happen, because we check when we receive the tx
         if (response.error.includes(ERROR_INVALID_TX)) {
             mempool.txs.splice(i, 1);
-            consensuswrap.LoggerDebug("forwarded invalid transaction", ["tx", tx]);
+            LoggerDebug("forwarded invalid transaction", ["tx", tx]);
         } else {
             // leader is not ready, we return
             break;
@@ -321,11 +322,11 @@ function getCurrentValidator(): typestnd.ValidatorInfo {
 
 function checkValidatorsUpdate(validators: typestnd.ValidatorInfo[], validatorInfo: typestnd.ValidatorInfo, nodeId: i32): void {
     if (validators[nodeId].address != validatorInfo.address) {
-        consensuswrap.LoggerError("register node response has wrong validator address", ["expected", validatorInfo.address]);
+        LoggerError("register node response has wrong validator address", ["expected", validatorInfo.address]);
         revert(`register node response has wrong validator address`)
     }
     if (validators[nodeId].pub_key != validatorInfo.pub_key) {
-        consensuswrap.LoggerError("register node response has wrong validator pub_key", ["expected", validatorInfo.pub_key]);
+        LoggerError("register node response has wrong validator pub_key", ["expected", validatorInfo.pub_key]);
         revert(`register node response has wrong validator pub_key`)
     }
 }
@@ -420,7 +421,7 @@ export function vote(
     // verify signature
     const isSender = verifyMessage(entry.candidateId, signature, entryStr);
     if (!isSender) {
-        consensuswrap.LoggerError("signature verification failed for VoteRequest", ["candidateId", entry.candidateId.toString(), "termId", entry.termId.toString()]);
+        LoggerError("signature verification failed for VoteRequest", ["candidateId", entry.candidateId.toString(), "termId", entry.termId.toString()]);
         return;
     }
 
@@ -464,7 +465,7 @@ export function sendVoteRequests(
     // iterate through the other nodes and send a VoteRequest
     const request = new VoteRequest(termId, candidateId, lastLogIndex, lastLogTerm);
     const ips = getNodeIPs();
-    consensuswrap.LoggerInfo("sending vote requests...", ["candidateId", candidateId.toString(), "termId", termId.toString(), "lastLogIndex", lastLogIndex.toString(), "lastLogTerm", lastLogTerm.toString(), "ips", JSON.stringify<Array<string>>(ips)])
+    LoggerInfo("sending vote requests...", ["candidateId", candidateId.toString(), "termId", termId.toString(), "lastLogIndex", lastLogIndex.toString(), "lastLogTerm", lastLogTerm.toString(), "ips", JSON.stringify<Array<string>>(ips)])
     for (let i = 0; i < ips.length; i++) {
         // don't send to ourselves or to removed nodes
         if (candidateId === i || ips[i].length == 0) continue;
@@ -484,7 +485,7 @@ export function isVotedLeader(
     }
     const len = getNodeCount();
     const majority = getMajority(len);
-    consensuswrap.LoggerDebug("check if is voted Leader", ["yes", count.toString(), "votes", len.toString(), "majority", majority.toString()])
+    LoggerDebug("check if is voted Leader", ["yes", count.toString(), "votes", len.toString(), "majority", majority.toString()])
     return count >= majority;
 }
 
@@ -498,9 +499,9 @@ function sendVoteRequest(nodeId: i32, nodeIp: string, request: VoteRequest, term
     const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
 
     const contract = wasmx.getAddress();
-    consensuswrap.LoggerDebug("sending vote request", ["nodeId", nodeId.toString(), "nodeIp", nodeIp, "termId", termId.toString(), "data", datastr])
+    LoggerDebug("sending vote request", ["nodeId", nodeId.toString(), "nodeIp", nodeIp, "termId", termId.toString(), "data", datastr])
     const response = wasmxwrap.grpcRequest(nodeIp, Uint8Array.wrap(contract), msgBase64);
-    consensuswrap.LoggerDebug("vote request response", ["nodeId", nodeId.toString(), "nodeIp", nodeIp, "termId", termId.toString(), "data", response.data, "error", response.error])
+    LoggerDebug("vote request response", ["nodeId", nodeId.toString(), "nodeIp", nodeIp, "termId", termId.toString(), "data", response.data, "error", response.error])
     if (response.error.length > 0 || response.data.length == 0) {
         return
     }
@@ -534,7 +535,7 @@ function voteInternal(termId: i32, candidateId: i32, lastLogIndex: i64, lastLogT
         setTermId(termId);
         setVotedFor(candidateId);
         response = new VoteResponse(termId, true);
-        consensuswrap.LoggerInfo("voting for Candidate", ["candidateId", candidateId.toString(), "termId", termId.toString()])
+        LoggerInfo("voting for Candidate", ["candidateId", candidateId.toString(), "termId", termId.toString()])
     } else {
         // if we already voted, we do not grant a new vote
         if (hasVotedFor()) {
@@ -543,11 +544,11 @@ function voteInternal(termId: i32, candidateId: i32, lastLogIndex: i64, lastLogT
             // candidate’s log is at least as up-to-date as receiver’s log
             const lastIndex = getLastLogIndex();
             if (lastLogIndex < lastIndex) {
-                consensuswrap.LoggerDebug("candidate is not up-to-date", ["candidateLastIndex", lastLogIndex.toString(), "ourLastIndex", lastIndex.toString(), "candidateId", candidateId.toString()])
+                LoggerDebug("candidate is not up-to-date", ["candidateLastIndex", lastLogIndex.toString(), "ourLastIndex", lastIndex.toString(), "candidateId", candidateId.toString()])
                 response = new VoteResponse(mytermId, false);
             } else {
                 setVotedFor(candidateId);
-                consensuswrap.LoggerInfo("voting for Candidate", ["candidateId", candidateId.toString(), "termId", termId.toString()])
+                LoggerInfo("voting for Candidate", ["candidateId", candidateId.toString(), "termId", termId.toString()])
             }
         }
     }
@@ -597,7 +598,7 @@ export function setupNode(
 
     const datajson = String.UTF8.decode(decodeBase64(initChainSetup).buffer);
     // TODO remove validator private key from logs in initChainSetup
-    consensuswrap.LoggerDebug("setupNode", ["currentNodeId", currentNodeId, "nodeIPs", nodeIPs, "initChainSetup", datajson])
+    LoggerDebug("setupNode", ["currentNodeId", currentNodeId, "nodeIPs", nodeIPs, "initChainSetup", datajson])
     const data = JSON.parse<typestnd.InitChainSetup>(datajson);
     const ips = JSON.parse<string[]>(nodeIPs);
     // TODO better way; we may have the leader's node ip here
@@ -617,7 +618,7 @@ export function setupNode(
 }
 
 function initChain(req: typestnd.InitChainSetup): void {
-    consensuswrap.LoggerDebug("start chain init", [])
+    LoggerDebug("start chain init", [])
 
     // TODO what are the correct empty valuew?
     const emptyBlockId = new typestnd.BlockID("", new typestnd.PartSetHeader(0, ""))
@@ -632,13 +633,20 @@ function initChain(req: typestnd.InitChainSetup): void {
         req.validator_address,
         req.validator_privkey,
         req.validator_pubkey,
+        req.wasmx_blocks_contract,
     );
-    setConsensusParams(req.consensus_params);
     setValidators(req.validators);
+    console.log("--after setValidators--")
 
     const valuestr = JSON.stringify<typestnd.CurrentState>(currentState);
-    consensuswrap.LoggerDebug("set current state", ["state", valuestr])
+    console.log("--before setCurrentState--" + valuestr)
+    LoggerDebug("set current state", ["state", valuestr])
     setCurrentState(currentState);
+
+    console.log("--after setCurrentState--")
+    setConsensusParams(req.consensus_params);
+
+    console.log("--after setConsensusParams--")
 }
 
 export function processAppendEntries(
@@ -668,10 +676,10 @@ export function processAppendEntries(
         revert("update node: empty signature");
     }
     const entryStr = String.UTF8.decode(decodeBase64(entryBase64).buffer);
-    consensuswrap.LoggerDebug("received new entries", ["AppendEntry", entryStr.slice(0, MAX_LOGGED) + " [...]"]);
+    LoggerDebug("received new entries", ["AppendEntry", entryStr.slice(0, MAX_LOGGED) + " [...]"]);
 
     let entry: AppendEntry = JSON.parse<AppendEntry>(entryStr);
-    consensuswrap.LoggerInfo("received new entries", [
+    LoggerInfo("received new entries", [
         "leaderId", entry.leaderId.toString(),
         "termId", entry.termId.toString(),
         "leaderCommit", entry.leaderCommit.toString(),
@@ -684,7 +692,7 @@ export function processAppendEntries(
     // verify signature
     const isSender = verifyMessage(entry.leaderId, signature, entryStr);
     if (!isSender) {
-        consensuswrap.LoggerError("signature verification failed for AppendEntry", ["leaderId", entry.leaderId.toString(), "termId", entry.termId.toString()]);
+        LoggerError("signature verification failed for AppendEntry", ["leaderId", entry.leaderId.toString(), "termId", entry.termId.toString()]);
         return;
     }
 
@@ -714,7 +722,7 @@ export function processAppendEntries(
         }
     }
     if (newId != nodeId) {
-        consensuswrap.LoggerDebug("our node ID has changed", ["old", nodeId.toString(), "new", newId.toString()])
+        LoggerDebug("our node ID has changed", ["old", nodeId.toString(), "new", newId.toString()])
         setCurrentNodeId(newId);
     }
     const allvalidStr = String.UTF8.decode(decodeBase64(entry.validators).buffer);
@@ -726,14 +734,15 @@ export function processAppendEntries(
     setValidators(allvalidators);
 }
 
-export function processAppendEntry(entry: LogEntry): void {
-    const data = decodeBase64(entry.data);
+export function processAppendEntry(entry: LogEntryAggregate): void {
+    const data = decodeBase64(entry.data.data);
     const processReq = JSON.parse<typestnd.RequestProcessProposal>(String.UTF8.decode(data.buffer));
+
     const processResp = consensuswrap.ProcessProposal(processReq);
     if (processResp.status === typestnd.ProposalStatus.REJECT) {
         // TODO - what to do here? returning just discards the block and does not return a response to the leader
         // but this node will not sync with the leader anymore
-        consensuswrap.LoggerError("new block rejected", ["height", processReq.height.toString(), "node type", "Follower"])
+        LoggerError("new block rejected", ["height", processReq.height.toString(), "node type", "Follower"])
         return;
     }
     appendLogEntry(entry);
@@ -746,7 +755,7 @@ export function sendHeartbeatResponse(
     const termId = getTermId();
     // TODO when not successful
     const response = new AppendEntryResponse(termId, true);
-    consensuswrap.LoggerDebug("send heartbeat response", ["termId", termId.toString(), "success", "true"])
+    LoggerDebug("send heartbeat response", ["termId", termId.toString(), "success", "true"])
     wasmx.setReturnData(String.UTF8.encode(JSON.stringify<AppendEntryResponse>(response)));
 }
 
@@ -757,7 +766,7 @@ export function sendAppendEntries(
     // go through each node
     const nodeId = getCurrentNodeId();
     const ips = getNodeIPs();
-    consensuswrap.LoggerDebug("diseminate entries...", ["nodeId", nodeId.toString(), "ips", JSON.stringify<Array<string>>(ips)])
+    LoggerDebug("diseminate entries...", ["nodeId", nodeId.toString(), "ips", JSON.stringify<Array<string>>(ips)])
     for (let i = 0; i < ips.length; i++) {
         // don't send to Leader or removed nodes
         if (nodeId === i || ips[i].length == 0) continue;
@@ -783,7 +792,7 @@ function checkCommits(): void {
     const len = getNodeCount();
     let nextCommit = lastCommitIndex + 1;
 
-    consensuswrap.LoggerDebug("committing diseminated blocks...", ["lastCommitIndex", lastCommitIndex.toString(), "lastSaved", lastLogIndex.toString(), "blocksToCommit", (lastLogIndex >= nextCommit).toString()])
+    LoggerDebug("committing diseminated blocks...", ["lastCommitIndex", lastCommitIndex.toString(), "lastSaved", lastLogIndex.toString(), "blocksToCommit", (lastLogIndex >= nextCommit).toString()])
 
     if (lastLogIndex < nextCommit) {
         return;
@@ -797,7 +806,7 @@ function checkCommits(): void {
         }
     }
     const committing = count >= majority;
-    consensuswrap.LoggerDebug("committing diseminated block", ["height", nextCommit.toString(), "nodes_count", len.toString(), "nodes_received", count.toString(), "committing", committing.toString()])
+    LoggerDebug("committing diseminated block", ["height", nextCommit.toString(), "nodes_count", len.toString(), "nodes_received", count.toString(), "committing", committing.toString()])
 
     // TODO If AppendEntries fails because of log inconsistency: decrement nextIndex and retry
     if (committing) {
@@ -827,10 +836,10 @@ export function sendAppendEntry(
         lastIndex = nextIndex + STATE_SYNC_BATCH;
     }
 
-    const entries: Array<LogEntry> = [];
+    const entries: Array<LogEntryAggregate> = [];
     for (let i = nextIndex; i <= lastIndex; i++) {
         const entry = getLogEntry(i);
-        const entryobj = JSON.parse<LogEntry>(entry);
+        const entryobj = JSON.parse<LogEntryAggregate>(entry);
         entries.push(entryobj);
     }
     const previousEntryStr = getLogEntry(nextIndex-1);
@@ -838,7 +847,7 @@ export function sendAppendEntry(
     if (previousEntryStr != "") {
         previousEntry = JSON.parse<LogEntry>(previousEntryStr);
     } else {
-        previousEntry = new LogEntry(0, 0, 0, "", "", "", "");
+        previousEntry = new LogEntry(0, 0, 0);
     }
     const lastCommitIndex = getCommitIndex();
     const validators = encodeBase64(Uint8Array.wrap(String.UTF8.encode(storage.getContextValue(VALIDATORS_KEY))))
@@ -858,7 +867,7 @@ export function sendAppendEntry(
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
     const msgstr = `{"run":{"event":{"type":"receiveHeartbeat","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
 
-    consensuswrap.LoggerDebug("diseminate append entry...", ["nodeId", nodeId.toString(), "receiver", nodeIp, "count", entries.length.toString(), "from", nextIndex.toString(), "to", lastIndex.toString()])
+    LoggerDebug("diseminate append entry...", ["nodeId", nodeId.toString(), "receiver", nodeIp, "count", entries.length.toString(), "from", nextIndex.toString(), "to", lastIndex.toString()])
     const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
     // we send the request to the same contract
     const contract = wasmx.getAddress();
@@ -902,7 +911,7 @@ export function addToMempool(
     if (transaction === "") {
         revert("no transaction found");
     }
-    consensuswrap.LoggerDebug("new transaction received", ["transaction", transaction])
+    LoggerDebug("new transaction received", ["transaction", transaction])
     return addTransactionToMempool(transaction)
 }
 
@@ -914,7 +923,7 @@ export function proposeBlock(
     const height = getLastLogIndex();
     const lastCommitIndex = getCommitIndex();
     if (height < lastCommitIndex) {
-        consensuswrap.LoggerInfo("cannot propose new block, last block not commited", ["height", height.toString(), "lastCommitIndex", lastCommitIndex.toString()])
+        LoggerInfo("cannot propose new block, last block not commited", ["height", height.toString(), "lastCommitIndex", lastCommitIndex.toString()])
         return;
     }
 
@@ -925,7 +934,7 @@ export function proposeBlock(
         maxbytes = MaxBlockSizeBytes;
     }
     const batch = mempool.batch(cparams.block.max_gas, maxbytes);
-    consensuswrap.LoggerDebug("batch transactions", ["count", batch.txs.length.toString()])
+    LoggerDebug("batch transactions", ["count", batch.txs.length.toString()])
 
     // TODO
     // maxDataBytes := types.MaxDataBytes(maxBytes, evSize, state.Validators.Size())
@@ -978,7 +987,7 @@ export function addTransactionToMempool(
 function startBlockProposal(txs: string[], cummulatedGas: i64, maxDataBytes: i64): void {
     // PrepareProposal TODO finish
     const height = getLastLogIndex() + 1;
-    consensuswrap.LoggerDebug("start block proposal", ["height", height.toString()])
+    LoggerDebug("start block proposal", ["height", height.toString()])
 
     const currentState = getCurrentState();
     const validators = getValidators();
@@ -1026,7 +1035,7 @@ function startBlockProposal(txs: string[], cummulatedGas: i64, maxDataBytes: i64
         prepareReq.proposer_address,
     );
     const hash = getHeaderHash(header);
-    consensuswrap.LoggerInfo("start block proposal", ["height", height.toString(), "hash", hash])
+    LoggerInfo("start block proposal", ["height", height.toString(), "hash", hash])
     const processReq = new typestnd.RequestProcessProposal(
         prepareResp.txs,
         lastCommit,
@@ -1040,7 +1049,7 @@ function startBlockProposal(txs: string[], cummulatedGas: i64, maxDataBytes: i64
     const processResp = consensuswrap.ProcessProposal(processReq);
     if (processResp.status === typestnd.ProposalStatus.REJECT) {
         // TODO - what to do here? returning just discards the block and the transactions
-        consensuswrap.LoggerError("new block rejected", ["height", processReq.height.toString(), "node type", "Leader"])
+        LoggerError("new block rejected", ["height", processReq.height.toString(), "node type", "Leader"])
         return;
     }
     // We have a valid proposal to propagate to other nodes
@@ -1048,33 +1057,33 @@ function startBlockProposal(txs: string[], cummulatedGas: i64, maxDataBytes: i64
 }
 
 function startBlockFinalizationLeader(index: i64): void {
-    consensuswrap.LoggerInfo("start block finalization", ["height", index.toString()])
+    LoggerInfo("start block finalization", ["height", index.toString()])
     // get entry and apply it
     const entry = getLogEntry(index);
-    consensuswrap.LoggerDebug("start block finalization", ["height", index.toString(), "entry", entry])
+    LoggerDebug("start block finalization", ["height", index.toString(), "entry", entry])
 
-    const entryobj = JSON.parse<LogEntry>(entry);
+    const entryobj = JSON.parse<LogEntryAggregate>(entry);
     const currentTerm = getTermId();
 
     if (currentTerm == entryobj.termId) {
         return startBlockFinalizationInternal(entryobj, false);
     } else {
-        consensuswrap.LoggerError("entry has current term mismatch", ["nodeType", "Leader", "currentTerm", currentTerm.toString(), "entryTermId", entryobj.termId.toString()])
+        LoggerError("entry has current term mismatch", ["nodeType", "Leader", "currentTerm", currentTerm.toString(), "entryTermId", entryobj.termId.toString()])
     }
 }
 
 function startBlockFinalizationFollower(index: i64): void {
-    consensuswrap.LoggerInfo("start block finalization", ["height", index.toString()])
+    LoggerInfo("start block finalization", ["height", index.toString()])
     // get entry and apply it
     const entry = getLogEntry(index);
-    consensuswrap.LoggerDebug("start block finalization", ["height", index.toString(), "entry", entry])
+    LoggerDebug("start block finalization", ["height", index.toString(), "entry", entry])
 
-    const entryobj = JSON.parse<LogEntry>(entry);
+    const entryobj = JSON.parse<LogEntryAggregate>(entry);
     return startBlockFinalizationInternal(entryobj, false);
 }
 
-function startBlockFinalizationInternal(entryobj: LogEntry, retry: boolean): void {
-    const processReqStr = String.UTF8.decode(decodeBase64(entryobj.data).buffer);
+function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: boolean): void {
+    const processReqStr = String.UTF8.decode(decodeBase64(entryobj.data.data).buffer);
     const processReq = JSON.parse<typestnd.RequestProcessProposal>(processReqStr);
     const finalizeReq = new typestnd.RequestFinalizeBlock(
         processReq.txs,
@@ -1092,7 +1101,7 @@ function startBlockFinalizationInternal(entryobj: LogEntry, retry: boolean): voi
         const mismatchErr = `expected: ${(finalizeReq.height + 1).toString()}`
         if (respWrap.error.includes("invalid height") && respWrap.error.includes(mismatchErr)) {
             const rollbackHeight = finalizeReq.height - 1;
-            consensuswrap.LoggerInfo(`trying to rollback`, ["height", rollbackHeight.toString()])
+            LoggerInfo(`trying to rollback`, ["height", rollbackHeight.toString()])
             const err = consensuswrap.RollbackToVersion(rollbackHeight);
             if (err.length > 0) {
                 return revert(`consensus break: ${respWrap.error}; ${err}`);
@@ -1111,16 +1120,17 @@ function startBlockFinalizationInternal(entryobj: LogEntry, retry: boolean): voi
     // TODO save less info? (events tx_results)
     const resultstr = JSON.stringify<typestnd.ResponseFinalizeBlock>(finalizeResp);
     const resultBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(resultstr)));
-    entryobj.result = resultBase64;
 
-    const commitBz = String.UTF8.decode(decodeBase64(entryobj.commit).buffer);
+    entryobj.data.result = resultBase64;
+
+    const commitBz = String.UTF8.decode(decodeBase64(entryobj.data.commit).buffer);
     const commit = JSON.parse<typestnd.BlockCommit>(commitBz);
 
     const last_commit_hash = getCommitHash(commit);
     const last_results_hash = getResultsHash(finalizeResp.tx_results);
 
     // update current state
-    consensuswrap.LoggerDebug("updating current state...", [])
+    LoggerDebug("updating current state...", [])
     const state = getCurrentState();
     state.app_hash = finalizeResp.app_hash;
     state.last_block_id = new typestnd.BlockID(
@@ -1131,29 +1141,37 @@ function startBlockFinalizationInternal(entryobj: LogEntry, retry: boolean): voi
     state.last_results_hash = last_results_hash
     setCurrentState(state);
     // update consensus params
-    consensuswrap.LoggerDebug("updating consensus parameters...", [])
+    LoggerDebug("updating consensus parameters...", [])
     updateConsensusParams(finalizeResp.consensus_param_updates);
     // update validator info
-    consensuswrap.LoggerDebug("updating validator info...", [])
+    LoggerDebug("updating validator info...", [])
     updateValidators(finalizeResp.validator_updates);
 
     // ! make all state changes before the commit
 
-    // update existing log entry
-    setLogEntryObj(entryobj);
-
-    // index transactions
-    consensuswrap.LoggerDebug("index block transactions", ["count", finalizeReq.txs.length.toString()])
+    // save final block
+    const txhashes: string[] = [];
     for (let i = 0; i < finalizeReq.txs.length; i++) {
-        // store IndexedTransaction
         const hash = wasmxwrap.sha256(finalizeReq.txs[i]);
-        setIndexedTransaction(new typestnd.IndexedTransaction(finalizeReq.height, i), hash)
+        txhashes.push(hash);
     }
+    setFinalizedBlock(entryobj, finalizeReq.hash, txhashes);
+
+    // remove temporary entry
+    removeLogEntry(entryobj.index);
+
+    // // index transactions
+    // LoggerDebug("index block transactions", ["count", finalizeReq.txs.length.toString()])
+    // for (let i = 0; i < finalizeReq.txs.length; i++) {
+    //     // store IndexedTransaction
+    //     const hash = wasmxwrap.sha256(finalizeReq.txs[i]);
+    //     setIndexedTransaction(new typestnd.IndexedTransaction(finalizeReq.height, i), hash)
+    // }
 
     const commitResponse = consensuswrap.Commit();
     // TODO commitResponse.retainHeight
     // Tendermint removes all data for heights lower than `retain_height`
-    consensuswrap.LoggerInfo("block finalized", ["height", entryobj.index.toString()])
+    LoggerInfo("block finalized", ["height", entryobj.index.toString()])
 }
 
 function appendLogInternalVerified(processReq: typestnd.RequestProcessProposal, header: typestnd.Header, blockCommit: typestnd.BlockCommit): void {
@@ -1165,7 +1183,19 @@ function appendLogInternalVerified(processReq: typestnd.RequestProcessProposal, 
     const commitBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(commit)))
     const termId = getTermId();
     const leaderId = getCurrentNodeId();
-    const entry = new LogEntry(processReq.height, termId, leaderId, blockDataBase64, blockHeaderBase64, commitBase64, "");
+
+    const contractAddress = encodeBase64(Uint8Array.wrap(wasmx.getAddress()));
+
+    const blockEntry = new wblocks.BlockEntry(
+        processReq.height,
+        contractAddress,
+        contractAddress,
+        blockDataBase64,
+        blockHeaderBase64,
+        commitBase64,
+        "",
+    )
+    const entry = new LogEntryAggregate(processReq.height, termId, leaderId, blockEntry);
     appendLogEntry(entry);
 }
 
@@ -1188,14 +1218,15 @@ function getNodeCountInternal(ips: string[]): i32 {
     return count;
 }
 
+// temporarily store the entries
 export function appendLogEntry(
-    entry: LogEntry,
+    entry: LogEntryAggregate,
 ): void {
     const index = getLastLogIndex() + 1;
     // TODO rollback entries in case of a network split (e.g. entries with higher termId than we have have priority); they must be uncommited
     // and just return if already saved
     if (index > entry.index) {
-        consensuswrap.LoggerDebug("already appended entry", ["height", entry.index.toString()])
+        LoggerDebug("already appended entry", ["height", entry.index.toString()])
         return;
     }
     if (index !== entry.index) {
@@ -1206,9 +1237,9 @@ export function appendLogEntry(
 }
 
 export function setLogEntryObj(
-    entry: LogEntry,
+    entry: LogEntryAggregate,
 ): void {
-    const data = JSON.stringify<LogEntry>(entry);
+    const data = JSON.stringify<LogEntryAggregate>(entry);
     setLogEntry(entry.index, data);
 }
 
@@ -1216,9 +1247,16 @@ export function setLogEntry(
     index: i64,
     entry: string,
 ): void {
-    consensuswrap.LoggerDebug("setting entry", ["height", index.toString(), "value", entry.slice(0, MAX_LOGGED) + " [...]"])
+    LoggerDebug("setting entry", ["height", index.toString(), "value", entry.slice(0, MAX_LOGGED) + " [...]"])
     const key = getLogEntryKey(index);
     storage.setContextValue(key, entry);
+}
+
+export function removeLogEntry(
+    index: i64,
+): void {
+    const key = getLogEntryKey(index);
+    storage.setContextValue(key, "");
 }
 
 export function getLastLogIndex(): i64 {
@@ -1235,7 +1273,7 @@ export function setLastLogIndex(
     value: i64,
 ): void {
     const key = getLastLogIndexKey();
-    consensuswrap.LoggerDebug("setting entry count", ["height", value.toString()])
+    LoggerDebug("setting entry count", ["height", value.toString()])
     storage.setContextValue(key, value.toString());
 }
 
@@ -1382,38 +1420,6 @@ export function setMaxTxBytes(value: i64): void {
     storage.setContextValue(MAX_TX_BYTES, value.toString());
 }
 
-function getIndexedTransaction(hash: string): typestnd.IndexedTransaction {
-    const value = storage.getContextValue(keyIndexedTransaction(hash));
-    return JSON.parse<typestnd.IndexedTransaction>(value);
-}
-
-function setIndexedTransaction(tx: typestnd.IndexedTransaction, hash: string): void {
-    consensuswrap.LoggerInfo("indexing transaction", ["hash", hash])
-    storage.setContextValue(keyIndexedTransaction(hash), JSON.stringify<typestnd.IndexedTransaction>(tx));
-}
-
-function keyIndexedTransaction(hash: string): string {
-    return TX_INDEXER + hash;
-}
-
-export function getConsensusParams(): typestnd.ConsensusParams {
-    const value = storage.getContextValue(PARAMS_KEY);
-    if (value === "") return new typestnd.ConsensusParams(
-        new typestnd.BlockParams(0, 0),
-        new typestnd.EvidenceParams(0, 0, 0),
-        new typestnd.ValidatorParams([]),
-        new typestnd.VersionParams(0),
-        new typestnd.ABCIParams(0),
-    );
-    return JSON.parse<typestnd.ConsensusParams>(value);
-}
-
-export function setConsensusParams(value: typestnd.ConsensusParams): void {
-    const valuestr = JSON.stringify<typestnd.ConsensusParams>(value)
-    consensuswrap.LoggerDebug("setting consensus parameters", ["params", valuestr])
-    storage.setContextValue(PARAMS_KEY, valuestr);
-}
-
 export function getValidators(): typestnd.ValidatorInfo[] {
     const value = storage.getContextValue(VALIDATORS_KEY);
     if (value === "") return [];
@@ -1514,13 +1520,13 @@ function getValidatorsHash(validators: typestnd.ValidatorInfo[]): string {
         newdata.set(power, pub_key.length);
         data[i] = uint8ArrayToHex(newdata);
     }
-    return consensuswrap.MerkleHash(data);
+    return wasmxwrap.MerkleHash(data);
 }
 
 // Txs.Hash() -> [][]byte merkle.HashFromByteSlices
 // base64
 export function getTxsHash(txs: string[]): string {
-    return consensuswrap.MerkleHash(txs);
+    return wasmxwrap.MerkleHash(txs);
 }
 
 // Hash returns a hash of a subset of the parameters to store in the block header.
@@ -1537,12 +1543,12 @@ export function getConsensusParamsHash(params: typestnd.ConsensusParams): string
 // []Evidence hash
 // TODO
 export function getEvidenceHash(params: typestnd.Evidence): string {
-    return consensuswrap.MerkleHash([]);
+    return wasmxwrap.MerkleHash([]);
 }
 
 export function getCommitHash(lastCommit: typestnd.BlockCommit): string {
     // TODO MerkleHash(lastCommit.signatures)
-    return consensuswrap.MerkleHash([]);
+    return wasmxwrap.MerkleHash([]);
 }
 
 export function getResultsHash(results: typestnd.ExecTxResult[]): string {
@@ -1550,7 +1556,7 @@ export function getResultsHash(results: typestnd.ExecTxResult[]): string {
     for (let i = 0; i < results.length; i++) {
         data[i] = encodeBase64(Uint8Array.wrap(String.UTF8.encode(JSON.stringify<typestnd.ExecTxResult>(results[i]))));
     }
-    return consensuswrap.MerkleHash(data);
+    return wasmxwrap.MerkleHash(data);
 }
 
 // Hash returns the hash of the header.
@@ -1578,7 +1584,7 @@ function getHeaderHash(header: typestnd.Header): string {
         hex64ToBase64(header.evidence_hash),
         hex64ToBase64(header.proposer_address), // TODO transform hex to base64
     ]
-    return consensuswrap.MerkleHash(data);
+    return wasmxwrap.MerkleHash(data);
 }
 
 function getRandomInRange(min: i64, max: i64): i64 {
@@ -1589,11 +1595,57 @@ function getRandomInRange(min: i64, max: i64): i64 {
 
 export function signMessage(msgstr: string): Base64String {
     const currentState = getCurrentState();
-    return consensuswrap.ed25519Sign(currentState.validator_privkey, msgstr);
+    return wasmxwrap.ed25519Sign(currentState.validator_privkey, msgstr);
 }
 
 export function verifyMessage(nodeIndex: i32, signatureStr: Base64String, msg: string): boolean {
     const validators = getValidators();
     const validator = validators[nodeIndex];
-    return consensuswrap.ed25519Verify(validator.pub_key, signatureStr, msg);
+    return wasmxwrap.ed25519Verify(validator.pub_key, signatureStr, msg);
+}
+
+function setFinalizedBlock(entry: LogEntryAggregate, hash: string, txhashes: string[]): void {
+    const blockData = JSON.stringify<wblocks.BlockEntry>(entry.data)
+    const calldata = new wblockscalld.CallDataSetBlock(blockData, hash, txhashes);
+    const resp = callStorage(JSON.stringify<wblockscalld.CallDataSetBlock>(calldata), false);
+    if (!resp.success) {
+        revert("could not set consensus params");
+    }
+}
+
+function setConsensusParams(value: typestnd.ConsensusParams): void {
+    const valuestr = JSON.stringify<typestnd.ConsensusParams>(value)
+    const calldata = `{"setConsensusParamsWrap":{"params":"${encodeBase64(Uint8Array.wrap(String.UTF8.encode(valuestr)))}"}}`
+    const resp = callStorage(calldata, false);
+    if (!resp.success) {
+        revert("could not set consensus params");
+    }
+}
+
+function getConsensusParams(): typestnd.ConsensusParams {
+    const calldata = `{"getConsensusParamsWrap":{}}`
+    const resp = callStorage(calldata, true);
+    if (!resp.success) {
+        revert("could not get consensus params");
+    }
+    if (resp.data === "") return new typestnd.ConsensusParams(
+        new typestnd.BlockParams(0, 0),
+        new typestnd.EvidenceParams(0, 0, 0),
+        new typestnd.ValidatorParams([]),
+        new typestnd.VersionParams(0),
+        new typestnd.ABCIParams(0),
+    );
+    return JSON.parse<typestnd.ConsensusParams>(resp.data);
+}
+
+function callStorage(calldata: string, isQuery: boolean): CallResponse {
+    const contractAddress = getStorageAddress();
+    const req = new CallRequest(contractAddress, calldata, isQuery);
+    return wasmxwrap.call(req);
+}
+
+function getStorageAddress(): string {
+    const state = getCurrentState();
+    return state.wasmx_blocks_contract;
+
 }

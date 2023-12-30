@@ -1,4 +1,12 @@
 import assert from "assert";
-import { add } from "../build/debug.js";
-assert.strictEqual(add(1, 2), 3);
-console.log("ok");
+import {
+    runFnWrapped
+} from './utils.js';
+
+async function runTests() {
+    const storage = {};
+    let runFn = runFnWrapped(storage);
+    await runFn("instantiate", {initialBlockIndex: 1}, "instantiate")
+}
+
+runTests();

@@ -1,3 +1,66 @@
+import * as wasmx_blocks from "wasmx-blocks/tests/utils.js";
+import { load, LOG } from './wasmx.js';
+
+export const WASMX_BLOCKS_ADDRESS = btoa("wasmx_blocks");
+
+export function runFnWrapped (storage = {}, env = {}) {
+    return async function (fnName, config, args, runfn = "main") {
+        let calldata;
+        const config_ = encodeToUtf8Array(JSON.stringify(config));
+        if (runfn === "main") {
+          calldata = encodeToUtf8Array(JSON.stringify({[fnName]: args}));
+        } else {
+          calldata = args;
+        }
+        calldata = new Uint8Array([
+          ...numToUint8Array32(config_.length),
+          ...config_,
+          ...numToUint8Array32(calldata.length),
+          ...calldata,
+        ])
+
+        const defaultSender = encodeToUtf8Array("sender");
+        const defaultContract = encodeToUtf8Array("contract");
+        env = {
+            ...env,
+            currentCall: {
+                sender: defaultSender,
+                contract: defaultContract,
+                ...env.currentCall,
+                callData: calldata,
+            },
+            contracts: {},
+        }
+        env.contracts[WASMX_BLOCKS_ADDRESS] = (calldata, isQuery) => {
+            console.log("--inner call", calldata, isQuery);
+            const storage = {};
+            let runFn = wasmx_blocks.runFnWrapped(storage);
+            runFn("instantiate", {initialBlockIndex: 1}, "instantiate").then(() => {
+                return runFn("main", calldata, "main", true);
+            })
+        }
+
+        const instance = await load(storage, env, LOG.debug);
+        return instance[runfn]();
+    }
+}
+
+export function encodeToUtf8Array(str) {
+    const encoder = new TextEncoder();
+    return encoder.encode(str);
+}
+
+export function decodeFromUtf8Array(arr) {
+    if (!(arr instanceof ArrayBuffer)) arr = new Uint8Array(arr).buffer;
+    const encoder = new TextDecoder();
+    return encoder.decode(arr);
+}
+
+export function hexToUint8Array(hexString) {
+    const encodedString = hexString.match(/.{1,2}/g).map(byte => parseInt(byte, 16));
+    return new Uint8Array(encodedString);
+}
+
 export function parseMachine(origConfig) {
     origConfig.context = origConfig.context || {};
     let statePath = "#" + origConfig.id;

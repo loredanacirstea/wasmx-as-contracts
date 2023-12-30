@@ -7,7 +7,7 @@ export const LOG = {
 }
 
 export async function load(storage = {}, env = {}, logType = LOG.debug) {
-    const inst = await getExports(wasmx(storage, env, logType));
+    const inst = await getExports(wasmx(storage, env, logType), consensus(storage, env, logType));
     return inst
 }
 
@@ -122,6 +122,28 @@ export function wasmx(storageMap, env, logType = LOG.error) {
         return env.ReturnData || new Uint8Array(0);
     }
 
+    function MerkleHash(buf) {
+        if (logType > 0) {
+            console.log('-host-MerkleHash', [...new Uint8Array(buf)]);
+        }
+        return new Uint8Array(0);
+    }
+
+    function LoggerDebug(buf) {
+        const req = JSON.parse(decodeFromUtf8Array(buf));
+        console.debug(req.msg, ...req.parts);
+    }
+
+    function LoggerInfo(buf) {
+        const req = JSON.parse(decodeFromUtf8Array(buf));
+        console.info(req.msg, ...req.parts);
+    }
+
+    function LoggerError(buf) {
+        const req = JSON.parse(decodeFromUtf8Array(buf));
+        console.error(req.msg, ...req.parts);
+    }
+
     return {
         finish,
         stop,
@@ -140,6 +162,60 @@ export function wasmx(storageMap, env, logType = LOG.error) {
         sha256,
         setReturnData,
         getReturnData,
+        MerkleHash,
+        LoggerDebug,
+        LoggerInfo,
+        LoggerError,
+    }
+}
+
+export function consensus(storageMap, env, logType = LOG.error) {
+    function PrepareProposal(buf) {
+        if (logType > 0) {
+            console.log('-host-PrepareProposal', [...new Uint8Array(buf)]);
+        }
+        const req = JSON.parse(decodeFromUtf8Array(buf));
+        const resp = {txs: req.txs};
+        return encodeToUtf8Array(JSON.stringify(resp));
+    }
+
+    function ProcessProposal(buf) {
+        if (logType > 0) {
+            console.log('-host-ProcessProposal', [...new Uint8Array(buf)]);
+        }
+        return encodeToUtf8Array(JSON.stringify({status: 0}));
+    }
+
+    function FinalizeBlock(buf) {
+        if (logType > 0) {
+            console.log('-host-FinalizeBlock');
+        }
+        const resp = {events: [], tx_results: [], validator_updates: [], consensus_param_updates: {"block":{"max_bytes":2000000,"max_gas":30000000},"evidence":{"max_age_num_blocks":302400,"max_age_duration":1814400,"max_bytes":10000},"validator":{"pub_key_types":["ed25519"]},"version":{"app":0},"abci":{"vote_extensions_enable_height":0}}, app_hash: "O0hNTDaj3XTRiEIeqqlo4+dxTrmV3JlHbCOnyOX24f8="}
+        return encodeToUtf8Array(JSON.stringify(resp));
+    }
+
+    function Commit(buf) {
+        if (logType > 0) {
+            console.log('-host-Commit', [...new Uint8Array(buf)]);
+        }
+        const resp = {"retainHeight":"0"}
+        return encodeToUtf8Array(JSON.stringify(resp));
+    }
+
+    function CheckTx(buf) {
+        if (logType > 0) {
+            console.log('-host-CheckTx', [...new Uint8Array(buf)]);
+        }
+        const resp = {code: 0, data: "", log: "", info: "", gas_wanted: 10000, gas_used: 1000, events: [], codespace: ""}
+        return encodeToUtf8Array(JSON.stringify(resp));
+    }
+
+    return {
+        PrepareProposal,
+        ProcessProposal,
+        FinalizeBlock,
+        Commit,
+        CheckTx,
     }
 }
 

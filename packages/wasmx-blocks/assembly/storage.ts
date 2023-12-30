@@ -63,7 +63,7 @@ export function getBlockByHash(hash: types.Base64String): string {
     return getBlockByIndex(index);
 }
 
-export function setBlock(value: string, hash: string, txhashes: string[]) {
+export function setBlock(value: string, hash: string, txhashes: string[]): void {
     const block = JSON.parse<types.BlockEntry>(value);
     const index = getLastBlockIndex() + 1;
     if (block.index != index) {
@@ -87,7 +87,6 @@ export function setBlock(value: string, hash: string, txhashes: string[]) {
 
     // update last index
     setLastBlockIndex(index);
-    return index;
 }
 
 export function getIndexedTransactionByHash(hash: types.Base64String): string {

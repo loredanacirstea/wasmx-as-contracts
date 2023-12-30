@@ -108,6 +108,39 @@ async function instantiate(module, imports = {}) {
           value = __liftBuffer(value >>> 0);
           __module0.finish(value);
         },
+        LoggerError(value) {
+          // assembly/consensus/LoggerError(~lib/arraybuffer/ArrayBuffer) => void
+          value = __liftBuffer(value >>> 0);
+          __module1.LoggerError(value);
+        },
+        LoggerDebug(value) {
+          // assembly/consensus/LoggerDebug(~lib/arraybuffer/ArrayBuffer) => void
+          value = __liftBuffer(value >>> 0);
+          __module1.LoggerDebug(value);
+        },
+        LoggerInfo(value) {
+          // assembly/consensus/LoggerInfo(~lib/arraybuffer/ArrayBuffer) => void
+          value = __liftBuffer(value >>> 0);
+          __module1.LoggerInfo(value);
+        },
+        MerkleHash(value) {
+          // assembly/consensus/MerkleHash(~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer
+          value = __liftBuffer(value >>> 0);
+          return __lowerBuffer(__module1.MerkleHash(value)) || __notnull();
+        },
+        ed25519Verify(pubKey, signature, msgbz) {
+          // assembly/consensus/ed25519Verify(~lib/arraybuffer/ArrayBuffer, ~lib/arraybuffer/ArrayBuffer, ~lib/arraybuffer/ArrayBuffer) => i32
+          pubKey = __liftBuffer(pubKey >>> 0);
+          signature = __liftBuffer(signature >>> 0);
+          msgbz = __liftBuffer(msgbz >>> 0);
+          return __module1.ed25519Verify(pubKey, signature, msgbz);
+        },
+        ed25519Sign(privKey, msgbz) {
+          // assembly/consensus/ed25519Sign(~lib/arraybuffer/ArrayBuffer, ~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer
+          privKey = __liftBuffer(privKey >>> 0);
+          msgbz = __liftBuffer(msgbz >>> 0);
+          return __lowerBuffer(__module1.ed25519Sign(privKey, msgbz)) || __notnull();
+        },
       }),
     };
     const { exports } = await WebAssembly.instantiate(module, adaptedImports);

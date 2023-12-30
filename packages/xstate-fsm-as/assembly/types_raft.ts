@@ -1,24 +1,34 @@
 import { JSON } from "json-as/assembly";
+import * as wblocks from "wasmx-blocks/assembly/types";
 import { Base64String } from "./types";
 
 // @ts-ignore
 @serializable
 export class LogEntry {
+    // this is also the block height
     index: i64;
     termId: i32;
     leaderId: i32;
-    data: string; // base64-encoded RequestProcessProposal
-    header: string // base64-encoded Header
-    commit: string // base64-encoded commit info
-    result: string // base64-encoded ResponseFinalizeBlock
-    constructor(index: i64, termId: i32, leaderId: i32, data: string, header: string, commit: string, result: string) {
+    constructor(index: i64, termId: i32, leaderId: i32) {
+        this.index = index;
+        this.termId = termId;
+        this.leaderId = leaderId;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class LogEntryAggregate {
+    // this is also the block height
+    index: i64;
+    termId: i32;
+    leaderId: i32;
+    data: wblocks.BlockEntry;
+    constructor(index: i64, termId: i32, leaderId: i32, data: wblocks.BlockEntry) {
         this.index = index;
         this.termId = termId;
         this.leaderId = leaderId;
         this.data = data;
-        this.header = header;
-        this.commit = commit;
-        this.result = result;
     }
 }
 
@@ -77,12 +87,12 @@ export class AppendEntry {
     // term of prevLogIndex entry
     prevLogTerm: i32;
     // log entries to store (empty for heartbeat; may send more than one for efficiency)
-    entries: Array<LogEntry>
+    entries: Array<LogEntryAggregate>
     // leader’s commitIndex
     leaderCommit: i64;
     nodeIps: Array<string>;
     validators: Base64String;
-    constructor(termId: i32, leaderId: i32, prevLogIndex: i64, prevLogTerm: i32, entries: Array<LogEntry>, leaderCommit: i64, nodeIps: Array<string>, validators: Base64String) {
+    constructor(termId: i32, leaderId: i32, prevLogIndex: i64, prevLogTerm: i32, entries: Array<LogEntryAggregate>, leaderCommit: i64, nodeIps: Array<string>, validators: Base64String) {
         this.termId = termId;
         this.leaderId = leaderId;
         this.prevLogIndex = prevLogIndex;

@@ -42,10 +42,25 @@ async function instantiate(module, imports = {}) {
       },
     }),
     wasmx: Object.assign(Object.create(__module0), {
+      getCallData() {
+        // assembly/wasmx/getCallData() => ~lib/arraybuffer/ArrayBuffer
+        return __lowerBuffer(__module0.getCallData()) || __notnull();
+      },
       storageLoad(key) {
         // assembly/wasmx/storageLoad(~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer
         key = __liftBuffer(key >>> 0);
         return __lowerBuffer(__module0.storageLoad(key)) || __notnull();
+      },
+      storageStore(key, value) {
+        // assembly/wasmx/storageStore(~lib/arraybuffer/ArrayBuffer, ~lib/arraybuffer/ArrayBuffer) => void
+        key = __liftBuffer(key >>> 0);
+        value = __liftBuffer(value >>> 0);
+        __module0.storageStore(key, value);
+      },
+      LoggerError(value) {
+        // assembly/wasmx/LoggerError(~lib/arraybuffer/ArrayBuffer) => void
+        value = __liftBuffer(value >>> 0);
+        __module0.LoggerError(value);
       },
       revert(message) {
         // assembly/wasmx/revert(~lib/arraybuffer/ArrayBuffer) => void
@@ -55,10 +70,6 @@ async function instantiate(module, imports = {}) {
       getCaller() {
         // assembly/wasmx/getCaller() => ~lib/arraybuffer/ArrayBuffer
         return __lowerBuffer(__module0.getCaller()) || __notnull();
-      },
-      getAddress() {
-        // assembly/wasmx/getAddress() => ~lib/arraybuffer/ArrayBuffer
-        return __lowerBuffer(__module0.getAddress()) || __notnull();
       },
       grpcRequest(data) {
         // assembly/wasmx/grpcRequest(~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer
@@ -70,6 +81,33 @@ async function instantiate(module, imports = {}) {
         value = __liftBuffer(value >>> 0);
         __module0.log(value);
       },
+      LoggerDebug(value) {
+        // assembly/wasmx/LoggerDebug(~lib/arraybuffer/ArrayBuffer) => void
+        value = __liftBuffer(value >>> 0);
+        __module0.LoggerDebug(value);
+      },
+      call(data) {
+        // assembly/wasmx/call(~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer
+        data = __liftBuffer(data >>> 0);
+        return __lowerBuffer(__module0.call(data)) || __notnull();
+      },
+      LoggerInfo(value) {
+        // assembly/wasmx/LoggerInfo(~lib/arraybuffer/ArrayBuffer) => void
+        value = __liftBuffer(value >>> 0);
+        __module0.LoggerInfo(value);
+      },
+      ed25519Verify(pubKey, signature, msgbz) {
+        // assembly/wasmx/ed25519Verify(~lib/arraybuffer/ArrayBuffer, ~lib/arraybuffer/ArrayBuffer, ~lib/arraybuffer/ArrayBuffer) => i32
+        pubKey = __liftBuffer(pubKey >>> 0);
+        signature = __liftBuffer(signature >>> 0);
+        msgbz = __liftBuffer(msgbz >>> 0);
+        return __module0.ed25519Verify(pubKey, signature, msgbz);
+      },
+      MerkleHash(value) {
+        // assembly/wasmx/MerkleHash(~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer
+        value = __liftBuffer(value >>> 0);
+        return __lowerBuffer(__module0.MerkleHash(value)) || __notnull();
+      },
       sha256(value) {
         // assembly/wasmx/sha256(~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer
         value = __liftBuffer(value >>> 0);
@@ -80,25 +118,20 @@ async function instantiate(module, imports = {}) {
         value = __liftBuffer(value >>> 0);
         __module0.setReturnData(value);
       },
-      call(data) {
-        // assembly/wasmx/call(~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer
-        data = __liftBuffer(data >>> 0);
-        return __lowerBuffer(__module0.call(data)) || __notnull();
+      ed25519Sign(privKey, msgbz) {
+        // assembly/wasmx/ed25519Sign(~lib/arraybuffer/ArrayBuffer, ~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer
+        privKey = __liftBuffer(privKey >>> 0);
+        msgbz = __liftBuffer(msgbz >>> 0);
+        return __lowerBuffer(__module0.ed25519Sign(privKey, msgbz)) || __notnull();
       },
-      storageStore(key, value) {
-        // assembly/wasmx/storageStore(~lib/arraybuffer/ArrayBuffer, ~lib/arraybuffer/ArrayBuffer) => void
-        key = __liftBuffer(key >>> 0);
-        value = __liftBuffer(value >>> 0);
-        __module0.storageStore(key, value);
+      getAddress() {
+        // assembly/wasmx/getAddress() => ~lib/arraybuffer/ArrayBuffer
+        return __lowerBuffer(__module0.getAddress()) || __notnull();
       },
-      startTimeout(repeat, time, args) {
-        // assembly/wasmx/startTimeout(i32, i64, ~lib/arraybuffer/ArrayBuffer) => i32
+      startTimeout(time, args) {
+        // assembly/wasmx/startTimeout(i64, ~lib/arraybuffer/ArrayBuffer) => void
         args = __liftBuffer(args >>> 0);
-        return __module0.startTimeout(repeat, time, args);
-      },
-      getCallData() {
-        // assembly/wasmx/getCallData() => ~lib/arraybuffer/ArrayBuffer
-        return __lowerBuffer(__module0.getCallData()) || __notnull();
+        __module0.startTimeout(time, args);
       },
       getReturnData() {
         // assembly/wasmx/getReturnData() => ~lib/arraybuffer/ArrayBuffer
@@ -111,20 +144,23 @@ async function instantiate(module, imports = {}) {
       },
     }),
     consensus: Object.assign(Object.create(__module1), {
-      LoggerError(value) {
-        // assembly/consensus/LoggerError(~lib/arraybuffer/ArrayBuffer) => void
+      ProcessProposal(value) {
+        // assembly/consensus/ProcessProposal(~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer
         value = __liftBuffer(value >>> 0);
-        __module1.LoggerError(value);
+        return __lowerBuffer(__module1.ProcessProposal(value)) || __notnull();
       },
-      LoggerDebug(value) {
-        // assembly/consensus/LoggerDebug(~lib/arraybuffer/ArrayBuffer) => void
+      FinalizeBlock(value) {
+        // assembly/consensus/FinalizeBlock(~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer
         value = __liftBuffer(value >>> 0);
-        __module1.LoggerDebug(value);
+        return __lowerBuffer(__module1.FinalizeBlock(value)) || __notnull();
       },
-      LoggerInfo(value) {
-        // assembly/consensus/LoggerInfo(~lib/arraybuffer/ArrayBuffer) => void
-        value = __liftBuffer(value >>> 0);
-        __module1.LoggerInfo(value);
+      RollbackToVersion(height) {
+        // assembly/consensus/RollbackToVersion(i64) => ~lib/arraybuffer/ArrayBuffer
+        return __lowerBuffer(__module1.RollbackToVersion(height)) || __notnull();
+      },
+      Commit() {
+        // assembly/consensus/Commit() => ~lib/arraybuffer/ArrayBuffer
+        return __lowerBuffer(__module1.Commit()) || __notnull();
       },
       CheckTx(value) {
         // assembly/consensus/CheckTx(~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer
@@ -136,33 +172,6 @@ async function instantiate(module, imports = {}) {
         value = __liftBuffer(value >>> 0);
         return __lowerBuffer(__module1.PrepareProposal(value)) || __notnull();
       },
-      ProcessProposal(value) {
-        // assembly/consensus/ProcessProposal(~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer
-        value = __liftBuffer(value >>> 0);
-        return __lowerBuffer(__module1.ProcessProposal(value)) || __notnull();
-      },
-      RollbackToVersion(height) {
-        // assembly/consensus/RollbackToVersion(i64) => ~lib/arraybuffer/ArrayBuffer
-        return __lowerBuffer(__module1.RollbackToVersion(height)) || __notnull();
-      },
-      MerkleHash(value) {
-        // assembly/consensus/MerkleHash(~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer
-        value = __liftBuffer(value >>> 0);
-        return __lowerBuffer(__module1.MerkleHash(value)) || __notnull();
-      },
-      ed25519Verify(pubKey, signature, msgbz) {
-        // assembly/consensus/ed25519Verify(~lib/arraybuffer/ArrayBuffer, ~lib/arraybuffer/ArrayBuffer, ~lib/arraybuffer/ArrayBuffer) => i32
-        pubKey = __liftBuffer(pubKey >>> 0);
-        signature = __liftBuffer(signature >>> 0);
-        msgbz = __liftBuffer(msgbz >>> 0);
-        return __module1.ed25519Verify(pubKey, signature, msgbz);
-      },
-      ed25519Sign(privKey, msgbz) {
-        // assembly/consensus/ed25519Sign(~lib/arraybuffer/ArrayBuffer, ~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer
-        privKey = __liftBuffer(privKey >>> 0);
-        msgbz = __liftBuffer(msgbz >>> 0);
-        return __lowerBuffer(__module1.ed25519Sign(privKey, msgbz)) || __notnull();
-      },
     }),
   };
   const { exports } = await WebAssembly.instantiate(module, adaptedImports);
@@ -171,30 +180,6 @@ async function instantiate(module, imports = {}) {
     main() {
       // assembly/index/main() => ~lib/array/Array<u8>
       return __liftArray(__getU8, 0, exports.main() >>> 0);
-    },
-    create(_fsmConfig, _implementations) {
-      // assembly/index/create(~lib/arraybuffer/ArrayBuffer, ~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer
-      _fsmConfig = __retain(__lowerBuffer(_fsmConfig) || __notnull());
-      _implementations = __lowerBuffer(_implementations) || __notnull();
-      try {
-        return __liftBuffer(exports.create(_fsmConfig, _implementations) >>> 0);
-      } finally {
-        __release(_fsmConfig);
-      }
-    },
-    run(id, eventNameBuf) {
-      // assembly/index/run(i32, ~lib/arraybuffer/ArrayBuffer) => void
-      eventNameBuf = __lowerBuffer(eventNameBuf) || __notnull();
-      exports.run(id, eventNameBuf);
-    },
-    getCurrentState(id) {
-      // assembly/index/getCurrentState(i32) => ~lib/arraybuffer/ArrayBuffer
-      return __liftBuffer(exports.getCurrentState(id) >>> 0);
-    },
-    getContextValue(id, keyBuf) {
-      // assembly/index/getContextValue(i32, ~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer
-      keyBuf = __lowerBuffer(keyBuf) || __notnull();
-      return __liftBuffer(exports.getContextValue(id, keyBuf) >>> 0);
     },
   }, exports);
   function __liftBuffer(pointer) {

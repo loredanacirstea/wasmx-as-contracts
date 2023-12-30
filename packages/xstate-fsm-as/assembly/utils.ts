@@ -1,5 +1,5 @@
 import * as wasmx from './wasmx';
-import * as consensuswrap from './consensus_wrap';
+import { LoggerError } from "./wasmx_wrap";
 import { Base64String, HexString } from './types';
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 
@@ -62,7 +62,7 @@ export function i64ToUint8ArrayBE(value: i64): Uint8Array {
 
 export function revert(message: string): void {
     // console.debug(`Error: ${message}`);
-    consensuswrap.LoggerError("revert", ["message", message])
+    LoggerError("revert", ["message", message])
     wasmx.revert(String.UTF8.encode(message));
     throw new Error(message);
 }

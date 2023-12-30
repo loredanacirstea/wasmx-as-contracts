@@ -30,6 +30,15 @@ export class CallData {
 
 // @ts-ignore
 @serializable
+export class CallDataInstantiate {
+    initialBlockIndex: i64
+    constructor(initialBlockIndex: i64) {
+        this.initialBlockIndex = initialBlockIndex;
+    }
+}
+
+// @ts-ignore
+@serializable
 export class CallDataSetIndexedData {
     key: string
     value: string
