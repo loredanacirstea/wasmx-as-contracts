@@ -29,6 +29,17 @@ export class CallData {
     getBlockByHash: CallDataGetBlockByHash | null = null;
     getIndexedTransactionByHash: CallDataGetIndexedTransactionByHash | null = null;
     getConsensusParams: CallDataGetConsensusParams | null = null;
+
+    getContextValue: CallDataGetContextValue | null = null;
+}
+
+// @ts-ignore
+@serializable
+export class CallDataGetContextValue {
+    key: string;
+    constructor(key: string) {
+        this.key = key;
+    }
 }
 
 // @ts-ignore

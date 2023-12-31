@@ -13,20 +13,17 @@ import {
   setIndexedDataWrap,
   setIndexedTransactionByHashWrap,
 } from './calldata';
-import { setLastBlockIndex } from "./storage";
+import { setLastBlockIndex, getContextValue } from "./storage";
 
 export function wasmx_env_2(): void {}
 
 export function instantiate(): void {
   const calldraw = wasmx.getCallData();
-  console.log("--instantiate---" + String.UTF8.decode(calldraw))
   const calld = JSON.parse<CallDataInstantiate>(String.UTF8.decode(calldraw));
-  console.log("--instantiate2--")
   setLastBlockIndex(calld.initialBlockIndex);
 }
 
 export function main(): void {
-  console.log("--main---")
   let result: ArrayBuffer;
   const calld = getCallDataWrap();
   if (calld.getLastBlockIndex !== null) {
@@ -49,6 +46,8 @@ export function main(): void {
     result = setIndexedTransactionByHashWrap(calld.setIndexedTransactionByHash!.hash, calld.setIndexedTransactionByHash!.data);
   } else if (calld.setIndexedData !== null) {
     result = setIndexedDataWrap(calld.setIndexedData!.key, calld.setIndexedData!.value);
+  } else if (calld.getContextValue !== null) {
+    result = getContextValue(calld.getContextValue!.key);
   } else {
     wasmx.revert(String.UTF8.encode("invalid function call data"));
     throw new Error("invalid function call data");

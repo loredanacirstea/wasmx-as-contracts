@@ -105,3 +105,7 @@ export function setConsensusParams(value: string): void {
     wasmxwrap.LoggerDebug("setting consensus parameters", ["params", value])
     wasmxwrap.sstore(PARAMS_KEY, value);
 }
+
+export function getContextValue(key: string): ArrayBuffer {
+    return wasmx.storageLoad(String.UTF8.encode(key));
+}

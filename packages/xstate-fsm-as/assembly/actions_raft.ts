@@ -637,17 +637,11 @@ function initChain(req: typestnd.InitChainSetup): void {
         req.wasmx_blocks_contract,
     );
     setValidators(req.validators);
-    console.log("--after setValidators--")
 
     const valuestr = JSON.stringify<typestnd.CurrentState>(currentState);
-    console.log("--before setCurrentState--" + valuestr)
     LoggerDebug("set current state", ["state", valuestr])
     setCurrentState(currentState);
-
-    console.log("--after setCurrentState--")
     setConsensusParams(req.consensus_params);
-
-    console.log("--after setConsensusParams--")
 }
 
 export function processAppendEntries(
