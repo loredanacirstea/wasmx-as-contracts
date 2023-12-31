@@ -11,6 +11,7 @@ import {
   setBlockWrap,
   setConsensusParamsWrap,
   setIndexedDataWrap,
+  setIndexedTransactionByHashWrap,
 } from './calldata';
 import { setLastBlockIndex } from "./storage";
 
@@ -44,6 +45,8 @@ export function main(): void {
     result = setBlockWrap(calld.setBlock!.value, calld.setBlock!.hash, calld.setBlock!.txhashes);
   } else if (calld.setConsensusParams !== null) {
     result = setConsensusParamsWrap(calld.setConsensusParams!.params);
+  } else if (calld.setIndexedTransactionByHash !== null) {
+    result = setIndexedTransactionByHashWrap(calld.setIndexedTransactionByHash!.hash, calld.setIndexedTransactionByHash!.data);
   } else if (calld.setIndexedData !== null) {
     result = setIndexedDataWrap(calld.setIndexedData!.key, calld.setIndexedData!.value);
   } else {

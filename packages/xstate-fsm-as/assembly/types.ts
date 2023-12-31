@@ -596,10 +596,14 @@ export class TimerArgs {
 export class CallRequest {
   to: string;
   calldata: string;
+  value: i64;
+  gasLimit: i64;
   isQuery: boolean;
-  constructor(to: string, calldata: string, isQuery: boolean) {
+  constructor(to: string, calldata: string, value: i64, gasLimit: i64, isQuery: boolean) {
     this.to = to;
     this.calldata = calldata;
+    this.value = value;
+    this.gasLimit = gasLimit;
     this.isQuery = isQuery;
   }
 }
@@ -607,9 +611,9 @@ export class CallRequest {
 // @ts-ignore
 @serializable
 export class CallResponse {
-  success: boolean;
+  success: i32;
   data: string;
-  constructor(success: boolean, data: string) {
+  constructor(success: i32, data: string) {
     this.success = success;
     this.data = data;
   }

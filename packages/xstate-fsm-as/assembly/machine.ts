@@ -378,11 +378,11 @@ function processExternalCall(
 
   // TODO
   const calldata = ""
-  const req = new CallRequest(contractAddress, calldata, false);
+  const req = new CallRequest(contractAddress, calldata, 0, 1000000, false);
   const resp = wasmxwrap.call(req);
-  if (!resp.success) {
+  if (resp.success > 0) {
     revert("contract call failed: " + actionType);
-    return resp.success;
+    return false;
   }
   return true;
 }

@@ -422,6 +422,7 @@ export function vote(
     const isSender = verifyMessage(entry.candidateId, signature, entryStr);
     if (!isSender) {
         LoggerError("signature verification failed for VoteRequest", ["candidateId", entry.candidateId.toString(), "termId", entry.termId.toString()]);
+        // TODO have an error for the grpc vote request
         return;
     }
 
@@ -838,17 +839,10 @@ export function sendAppendEntry(
 
     const entries: Array<LogEntryAggregate> = [];
     for (let i = nextIndex; i <= lastIndex; i++) {
-        const entry = getLogEntry(i);
-        const entryobj = JSON.parse<LogEntryAggregate>(entry);
-        entries.push(entryobj);
+        const entry = getLogEntryAggregate(i);
+        entries.push(entry);
     }
-    const previousEntryStr = getLogEntry(nextIndex-1);
-    let previousEntry: LogEntry;
-    if (previousEntryStr != "") {
-        previousEntry = JSON.parse<LogEntry>(previousEntryStr);
-    } else {
-        previousEntry = new LogEntry(0, 0, 0);
-    }
+    const previousEntry = getLogEntryObj(nextIndex-1);
     const lastCommitIndex = getCommitIndex();
     const validators = encodeBase64(Uint8Array.wrap(String.UTF8.encode(storage.getContextValue(VALIDATORS_KEY))))
     const data = new AppendEntry(
@@ -945,10 +939,34 @@ export function proposeBlock(
     setMempool(mempool);
 }
 
+// last log may be an uncommited one or a final one
 function getLastLog(): LogEntry {
     const index = getLastLogIndex();
-    const entry = getLogEntry(index);
-    return JSON.parse<LogEntry>(entry);
+    return getLogEntryObj(index);
+}
+
+export function getLogEntryObj(index: i64): LogEntry {
+    const value = getLogEntry(index);
+    if (value == "") return new LogEntry(0, 0, 0, "");
+    return JSON.parse<LogEntry>(value);
+}
+
+export function getLogEntryAggregate(index: i64): LogEntryAggregate {
+    const value = getLogEntryObj(index);
+    let data = value.data;
+    if (data != "") {
+        data = String.UTF8.decode(decodeBase64(data).buffer);
+    } else {
+        data = getFinalBlock(index);
+    }
+    const blockData = JSON.parse<wblocks.BlockEntry>(data);
+    const entry = new LogEntryAggregate(
+        value.index,
+        value.termId,
+        value.leaderId,
+        blockData,
+    )
+    return entry;
 }
 
 export function getLogEntry(
@@ -1059,12 +1077,10 @@ function startBlockProposal(txs: string[], cummulatedGas: i64, maxDataBytes: i64
 function startBlockFinalizationLeader(index: i64): void {
     LoggerInfo("start block finalization", ["height", index.toString()])
     // get entry and apply it
-    const entry = getLogEntry(index);
-    LoggerDebug("start block finalization", ["height", index.toString(), "entry", entry])
+    const entryobj = getLogEntryAggregate(index);
+    LoggerDebug("start block finalization", ["height", index.toString(), "leaderId", entryobj.leaderId.toString(), "termId", entryobj.termId.toString(), "data", JSON.stringify<wblocks.BlockEntry>(entryobj.data)])
 
-    const entryobj = JSON.parse<LogEntryAggregate>(entry);
     const currentTerm = getTermId();
-
     if (currentTerm == entryobj.termId) {
         return startBlockFinalizationInternal(entryobj, false);
     } else {
@@ -1075,10 +1091,8 @@ function startBlockFinalizationLeader(index: i64): void {
 function startBlockFinalizationFollower(index: i64): void {
     LoggerInfo("start block finalization", ["height", index.toString()])
     // get entry and apply it
-    const entry = getLogEntry(index);
-    LoggerDebug("start block finalization", ["height", index.toString(), "entry", entry])
-
-    const entryobj = JSON.parse<LogEntryAggregate>(entry);
+    const entryobj = getLogEntryAggregate(index);
+    LoggerDebug("start block finalization", ["height", index.toString(), "leaderId", entryobj.leaderId.toString(), "termId", entryobj.termId.toString(), "data", JSON.stringify<wblocks.BlockEntry>(entryobj.data)])
     return startBlockFinalizationInternal(entryobj, false);
 }
 
@@ -1155,18 +1169,11 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         const hash = wasmxwrap.sha256(finalizeReq.txs[i]);
         txhashes.push(hash);
     }
+    // also indexes transactions
     setFinalizedBlock(entryobj, finalizeReq.hash, txhashes);
 
-    // remove temporary entry
+    // remove temporary block data
     removeLogEntry(entryobj.index);
-
-    // // index transactions
-    // LoggerDebug("index block transactions", ["count", finalizeReq.txs.length.toString()])
-    // for (let i = 0; i < finalizeReq.txs.length; i++) {
-    //     // store IndexedTransaction
-    //     const hash = wasmxwrap.sha256(finalizeReq.txs[i]);
-    //     setIndexedTransaction(new typestnd.IndexedTransaction(finalizeReq.height, i), hash)
-    // }
 
     const commitResponse = consensuswrap.Commit();
     // TODO commitResponse.retainHeight
@@ -1233,13 +1240,27 @@ export function appendLogEntry(
         revert(`mismatched index while appending log entry: expected ${index}, found ${entry.index}`);
     }
     setLastLogIndex(index);
-    setLogEntryObj(entry);
+    setLogEntryAggregate(entry);
+}
+
+export function setLogEntryAggregate(
+    entry: LogEntryAggregate,
+): void {
+    const blockData = encodeBase64(Uint8Array.wrap(String.UTF8.encode(JSON.stringify<wblocks.BlockEntry>(entry.data))))
+    const tempEntry = new LogEntry(
+        entry.index,
+        entry.termId,
+        entry.leaderId,
+        blockData,
+    )
+    const data = JSON.stringify<LogEntry>(tempEntry);
+    setLogEntry(entry.index, data);
 }
 
 export function setLogEntryObj(
-    entry: LogEntryAggregate,
+    entry: LogEntry,
 ): void {
-    const data = JSON.stringify<LogEntryAggregate>(entry);
+    const data = JSON.stringify<LogEntry>(entry);
     setLogEntry(entry.index, data);
 }
 
@@ -1252,11 +1273,14 @@ export function setLogEntry(
     storage.setContextValue(key, entry);
 }
 
+// remove the temporary block data
 export function removeLogEntry(
     index: i64,
 ): void {
-    const key = getLogEntryKey(index);
-    storage.setContextValue(key, "");
+    const entry = getLogEntryObj(index);
+    entry.data = "";
+    const data = JSON.stringify<LogEntry>(entry);
+    setLogEntry(index, data)
 }
 
 export function getLastLogIndex(): i64 {
@@ -1607,25 +1631,36 @@ export function verifyMessage(nodeIndex: i32, signatureStr: Base64String, msg: s
 function setFinalizedBlock(entry: LogEntryAggregate, hash: string, txhashes: string[]): void {
     const blockData = JSON.stringify<wblocks.BlockEntry>(entry.data)
     const calldata = new wblockscalld.CallDataSetBlock(blockData, hash, txhashes);
-    const resp = callStorage(JSON.stringify<wblockscalld.CallDataSetBlock>(calldata), false);
-    if (!resp.success) {
-        revert("could not set consensus params");
+    const calldatastr = `{"setBlock":${JSON.stringify<wblockscalld.CallDataSetBlock>(calldata)}}`;
+    const resp = callStorage(calldatastr, false);
+    if (resp.success > 0) {
+        revert("could not set finalized block");
     }
+}
+
+function getFinalBlock(index: i64): string {
+    const calldata = new wblockscalld.CallDataGetBlockByIndex(index);
+    const calldatastr = `{"getBlockByIndex":${JSON.stringify<wblockscalld.CallDataGetBlockByIndex>(calldata)}}`;
+    const resp = callStorage(calldatastr, false);
+    if (resp.success > 0) {
+        revert(`could not get finalized block: ${index.toString()}`);
+    }
+    return resp.data;
 }
 
 function setConsensusParams(value: typestnd.ConsensusParams): void {
     const valuestr = JSON.stringify<typestnd.ConsensusParams>(value)
-    const calldata = `{"setConsensusParamsWrap":{"params":"${encodeBase64(Uint8Array.wrap(String.UTF8.encode(valuestr)))}"}}`
+    const calldata = `{"setConsensusParams":{"params":"${encodeBase64(Uint8Array.wrap(String.UTF8.encode(valuestr)))}"}}`
     const resp = callStorage(calldata, false);
-    if (!resp.success) {
+    if (resp.success > 0) {
         revert("could not set consensus params");
     }
 }
 
 function getConsensusParams(): typestnd.ConsensusParams {
-    const calldata = `{"getConsensusParamsWrap":{}}`
+    const calldata = `{"getConsensusParams":{}}`
     const resp = callStorage(calldata, true);
-    if (!resp.success) {
+    if (resp.success > 0) {
         revert("could not get consensus params");
     }
     if (resp.data === "") return new typestnd.ConsensusParams(
@@ -1638,10 +1673,24 @@ function getConsensusParams(): typestnd.ConsensusParams {
     return JSON.parse<typestnd.ConsensusParams>(resp.data);
 }
 
+// setFinalizedBlock already indexes transactions
+function setIndexedTransaction(value: wblocks.IndexedTransaction, hash: string): void {
+    const calldata = new wblockscalld.CallDataSetIndexedTransactionByHash(hash, value);
+    const calldatastr = `{"setIndexedTransactionByHash":${JSON.stringify<wblockscalld.CallDataSetIndexedTransactionByHash>(calldata)}}`;
+    const resp = callStorage(calldatastr, false);
+    if (resp.success > 0) {
+        revert("could not set indexed transaction");
+    }
+}
+
 function callStorage(calldata: string, isQuery: boolean): CallResponse {
     const contractAddress = getStorageAddress();
-    const req = new CallRequest(contractAddress, calldata, isQuery);
-    return wasmxwrap.call(req);
+    const req = new CallRequest(contractAddress, calldata, 0, 100000000, isQuery);
+    const resp = wasmxwrap.call(req);
+    if (resp.success == 0) {
+        resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    }
+    return resp;
 }
 
 function getStorageAddress(): string {

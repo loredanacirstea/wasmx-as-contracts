@@ -1,10 +1,12 @@
 import { JSON } from "json-as/assembly";
-import { Base64String } from "./types";
+import { encode as encodeBase64, decode as decodeBase64, encode } from "as-base64/assembly";
+import { Base64String, IndexedTransaction } from "./types";
 import * as wasmx from './wasmx';
 import {
     setBlock,
     setIndexedData,
     setConsensusParams,
+    setIndexedTransactionByHash,
     getIndexedData,
     getLastBlockIndex,
     getBlockByIndex,
@@ -19,6 +21,7 @@ export class CallData {
     setIndexedData: CallDataSetIndexedData | null = null;
     setBlock: CallDataSetBlock | null = null;
     setConsensusParams: CallDataSetConsensusParams | null = null;
+    setIndexedTransactionByHash: CallDataSetIndexedTransactionByHash | null = null;
 
     getIndexedData: CallDataGetIndexedData | null = null;
     getLastBlockIndex: CallDataGetLastBlockIndex | null = null;
@@ -120,6 +123,17 @@ export class CallDataSetConsensusParams {
 
 // @ts-ignore
 @serializable
+export class CallDataSetIndexedTransactionByHash {
+    hash: Base64String;
+    data: IndexedTransaction;
+    constructor(hash: Base64String, data: IndexedTransaction) {
+        this.hash = hash;
+        this.data = data;
+    }
+}
+
+// @ts-ignore
+@serializable
 export class LastBlockIndexResult {
     index: i64
     constructor(index: i64) {
@@ -153,8 +167,9 @@ export function setBlockWrap(value: string, hash: string, txhashes: string[]): A
     return new ArrayBuffer(0);
 }
 
-export function setConsensusParamsWrap(value: string): ArrayBuffer {
-    setConsensusParams(value);
+export function setConsensusParamsWrap(value: Base64String): ArrayBuffer {
+    const params = String.UTF8.decode(decodeBase64(value).buffer);
+    setConsensusParams(params);
     return new ArrayBuffer(0);
 }
 
@@ -176,4 +191,9 @@ export function setIndexedDataWrap(key: string, value: string): ArrayBuffer {
 export function getIndexedDataWrap(key: string): ArrayBuffer {
     const value = getIndexedData(key);
     return String.UTF8.encode(value);
+}
+
+export function setIndexedTransactionByHashWrap(hash: string, data: IndexedTransaction): ArrayBuffer {
+    setIndexedTransactionByHash(hash, data);
+    return new ArrayBuffer(0);
 }

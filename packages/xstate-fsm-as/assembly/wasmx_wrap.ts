@@ -142,14 +142,16 @@ export function grpcRequest(ip: string, contract: Uint8Array, data: string): Grp
     const result = wasmx.grpcRequest(req);
     console.debug("grpc response: " + String.UTF8.decode(result));
     const response = JSON.parse<GrpcResponse>(String.UTF8.decode(result));
-    console.debug("grpc response data: " + response.data);
     if (response.error.length == 0) {
         response.data = String.UTF8.decode(decodeBase64(response.data).buffer);
     }
+    console.debug("grpc response data: " + response.data);
     return response;
 }
 
 export function call(req: CallRequest): CallResponse {
+    LoggerDebug("call", ["to", req.to, "calldata", req.calldata])
+    req.calldata = encodeBase64(Uint8Array.wrap(String.UTF8.encode(req.calldata)))
     const requestStr = JSON.stringify<CallRequest>(req);
     const responsebz = wasmx.call(String.UTF8.encode(requestStr));
     return JSON.parse<CallResponse>(String.UTF8.decode(responsebz));
@@ -184,13 +186,16 @@ export function ed25519Sign(privKeyStr: string, msgstr: string): Base64String {
     const msgBase64 = Uint8Array.wrap(String.UTF8.encode(msgstr));
     const privKey = decodeBase64(privKeyStr);
     const signature = wasmx.ed25519Sign(privKey.buffer, msgBase64.buffer);
-    return encodeBase64(Uint8Array.wrap(signature));
+    const signatureBase64 = encodeBase64(Uint8Array.wrap(signature));
+    LoggerDebug("ed25519Sign", ["signature", signatureBase64])
+    return signatureBase64
 }
 
 export function ed25519Verify(pubKeyStr: Base64String, signatureStr: Base64String, msg: string): boolean {
     const pubKey = decodeBase64(pubKeyStr);
     const signature = decodeBase64(signatureStr);
-    const resp = wasmx.ed25519Verify(pubKey.buffer, signature.buffer, String.UTF8.encode(msg))
+    LoggerDebug("ed25519Verify", ["signature", signatureStr, "pubKey", pubKeyStr])
+    const resp = wasmx.ed25519Verify(pubKey.buffer, signature.buffer, String.UTF8.encode(msg));
     if (resp == 1) return true;
     return false;
 }

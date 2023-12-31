@@ -9,10 +9,12 @@ export class LogEntry {
     index: i64;
     termId: i32;
     leaderId: i32;
-    constructor(index: i64, termId: i32, leaderId: i32) {
+    data: Base64String; // empty for finalized blocks;
+    constructor(index: i64, termId: i32, leaderId: i32, data: string) {
         this.index = index;
         this.termId = termId;
         this.leaderId = leaderId;
+        this.data = data;
     }
 }
 

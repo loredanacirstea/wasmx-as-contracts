@@ -80,13 +80,17 @@ export function setBlock(value: string, hash: string, txhashes: string[]): void 
     // index transactions
     for (let i = 0; i < txhashes.length; i++) {
         const data = new types.IndexedTransaction(index, i);
-        const datastr = JSON.stringify<types.IndexedTransaction>(data);
-        wasmxwrap.sstore(keyIndexedTransaction(txhashes[i]), datastr);
-        wasmxwrap.LoggerInfo("indexing transaction", ["hash", txhashes[i]])
+        setIndexedTransactionByHash(txhashes[i], data);
     }
 
     // update last index
     setLastBlockIndex(index);
+}
+
+export function setIndexedTransactionByHash(hash: types.Base64String, data: types.IndexedTransaction): void {
+    const datastr = JSON.stringify<types.IndexedTransaction>(data);
+    wasmxwrap.sstore(keyIndexedTransaction(hash), datastr);
+    wasmxwrap.LoggerInfo("indexing transaction", ["height", data.height.toString(), "index", data.index.toString(), "hash", hash])
 }
 
 export function getIndexedTransactionByHash(hash: types.Base64String): string {
