@@ -1,9 +1,8 @@
 import { JSON } from "json-as/assembly";
-import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmxwrap from './wasmx_wrap';
 import * as wasmx from './wasmx';
 import { LoggerDebug } from "./wasmx_wrap";
-
+import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import {
   EventObject,
   InitEvent,
@@ -24,12 +23,14 @@ import {
   CallRequest,
   AssignAction,
   Transition,
+  Base64String,
+  CallResponse,
+  ExternalActionCallData,
 } from './types';
 import { hexToUint8Array, revert, getAddressHex, parseInt32, parseInt64 } from "./utils";
 import * as storage from './storage';
 import * as actionsCounter from "./actions_counter";
 import * as actionsErc20 from "./actions_erc20";
-import * as actionsRaft from "./actions_raft";
 
 const REVERT_IF_UNEXPECTED_STATE = false;
 
@@ -117,18 +118,21 @@ function handleActions(
 }
 
 function executeGuard(
+    machine: StateMachine.Machine,
     guard: string,
     event: EventObject,
 ): boolean {
     LoggerDebug("execute guard", ["guard", guard]);
     if (guard === "isAdmin") return isAdmin([]);
+    if (guard === "ifIntervalActive") return ifIntervalActive([], event);
     if (guard === "hasEnoughBalance") return actionsErc20.hasEnoughBalance([], event);
     if (guard === "hasEnoughAllowance") return actionsErc20.hasEnoughAllowance([], event);
-    if (guard === "elapsedNotReset") return actionsRaft.elapsedNotReset([], event);
-    if (guard === "isVotedLeader") return actionsRaft.isVotedLeader([], event);
-    if (guard === "ifIntervalActive") return ifIntervalActive([], event);
 
-    // TODO processExternalCall
+    // If guard is not a local function, then it is an external function
+    const resp = processExternalCall(machine, event, guard);
+    if (resp.success > 0) return false;
+    // "1" = true ; "0" = false
+    if (resp.data == "0") return false;
 
     return true;
 }
@@ -262,78 +266,6 @@ function executeStateAction(
         log(actionParams);
         return
     }
-    if (actionType === "setupNode") {
-      actionsRaft.setupNode(actionParams, event);
-      return;
-    }
-    if (actionType === "processAppendEntries") {
-      actionsRaft.processAppendEntries(actionParams, event);
-      return;
-    }
-    if (actionType === "sendHeartbeatResponse") {
-      actionsRaft.sendHeartbeatResponse(actionParams, event);
-      return;
-    }
-    if (actionType === "sendAppendEntries") {
-      actionsRaft.sendAppendEntries(actionParams, event);
-      return;
-    }
-    if (actionType === "sendNewTransactionResponse") {
-      actionsRaft.sendNewTransactionResponse(actionParams, event);
-      return;
-    }
-    if (actionType === "addToMempool") {
-      actionsRaft.addToMempool(actionParams, event);
-      return;
-    }
-    if (actionType === "proposeBlock") {
-      actionsRaft.proposeBlock(actionParams, event);
-      return;
-    }
-    if (actionType === "commitBlocks") {
-      actionsRaft.commitBlocks(actionParams, event);
-      return;
-    }
-    if (actionType === "setRandomElectionTimeout") {
-      actionsRaft.setRandomElectionTimeout(actionParams, event);
-      return;
-    }
-    if (actionType === "initializeNextIndex") {
-      actionsRaft.initializeNextIndex(actionParams, event);
-      return;
-    }
-    if (actionType === "initializeMatchIndex") {
-      actionsRaft.initializeMatchIndex(actionParams, event);
-      return;
-    }
-    if (actionType === "incrementCurrentTerm") {
-      actionsRaft.incrementCurrentTerm(actionParams, event);
-      return;
-    }
-    if (actionType === "vote") {
-      actionsRaft.vote(actionParams, event);
-      return;
-    }
-    if (actionType === "sendVoteRequests") {
-      actionsRaft.sendVoteRequests(actionParams, event);
-      return;
-    }
-    if (actionType === "selfVote") {
-      actionsRaft.selfVote(actionParams, event);
-      return;
-    }
-    if (actionType === "forwardTxsToLeader") {
-      actionsRaft.forwardTxsToLeader(actionParams, event);
-      return;
-    }
-    if (actionType === "updateNodeAndReturn") {
-      actionsRaft.updateNodeAndReturn(actionParams, event);
-      return;
-    }
-    if (actionType === "registeredCheck") {
-      actionsRaft.registeredCheck(actionParams, event);
-      return;
-    }
     if (actionType === "noaction") {
       noaction(actionParams, event);
       return;
@@ -342,15 +274,12 @@ function executeStateAction(
       cancelActiveIntervals(state, actionParams, event);
       return;
     }
+
     // If action is not a local action, then it is an external action
-    const success = processExternalCall(service, state, event, action);
-    if (!success) {
+    const resp = processExternalCall(service.machine, event, action.type);
+    if (resp.success > 0) {
       return revert("action not recognized: " + actionType);
     }
-
-    // state.context
-    // action.type
-    // action.params
 }
 
 function noaction(
@@ -359,32 +288,38 @@ function noaction(
 ): void {}
 
 function processExternalCall(
-    service: Service,
-    state: State,
+    machine: StateMachine.Machine,
     event: EventObject,
-    action:  ActionObject,
-): boolean {
-  const actionType = action.type;
-  // expect label.function;
-  const parts = actionType.split(".")
-  if (parts.length < 2) {
-    return false;
-  }
-  // contract label => contractAddress
-  const contractAddress = storage.getContextValue(parts[0]);
-  if (contractAddress === "") {
-    revert("contract label not found in context: " + parts[0]);
+    actionType:  string,
+): CallResponse {
+  let contractAddress: string = "";
+  // actions can have `label.function`
+  // where label refers to an address saved in the context
+  if (actionType.includes(".")) {
+    const parts = actionType.split(".")
+    if (parts.length < 2) {
+      return new CallResponse(1, "cannot find contract address by label");
+    }
+    // contract label => contractAddress
+    contractAddress = storage.getContextValue(parts[0]);
+    actionType = parts[1];
+  } else {
+    // use library contract address
+    contractAddress = machine.library;
   }
 
-  // TODO
-  const calldata = ""
-  const req = new CallRequest(contractAddress, calldata, 0, 1000000, false);
-  const resp = wasmxwrap.call(req);
-  if (resp.success > 0) {
-    revert("contract call failed: " + actionType);
-    return false;
+  if (contractAddress === "") {
+    return new CallResponse(1, "empty contract address");
   }
-  return true;
+
+  const calldata = new ExternalActionCallData(actionType, [], event);
+  const calldatastr = encodeBase64(Uint8Array.wrap(String.UTF8.encode(JSON.stringify<ExternalActionCallData>(calldata))));
+  const req = new CallRequest(contractAddress, calldatastr, 0, 10000000, false);
+  const resp = wasmxwrap.call(req);
+  if (resp.success == 0) {
+    resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+  }
+  return resp;
 }
 
 function isAdmin(
@@ -525,13 +460,16 @@ export class ServiceExternal {
 
 export class Machine implements StateMachine.Machine {
   id: string;
+  library: Base64String;
   states: States;
 
   constructor(
     id: string,
+    library: Base64String,
     states: States,
   ) {
     this.id = id;
+    this.library = library;
     this.states = states;
   }
 
@@ -627,7 +565,7 @@ export class Machine implements StateMachine.Machine {
             throw new Error(message);
         }
 
-      if (guard && !executeGuard(guard, eventObject)) {
+      if (guard && !executeGuard(this, guard, eventObject)) {
         const message = "cannot execute transition; guard: " + guard;
         if (REVERT_IF_UNEXPECTED_STATE) {
           wasmx.revert(String.UTF8.encode(message));
@@ -766,32 +704,34 @@ function processActions(actions: ActionObject[], event: EventObject): ActionObje
 @serializable
 export class MachineExternal {
   id: string;
+  library: Base64String;
   states: Array<StateInfoClassExternal>;
 
   constructor(
     id: string,
+    library: Base64String,
     states: Array<StateInfoClassExternal>,
   ) {
     this.id = id;
+    this.library = library;
     this.states = states;
   }
 
   static fromInternal(configInternal: StateMachine.Machine): MachineExternal {
     const states = StateInfoClassExternal.fromInternalStatesMap(configInternal.states);
 
-    const config = new MachineExternal(
+    return new MachineExternal(
       configInternal.id,
+      configInternal.library,
       states,
     );
-
-    // machine.initialState;
-    return new MachineExternal(config.id, states);
   }
 
   toInternal(): Machine {
     const states = StateInfoClassExternal.toInternalFromArray(this.states);
     return new Machine(
         this.id,
+        this.library,
         states,
     );
   }

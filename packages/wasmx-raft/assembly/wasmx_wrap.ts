@@ -2,69 +2,12 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmx from './wasmx';
 import {
-    EventClassExternal,
     CallRequest,
     CallResponse,
-    ContextParam,
+    Base64String,
 } from './types';
-import { hexToU8, uint8ArrayToHex, hexToUint8Array, parseUint8ArrayToI32BigEndian } from "./utils";
-import { MachineExternal } from './machine';
-import { Base64String } from "./types";
 
 const MAX_LOGGED = 2000
-
-export class InterpreterCallData {
-    config: MachineExternal;
-    calldata: CallData;
-    constructor(config: MachineExternal, calldata: CallData) {
-        this.config = config;
-        this.calldata = calldata;
-    }
-}
-
-// @ts-ignore
-@serializable
-export class CallData {
-    // TODO - this should only be done in the interpreter storage; to remove
-    // create: ConfigExternal | null = null;
-    instantiate: CallDataInstantiate | null = null;
-    getCurrentState: CallDataGetCurrentState | null = null;
-    getContextValue: CallDataGetContextValue | null = null;
-    run: CallDataRun | null = null;
-}
-
-// @ts-ignore
-@serializable
-export class CallDataInstantiate {
-    initialState: string;
-    context: Array<ContextParam>;
-    constructor(state: string, context: Array<ContextParam>) {
-        this.initialState = state;
-        this.context = context;
-    }
-}
-
-// @ts-ignore
-@serializable
-export class CallDataGetCurrentState {}
-
-// @ts-ignore
-@serializable
-export class CallDataGetContextValue {
-    key: string;
-    constructor(key: string) {
-        this.key = key;
-    }
-}
-
-// @ts-ignore
-@serializable
-export class CallDataRun {
-    event: EventClassExternal;
-    constructor(event: EventClassExternal) {
-        this.event = event;
-    }
-}
 
 // @ts-ignore
 @serializable
@@ -76,27 +19,6 @@ export class WasmxLog {
         this.data = data;
         this.topics = topics;
     }
-}
-
-export function getCallDataWrap(): InterpreterCallData {
-    const icalld = getInterpreterCalldata();
-    const configBz = icalld[0];
-    const calldBz = icalld[1];
-    const config = JSON.parse<MachineExternal>(String.UTF8.decode(configBz));
-    const calldata = JSON.parse<CallData>(String.UTF8.decode(calldBz));
-    return new InterpreterCallData(config, calldata);
-}
-
-export function getInterpreterCalldata(): Array<ArrayBuffer> {
-    // configBz length + configBz + calldata length + calldata
-    const calldraw = wasmx.getCallData();
-    const configlenraw = calldraw.slice(0, 32);
-    const configlen = parseUint8ArrayToI32BigEndian(Uint8Array.wrap(configlenraw.slice(28, 32)))
-    const configBz = calldraw.slice(32, 32 + configlen)
-    const calldlenraw = calldraw.slice(32 + configlen, 64 + configlen)
-    const calldlen = parseUint8ArrayToI32BigEndian(Uint8Array.wrap(calldlenraw.slice(28, 32)))
-    const calldBz = calldraw.slice(64 + configlen, 64 + configlen + calldlen)
-    return [configBz, calldBz]
 }
 
 export function sstore(key: string, value: string): void {

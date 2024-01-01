@@ -74,6 +74,7 @@ export type AssignAction = 'xstate.assign';
 export namespace StateMachine {
   export interface Machine {
     id: string;
+    library: Base64String;
     states: States;
     transition(
       state: State,
@@ -619,3 +620,15 @@ export class CallResponse {
   }
 }
 
+// @ts-ignore
+@serializable
+export class ExternalActionCallData {
+    method: string;
+    params: ActionParam[]
+    event: EventObject
+    constructor(method: string, params: ActionParam[], event: EventObject) {
+        this.method = method
+        this.params = params
+        this.event = event
+    }
+}

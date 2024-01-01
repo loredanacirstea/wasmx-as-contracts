@@ -18,15 +18,8 @@ const STORAGEKEY_OWNER = "owner"
 
 export function storeContextParams(params: Array<ContextParam>): void {
     for (let i = 0; i < params.length; i++) {
-        // storeBase64(params[i].key, params[i].value);
         setContextValue(params[i].key, params[i].value);
     }
-}
-
-export function storeBase64(key: string, value: string): void {
-    const keybuf = decodeBase64(key);
-    const valuebuf = decodeBase64(value);
-    wasmx.storageStore(keybuf.buffer, valuebuf.buffer);
 }
 
 export function getCurrentStatus(): InterpreterStatus {

@@ -5,19 +5,20 @@ import * as wblockscalld from "wasmx-blocks/assembly/calldata";
 import * as wasmxwrap from './wasmx_wrap';
 import * as wasmx from './wasmx';
 import * as consensuswrap from './consensus_wrap';
-import * as storage from './storage';
+import * as fsm from './fsm';
 import { LoggerDebug, LoggerInfo, LoggerError } from "./wasmx_wrap";
-
 import {
-  EventObject,
-  ActionParam,
+  Base64String,
   CallRequest,
   CallResponse,
 } from './types';
-import { hexToUint8Array, revert, parseInt32, parseInt64, i32ToUint8ArrayBE, uint8ArrayToHex, i64ToUint8ArrayBE, base64ToHex, hex64ToBase64 } from "./utils";
+import {
+    EventObject,
+    ActionParam,
+  } from './fsm';
+import { hexToUint8Array, revert, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, base64ToHex, hex64ToBase64 } from "./utils";
 import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, AppendEntryResponse, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse } from "./types_raft";
 import * as typestnd from "./types_tendermint";
-import { Base64String } from "./types";
 
 // Docs: https://raft.github.io/raft.pdf
 
@@ -70,7 +71,6 @@ const NODE_IPS = "nodeIPs";
 const CURRENT_NODE_ID = "currentNodeId";
 const HEARTBEAT_TIMEOUT = "heartbeatTimeout";
 const ELECTION_TIMEOUT_KEY = "electionTimeout";
-const ELECTION_RESET_KEY = "electionReset";
 
 //// Persistent state on all servers:
 const TERM_ID = "currentTerm";
@@ -248,7 +248,7 @@ export function updateNodeAndReturn(
         matchIndexes.push(LOG_START);
         setNextIndexArray(nextIndexes);
         setMatchIndexArray(matchIndexes);
-        const validators = encodeBase64(Uint8Array.wrap(String.UTF8.encode(storage.getContextValue(VALIDATORS_KEY))))
+        const validators = encodeBase64(Uint8Array.wrap(String.UTF8.encode(fsm.getContextValue(VALIDATORS_KEY))))
         const response = new UpdateNodeResponse(ips, entryIndex, validators);
         wasmx.setReturnData(String.UTF8.encode(JSON.stringify<UpdateNodeResponse>(response)));
     } else {
@@ -355,13 +355,6 @@ export function initializeMatchIndex(
     setMatchIndexArray(matchIndexes);
 }
 
-export function elapsedNotReset(
-    params: ActionParam[],
-    event: EventObject,
-): boolean {
-    return !getElectionReset();
-}
-
 export function setRandomElectionTimeout(
     params: ActionParam[],
     event: EventObject,
@@ -390,7 +383,6 @@ export function setRandomElectionTimeout(
     const min_ = parseInt64(min)
     const max_ = parseInt64(max)
     setElectionTimeout(getRandomInRange(min_, max_));
-    electionReset();
 }
 
 // received vote request
@@ -472,22 +464,6 @@ export function sendVoteRequests(
         if (candidateId === i || ips[i].length == 0) continue;
         sendVoteRequest(i, ips[i], request, termId);
     }
-}
-
-export function isVotedLeader(
-    params: ActionParam[],
-    event: EventObject,
-): boolean {
-    // check if we have a vote majority
-    const voteArray = getVoteIndexArray();
-    let count = 0;
-    for (let i = 0; i < voteArray.length; i++) {
-        count += voteArray[i];
-    }
-    const len = getNodeCount();
-    const majority = getMajority(len);
-    LoggerDebug("check if is voted Leader", ["yes", count.toString(), "votes", len.toString(), "majority", majority.toString()])
-    return count >= majority;
 }
 
 function sendVoteRequest(nodeId: i32, nodeIp: string, request: VoteRequest, termId: i32): void {
@@ -586,13 +562,13 @@ export function setupNode(
     if (initChainSetup === "") {
         revert("no initChainSetup found");
     }
-    storage.setContextValue(CURRENT_NODE_ID, currentNodeId);
+    fsm.setContextValue(CURRENT_NODE_ID, currentNodeId);
 
     // !! nodeIps must be the same for all nodes
 
     // TODO ID@host:ip
     // 6efc12ab37fc0e096d8618872f6930df53972879@0.0.0.0:26757
-    storage.setContextValue(NODE_IPS, nodeIPs);
+    fsm.setContextValue(NODE_IPS, nodeIPs);
 
     setCommitIndex(LOG_START);
     setLastApplied(LOG_START);
@@ -838,7 +814,7 @@ export function sendAppendEntry(
     }
     const previousEntry = getLogEntryObj(nextIndex-1);
     const lastCommitIndex = getCommitIndex();
-    const validators = encodeBase64(Uint8Array.wrap(String.UTF8.encode(storage.getContextValue(VALIDATORS_KEY))))
+    const validators = encodeBase64(Uint8Array.wrap(String.UTF8.encode(fsm.getContextValue(VALIDATORS_KEY))))
     const data = new AppendEntry(
         getTermId(),
         getCurrentNodeId(),
@@ -967,7 +943,7 @@ export function getLogEntry(
     index: i64,
 ): string {
     const key = getLogEntryKey(index);
-    return storage.getContextValue(key);
+    return fsm.getContextValue(key);
 }
 
 export function addTransactionToMempool(
@@ -1175,6 +1151,28 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     LoggerInfo("block finalized", ["height", entryobj.index.toString()])
 }
 
+
+export function isVotedLeader(
+    params: ActionParam[],
+    event: EventObject,
+): boolean {
+    // check if we have a vote majority
+    const voteArray = getVoteIndexArray();
+    let count = 0;
+    for (let i = 0; i < voteArray.length; i++) {
+        count += voteArray[i];
+    }
+    const len = getNodeCount();
+    const majority = getMajority(len);
+    LoggerDebug("check if is voted Leader", ["yes", count.toString(), "votes", len.toString(), "majority", majority.toString()])
+    return count >= majority;
+}
+
+export function wrapGuard(value: boolean): ArrayBuffer {
+    if (value) return String.UTF8.encode("1");
+    return String.UTF8.encode("0");
+}
+
 function appendLogInternalVerified(processReq: typestnd.RequestProcessProposal, header: typestnd.Header, blockCommit: typestnd.BlockCommit): void {
     const blockData = JSON.stringify<typestnd.RequestProcessProposal>(processReq);
     const blockDataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(blockData)))
@@ -1264,7 +1262,7 @@ export function setLogEntry(
 ): void {
     LoggerDebug("setting entry", ["height", index.toString(), "value", entry.slice(0, MAX_LOGGED) + " [...]"])
     const key = getLogEntryKey(index);
-    storage.setContextValue(key, entry);
+    fsm.setContextValue(key, entry);
 }
 
 // remove the temporary block data
@@ -1279,7 +1277,7 @@ export function removeLogEntry(
 
 export function getLastLogIndex(): i64 {
     const key = getLastLogIndexKey();
-    const valuestr = storage.getContextValue(key);
+    const valuestr = fsm.getContextValue(key);
     if (valuestr != "") {
         const value = parseInt(valuestr);
         return i64(value);
@@ -1292,7 +1290,7 @@ export function setLastLogIndex(
 ): void {
     const key = getLastLogIndexKey();
     LoggerDebug("setting entry count", ["height", value.toString()])
-    storage.setContextValue(key, value.toString());
+    fsm.setContextValue(key, value.toString());
 }
 
 export function getLogEntryKey(index: i64): string {
@@ -1304,13 +1302,13 @@ export function getLastLogIndexKey(): string {
 }
 
 function getTermId(): i32 {
-    const value = storage.getContextValue(TERM_ID);
+    const value = fsm.getContextValue(TERM_ID);
     if (value === "") return i32(0);
     return parseInt32(value);
 }
 
 function setTermId(value: i32): void {
-    storage.setContextValue(TERM_ID, value.toString());
+    fsm.setContextValue(TERM_ID, value.toString());
 }
 
 // function getVotedFor(): i32 {
@@ -1326,7 +1324,7 @@ function hasVotedFor(): boolean {
 }
 
 function getVotedForInternal(): i32 {
-    const value = storage.getContextValue(VOTED_FOR_KEY);
+    const value = fsm.getContextValue(VOTED_FOR_KEY);
     if (value === "") return i32(0);
     return parseInt32(value);
 }
@@ -1336,41 +1334,41 @@ function setVotedFor(value: i32): void {
 }
 
 function setVotedForInternal(value: i32): void {
-    storage.setContextValue(VOTED_FOR_KEY, value.toString());
+    fsm.setContextValue(VOTED_FOR_KEY, value.toString());
 }
 
 function getCurrentNodeId(): i32 {
-    const value = storage.getContextValue(CURRENT_NODE_ID);
+    const value = fsm.getContextValue(CURRENT_NODE_ID);
     if (value === "") return i32(0);
     return parseInt32(value);
 }
 
 function setCurrentNodeId(index: i32): void {
-    storage.setContextValue(CURRENT_NODE_ID, index.toString());
+    fsm.setContextValue(CURRENT_NODE_ID, index.toString());
 }
 
 function getLastApplied(): i64 {
-    const value = storage.getContextValue(LAST_APPLIED);
+    const value = fsm.getContextValue(LAST_APPLIED);
     if (value === "") return i64(LOG_START);
     return parseInt64(value);
 }
 
 function setLastApplied(value: i64): void {
-    storage.setContextValue(LAST_APPLIED, value.toString());
+    fsm.setContextValue(LAST_APPLIED, value.toString());
 }
 
 function getCommitIndex(): i64 {
-    const value = storage.getContextValue(COMMIT_INDEX);
+    const value = fsm.getContextValue(COMMIT_INDEX);
     if (value === "") return i64(LOG_START);
     return parseInt64(value);
 }
 
 function setCommitIndex(index: i64): void {
-    storage.setContextValue(COMMIT_INDEX, index.toString());
+    fsm.setContextValue(COMMIT_INDEX, index.toString());
 }
 
 function getMatchIndexArray(): Array<i64> {
-    const valuestr = storage.getContextValue(MATCH_INDEX_ARRAY);
+    const valuestr = fsm.getContextValue(MATCH_INDEX_ARRAY);
     let value: Array<i64> = [];
     if (valuestr === "") return value;
     value = JSON.parse<Array<i64>>(valuestr);
@@ -1378,11 +1376,11 @@ function getMatchIndexArray(): Array<i64> {
 }
 
 function setMatchIndexArray(value: Array<i64>): void {
-    storage.setContextValue(MATCH_INDEX_ARRAY, JSON.stringify<Array<i64>>(value));
+    fsm.setContextValue(MATCH_INDEX_ARRAY, JSON.stringify<Array<i64>>(value));
 }
 
 function getNodeIPs(): Array<string> {
-    const valuestr = storage.getContextValue(NODE_IPS);
+    const valuestr = fsm.getContextValue(NODE_IPS);
     let value: Array<string> = [];
     if (valuestr === "") return value;
     value = JSON.parse<Array<string>>(valuestr);
@@ -1391,11 +1389,11 @@ function getNodeIPs(): Array<string> {
 
 function setNodeIPs(ips: Array<string>): void {
     const valuestr = JSON.stringify<Array<string>>(ips);
-    storage.setContextValue(NODE_IPS, valuestr);
+    fsm.setContextValue(NODE_IPS, valuestr);
 }
 
 function getNextIndexArray(): Array<i64> {
-    const valuestr = storage.getContextValue(NEXT_INDEX_ARRAY);
+    const valuestr = fsm.getContextValue(NEXT_INDEX_ARRAY);
     let value: Array<i64> = [];
     if (valuestr === "") return value;
     value = JSON.parse<Array<i64>>(valuestr);
@@ -1403,11 +1401,11 @@ function getNextIndexArray(): Array<i64> {
 }
 
 function setNextIndexArray(arr: Array<i64>): void {
-    storage.setContextValue(NEXT_INDEX_ARRAY, JSON.stringify<Array<i64>>(arr));
+    fsm.setContextValue(NEXT_INDEX_ARRAY, JSON.stringify<Array<i64>>(arr));
 }
 
 function getVoteIndexArray(): Array<i32> {
-    const valuestr = storage.getContextValue(VOTE_INDEX_ARRAY);
+    const valuestr = fsm.getContextValue(VOTE_INDEX_ARRAY);
     let value: Array<i32> = [];
     if (valuestr === "") return value;
     value = JSON.parse<Array<i32>>(valuestr);
@@ -1415,37 +1413,37 @@ function getVoteIndexArray(): Array<i32> {
 }
 
 function setVoteIndexArray(arr: Array<i32>): void {
-    storage.setContextValue(VOTE_INDEX_ARRAY, JSON.stringify<Array<i32>>(arr));
+    fsm.setContextValue(VOTE_INDEX_ARRAY, JSON.stringify<Array<i32>>(arr));
 }
 
 export function getMempool(): typestnd.Mempool {
-    const mempool = storage.getContextValue(MEMPOOL_KEY);
+    const mempool = fsm.getContextValue(MEMPOOL_KEY);
     if (mempool === "") return  new typestnd.Mempool(new Array<string>(0), new Array<i32>(0));
     return JSON.parse<typestnd.Mempool>(mempool);
 }
 
 export function setMempool(mempool: typestnd.Mempool): void {
-    storage.setContextValue(MEMPOOL_KEY, JSON.stringify<typestnd.Mempool>(mempool));
+    fsm.setContextValue(MEMPOOL_KEY, JSON.stringify<typestnd.Mempool>(mempool));
 }
 
 export function getMaxTxBytes(): i64 {
-    const value = storage.getContextValue(MAX_TX_BYTES);
+    const value = fsm.getContextValue(MAX_TX_BYTES);
     if (value === "") return i64(0);
     return parseInt64(value);
 }
 
 export function setMaxTxBytes(value: i64): void {
-    storage.setContextValue(MAX_TX_BYTES, value.toString());
+    fsm.setContextValue(MAX_TX_BYTES, value.toString());
 }
 
 export function getValidators(): typestnd.ValidatorInfo[] {
-    const value = storage.getContextValue(VALIDATORS_KEY);
+    const value = fsm.getContextValue(VALIDATORS_KEY);
     if (value === "") return [];
     return JSON.parse<typestnd.ValidatorInfo[]>(value);
 }
 
 export function setValidators(value: typestnd.ValidatorInfo[]): void {
-    storage.setContextValue(VALIDATORS_KEY, JSON.stringify<typestnd.ValidatorInfo[]>(value));
+    fsm.setContextValue(VALIDATORS_KEY, JSON.stringify<typestnd.ValidatorInfo[]>(value));
 }
 
 export function updateValidators(updates: typestnd.ValidatorUpdate[]): void {
@@ -1486,7 +1484,7 @@ export function updateConsensusParams(updates: typestnd.ConsensusParams): void {
 }
 
 export function getCurrentState(): typestnd.CurrentState {
-    const value = storage.getContextValue(STATE_KEY);
+    const value = fsm.getContextValue(STATE_KEY);
     // this must be set before we try to read it
     if (value === "") {
         revert("chain init setup was not ran")
@@ -1495,34 +1493,17 @@ export function getCurrentState(): typestnd.CurrentState {
 }
 
 export function setCurrentState(value: typestnd.CurrentState): void {
-    storage.setContextValue(STATE_KEY, JSON.stringify<typestnd.CurrentState>(value));
+    fsm.setContextValue(STATE_KEY, JSON.stringify<typestnd.CurrentState>(value));
 }
 
 export function getElectionTimeout(): i64 {
-    const value = storage.getContextValue(ELECTION_TIMEOUT_KEY);
+    const value = fsm.getContextValue(ELECTION_TIMEOUT_KEY);
     if (value === "") return i64(0);
     return parseInt64(value);
 }
 
 export function setElectionTimeout(value: i64): void {
-    storage.setContextValue(ELECTION_TIMEOUT_KEY, value.toString());
-}
-
-// 0 == true -> election time was reset by an event
-// 1 = false -> election time is ongoing
-export function getElectionReset(): boolean {
-    const value = storage.getContextValue(ELECTION_RESET_KEY);
-    if (value === "0") return true;
-    return false;
-}
-
-export function setElectionReset(value: boolean): void {
-    const _value = value ? "0" : "1";
-    storage.setContextValue(ELECTION_RESET_KEY, _value);
-}
-
-export function electionReset(): void {
-    setElectionReset(true);
+    fsm.setContextValue(ELECTION_TIMEOUT_KEY, value.toString());
 }
 
 // ValidatorSet.Validators hash (ValidatorInfo[] hash)
