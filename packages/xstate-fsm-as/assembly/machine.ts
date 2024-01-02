@@ -128,7 +128,7 @@ function executeGuard(
     if (guard === "hasEnoughAllowance") return actionsErc20.hasEnoughAllowance([], event);
 
     // If guard is not a local function, then it is an external function
-    const resp = processExternalCall(machine, event, guard);
+    const resp = processExternalCall(machine, guard, [], event);
     if (resp.success > 0) return false;
     // "1" = true ; "0" = false
     if (resp.data == "0") return false;
@@ -275,7 +275,7 @@ function executeStateAction(
     }
 
     // If action is not a local action, then it is an external action
-    const resp = processExternalCall(service.machine, event, action.type);
+    const resp = processExternalCall(service.machine, action.type, actionParams, event);
     if (resp.success > 0) {
       return revert("action not recognized: " + actionType);
     }
@@ -288,8 +288,9 @@ function noaction(
 
 function processExternalCall(
     machine: StateMachine.Machine,
-    event: EventObject,
     actionType:  string,
+    params: ActionParam[],
+    event: EventObject,
 ): CallResponse {
   let contractAddress: string = "";
   // actions can have `label.function`
@@ -311,7 +312,7 @@ function processExternalCall(
     return new CallResponse(1, "empty contract address");
   }
 
-  const calldata = new ExternalActionCallData(actionType, [], event);
+  const calldata = new ExternalActionCallData(actionType, params, event);
   const calldatastr = JSON.stringify<ExternalActionCallData>(calldata);
   const req = new CallRequest(contractAddress, calldatastr, 0, 10000000, false);
   const resp = wasmxwrap.call(req);

@@ -56,21 +56,21 @@ export function ed25519Verify(pubKeyStr: Base64String, signatureStr: Base64Strin
 }
 
 export function LoggerInfo(msg: string, parts: string[]): void {
-    msg = `raft: ${msg}`
+    msg = `blocks: ${msg}`
     const data = new LoggerLog(msg, parts);
     const databz = String.UTF8.encode(JSON.stringify<LoggerLog>(data));
     wasmx.LoggerInfo(databz);
 }
 
 export function LoggerError(msg: string, parts: string[]): void {
-    msg = `raft: ${msg}`
+    msg = `blocks: ${msg}`
     const data = new LoggerLog(msg, parts);
     const databz = String.UTF8.encode(JSON.stringify<LoggerLog>(data));
     wasmx.LoggerError(databz);
 }
 
 export function LoggerDebug(msg: string, parts: string[]): void {
-    msg = `raft: ${msg}`
+    msg = `blocks: ${msg}`
     const data = new LoggerLog(msg, parts);
     const databz = String.UTF8.encode(JSON.stringify<LoggerLog>(data));
     wasmx.LoggerDebug(databz);

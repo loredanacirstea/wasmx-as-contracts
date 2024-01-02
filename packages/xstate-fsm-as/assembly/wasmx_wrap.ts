@@ -154,6 +154,7 @@ export function call(req: CallRequest): CallResponse {
     req.calldata = encodeBase64(Uint8Array.wrap(String.UTF8.encode(req.calldata)))
     const requestStr = JSON.stringify<CallRequest>(req);
     const responsebz = wasmx.call(String.UTF8.encode(requestStr));
+    LoggerDebug("call", ["to", req.to, "response", String.UTF8.decode(responsebz)])
     return JSON.parse<CallResponse>(String.UTF8.decode(responsebz));
 }
 
@@ -212,21 +213,21 @@ class LoggerLog {
 }
 
 export function LoggerInfo(msg: string, parts: string[]): void {
-    msg = `raft: ${msg}`
+    msg = `fsm: ${msg}`
     const data = new LoggerLog(msg, parts);
     const databz = String.UTF8.encode(JSON.stringify<LoggerLog>(data));
     wasmx.LoggerInfo(databz);
 }
 
 export function LoggerError(msg: string, parts: string[]): void {
-    msg = `raft: ${msg}`
+    msg = `fsm: ${msg}`
     const data = new LoggerLog(msg, parts);
     const databz = String.UTF8.encode(JSON.stringify<LoggerLog>(data));
     wasmx.LoggerError(databz);
 }
 
 export function LoggerDebug(msg: string, parts: string[]): void {
-    msg = `raft: ${msg}`
+    msg = `fsm: ${msg}`
     const data = new LoggerLog(msg, parts);
     const databz = String.UTF8.encode(JSON.stringify<LoggerLog>(data));
     wasmx.LoggerDebug(databz);

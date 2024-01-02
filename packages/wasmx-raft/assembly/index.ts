@@ -46,7 +46,12 @@ export function main(): void {
     actions.updateNodeAndReturn(calld.params, calld.event);
   } else if (calld.method === "registeredCheck") {
     actions.registeredCheck(calld.params, calld.event);
-  } else {
+  } else if (calld.method === "sendVoteRequests") {
+    actions.sendVoteRequests(calld.params, calld.event);
+  } else if (calld.method === "proposeBlock") {
+    actions.proposeBlock(calld.params, calld.event);
+  }
+  else {
     wasmx.revert(String.UTF8.encode("invalid function call data"));
     throw new Error("invalid function call data");
   }
