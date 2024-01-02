@@ -312,7 +312,7 @@ function processExternalCall(
   }
 
   const calldata = new ExternalActionCallData(actionType, [], event);
-  const calldatastr = encodeBase64(Uint8Array.wrap(String.UTF8.encode(JSON.stringify<ExternalActionCallData>(calldata))));
+  const calldatastr = JSON.stringify<ExternalActionCallData>(calldata);
   const req = new CallRequest(contractAddress, calldatastr, 0, 10000000, false);
   const resp = wasmxwrap.call(req);
   if (resp.success == 0) {
