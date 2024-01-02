@@ -17,24 +17,9 @@ StatusMap.set("0", InterpreterStatus.NotStarted);
 StatusMap.set("1", InterpreterStatus.Running);
 StatusMap.set("2", InterpreterStatus.Stopped);
 
-export interface EventObject {
-  type: string;
-  params: ActionParam[];
-}
-
-export class EventClass implements EventObject {
-  type: string;
-  params: ActionParam[];
-
-  constructor(type: string, params: ActionParam[]) {
-    this.type = type;
-    this.params = params;
-  }
-}
-
 // @ts-ignore
 @serializable
-export class EventClassExternal {
+export class EventObject {
   type: string;
   params: ActionParam[];
 
@@ -42,11 +27,6 @@ export class EventClassExternal {
     this.type = type;
     this.params = params;
   }
-}
-
-export class InitEvent implements EventObject {
-  type: string = 'initialize';
-  params: ActionParam[] = [];
 }
 
 export type ContextGeneral<T> =  Map<string,T>
@@ -153,13 +133,13 @@ export class ActionParam {
 export class ActionObject {
   type: string;
   params: Array<ActionParam>
-  event: EventClassExternal | null
+  event: EventObject | null
   // exec: ActionFunction | null;
   // assignment: PropertyAssigner<ContextGeneralString> | null;
   // assignmentFn: PropertyAssignerFn | null;
   // properties: Map<string,string>
 
-  constructor(type: string, params: Array<ActionParam>, event: EventClassExternal | null) {
+  constructor(type: string, params: Array<ActionParam>, event: EventObject | null) {
     this.type = type;
     this.params = params;
     this.event = event;
@@ -173,9 +153,9 @@ export const RaiseActionType = "xstate.raise";
 export class RaiseAction extends ActionObject{
   type: string = RaiseActionType;
   params: Array<ActionParam> = [];
-  event: EventClassExternal;
+  event: EventObject;
 
-  constructor(type: string, params: Array<ActionParam>, event: EventClassExternal) {
+  constructor(type: string, params: Array<ActionParam>, event: EventObject) {
     super(type, params, null);
     this.event = event;
   }
@@ -231,12 +211,7 @@ export class StateClassExternal {
     const iniactions: Array<ActionObject> = [];
     for (let i = 0; i < state.actions.length; i++) {
         const act = state.actions[i];
-        const _ev = act.event;
-        let ev: EventClassExternal | null = null;
-        if (_ev !== null) {
-            ev = new EventClassExternal(_ev.type, _ev.params);
-        }
-        iniactions.push(new ActionObject(act.type, act.params, ev));
+        iniactions.push(new ActionObject(act.type, act.params, act.event));
     }
     return new StateClassExternal(
         state.value,
@@ -415,12 +390,7 @@ export class StateInfoClassExternal {
         const evActions: Array<ActionObject> = [];
         for (let k = 0; k < evInfo.actions.length; k++) {
             const actionobj = evInfo.actions[k];
-            const _ev = actionobj.event;
-            let ev: EventClassExternal | null = null;
-            if (_ev !== null) {
-              ev = new EventClassExternal(_ev.type, _ev.params);
-            }
-            evActions.push(new ActionObject(actionobj.type, actionobj.params, ev));
+            evActions.push(new ActionObject(actionobj.type, actionobj.params, actionobj.event));
         }
         onevents.push(new TransitionExternal(
             stateInfoOn[j],
@@ -441,12 +411,7 @@ export class StateInfoClassExternal {
         const dActions: Array<ActionObject> = [];
         for (let k = 0; k < delayedTransition.actions.length; k++) {
             const actionobj = delayedTransition.actions[k];
-            const _ev = actionobj.event;
-            let ev: EventClassExternal | null = null;
-            if (_ev !== null) {
-              ev = new EventClassExternal(_ev.type, _ev.params);
-            }
-            dActions.push(new ActionObject(actionobj.type, actionobj.params, ev));
+            dActions.push(new ActionObject(actionobj.type, actionobj.params, actionobj.event));
         }
 
         const afterTimer = new TransitionExternal(
@@ -466,12 +431,7 @@ export class StateInfoClassExternal {
       const alwaysActions: Array<ActionObject> = [];
       for (let k = 0; k < tr.actions.length; k++) {
         const actionobj = tr.actions[k];
-        const _ev = actionobj.event;
-        let ev: EventClassExternal | null = null;
-        if (_ev !== null) {
-          ev = new EventClassExternal(_ev.type, _ev.params);
-        }
-        alwaysActions.push(new ActionObject(actionobj.type, actionobj.params, ev));
+        alwaysActions.push(new ActionObject(actionobj.type, actionobj.params, actionobj.event));
       }
       alwaysTransitions[i] = new TransitionExternal(
         "always",

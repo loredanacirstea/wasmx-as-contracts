@@ -5,7 +5,6 @@ import { LoggerDebug } from "./wasmx_wrap";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import {
   EventObject,
-  InitEvent,
   InterpreterStatus,
   StateMachine,
   HandledActions,
@@ -14,7 +13,6 @@ import {
   State,
   States,
   StateInfo,
-  EventClass,
   ActionParam,
   ContextParam,
   StateInfoClassExternal,
@@ -34,7 +32,7 @@ import * as actionsErc20 from "./actions_erc20";
 
 const REVERT_IF_UNEXPECTED_STATE = false;
 
-const INIT_EVENT = new InitEvent();
+const INIT_EVENT = new EventObject("initialize", []);
 const ASSIGN_ACTION: AssignAction = 'xstate.assign';
 const WILDCARD = '*';
 const INTERVAL_ID_KEY = "intervalIdKey";
@@ -123,6 +121,7 @@ function executeGuard(
     event: EventObject,
 ): boolean {
     LoggerDebug("execute guard", ["guard", guard]);
+    if (!guard) return true;
     if (guard === "isAdmin") return isAdmin([]);
     if (guard === "ifIntervalActive") return ifIntervalActive([], event);
     if (guard === "hasEnoughBalance") return actionsErc20.hasEnoughBalance([], event);
@@ -160,7 +159,7 @@ function executeStateActions(
     if (newstate != null) {
       // Set new state before executing actions
       storage.setCurrentState(newstate);
-      executeStateActions(service, newstate, new EventClass("", []));
+      executeStateActions(service, newstate, new EventObject("", []));
     }
   }
 
@@ -203,7 +202,7 @@ function applyAlwaysIfElse(
   alwaysTransitions: Transition[],
 ): State | null {
   if (alwaysTransitions.length == 0) return null;
-  const emptyEvent = new EventClass("", [])
+  const emptyEvent = new EventObject("", [])
   console.debug(`apply if/else - ${alwaysTransitions[0].target}`);
   const newstate = service.machine.applyTransition(state, alwaysTransitions[0], emptyEvent);
   if (newstate != null) return newstate;
@@ -226,7 +225,7 @@ function executeStateAction(
         if (ev === null) {
             return revert("raise action is missing event");
         }
-        const _event: EventObject = new EventClass(ev.type, ev.params);
+        const _event: EventObject = new EventObject(ev.type, ev.params);
         service.send(_event);
         return;
     }
@@ -737,7 +736,7 @@ export class MachineExternal {
   }
 }
 
-export function runInternal(config: MachineExternal, event: EventClass): ArrayBuffer {
+export function runInternal(config: MachineExternal, event: EventObject): ArrayBuffer {
     const service = loadServiceFromConfig(config);
     service.send(event);
     return new ArrayBuffer(0);
@@ -864,7 +863,7 @@ export function eventual(config: MachineExternal, args: TimerArgs): void {
   let intervalIdField = new ActionParam("intervalId", args.intervalId.toString())
   let stateField = new ActionParam("state", args.state)
   let delayField = new ActionParam("delay", args.delay)
-  let emptyEvent = new EventClass("", [intervalIdField, stateField, delayField]);
+  let emptyEvent = new EventObject("", [intervalIdField, stateField, delayField]);
   console.debug("* execute delayed action - guard: " + transition.guard)
   const newstate = service.machine.applyTransition(state, transition, emptyEvent);
   if (newstate == null) {

@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmx from './wasmx';
 import {
-    EventClassExternal,
+    EventObject,
     CallRequest,
     CallResponse,
     ContextParam,
@@ -60,8 +60,8 @@ export class CallDataGetContextValue {
 // @ts-ignore
 @serializable
 export class CallDataRun {
-    event: EventClassExternal;
-    constructor(event: EventClassExternal) {
+    event: EventObject;
+    constructor(event: EventObject) {
         this.event = event;
     }
 }

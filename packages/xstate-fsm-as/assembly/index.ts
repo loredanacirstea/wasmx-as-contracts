@@ -9,7 +9,7 @@ import * as wasmx from './wasmx';
 import * as wasmxwrap from './wasmx_wrap';
 import {arrayBufferToU8Array, parseUint8ArrayToI32BigEndian} from './utils';
 import {
-  EventClass,
+  EventObject,
   TimerArgs,
 } from './types';
 import {
@@ -29,7 +29,7 @@ export function main(): u8[] {
     const config = icalld.config;
     if (calldata.run !== null) {
       const event = calldata.run!.event;
-      const _event = new EventClass(event.type, event.params);
+      const _event = new EventObject(event.type, event.params);
       runInternal(config, _event);
       // we may have set the return data during execution
       result = wasmx.getReturnData();
