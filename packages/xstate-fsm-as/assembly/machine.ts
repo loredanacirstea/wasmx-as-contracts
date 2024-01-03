@@ -147,6 +147,11 @@ function executeStateActions(
     const action = state.actions[i];
     executeStateAction(service, state, event, action);
   }
+
+  // if it is a targetless (internal) transition, we do not run after/always
+  if (!state.changed) {
+    return;
+  }
   console.debug("* executeStateActions after actions for: " + state.value)
 
   // timed actions from the new target state
@@ -192,8 +197,8 @@ function executeStateActions(
     registerIntervalId(state.value, delayKeys[i], intervalId);
     const args = new TimerArgs(delayKeys[i], state.value, intervalId);
     const argsStr = JSON.stringify<TimerArgs>(args);
+    LoggerDebug("starting timeout", ["intervalId", intervalId.toString()]);
     wasmx.startTimeout(delay, String.UTF8.encode(argsStr));
-    console.debug("started timeout - intervalId: " + intervalId.toString());
   }
 }
 
@@ -522,7 +527,7 @@ export class Machine implements StateMachine.Machine {
     transition: Transition,
     eventObject: EventObject,
   ): State | null {
-    console.debug("* applyTransition: " + transition.target);
+    LoggerDebug("applyTransition: ", ["target", transition.target]);
     const value = state.value;
     const stateConfig = findStateInfo(this.states, value);
     if (!stateConfig) {
@@ -642,7 +647,7 @@ export class Machine implements StateMachine.Machine {
         const nonAssignActions = res.actions;
         const assigned = res.assigned;
 
-        return new State(resolvedTarget, nonAssignActions, target !== value || nonAssignActions.length > 0 || assigned);
+        return new State(resolvedTarget, nonAssignActions, !isTargetless);
         // matches: createMatcher(resolvedTarget)
       }
     }
@@ -828,15 +833,24 @@ export function equalState(state1: string, state2: string): boolean {
 }
 
 export function eventual(config: MachineExternal, args: TimerArgs): void {
-  console.debug("* eventual: " + args.state + "--" + args.delay);
+  const active = isRegisteredIntervalActive(args.state, args.delay, args.intervalId);
+  LoggerDebug("eventual", ["state", args.state, "delay", args.delay, "intervalId", args.intervalId.toString(), "active", active.toString()]);
+  if (!active) {
+    LoggerDebug("eventual interval inactive", []);
+    return;
+  }
+
+  // deactivate interval
+  removeInterval(args.state, args.delay, args.intervalId);
+
   const service = loadServiceFromConfig(config);
   const currentState = storage.getCurrentState();
-  console.debug("* eventual - finding state: " + currentState.value);
+  LoggerDebug("eventual", ["current state", currentState.value]);
   const isEqual = equalState(currentState.value, args.state);
 
   if (!isEqual) {
     // we are in the wrong state, so the interval must be stopped
-    console.debug("* eventual: we are in the wrong state");
+    LoggerDebug("eventual: we are in the wrong state", []);
     // wasmx.stopInterval(intervalId);
     return;
   }
@@ -845,14 +859,13 @@ export function eventual(config: MachineExternal, args: TimerArgs): void {
   if (!newstateconfig) {
     return revert("could not find state config for " + currentState.value);
   }
-  console.debug("* eventual - finding after");
   const afterTimers = newstateconfig.after;
   if (afterTimers == null || !afterTimers.has(args.delay)) {
     // we are in the wrong state, so the interval must be stopped
     // wasmx.stopInterval(intervalId);
     return;
   }
-  console.debug("* execute delayed action... " + args.delay)
+  LoggerDebug("eventual: execute delayed action", ["delay", args.delay]);
   // delay is in milliseconds
   const transition = afterTimers.get(args.delay);
   if (!transition) {
@@ -866,7 +879,6 @@ export function eventual(config: MachineExternal, args: TimerArgs): void {
   let stateField = new ActionParam("state", args.state)
   let delayField = new ActionParam("delay", args.delay)
   let emptyEvent = new EventObject("", [intervalIdField, stateField, delayField]);
-  console.debug("* execute delayed action - guard: " + transition.guard)
   const newstate = service.machine.applyTransition(state, transition, emptyEvent);
   if (newstate == null) {
     return;
@@ -935,12 +947,17 @@ function cancelIntervals(state: string, delay: string): void {
 }
 
 function tryCancelIntervals(state: string, delay: string, intervalId: i64): void {
+  LoggerDebug("cancel interval: ", ["state", state, "delay", delay, "intervalId", intervalId.toString()])
   const active = isRegisteredIntervalActive(state, delay, intervalId);
   // remove the interval data
-  storage.setContextValue(registerIntervalIdKey(state, delay, intervalId), "");
+  removeInterval(state, delay, intervalId);
   if (active && intervalId > 0) {
     tryCancelIntervals(state, delay, intervalId - 1);
   }
+}
+
+function removeInterval(state: string, delay: string, intervalId: i64): void {
+  return storage.setContextValue(registerIntervalIdKey(state, delay, intervalId), "");
 }
 
 function cancelActiveIntervals(
@@ -955,15 +972,16 @@ function cancelActiveIntervals(
   for (let i = 0; i < params.length; i++) {
     if (params[i].key === "after") {
       delay = params[i].value;
-        continue;
+      break;
     }
   }
   if (delay === "") {
     revert("no delay found");
-}
+  }
   cancelIntervals(state.value, delay);
 }
 
+// we dont need this; eventual removes the interval data before guard is ran
 function ifIntervalActive(
   params: ActionParam[],
   event: EventObject,
@@ -999,8 +1017,9 @@ function ifIntervalActive(
   }
   const intervalId = parseInt64(intervalIdStr);
   const active = isRegisteredIntervalActive(state, delay, intervalId);
+  LoggerDebug("ifIntervalActive", ["intervalId", intervalIdStr, "active", active.toString()])
 
   // remove the interval data
-  storage.setContextValue(registerIntervalIdKey(state, delay, intervalId), "");
+  removeInterval(state, delay, intervalId);
   return active;
 }

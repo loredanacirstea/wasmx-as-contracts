@@ -663,7 +663,7 @@ export const RAFT_Full = {
           after: {
             electionTimeout: {
               target: "#RAFT-FULL-1.initialized.Candidate",
-              guard: "ifIntervalActive",
+              guard: "",
               actions: [],
               meta: {},
             },
