@@ -4,6 +4,14 @@ import * as wasmx from './wasmx';
 
 // @ts-ignore
 @serializable
+export enum InterpreterStatus {
+  NotStarted = 0,
+  Running = 1,
+  Stopped = 2
+}
+
+// @ts-ignore
+@serializable
 export class ActionParam {
   key: string;
   value: string;

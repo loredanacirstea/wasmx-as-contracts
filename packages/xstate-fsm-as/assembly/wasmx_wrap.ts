@@ -25,8 +25,7 @@ export class InterpreterCallData {
 // @ts-ignore
 @serializable
 export class CallData {
-    // TODO - this should only be done in the interpreter storage; to remove
-    // create: ConfigExternal | null = null;
+    setup: string | null = null;
     instantiate: CallDataInstantiate | null = null;
     getCurrentState: CallDataGetCurrentState | null = null;
     getContextValue: CallDataGetContextValue | null = null;

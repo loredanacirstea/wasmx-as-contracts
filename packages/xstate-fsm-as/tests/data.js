@@ -764,13 +764,13 @@ export const RAFT_Full = {
             active: {
               entry: [
                 {
+                  type: "proposeBlock",
+                },
+                {
                   type: "sendAppendEntries",
                 },
                 {
                   type: "commitBlocks",
-                },
-                {
-                  type: "proposeBlock",
                 },
               ],
               after: {

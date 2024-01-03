@@ -45,6 +45,10 @@ export function setCurrentState(value: State): void {
     return wasmxwrap.sstore(STORAGEKEY_STATE, JSON.stringify<StateClassExternal>(valueObj));
 }
 
+export function setCurrentStateInternal(value: StateClassExternal): void {
+    return wasmxwrap.sstore(STORAGEKEY_STATE, JSON.stringify<StateClassExternal>(value));
+}
+
 export function hasContextValue(key: string): boolean {
     const value = String.UTF8.decode(getContextValueInternal(key));
     return value != "";

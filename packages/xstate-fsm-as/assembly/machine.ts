@@ -24,6 +24,7 @@ import {
   Base64String,
   CallResponse,
   ExternalActionCallData,
+  Bech32String,
 } from './types';
 import { hexToUint8Array, revert, getAddressHex, parseInt32, parseInt64 } from "./utils";
 import * as storage from './storage';
@@ -460,12 +461,12 @@ export class ServiceExternal {
 
 export class Machine implements StateMachine.Machine {
   id: string;
-  library: Base64String;
+  library: Bech32String;
   states: States;
 
   constructor(
     id: string,
-    library: Base64String,
+    library: Bech32String,
     states: States,
   ) {
     this.id = id;
@@ -704,12 +705,12 @@ function processActions(actions: ActionObject[], event: EventObject): ActionObje
 @serializable
 export class MachineExternal {
   id: string;
-  library: Base64String;
+  library: Bech32String;
   states: Array<StateInfoClassExternal>;
 
   constructor(
     id: string,
-    library: Base64String,
+    library: Bech32String,
     states: Array<StateInfoClassExternal>,
   ) {
     this.id = id;
@@ -874,6 +875,21 @@ export function eventual(config: MachineExternal, args: TimerArgs): void {
   storage.setCurrentState(newstate);
   executeStateActions(service, newstate, emptyEvent);
   // TODO listeners?
+}
+
+export function setup(config: MachineExternal, contractAddress: string): void {
+  if (config.library == "") {
+    return revert("could not execute setup: fsm does not have a library");
+  }
+  // const calldata = `{"setup":"${contractAddress}"}`
+  const param = new ActionParam("previousAddress", contractAddress);
+  const calldata = new ExternalActionCallData("setup", [param], new EventObject("",[]));
+  const calldatastr = JSON.stringify<ExternalActionCallData>(calldata);
+  const req = new CallRequest(config.library, calldatastr, 0, 10000000, false);
+  const resp = wasmxwrap.call(req);
+  if (resp.success > 0) {
+    return revert("could not execute setup");
+  }
 }
 
 function getLastIntervalId(): i64 {

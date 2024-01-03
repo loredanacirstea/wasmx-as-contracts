@@ -1483,6 +1483,81 @@ export function updateConsensusParams(updates: typestnd.ConsensusParams): void {
     setConsensusParams(params);
 }
 
+export function setup(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    // get nodeIPs and validators from old contract
+    // get currentState
+    // get mempool
+    let oldContract = "";
+    if (params.length > 0) {
+        oldContract = params[0].value;
+    } else if (event.params.length > 0) {
+        oldContract = event.params[0].value;
+    }
+    if (oldContract == "") {
+        return revert("previous contract address not provided")
+    }
+
+    let calldata = `{"getContextValue":{"key":"nodeIPs"}}`
+    let req = new CallRequest(oldContract, calldata, 0, 100000000, true);
+    let resp = wasmxwrap.call(req);
+    if (resp.success > 0) {
+        return revert("cannot get nodeIPs from previous contract")
+    }
+    let data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    const nodeIps = JSON.parse<Array<string>>(data)
+    setNodeIPs(nodeIps);
+
+    calldata = `{"getContextValue":{"key":"validators"}}`
+    req = new CallRequest(oldContract, calldata, 0, 100000000, true);
+    resp = wasmxwrap.call(req);
+    if (resp.success > 0) {
+        return revert("cannot get validators from previous contract")
+    }
+    data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    const validators = JSON.parse<typestnd.ValidatorInfo[]>(data)
+    setValidators(validators);
+
+    calldata = `{"getContextValue":{"key":"state"}}`
+    req = new CallRequest(oldContract, calldata, 0, 100000000, true);
+    resp = wasmxwrap.call(req);
+    if (resp.success > 0) {
+        return revert("cannot get state from previous contract")
+    }
+    data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    const state = JSON.parse<typestnd.CurrentState>(data)
+    setCurrentState(state);
+
+    calldata = `{"getContextValue":{"key":"mempool"}}`
+    req = new CallRequest(oldContract, calldata, 0, 100000000, true);
+    resp = wasmxwrap.call(req);
+    if (resp.success > 0) {
+        return revert("cannot get mempool from previous contract")
+    }
+    data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    const mempool = JSON.parse<typestnd.Mempool>(data)
+    setMempool(mempool);
+
+    calldata = `{"getContextValue":{"key":"currentNodeId"}}`
+    req = new CallRequest(oldContract, calldata, 0, 100000000, true);
+    resp = wasmxwrap.call(req);
+    if (resp.success > 0) {
+        return revert("cannot get currentNodeId from previous contract")
+    }
+    data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    const currentNodeId = parseInt32(data);
+    setCurrentNodeId(currentNodeId);
+
+    // get last block index from storage contract
+    const lastIndex = getLastBlockIndex();
+    setLastLogIndex(lastIndex);
+    setCommitIndex(lastIndex);
+
+    // TODO stop old consensus contract?
+}
+
 export function getCurrentState(): typestnd.CurrentState {
     const value = fsm.getContextValue(STATE_KEY);
     // this must be set before we try to read it
@@ -1611,6 +1686,15 @@ function setFinalizedBlock(entry: LogEntryAggregate, hash: string, txhashes: str
     if (resp.success > 0) {
         revert("could not set finalized block");
     }
+}
+
+function getLastBlockIndex(): i64 {
+    const calldatastr = `{"getLastBlockIndex":{}}`;
+    const resp = callStorage(calldatastr, false);
+    if (resp.success > 0) {
+        revert(`could not get last block index`);
+    }
+    return parseInt64(resp.data);
 }
 
 function getFinalBlock(index: i64): string {

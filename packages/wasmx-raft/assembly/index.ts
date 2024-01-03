@@ -50,6 +50,8 @@ export function main(): void {
     actions.sendVoteRequests(calld.params, calld.event);
   } else if (calld.method === "proposeBlock") {
     actions.proposeBlock(calld.params, calld.event);
+  } else if (calld.method === "setup") {
+    actions.setup(calld.params, calld.event);
   }
   else {
     wasmx.revert(String.UTF8.encode("invalid function call data"));

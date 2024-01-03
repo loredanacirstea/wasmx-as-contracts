@@ -54,7 +54,7 @@ export type AssignAction = 'xstate.assign';
 export namespace StateMachine {
   export interface Machine {
     id: string;
-    library: Base64String;
+    library: Bech32String;
     states: States;
     transition(
       state: State,

@@ -4,6 +4,7 @@ import {
   instantiate as _instantiate,
   runInternal,
   MachineExternal,
+  setup,
 } from './machine';
 import * as wasmx from './wasmx';
 import * as wasmxwrap from './wasmx_wrap';
@@ -42,6 +43,9 @@ export function main(): u8[] {
       result = String.UTF8.encode(state.value);
     } else if (calldata.getContextValue !== null) {
       result = getContextValueInternal(calldata.getContextValue!.key);
+    } else if (calldata.setup !== null) {
+      setup(config, calldata.setup!);
+      result = new ArrayBuffer(0);
     } else {
       wasmx.revert(String.UTF8.encode("invalid function call data"));
       throw new Error("invalid function call data");
@@ -60,3 +64,4 @@ export function eventual(): void {
   const _args = JSON.parse<TimerArgs>(argsStr);
   _eventual(config, _args);
 }
+

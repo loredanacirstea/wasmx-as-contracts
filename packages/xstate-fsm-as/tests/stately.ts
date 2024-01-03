@@ -173,13 +173,13 @@ export const machine = createMachine(
               active: {
                 entry: [
                   {
+                    type: "proposeBlock",
+                  },
+                  {
                     type: "sendAppendEntries",
                   },
                   {
                     type: "commitBlocks",
-                  },
-                  {
-                    type: "proposeBlock",
                   },
                 ],
                 after: {
@@ -230,9 +230,20 @@ export const machine = createMachine(
         | { type: "setup"; nodeIPs: string; currentNodeId: string }
         | { type: "start" }
         | { type: "newChange"; transaction: string }
-        | { type: "setupNode"; nodeIPs: string; currentNodeId: string; initChainSetup: string }
+        | {
+            type: "setupNode";
+            nodeIPs: string;
+            currentNodeId: string;
+            initChainSetup: string;
+          }
         | { type: "initialize" }
-        | { type: "nodeUpdate"; ip: string; index: string; removed: string; signature: string }
+        | {
+            type: "nodeUpdate";
+            ip: string;
+            index: string;
+            removed: string;
+            signature: string;
+          }
         | { type: "newTransaction"; transaction: string }
         | { type: "nodeListUpdate"; ips: string }
         | {
@@ -241,19 +252,19 @@ export const machine = createMachine(
             entries: string;
             nodeIps: string;
             leaderId: string;
+            signature: string;
             prevLogTerm: string;
             leaderCommit: string;
             prevLogIndex: string;
-            signature: string;
           }
         | { type: "heartbeatResponse"; term: string; success: string }
         | {
             type: "receiveVoteRequest";
             termId: string;
+            signature: string;
             candidateId: string;
             lastLogTerm: string;
             lastLogIndex: string;
-            signature: string;
           },
       context: {} as {
         log: string;
