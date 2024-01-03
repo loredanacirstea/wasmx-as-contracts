@@ -1487,6 +1487,7 @@ export function setup(
     params: ActionParam[],
     event: EventObject,
 ): void {
+    LoggerInfo("upgrading raft consensus", [])
     // get nodeIPs and validators from old contract
     // get currentState
     // get mempool
@@ -1507,6 +1508,7 @@ export function setup(
         return revert("cannot get nodeIPs from previous contract")
     }
     let data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    LoggerInfo("setting up nodeIPs", ["ips", data])
     const nodeIps = JSON.parse<Array<string>>(data)
     setNodeIPs(nodeIps);
 
@@ -1517,6 +1519,7 @@ export function setup(
         return revert("cannot get validators from previous contract")
     }
     data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    LoggerInfo("setting up validators", ["data", data])
     const validators = JSON.parse<typestnd.ValidatorInfo[]>(data)
     setValidators(validators);
 
@@ -1527,6 +1530,7 @@ export function setup(
         return revert("cannot get state from previous contract")
     }
     data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    LoggerInfo("setting up state", ["data", data])
     const state = JSON.parse<typestnd.CurrentState>(data)
     setCurrentState(state);
 
@@ -1537,6 +1541,7 @@ export function setup(
         return revert("cannot get mempool from previous contract")
     }
     data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    LoggerInfo("setting up mempool", ["data", data])
     const mempool = JSON.parse<typestnd.Mempool>(data)
     setMempool(mempool);
 
@@ -1547,15 +1552,45 @@ export function setup(
         return revert("cannot get currentNodeId from previous contract")
     }
     data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    LoggerInfo("setting up currentNodeId", ["data", data])
     const currentNodeId = parseInt32(data);
     setCurrentNodeId(currentNodeId);
 
+    calldata = `{"getContextValue":{"key":"currentTerm"}}`
+    req = new CallRequest(oldContract, calldata, 0, 100000000, true);
+    resp = wasmxwrap.call(req);
+    if (resp.success > 0) {
+        return revert("cannot get currentTerm from previous contract")
+    }
+    data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    LoggerInfo("setting up currentTerm", ["data", data])
+    const currentTerm = parseInt32(data);
+    setTermId(currentTerm);
+
     // get last block index from storage contract
     const lastIndex = getLastBlockIndex();
+    LoggerInfo("setting up last log index", ["index", lastIndex.toString()])
     setLastLogIndex(lastIndex);
     setCommitIndex(lastIndex);
 
-    // TODO stop old consensus contract?
+    // stop old consensus contract
+    calldata = `{"run":{"event":{"type":"stop","params":[]}}}`
+    req = new CallRequest(oldContract, calldata, 0, 100000000, false);
+    resp = wasmxwrap.call(req);
+    if (resp.success > 0) {
+        return revert("cannot stop previous contract")
+    }
+    LoggerInfo("stopped previous contract", [])
+
+    // start self
+    calldata = `{"run":{"event":{"type":"start","params":[]}}}`
+    const selfAddr = wasmxwrap.addr_humanize(wasmx.getAddress());
+    req = new CallRequest(selfAddr, calldata, 0, 100000000, false);
+    resp = wasmxwrap.call(req);
+    if (resp.success > 0) {
+        return revert("cannot start self")
+    }
+    LoggerInfo("started self", [])
 }
 
 export function getCurrentState(): typestnd.CurrentState {

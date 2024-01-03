@@ -153,3 +153,12 @@ export function LoggerDebug(msg: string, parts: string[]): void {
     const databz = String.UTF8.encode(JSON.stringify<LoggerLog>(data));
     wasmx.LoggerDebug(databz);
 }
+
+export function addr_humanize(value: ArrayBuffer): string {
+    const addr = wasmx.addr_humanize(value);
+    return String.UTF8.decode(addr);
+}
+
+export function addr_canonicalize(value: string): ArrayBuffer {
+    return wasmx.addr_canonicalize(String.UTF8.encode(value));
+}

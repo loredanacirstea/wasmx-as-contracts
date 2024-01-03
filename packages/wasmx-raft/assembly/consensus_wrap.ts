@@ -54,7 +54,9 @@ export function FinalizeBlock(req: RequestFinalizeBlock): ResponseFinalizeBlockW
     const wrap = JSON.parse<ResponseWrap>(respstr);
     const response = new ResponseFinalizeBlockWrap(wrap.error, null);
     if (wrap.error.length == 0) {
-        response.data = JSON.parse<ResponseFinalizeBlock>(String.UTF8.decode(decodeBase64(wrap.data).buffer));
+        const data = String.UTF8.decode(decodeBase64(wrap.data).buffer)
+        wasmxwrap.LoggerDebug("FinalizeBlock", ["response data", data]);
+        response.data = JSON.parse<ResponseFinalizeBlock>(data);
     }
     return response;
 }

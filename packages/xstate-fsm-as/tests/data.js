@@ -696,6 +696,9 @@ export const RAFT_Full = {
                 },
               ],
             },
+            stop: {
+              target: "#RAFT-FULL-1.stopped",
+            },
           },
         },
         Candidate: {
@@ -747,6 +750,9 @@ export const RAFT_Full = {
                   type: "sendNewTransactionResponse",
                 },
               ],
+            },
+            stop: {
+              target: "#RAFT-FULL-1.stopped",
             },
           },
         },
@@ -806,6 +812,9 @@ export const RAFT_Full = {
             reset: {
               target: "Follower",
             },
+            stop: {
+              target: "#RAFT-FULL-1.stopped",
+            },
           },
         },
       },
@@ -813,5 +822,6 @@ export const RAFT_Full = {
         start: {},
       },
     },
+    stopped: {},
   }
 }

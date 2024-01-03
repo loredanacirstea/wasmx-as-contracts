@@ -31,3 +31,6 @@ export declare function LoggerDebug(value: ArrayBuffer): void
 
 export declare function ed25519Sign(privKey: ArrayBuffer, msgbz: ArrayBuffer): ArrayBuffer
 export declare function ed25519Verify(pubKey: ArrayBuffer, signature: ArrayBuffer, msgbz: ArrayBuffer): i32
+
+export declare function addr_humanize(value: ArrayBuffer): ArrayBuffer
+export declare function addr_canonicalize(value: ArrayBuffer): ArrayBuffer

@@ -105,6 +105,9 @@ export const machine = createMachine(
                   },
                 ],
               },
+              stop: {
+                target: "#RAFT-FULL-1.stopped",
+              },
             },
           },
           Candidate: {
@@ -156,6 +159,9 @@ export const machine = createMachine(
                     type: "sendNewTransactionResponse",
                   },
                 ],
+              },
+              stop: {
+                target: "#RAFT-FULL-1.stopped",
               },
             },
           },
@@ -215,6 +221,9 @@ export const machine = createMachine(
               reset: {
                 target: "Follower",
               },
+              stop: {
+                target: "#RAFT-FULL-1.stopped",
+              },
             },
           },
         },
@@ -222,6 +231,7 @@ export const machine = createMachine(
           start: {},
         },
       },
+      stopped: {},
     },
     types: {
       events: {} as
@@ -265,7 +275,8 @@ export const machine = createMachine(
             candidateId: string;
             lastLogTerm: string;
             lastLogIndex: string;
-          },
+          }
+        | { type: "stop" },
       context: {} as {
         log: string;
         nodeIPs: string;
