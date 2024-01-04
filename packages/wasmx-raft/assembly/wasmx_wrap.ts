@@ -124,6 +124,24 @@ export function ed25519Verify(pubKeyStr: Base64String, signatureStr: Base64Strin
 
 // @ts-ignore
 @serializable
+class StartTimeoutRequest {
+	contract: string
+	delay: i64
+	args: Base64String
+    constructor(contract: string, delay: i64, args: Base64String) {
+        this.contract = contract
+        this.delay = delay
+        this.args = args
+    }
+}
+
+export function startTimeout(contract: string, delayms: i64, args: string): void {
+    const req = new StartTimeoutRequest(contract, delayms, encodeBase64(Uint8Array.wrap(String.UTF8.encode(args))));
+    wasmx.startTimeout(String.UTF8.encode(JSON.stringify<StartTimeoutRequest>(req)));
+}
+
+// @ts-ignore
+@serializable
 class LoggerLog {
 	msg: string
 	parts: string[]

@@ -137,6 +137,11 @@ async function instantiate(module, imports = {}) {
         // assembly/wasmx/getReturnData() => ~lib/arraybuffer/ArrayBuffer
         return __lowerBuffer(__module0.getReturnData()) || __notnull();
       },
+      addr_humanize(value) {
+        // assembly/wasmx/addr_humanize(~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer
+        value = __liftBuffer(value >>> 0);
+        return __lowerBuffer(__module0.addr_humanize(value)) || __notnull();
+      },
       finish(value) {
         // assembly/wasmx/finish(~lib/arraybuffer/ArrayBuffer) => void
         value = __liftBuffer(value >>> 0);

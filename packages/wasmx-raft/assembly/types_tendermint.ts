@@ -723,6 +723,7 @@ export class Mempool {
             cummulatedBytes += bytelen;
         }
         this.txs.splice(0, batch.txs.length);
+        this.gas.splice(0, batch.txs.length);
         return batch;
     }
 

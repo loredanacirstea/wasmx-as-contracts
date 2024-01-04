@@ -783,7 +783,9 @@ export const RAFT_Full = {
                 heartbeatTimeout: {
                   target: "#RAFT-FULL-1.initialized.Leader.active",
                   actions: [],
-                  meta: {},
+                  meta: {
+                    contract: "consensus",
+                  },
                 },
               },
               on: {

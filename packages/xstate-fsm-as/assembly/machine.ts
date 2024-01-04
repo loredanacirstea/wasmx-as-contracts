@@ -140,7 +140,7 @@ function executeGuard(
 function executeStateActions(
     service: Service,
     state: State,
-    event: EventObject
+    event: EventObject,
 ): void {
   console.debug("* executeStateActions: " + state.actions.length.toString())
   for (let i = 0; i < state.actions.length; i++) {
@@ -195,10 +195,24 @@ function executeStateActions(
     const intervalId = getLastIntervalId() + 1;
     setLastIntervalId(intervalId);
     registerIntervalId(state.value, delayKeys[i], intervalId);
+
+    let contractAddress = "";
+    const meta = afterTimers.get(delayKeys[i]).meta;
+    if (meta.length > 0) {
+      for (let i = 0; i < meta.length; i++) {
+        if (meta[i].key == "contract") {
+          contractAddress = meta[i].value;
+          break;
+        }
+      }
+    }
+    if (contractAddress == "") {
+      contractAddress = wasmxwrap.addr_humanize(wasmx.getAddress());
+    }
     const args = new TimerArgs(delayKeys[i], state.value, intervalId);
     const argsStr = JSON.stringify<TimerArgs>(args);
     LoggerDebug("starting timeout", ["intervalId", intervalId.toString()]);
-    wasmx.startTimeout(delay, String.UTF8.encode(argsStr));
+    wasmxwrap.startTimeout(contractAddress, delay, argsStr);
   }
 }
 
@@ -554,7 +568,6 @@ export class Machine implements StateMachine.Machine {
         const target = transition.target;
         const actions = transition.actions || [];
         const guard = transition.guard;
-        const cond = transition.cond || (() => true);
 
         const isTargetless = target === null || target === "";
 

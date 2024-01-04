@@ -72,7 +72,6 @@ export const machine = createMachine(
             after: {
               electionTimeout: {
                 target: "#RAFT-FULL-1.initialized.Candidate",
-                guard: "ifIntervalActive",
                 actions: [],
                 meta: {},
               },
@@ -192,7 +191,9 @@ export const machine = createMachine(
                   heartbeatTimeout: {
                     target: "#RAFT-FULL-1.initialized.Leader.active",
                     actions: [],
-                    meta: {},
+                    meta: {
+                      contract: "consensus",
+                    },
                   },
                 },
                 on: {

@@ -202,6 +202,24 @@ export function ed25519Verify(pubKeyStr: Base64String, signatureStr: Base64Strin
 
 // @ts-ignore
 @serializable
+class StartTimeoutRequest {
+	contract: string
+	delay: i64
+	args: Base64String
+    constructor(contract: string, delay: i64, args: Base64String) {
+        this.contract = contract
+        this.delay = delay
+        this.args = args
+    }
+}
+
+export function startTimeout(contract: string, delayms: i64, args: string): void {
+    const req = new StartTimeoutRequest(contract, delayms, encodeBase64(Uint8Array.wrap(String.UTF8.encode(args))));
+    wasmx.startTimeout(String.UTF8.encode(JSON.stringify<StartTimeoutRequest>(req)));
+}
+
+// @ts-ignore
+@serializable
 class LoggerLog {
 	msg: string
 	parts: string[]
@@ -230,4 +248,13 @@ export function LoggerDebug(msg: string, parts: string[]): void {
     const data = new LoggerLog(msg, parts);
     const databz = String.UTF8.encode(JSON.stringify<LoggerLog>(data));
     wasmx.LoggerDebug(databz);
+}
+
+export function addr_humanize(value: ArrayBuffer): string {
+    const addr = wasmx.addr_humanize(value);
+    return String.UTF8.decode(addr);
+}
+
+export function addr_canonicalize(value: string): ArrayBuffer {
+    return wasmx.addr_canonicalize(String.UTF8.encode(value));
 }

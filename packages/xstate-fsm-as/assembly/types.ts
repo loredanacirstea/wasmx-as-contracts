@@ -267,19 +267,18 @@ export class Transition {
   target: string;
   actions: Array<ActionObject>;
   guard: string;
-  cond: ((event: EventObject) => boolean) | null;
-  // TODO meta {}
+  meta: Array<ActionParam>;
 
   constructor(
     target: string,
     actions: Array<ActionObject>,
     guard: string,
-    cond: ((event: EventObject) => boolean) | null,
+    meta: Array<ActionParam>,
   ) {
     this.target = target;
     this.actions = actions;
     this.guard = guard;
-    this.cond = cond;
+    this.meta = meta;
   }
 }
 
@@ -290,20 +289,20 @@ export class TransitionExternal {
   target: string;
   actions: Array<ActionObject>;
   guard: string;
-  cond: ((context: ContextGeneralString, event: EventObject) => boolean) | null;
+  meta: Array<ActionParam>;
 
   constructor(
     name: string,
     target: string,
     actions: Array<ActionObject>,
     guard: string,
-    cond: ((context: ContextGeneralString, event: EventObject) => boolean) | null,
+    meta: Array<ActionParam>,
   ) {
     this.name = name;
     this.target = target;
     this.actions = actions;
     this.guard = guard;
-    this.cond = cond;
+    this.meta = meta;
   }
 }
 
@@ -397,7 +396,7 @@ export class StateInfoClassExternal {
             evInfo.target,
             evActions,
             evInfo.guard,
-            null,
+            evInfo.meta,
         ));
     }
     let afterTimers: Array<TransitionExternal> = [];
@@ -419,7 +418,7 @@ export class StateInfoClassExternal {
           delayedTransition.target,
           dActions,
           delayedTransition.guard,
-          null,
+          delayedTransition.meta,
         );
         afterTimers.push(afterTimer);
       }
@@ -438,7 +437,7 @@ export class StateInfoClassExternal {
         tr.target,
         alwaysActions,
         tr.guard,
-        null,
+        tr.meta,
       );
     }
 
@@ -476,7 +475,7 @@ export class StateInfoClassExternal {
             onev.target,
             actions,
             onev.guard,
-            null,
+            onev.meta,
         ))
     }
     let afterTimers: StateTimers | null = null;
@@ -489,7 +488,7 @@ export class StateInfoClassExternal {
             const action = aft.actions[k];
             actions.push(new ActionObject(action.type, action.params, action.event));
         }
-        const transition = new Transition(aft.target, actions, aft.guard, null);
+        const transition = new Transition(aft.target, actions, aft.guard, aft.meta);
         afterTimers.set(aft.name, transition);
       }
     }
@@ -500,7 +499,7 @@ export class StateInfoClassExternal {
         tr.target,
         tr.actions,
         tr.guard,
-        null,
+        tr.meta,
       );
     }
 

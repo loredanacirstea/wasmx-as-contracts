@@ -83,11 +83,13 @@ function parseMachineStates(configStates = {}, statePath) {
             const ev = _stateon[eventName];
             const actions = parseActions(ev.actions);
             const target = parseStateName(ev.target || "", statePath);
+            const meta = parseMeta(ev.meta || {});
             return {
                 name: eventName || "",
                 target: target,
                 guard: ev.guard || "",
                 actions,
+                meta,
             }
         })
 
@@ -95,11 +97,13 @@ function parseMachineStates(configStates = {}, statePath) {
         const stateafter = Object.keys(_stateafter).map(delayKey => {
             const ev = _stateafter[delayKey];
             const actions = parseActions(ev.actions);
+            const meta = parseMeta(ev.meta || {});
             return {
                 name: delayKey || "",
                 target: parseStateName(ev.target || "", statePath),
                 guard: ev.guard || "",
                 actions,
+                meta,
             }
         })
 
@@ -113,6 +117,7 @@ function parseMachineStates(configStates = {}, statePath) {
                     ...state.always[i],
                     target: parseStateName(state.always[i].target || "", statePath),
                     actions: parseActions(state.always[i].actions || []),
+                    meta: parseMeta(state.always[i].meta || {}),
                 }
                 statealways.push(st);
             }
@@ -133,6 +138,15 @@ function parseMachineStates(configStates = {}, statePath) {
             states: state.states ? parseMachineStates(state.states, statePath + "." + stateName) : [],
         }
     })
+}
+
+function parseMeta(meta) {
+    const metaArray = [];
+    const keys = Object.keys(meta);
+    for (let i = 0; i < keys.length; i++) {
+        metaArray.push({key: keys[i], value: meta[keys[i]]})
+    }
+    return metaArray;
 }
 
 // object or array
