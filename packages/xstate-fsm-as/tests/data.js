@@ -592,7 +592,7 @@ export const RAFTLogReplication = {
     },
 }
 
-export const RAFT_Full = {
+export const RAFT_Full =  {
   context: {
     log: "",
     nodeIPs: "[]",
@@ -636,6 +636,12 @@ export const RAFT_Full = {
             start: {
               target: "Follower",
             },
+            setup: {
+              target: "unstarted",
+              actions: {
+                type: "setup",
+              },
+            },
           },
         },
         Follower: {
@@ -663,7 +669,6 @@ export const RAFT_Full = {
           after: {
             electionTimeout: {
               target: "#RAFT-FULL-1.initialized.Candidate",
-              guard: "",
               actions: [],
               meta: {},
             },
@@ -698,6 +703,9 @@ export const RAFT_Full = {
             },
             stop: {
               target: "#RAFT-FULL-1.stopped",
+            },
+            start: {
+              target: "Follower",
             },
           },
         },
@@ -754,6 +762,9 @@ export const RAFT_Full = {
             stop: {
               target: "#RAFT-FULL-1.stopped",
             },
+            start: {
+              target: "Candidate",
+            },
           },
         },
         Leader: {
@@ -783,9 +794,7 @@ export const RAFT_Full = {
                 heartbeatTimeout: {
                   target: "#RAFT-FULL-1.initialized.Leader.active",
                   actions: [],
-                  meta: {
-                    contract: "consensus",
-                  },
+                  meta: {},
                 },
               },
               on: {
@@ -824,6 +833,12 @@ export const RAFT_Full = {
         start: {},
       },
     },
-    stopped: {},
+    stopped: {
+      on: {
+        restart: {
+          target: "#RAFT-FULL-1.initialized.unstarted",
+        },
+      },
+    },
   }
 }

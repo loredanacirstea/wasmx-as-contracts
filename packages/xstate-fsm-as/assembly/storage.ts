@@ -24,6 +24,9 @@ export function storeContextParams(params: Array<ContextParam>): void {
 
 export function getCurrentStatus(): InterpreterStatus {
     const value = wasmxwrap.sload(STORAGEKEY_STATUS);
+    if (value == "") {
+        return InterpreterStatus.NotStarted;
+    }
     return StatusMap.get(value);
 }
 
@@ -34,6 +37,9 @@ export function setCurrentStatus(status: InterpreterStatus): void {
 
 export function getCurrentState(): State {
     const valuestr = wasmxwrap.sload(STORAGEKEY_STATE);
+    if (valuestr == "") {
+        return new State("", [], false);
+    }
     const value = JSON.parse<StateClassExternal>(valuestr);
     return value.toInternal();
 }

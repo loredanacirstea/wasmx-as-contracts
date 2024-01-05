@@ -47,7 +47,38 @@ export class ExternalActionCallData {
     }
 }
 
+// @ts-ignore
+@serializable
+export class TimerArgs {
+  delay: string;
+  state: string;
+  intervalId: i64;
+  constructor(delay: string, state: string, intervalId: i64) {
+    this.delay = delay;
+    this.state = state;
+    this.intervalId = intervalId;
+  }
+}
+
 const STORAGEKEY_CTX = "context_"
+const INTERVAL_ID_KEY = "intervalIdKey";
+
+export function setLastIntervalId(value: i64): void {
+    setContextValue(INTERVAL_ID_KEY, value.toString());
+}
+
+function registerLastIntervalIdKey(state: string, delay: string): string {
+    return `${INTERVAL_ID_KEY}_${state}_${delay}`
+}
+
+function registerIntervalIdKey(state: string, delay: string, intervalId: i64): string {
+    return `${INTERVAL_ID_KEY}_${state}_${delay}_${intervalId.toString()}`
+}
+
+export function registerIntervalId(state: string, delay: string, intervalId: i64): void {
+    setContextValue(registerLastIntervalIdKey(state, delay), intervalId.toString());
+    setContextValue(registerIntervalIdKey(state, delay, intervalId), "1");
+}
 
 export function hasContextValue(key: string): boolean {
     const value = String.UTF8.decode(getContextValueInternal(key));

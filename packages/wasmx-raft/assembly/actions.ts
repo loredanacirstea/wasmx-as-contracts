@@ -6,6 +6,7 @@ import * as wasmxwrap from './wasmx_wrap';
 import * as wasmx from './wasmx';
 import * as consensuswrap from './consensus_wrap';
 import * as fsm from './fsm';
+import * as blocks from './blocks';
 import { LoggerDebug, LoggerInfo, LoggerError } from "./wasmx_wrap";
 import {
   Base64String,
@@ -331,6 +332,20 @@ function checkValidatorsUpdate(validators: typestnd.ValidatorInfo[], validatorIn
     }
 }
 
+function initializeIndexArrays(len: i32): void {
+    const lastLogIndex = getLastLogIndex()
+    const nextIndex: Array<i64> = [];
+    const matchIndex: Array<i64> = [];
+    for (let i = 0; i < len; i++) {
+        // for each server, index of the next log entry to send to that server (initialized to leader's last log index + 1)
+        nextIndex[i] = lastLogIndex + 1;
+        // for each server, index of highest log entry known to be replicated on server (initialized to 0, increases monotonically)
+        matchIndex[i] = LOG_START; // TODO ?
+    }
+    setNextIndexArray(nextIndex);
+    setMatchIndexArray(matchIndex);
+}
+
 export function initializeNextIndex(
     params: ActionParam[],
     event: EventObject,
@@ -584,14 +599,7 @@ export function setupNode(
     }
     initChain(data);
 
-    const nextIndex: Array<i64> = [];
-    const matchIndex: Array<i64> = [];
-    for (let i = 0; i < ips.length; i++) {
-        nextIndex[i] = LOG_START + 1; // TODO ?
-        matchIndex[i] = LOG_START; // TODO ?
-    }
-    setNextIndexArray(nextIndex);
-    setMatchIndexArray(matchIndex);
+    initializeIndexArrays(ips.length);
 }
 
 function initChain(req: typestnd.InitChainSetup): void {
@@ -1101,7 +1109,6 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         return revert("FinalizeBlock response is null");
     }
 
-    // TODO save less info? (events tx_results)
     const resultstr = JSON.stringify<typestnd.ResponseFinalizeBlock>(finalizeResp);
     const resultBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(resultstr)));
 
@@ -1145,10 +1152,82 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     // remove temporary block data
     removeLogEntry(entryobj.index);
 
+    // before commiting, we check if consensus contract was changed
+    let newContract = "";
+    let newLabel = "";
+    for (let i = 0; i < finalizeResp.events.length; i++) {
+        const ev = finalizeResp.events[i];
+        if (ev.type == "register_role") {
+            for (let j = 0; j < ev.attributes.length; j++) {
+                if (ev.attributes[j].key == "contract_address") {
+                    newContract = ev.attributes[j].value;
+                }
+                if (ev.attributes[j].key == "role_label") {
+                    newLabel = ev.attributes[j].value;
+                }
+            }
+            break;
+        }
+    }
+    // we have finalized and saved the new block
+    // so we can execute setup on the new contract
+    // this way, the delay of the timed action that starts the new consensus fsm is minimal.
+    let newContractSetup = false;
+    if (newContract !== "") {
+        const myaddress = wasmxwrap.addr_humanize(wasmx.getAddress());
+        LoggerInfo("setting up next consensus contract", ["new contract", newContract, "previous contract", myaddress])
+        let calldata = `{"run":{"event":{"type":"setup","params":[{"key":"address","value":"${myaddress}"}]}}}`
+        let req = new CallRequest(newContract, calldata, 0, 100000000, false);
+        let resp = wasmxwrap.call(req);
+        if (resp.success > 0) {
+            LoggerError("cannot setup next consensus contract", ["new contract", newContract, "err", resp.data]);
+        } else {
+            LoggerInfo("next consensus contract is set", ["new contract", newContract])
+            newContractSetup = true;
+
+            // stop this contract and any intervals on this contract
+            // TODO cancel all intervals on stop() action
+            calldata = `{"run":{"event":{"type":"stop","params":[]}}}`
+            req = new CallRequest(myaddress, calldata, 0, 100000000, false);
+            resp = wasmxwrap.call(req);
+            if (resp.success > 0) {
+                LoggerError("cannot stop previous consensus contract", ["err", resp.data]);
+                // TODO what now?
+            } else {
+                LoggerInfo("stopped current consensus contract", [])
+            }
+        }
+    }
+
     const commitResponse = consensuswrap.Commit();
     // TODO commitResponse.retainHeight
     // Tendermint removes all data for heights lower than `retain_height`
     LoggerInfo("block finalized", ["height", entryobj.index.toString()])
+
+    // TODO if we cannot start with the new contract, maybe we should remove its consensus role
+
+    // if consensus changed, start the new contract
+    if (newContract != "" && newContractSetup) {
+        LoggerInfo("starting new consensus contract", ["address", newContract])
+        let calldata = `{"run":{"event":{"type":"start","params":[]}}}`
+        let req = new CallRequest(newContract, calldata, 0, 100000000, false);
+        let resp = wasmxwrap.call(req);
+        if (resp.success > 0) {
+            LoggerError("cannot start next consensus contract", ["new contract", newContract, "err", resp.data]);
+            // we can restart the old contract here, so the chain does not stop
+            const myaddress = wasmxwrap.addr_humanize(wasmx.getAddress());
+            calldata = `{"run":{"event":{"type":"restart","params":[]}}}`
+            req = new CallRequest(myaddress, calldata, 0, 100000000, false);
+            resp = wasmxwrap.call(req);
+            if (resp.success > 0) {
+                LoggerError("cannot restart previous consensus contract", ["err", resp.data]);
+            } else {
+                LoggerInfo("restarted current consensus contract", [])
+            }
+        } else {
+            LoggerInfo("next consensus contract is started", ["new contract", newContract])
+        }
+    }
 }
 
 
@@ -1487,7 +1566,7 @@ export function setup(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    LoggerInfo("upgrading raft consensus", [])
+    LoggerInfo("setting up new raft consensus contract", [])
     // get nodeIPs and validators from old contract
     // get currentState
     // get mempool
@@ -1573,24 +1652,8 @@ export function setup(
     setLastLogIndex(lastIndex);
     setCommitIndex(lastIndex);
 
-    // stop old consensus contract
-    calldata = `{"run":{"event":{"type":"stop","params":[]}}}`
-    req = new CallRequest(oldContract, calldata, 0, 100000000, false);
-    resp = wasmxwrap.call(req);
-    if (resp.success > 0) {
-        return revert("cannot stop previous contract")
-    }
-    LoggerInfo("stopped previous contract", [])
-
-    // start self
-    calldata = `{"run":{"event":{"type":"start","params":[]}}}`
-    const selfAddr = wasmxwrap.addr_humanize(wasmx.getAddress());
-    req = new CallRequest(selfAddr, calldata, 0, 100000000, false);
-    resp = wasmxwrap.call(req);
-    if (resp.success > 0) {
-        return revert("cannot start self")
-    }
-    LoggerInfo("started self", [])
+    // after we set last log index
+    initializeIndexArrays(nodeIps.length);
 }
 
 export function getCurrentState(): typestnd.CurrentState {
@@ -1729,7 +1792,8 @@ function getLastBlockIndex(): i64 {
     if (resp.success > 0) {
         revert(`could not get last block index`);
     }
-    return parseInt64(resp.data);
+    const res = JSON.parse<blocks.LastBlockIndexResult>(resp.data);
+    return res.index;
 }
 
 function getFinalBlock(index: i64): string {

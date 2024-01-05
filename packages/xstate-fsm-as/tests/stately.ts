@@ -45,6 +45,12 @@ export const machine = createMachine(
               start: {
                 target: "Follower",
               },
+              setup: {
+                target: "unstarted",
+                actions: {
+                  type: "setup",
+                },
+              },
             },
           },
           Follower: {
@@ -107,6 +113,9 @@ export const machine = createMachine(
               stop: {
                 target: "#RAFT-FULL-1.stopped",
               },
+              start: {
+                target: "Follower",
+              },
             },
           },
           Candidate: {
@@ -162,6 +171,9 @@ export const machine = createMachine(
               stop: {
                 target: "#RAFT-FULL-1.stopped",
               },
+              start: {
+                target: "Candidate",
+              },
             },
           },
           Leader: {
@@ -191,9 +203,7 @@ export const machine = createMachine(
                   heartbeatTimeout: {
                     target: "#RAFT-FULL-1.initialized.Leader.active",
                     actions: [],
-                    meta: {
-                      contract: "consensus",
-                    },
+                    meta: {},
                   },
                 },
                 on: {
@@ -232,13 +242,20 @@ export const machine = createMachine(
           start: {},
         },
       },
-      stopped: {},
+      stopped: {
+        on: {
+          restart: {
+            target: "#RAFT-FULL-1.initialized.unstarted",
+          },
+        },
+      },
     },
     types: {
       events: {} as
         | { type: "" }
+        | { type: "stop" }
         | { type: "reset" }
-        | { type: "setup"; nodeIPs: string; currentNodeId: string }
+        | { type: "setup"; address: string }
         | { type: "start" }
         | { type: "newChange"; transaction: string }
         | {
@@ -277,7 +294,7 @@ export const machine = createMachine(
             lastLogTerm: string;
             lastLogIndex: string;
           }
-        | { type: "stop" },
+        | { type: "restart" },
       context: {} as {
         log: string;
         nodeIPs: string;
@@ -302,32 +319,35 @@ export const machine = createMachine(
   },
   {
     actions: {
-      registeredCheck: ({ context, event }) => {},
-      setRandomElectionTimeout: ({ context, event }) => {},
-      cancelActiveIntervals: ({ context, event }) => {},
-      forwardTxsToLeader: ({ context, event }) => {},
-      initializeNextIndex: ({ context, event }) => {},
-      initializeMatchIndex: ({ context, event }) => {},
-      sendAppendEntries: ({ context, event }) => {},
+      vote: ({ context, event }) => {},
+      selfVote: ({ context, event }) => {},
+      setupNode: ({ context, event }) => {},
+      addToMempool: ({ context, event }) => {},
       commitBlocks: ({ context, event }) => {},
       proposeBlock: ({ context, event }) => {},
-      incrementCurrentTerm: ({ context, event }) => {},
-      selfVote: ({ context, event }) => {},
+      registeredCheck: ({ context, event }) => {},
       sendVoteRequests: ({ context, event }) => {},
-      addToMempool: ({ context, event }) => {},
-      sendNewTransactionResponse: ({ context, event }) => {},
-      processAppendEntries: ({ context, event }) => {},
-      sendHeartbeatResponse: ({ context, event }) => {},
-      setupNode: ({ context, event }) => {},
-      vote: ({ context, event }) => {},
+      sendAppendEntries: ({ context, event }) => {},
+      forwardTxsToLeader: ({ context, event }) => {},
+      initializeNextIndex: ({ context, event }) => {},
       updateNodeAndReturn: ({ context, event }) => {},
+      incrementCurrentTerm: ({ context, event }) => {},
+      initializeMatchIndex: ({ context, event }) => {},
+      processAppendEntries: ({ context, event }) => {},
+      cancelActiveIntervals: ({ context, event }) => {},
+      sendHeartbeatResponse: ({ context, event }) => {},
+      setRandomElectionTimeout: function ({ context, event }, params) {
+        // Add your action code here
+      },
+      sendNewTransactionResponse: ({ context, event }) => {},
+      setup: ({ context, event }) => {},
     },
     actors: {},
     guards: {
-      ifIntervalActive: ({ context, event }, params) => {
+      isVotedLeader: ({ context, event }, params) => {
         return false;
       },
-      isVotedLeader: ({ context, event }, params) => {
+      ifIntervalActive: ({ context, event }, params) => {
         return false;
       },
     },
