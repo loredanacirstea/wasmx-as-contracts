@@ -675,19 +675,6 @@ export function processAppendEntries(
         return;
     }
 
-    for (let i = 0; i < entry.entries.length; i++) {
-        processAppendEntry(entry.entries[i]);
-    }
-    setTermId(entry.termId);
-    // TODO
-    // entry.leaderId ?
-    const lastCommitIndex = getCommitIndex();
-    for (let i = lastCommitIndex + 1; i <= entry.leaderCommit; i++) {
-        startBlockFinalizationFollower(i);
-        setCommitIndex(i);
-        setLastApplied(i);
-    }
-
     // update our nodeips
     const ips = getNodeIPs();
     const nodeId = getCurrentNodeId();
@@ -711,6 +698,26 @@ export function processAppendEntries(
     checkValidatorsUpdate(allvalidators, validatorInfo, newId);
     setNodeIPs(entry.nodeIps);
     setValidators(allvalidators);
+
+    setTermId(entry.termId);
+
+    // we commit as close to the transition end as possible
+    // we make sure to commit the last block before running ProcessProposal on the new block
+    // TODO
+    // entry.leaderId ?
+    const lastCommitIndex = getCommitIndex();
+    const lastLogIndex = getLastLogIndex();
+    const maxCommitIndex = i64(Math.min(f64(lastLogIndex), f64(entry.leaderCommit)));
+    for (let i = lastCommitIndex + 1; i <= maxCommitIndex; i++) {
+        startBlockFinalizationFollower(i);
+        setCommitIndex(i);
+        setLastApplied(i);
+    }
+
+    // now we check the new block
+    for (let i = 0; i < entry.entries.length; i++) {
+        processAppendEntry(entry.entries[i]);
+    }
 }
 
 export function processAppendEntry(entry: LogEntryAggregate): void {
@@ -732,8 +739,28 @@ export function sendHeartbeatResponse(
     event: EventObject,
 ): void {
     const termId = getTermId();
-    // TODO when not successful
-    const response = new AppendEntryResponse(termId, true);
+    const lastLogIndex = getLastLogIndex();
+    let entryBase64: string = "";
+    for (let i = 0; i < event.params.length; i++) {
+        if (event.params[i].key === "entry") {
+            entryBase64 = event.params[i].value;
+            continue;
+        }
+    }
+    if (entryBase64 === "") {
+        revert("update node: empty entry");
+    }
+    const entryStr = String.UTF8.decode(decodeBase64(entryBase64).buffer);
+    let entry: AppendEntry = JSON.parse<AppendEntry>(entryStr);
+    let successful = true;
+    for (let i = 0; i < entry.entries.length; i++) {
+        if (entry.entries[i].index > lastLogIndex) {
+            successful = false;
+            break;
+        }
+    }
+
+    const response = new AppendEntryResponse(termId, successful);
     LoggerDebug("send heartbeat response", ["termId", termId.toString(), "success", "true"])
     wasmx.setFinishData(String.UTF8.encode(JSON.stringify<AppendEntryResponse>(response)));
 }
@@ -792,10 +819,15 @@ function checkCommits(): void {
         // TODO commit only if entry.term == currentTerm:
 
         // We commit the state
-        startBlockFinalizationLeader(nextCommit);
+        const consensusChanged = startBlockFinalizationLeader(nextCommit);
         // update last commited!
         setCommitIndex(nextCommit);
         setLastApplied(nextCommit);
+        if(consensusChanged) {
+            // we need to also propagate the commit of this entry to the rest of the nodes
+            // so they can enter the new consensus
+            sendAppendEntries([], new EventObject("", []))
+        }
     }
 }
 
@@ -1052,7 +1084,7 @@ function startBlockProposal(txs: string[], cummulatedGas: i64, maxDataBytes: i64
     return appendLogInternalVerified(processReq, header, lastBlockCommit);
 }
 
-function startBlockFinalizationLeader(index: i64): void {
+function startBlockFinalizationLeader(index: i64): boolean {
     LoggerInfo("start block finalization", ["height", index.toString()])
     // get entry and apply it
     const entryobj = getLogEntryAggregate(index);
@@ -1063,10 +1095,11 @@ function startBlockFinalizationLeader(index: i64): void {
         return startBlockFinalizationInternal(entryobj, false);
     } else {
         LoggerError("entry has current term mismatch", ["nodeType", "Leader", "currentTerm", currentTerm.toString(), "entryTermId", entryobj.termId.toString()])
+        return false;
     }
 }
 
-function startBlockFinalizationFollower(index: i64): void {
+function startBlockFinalizationFollower(index: i64): boolean {
     LoggerInfo("start block finalization", ["height", index.toString()])
     // get entry and apply it
     const entryobj = getLogEntryAggregate(index);
@@ -1074,7 +1107,7 @@ function startBlockFinalizationFollower(index: i64): void {
     return startBlockFinalizationInternal(entryobj, false);
 }
 
-function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: boolean): void {
+function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: boolean): boolean {
     const processReqStr = String.UTF8.decode(decodeBase64(entryobj.data.data).buffer);
     const processReq = JSON.parse<typestnd.RequestProcessProposal>(processReqStr);
     const finalizeReq = new typestnd.RequestFinalizeBlock(
@@ -1096,17 +1129,20 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
             LoggerInfo(`trying to rollback`, ["height", rollbackHeight.toString()])
             const err = consensuswrap.RollbackToVersion(rollbackHeight);
             if (err.length > 0) {
-                return revert(`consensus break: ${respWrap.error}; ${err}`);
+                revert(`consensus break: ${respWrap.error}; ${err}`);
+                return false;
             }
             // repeat FinalizeBlock
             return startBlockFinalizationInternal(entryobj, true);
         } else {
-            return revert(respWrap.error)
+            revert(respWrap.error)
+            return false;
         }
     }
     const finalizeResp = respWrap.data;
     if (finalizeResp == null) {
-        return revert("FinalizeBlock response is null");
+        revert("FinalizeBlock response is null");
+        return false;
     }
 
     const resultstr = JSON.stringify<typestnd.ResponseFinalizeBlock>(finalizeResp);
@@ -1226,10 +1262,12 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
             }
         } else {
             LoggerInfo("next consensus contract is started", ["new contract", newContract])
+            // consensus changed
+            return true;
         }
     }
+    return false;
 }
-
 
 export function isVotedLeader(
     params: ActionParam[],

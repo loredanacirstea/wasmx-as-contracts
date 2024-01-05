@@ -132,9 +132,9 @@ function executeGuard(
     const resp = processExternalCall(machine, guard, [], event);
     if (resp.success > 0) return false;
     // "1" = true ; "0" = false
-    if (resp.data == "0") return false;
+    if (resp.data == "1") return true;
 
-    return true;
+    return false;
 }
 
 function executeStateActions(
