@@ -864,7 +864,6 @@ export function eventual(config: MachineExternal, args: TimerArgs): void {
   if (!isEqual) {
     // we are in the wrong state, so the interval must be stopped
     LoggerDebug("eventual: we are in the wrong state", []);
-    // wasmx.stopInterval(intervalId);
     return;
   }
 
@@ -875,7 +874,6 @@ export function eventual(config: MachineExternal, args: TimerArgs): void {
   const afterTimers = newstateconfig.after;
   if (afterTimers == null || !afterTimers.has(args.delay)) {
     // we are in the wrong state, so the interval must be stopped
-    // wasmx.stopInterval(intervalId);
     return;
   }
   LoggerDebug("eventual: execute delayed action", ["delay", args.delay]);

@@ -97,10 +97,6 @@ export function wasmx(storageMap, env, logType = LOG.error) {
         console.log('-host-startTimeout');
     }
 
-    function stopInterval() {
-        console.log('-host-stopInterval');
-    }
-
     function sha256(buf) {
         if (logType > 0) {
             console.log('-host-sha256', [...new Uint8Array(buf)]);
@@ -158,7 +154,6 @@ export function wasmx(storageMap, env, logType = LOG.error) {
         log,
         grpcRequest,
         startTimeout,
-        stopInterval,
         sha256,
         setReturnData,
         getReturnData,

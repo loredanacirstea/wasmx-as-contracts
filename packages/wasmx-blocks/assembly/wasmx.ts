@@ -19,7 +19,6 @@ export declare function call(data: ArrayBuffer): ArrayBuffer
 
 export declare function grpcRequest(data: ArrayBuffer): ArrayBuffer
 export declare function startTimeout(time: i64, args: ArrayBuffer): void
-export declare function stopInterval(intervalId: i32): void
 
 export declare function sha256(value: ArrayBuffer): ArrayBuffer
 
