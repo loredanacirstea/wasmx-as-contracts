@@ -113,10 +113,10 @@ async function instantiate(module, imports = {}) {
         value = __liftBuffer(value >>> 0);
         return __lowerBuffer(__module0.sha256(value)) || __notnull();
       },
-      setReturnData(value) {
-        // assembly/wasmx/setReturnData(~lib/arraybuffer/ArrayBuffer) => void
+      setFinishData(value) {
+        // assembly/wasmx/setFinishData(~lib/arraybuffer/ArrayBuffer) => void
         value = __liftBuffer(value >>> 0);
-        __module0.setReturnData(value);
+        __module0.setFinishData(value);
       },
       ed25519Sign(privKey, msgbz) {
         // assembly/wasmx/ed25519Sign(~lib/arraybuffer/ArrayBuffer, ~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer
@@ -133,9 +133,9 @@ async function instantiate(module, imports = {}) {
         args = __liftBuffer(args >>> 0);
         __module0.startTimeout(time, args);
       },
-      getReturnData() {
-        // assembly/wasmx/getReturnData() => ~lib/arraybuffer/ArrayBuffer
-        return __lowerBuffer(__module0.getReturnData()) || __notnull();
+      getFinishData() {
+        // assembly/wasmx/getFinishData() => ~lib/arraybuffer/ArrayBuffer
+        return __lowerBuffer(__module0.getFinishData()) || __notnull();
       },
       addr_humanize(value) {
         // assembly/wasmx/addr_humanize(~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer

@@ -251,7 +251,7 @@ export function updateNodeAndReturn(
         setMatchIndexArray(matchIndexes);
         const validators = encodeBase64(Uint8Array.wrap(String.UTF8.encode(fsm.getContextValue(VALIDATORS_KEY))))
         const response = new UpdateNodeResponse(ips, entryIndex, validators);
-        wasmx.setReturnData(String.UTF8.encode(JSON.stringify<UpdateNodeResponse>(response)));
+        wasmx.setFinishData(String.UTF8.encode(JSON.stringify<UpdateNodeResponse>(response)));
     } else {
         // NODE_UPDATE_UPDATE
         // just update the ip
@@ -544,7 +544,7 @@ function voteInternal(termId: i32, candidateId: i32, lastLogIndex: i64, lastLogT
             }
         }
     }
-    wasmx.setReturnData(String.UTF8.encode(JSON.stringify<VoteResponse>(response)));
+    wasmx.setFinishData(String.UTF8.encode(JSON.stringify<VoteResponse>(response)));
 }
 
 export function setupNode(
@@ -735,7 +735,7 @@ export function sendHeartbeatResponse(
     // TODO when not successful
     const response = new AppendEntryResponse(termId, true);
     LoggerDebug("send heartbeat response", ["termId", termId.toString(), "success", "true"])
-    wasmx.setReturnData(String.UTF8.encode(JSON.stringify<AppendEntryResponse>(response)));
+    wasmx.setFinishData(String.UTF8.encode(JSON.stringify<AppendEntryResponse>(response)));
 }
 
 export function sendAppendEntries(
@@ -866,7 +866,7 @@ export function sendNewTransactionResponse(
         entry.leaderId,
         entry.index,
     );
-    wasmx.setReturnData(String.UTF8.encode(JSON.stringify<TransactionResponse>(response)));
+    wasmx.setFinishData(String.UTF8.encode(JSON.stringify<TransactionResponse>(response)));
 }
 
 export function addToMempool(
@@ -894,7 +894,7 @@ export function proposeBlock(
     // if last block is not commited, we return; Cosmos SDK can only commit one block at a time.
     const height = getLastLogIndex();
     const lastCommitIndex = getCommitIndex();
-    if (height < lastCommitIndex) {
+    if (lastCommitIndex < height) {
         LoggerInfo("cannot propose new block, last block not commited", ["height", height.toString(), "lastCommitIndex", lastCommitIndex.toString()])
         return;
     }

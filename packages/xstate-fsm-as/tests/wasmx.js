@@ -104,16 +104,16 @@ export function wasmx(storageMap, env, logType = LOG.error) {
         return new Uint8Array(0);
     }
 
-    function setReturnData(buf) {
+    function setFinishData(buf) {
         if (logType > 0) {
-            console.log('-host-setReturnData', [...new Uint8Array(buf)]);
+            console.log('-host-setFinishData', [...new Uint8Array(buf)]);
         }
         env.ReturnData = buf;
     }
 
-    function getReturnData() {
+    function getFinishData() {
         if (logType > 0) {
-            console.log('-host-getReturnData');
+            console.log('-host-getFinishData');
         }
         return env.ReturnData || new Uint8Array(0);
     }
@@ -188,8 +188,8 @@ export function wasmx(storageMap, env, logType = LOG.error) {
         grpcRequest,
         startTimeout,
         sha256,
-        setReturnData,
-        getReturnData,
+        setFinishData,
+        getFinishData,
         MerkleHash,
         ed25519Verify,
         ed25519Sign,

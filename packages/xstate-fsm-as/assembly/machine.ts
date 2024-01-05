@@ -299,6 +299,9 @@ function executeStateAction(
     if (resp.success > 0) {
       return revert("action not recognized: " + actionType);
     }
+    if (resp.data.length > 0) {
+      wasmx.setFinishData(String.UTF8.encode(resp.data));
+    }
 }
 
 function noaction(

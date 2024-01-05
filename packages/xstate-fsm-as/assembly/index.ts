@@ -24,7 +24,7 @@ export function wasmx_consensus_json_1(): void {}
 export function instantiate(): void {}
 
 export function main(): u8[] {
-    let result: ArrayBuffer;
+    let result: ArrayBuffer = new ArrayBuffer(0);
     const icalld = wasmxwrap.getCallDataWrap();
     const calldata = icalld.calldata;
     const config = icalld.config;
@@ -33,7 +33,7 @@ export function main(): u8[] {
       const _event = new EventObject(event.type, event.params);
       runInternal(config, _event);
       // we may have set the return data during execution
-      result = wasmx.getReturnData();
+      result = wasmx.getFinishData();
     } else if (calldata.instantiate !== null) {
       const calld = calldata.instantiate!;
       _instantiate(config, calld.initialState, calld.context);

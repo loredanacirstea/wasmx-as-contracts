@@ -8,7 +8,7 @@ export function wasmx_env_2(): void {}
 export function instantiate(): void {}
 
 export function main(): void {
-  let result: ArrayBuffer;
+  let result: ArrayBuffer = new ArrayBuffer(0);
   const calld = getCallDataWrap();
   if (calld.method === "isVotedLeader") {
     result = actions.wrapGuard(actions.isVotedLeader(calld.params, calld.event));
@@ -57,5 +57,7 @@ export function main(): void {
     wasmx.revert(String.UTF8.encode("invalid function call data"));
     throw new Error("invalid function call data");
   }
-  wasmx.finish(new ArrayBuffer(0));
+  // we may have set the return data during execution
+  result = wasmx.getFinishData();
+  wasmx.finish(result);
 }
