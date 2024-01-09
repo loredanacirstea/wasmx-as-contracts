@@ -6,8 +6,8 @@ import {
   MachineExternal,
   setup,
 } from './machine';
-import * as wasmx from './wasmx';
-import * as wasmxwrap from './wasmx_wrap';
+import * as wasmx from 'wasmx-env/assembly/wasmx';
+import { getCallDataWrap, getInterpreterCalldata } from './calldata';
 import {arrayBufferToU8Array, parseUint8ArrayToI32BigEndian} from './utils';
 import {
   EventObject,
@@ -25,7 +25,7 @@ export function instantiate(): void {}
 
 export function main(): u8[] {
     let result: ArrayBuffer = new ArrayBuffer(0);
-    const icalld = wasmxwrap.getCallDataWrap();
+    const icalld = getCallDataWrap();
     const calldata = icalld.calldata;
     const config = icalld.config;
     if (calldata.run !== null) {
@@ -55,7 +55,7 @@ export function main(): u8[] {
 }
 
 export function eventual(): void {
-  const icalld = wasmxwrap.getInterpreterCalldata();
+  const icalld = getInterpreterCalldata();
   const configBz = icalld[0];
   const calld = icalld[1];
   const config = JSON.parse<MachineExternal>(String.UTF8.decode(configBz));

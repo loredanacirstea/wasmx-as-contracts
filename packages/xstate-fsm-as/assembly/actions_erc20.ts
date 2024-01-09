@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
-import * as wasmxwrap from './wasmx_wrap';
-import * as wasmx from './wasmx';
+import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
+import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as storage from './storage';
 
 import {

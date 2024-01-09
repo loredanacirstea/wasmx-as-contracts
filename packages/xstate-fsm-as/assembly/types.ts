@@ -1,8 +1,5 @@
 import { JSON } from "json-as/assembly";
-
-export type HexString = string;
-export type Base64String = string;
-export type Bech32String = string;
+import { Base64String, Bech32String } from "wasmx-env/assembly/types";
 
 // @ts-ignore
 @serializable
@@ -548,34 +545,6 @@ export class TimerArgs {
     this.delay = delay;
     this.state = state;
     this.intervalId = intervalId;
-  }
-}
-
-// @ts-ignore
-@serializable
-export class CallRequest {
-  to: string;
-  calldata: string;
-  value: i64;
-  gasLimit: i64;
-  isQuery: boolean;
-  constructor(to: string, calldata: string, value: i64, gasLimit: i64, isQuery: boolean) {
-    this.to = to;
-    this.calldata = calldata;
-    this.value = value;
-    this.gasLimit = gasLimit;
-    this.isQuery = isQuery;
-  }
-}
-
-// @ts-ignore
-@serializable
-export class CallResponse {
-  success: i32;
-  data: string;
-  constructor(success: i32, data: string) {
-    this.success = success;
-    this.data = data;
   }
 }
 

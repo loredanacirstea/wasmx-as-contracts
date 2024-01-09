@@ -1,7 +1,8 @@
 import { JSON } from "json-as/assembly";
-import * as wasmxwrap from './wasmx_wrap';
-import * as wasmx from './wasmx';
-import { LoggerDebug } from "./wasmx_wrap";
+import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
+import * as wasmx from 'wasmx-env/assembly/wasmx';
+import { LoggerDebug } from "wasmx-env/assembly/wasmx_wrap";
+import { CallRequest, CallResponse, Base64String, Bech32String } from "wasmx-env/assembly/types";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import {
   EventObject,
@@ -18,13 +19,9 @@ import {
   StateInfoClassExternal,
   RaiseActionType,
   TimerArgs,
-  CallRequest,
   AssignAction,
   Transition,
-  Base64String,
-  CallResponse,
   ExternalActionCallData,
-  Bech32String,
 } from './types';
 import { hexToUint8Array, revert, getAddressHex, parseInt32, parseInt64 } from "./utils";
 import * as storage from './storage';

@@ -1,15 +1,13 @@
 import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
-import * as wasmx from './wasmx';
+import * as wasmx from 'wasmx-env/assembly/wasmx';
 import {
     EventObject,
-    CallRequest,
-    CallResponse,
     ContextParam,
 } from './types';
 import { hexToU8, uint8ArrayToHex, hexToUint8Array, parseUint8ArrayToI32BigEndian } from "./utils";
 import { MachineExternal } from './machine';
-import { Base64String } from "./types";
+import { Base64String, CallRequest, CallResponse } from "wasmx-env/assembly/types";
 
 const MAX_LOGGED = 2000
 
