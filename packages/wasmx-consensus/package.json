@@ -1,5 +1,5 @@
 {
-  "name": "wasmx-raft",
+  "name": "wasmx-consensus",
   "version": "0.0.1",
   "description": "",
   "main": "index.js",
@@ -26,8 +26,6 @@
     "as-base64": "^0.2.0",
     "json-as": "file:../../../as-json",
     "visitor-as": "^0.11.4",
-    "wasmx-blocks": "file:../wasmx-blocks",
-    "wasmx-env": "file:../wasmx-env",
-    "wasmx-consensus": "file:../wasmx-consensus"
+    "wasmx-env": "file:../wasmx-env"
   }
 }

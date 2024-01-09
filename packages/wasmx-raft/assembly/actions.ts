@@ -4,22 +4,22 @@ import * as wblocks from "wasmx-blocks/assembly/types";
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
 import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import * as consensuswrap from './consensus_wrap';
-import * as fsm from './fsm';
-import * as blocks from './blocks';
 import { LoggerDebug, LoggerInfo, LoggerError } from "wasmx-env/assembly/wasmx_wrap";
 import {
   Base64String,
   CallRequest,
   CallResponse,
 } from 'wasmx-env/assembly/types';
+import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
+import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
+import { CurrentState, Mempool } from "./types_blockchain";
+import * as fsm from './fsm';
 import {
     EventObject,
     ActionParam,
   } from './fsm';
 import { hexToUint8Array, revert, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, base64ToHex, hex64ToBase64 } from "./utils";
 import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, AppendEntryResponse, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse } from "./types_raft";
-import * as typestnd from "./types_tendermint";
 
 // Docs: https://raft.github.io/raft.pdf
 
@@ -608,7 +608,7 @@ function initChain(req: typestnd.InitChainSetup): void {
     // TODO what are the correct empty valuew?
     const emptyBlockId = new typestnd.BlockID("", new typestnd.PartSetHeader(0, ""))
     const last_commit_hash = ""
-    const currentState = new typestnd.CurrentState(
+    const currentState = new CurrentState(
         req.chain_id,
         req.version,
         req.app_hash,
@@ -622,7 +622,7 @@ function initChain(req: typestnd.InitChainSetup): void {
     );
     setValidators(req.validators);
 
-    const valuestr = JSON.stringify<typestnd.CurrentState>(currentState);
+    const valuestr = JSON.stringify<CurrentState>(currentState);
     LoggerDebug("set current state", ["state", valuestr])
     setCurrentState(currentState);
     setConsensusParams(req.consensus_params);
@@ -1533,14 +1533,14 @@ function setVoteIndexArray(arr: Array<i32>): void {
     fsm.setContextValue(VOTE_INDEX_ARRAY, JSON.stringify<Array<i32>>(arr));
 }
 
-export function getMempool(): typestnd.Mempool {
+export function getMempool(): Mempool {
     const mempool = fsm.getContextValue(MEMPOOL_KEY);
-    if (mempool === "") return  new typestnd.Mempool(new Array<string>(0), new Array<i32>(0));
-    return JSON.parse<typestnd.Mempool>(mempool);
+    if (mempool === "") return  new Mempool(new Array<string>(0), new Array<i32>(0));
+    return JSON.parse<Mempool>(mempool);
 }
 
-export function setMempool(mempool: typestnd.Mempool): void {
-    fsm.setContextValue(MEMPOOL_KEY, JSON.stringify<typestnd.Mempool>(mempool));
+export function setMempool(mempool: Mempool): void {
+    fsm.setContextValue(MEMPOOL_KEY, JSON.stringify<Mempool>(mempool));
 }
 
 export function getMaxTxBytes(): i64 {
@@ -1648,7 +1648,7 @@ export function setup(
     }
     data = String.UTF8.decode(decodeBase64(resp.data).buffer);
     LoggerInfo("setting up state", ["data", data])
-    const state = JSON.parse<typestnd.CurrentState>(data)
+    const state = JSON.parse<CurrentState>(data)
     setCurrentState(state);
 
     calldata = `{"getContextValue":{"key":"mempool"}}`
@@ -1659,7 +1659,7 @@ export function setup(
     }
     data = String.UTF8.decode(decodeBase64(resp.data).buffer);
     LoggerInfo("setting up mempool", ["data", data])
-    const mempool = JSON.parse<typestnd.Mempool>(data)
+    const mempool = JSON.parse<Mempool>(data)
     setMempool(mempool);
 
     calldata = `{"getContextValue":{"key":"currentNodeId"}}`
@@ -1694,17 +1694,17 @@ export function setup(
     initializeIndexArrays(nodeIps.length);
 }
 
-export function getCurrentState(): typestnd.CurrentState {
+export function getCurrentState(): CurrentState {
     const value = fsm.getContextValue(STATE_KEY);
     // this must be set before we try to read it
     if (value === "") {
         revert("chain init setup was not ran")
     }
-    return JSON.parse<typestnd.CurrentState>(value);
+    return JSON.parse<CurrentState>(value);
 }
 
-export function setCurrentState(value: typestnd.CurrentState): void {
-    fsm.setContextValue(STATE_KEY, JSON.stringify<typestnd.CurrentState>(value));
+export function setCurrentState(value: CurrentState): void {
+    fsm.setContextValue(STATE_KEY, JSON.stringify<CurrentState>(value));
 }
 
 export function getElectionTimeout(): i64 {
@@ -1830,7 +1830,7 @@ function getLastBlockIndex(): i64 {
     if (resp.success > 0) {
         revert(`could not get last block index`);
     }
-    const res = JSON.parse<blocks.LastBlockIndexResult>(resp.data);
+    const res = JSON.parse<wblockscalld.LastBlockIndexResult>(resp.data);
     return res.index;
 }
 
