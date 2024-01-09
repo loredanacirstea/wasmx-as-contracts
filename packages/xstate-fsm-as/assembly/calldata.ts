@@ -1,11 +1,11 @@
 import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import { parseUint8ArrayToI32BigEndian } from 'wasmx-utils/assembly/utils';
 import {
     EventObject,
     ContextParam,
 } from './types';
-import { hexToU8, uint8ArrayToHex, hexToUint8Array, parseUint8ArrayToI32BigEndian } from "./utils";
 import { MachineExternal } from './machine';
 import { Base64String, CallRequest, CallResponse } from "wasmx-env/assembly/types";
 

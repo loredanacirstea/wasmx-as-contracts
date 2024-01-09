@@ -3,7 +3,8 @@ import * as types from './types';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
 import {Base64String } from 'wasmx-env/assembly/types';
-import { revert, parseInt64 } from "./utils";
+import { revert } from "wasmx-env/assembly/wasmx_wrap";
+import { parseInt64 } from "wasmx-utils/assembly/utils";
 
 const BLOCK_LAST_INDEX = "block_last_index";
 const BLOCK_INDEX_KEY = "block_";

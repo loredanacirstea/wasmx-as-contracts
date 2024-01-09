@@ -13,6 +13,13 @@ import {
     LoggerLog,
 } from './types';
 
+export function revert(message: string): void {
+    // console.debug(`Error: ${message}`);
+    LoggerError("revert", ["message", message])
+    wasmx.revert(String.UTF8.encode(message));
+    throw new Error(message);
+}
+
 export function sstore(key: string, value: string): void {
     wasmx.storageStore(String.UTF8.encode(key), String.UTF8.encode(value));
 }

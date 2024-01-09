@@ -4,7 +4,7 @@ import * as wblocks from "wasmx-blocks/assembly/types";
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
 import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { LoggerDebug, LoggerInfo, LoggerError } from "wasmx-env/assembly/wasmx_wrap";
+import { LoggerDebug, LoggerInfo, LoggerError, revert } from "wasmx-env/assembly/wasmx_wrap";
 import {
   Base64String,
   CallRequest,
@@ -18,7 +18,8 @@ import {
     EventObject,
     ActionParam,
   } from './fsm';
-import { hexToUint8Array, revert, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, base64ToHex, hex64ToBase64 } from "./utils";
+import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE } from "wasmx-utils/assembly/utils";
+import { base64ToHex, hex64ToBase64 } from './utils';
 import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, AppendEntryResponse, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse } from "./types_raft";
 
 // Docs: https://raft.github.io/raft.pdf

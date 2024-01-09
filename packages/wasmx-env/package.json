@@ -10,7 +10,7 @@
     "asbuild": "npm run asbuild:debug && npm run asbuild:release",
     "start": "npx serve ."
   },
-  "author": "",
+  "author": "Loredana Cirstea",
   "license": "UNLICENSED",
   "devDependencies": {
     "assemblyscript": "^0.27.22"

@@ -8,7 +8,7 @@ import {
 } from './machine';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap, getInterpreterCalldata } from './calldata';
-import {arrayBufferToU8Array, parseUint8ArrayToI32BigEndian} from './utils';
+import { arrayBufferToU8Array } from 'wasmx-utils/assembly/utils';
 import {
   EventObject,
   TimerArgs,

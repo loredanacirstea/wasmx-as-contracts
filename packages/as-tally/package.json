@@ -22,7 +22,7 @@
     "assemblyscript"
   ],
   "author": "Loredana Cirstea",
-  "license": "GPL-3.0-or-later",
+  "license": "UNLICENSED",
   "devDependencies": {
     "assemblyscript": "^0.27.5"
   },

@@ -10,7 +10,7 @@
     "asbuild": "npm run asbuild:debug && npm run asbuild:release",
     "start": "npx serve ."
   },
-  "author": "",
+  "author": "Loredana Cirstea",
   "license": "UNLICENSED",
   "devDependencies": {
     "assemblyscript": "^0.27.15"
@@ -27,6 +27,7 @@
     "json-as": "file:../../../as-json",
     "visitor-as": "^0.11.4",
     "wasmx-blocks": "file:../wasmx-blocks",
-    "wasmx-env": "file:../wasmx-env"
+    "wasmx-env": "file:../wasmx-env",
+    "wasmx-utils": "file:../wasmx-utils"
   }
 }

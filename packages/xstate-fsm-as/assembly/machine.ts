@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { LoggerDebug } from "wasmx-env/assembly/wasmx_wrap";
+import { LoggerDebug, revert } from "wasmx-env/assembly/wasmx_wrap";
 import { CallRequest, CallResponse, Base64String, Bech32String } from "wasmx-env/assembly/types";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import {
@@ -23,7 +23,7 @@ import {
   Transition,
   ExternalActionCallData,
 } from './types';
-import { hexToUint8Array, revert, getAddressHex, parseInt32, parseInt64 } from "./utils";
+import { getAddressHex, parseInt32, parseInt64 } from 'wasmx-utils/assembly/utils';
 import * as storage from './storage';
 import * as actionsCounter from "./actions_counter";
 import * as actionsErc20 from "./actions_erc20";

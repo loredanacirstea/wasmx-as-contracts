@@ -10,8 +10,8 @@
     "asbuild": "npm run asbuild:debug && npm run asbuild:release",
     "start": "npx serve ."
   },
-  "author": "",
-  "license": "GPL-3.0-or-later",
+  "author": "Loredana Cirstea",
+  "license": "UNLICENSED",
   "type": "module",
   "exports": {
     ".": {
