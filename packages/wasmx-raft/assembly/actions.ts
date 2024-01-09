@@ -13,11 +13,11 @@ import {
 import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import { CurrentState, Mempool } from "./types_blockchain";
-import * as fsm from './fsm';
+import * as fsm from 'xstate-fsm-as/assembly/storage';
 import {
     EventObject,
     ActionParam,
-  } from './fsm';
+} from 'xstate-fsm-as/assembly/types';
 import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE } from "wasmx-utils/assembly/utils";
 import { base64ToHex, hex64ToBase64 } from './utils';
 import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, AppendEntryResponse, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse } from "./types_raft";

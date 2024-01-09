@@ -27,13 +27,15 @@ import { getAddressHex, parseInt32, parseInt64 } from 'wasmx-utils/assembly/util
 import * as storage from './storage';
 import * as actionsCounter from "./actions_counter";
 import * as actionsErc20 from "./actions_erc20";
-
-const REVERT_IF_UNEXPECTED_STATE = false;
-
-const INIT_EVENT = new EventObject("initialize", []);
-const ASSIGN_ACTION: AssignAction = 'xstate.assign';
-const WILDCARD = '*';
-const INTERVAL_ID_KEY = "intervalIdKey";
+import { INIT_EVENT, ASSIGN_ACTION, REVERT_IF_UNEXPECTED_STATE, WILDCARD } from './config';
+import {
+  getLastIntervalId,
+  setLastIntervalId,
+  registerIntervalId,
+  cancelActiveIntervals,
+  isRegisteredIntervalActive,
+  removeInterval,
+} from './timer';
 
 export function instantiate(
   config: MachineExternal,
@@ -913,83 +915,6 @@ export function setup(config: MachineExternal, contractAddress: string): void {
   if (resp.success > 0) {
     return revert("could not execute setup");
   }
-}
-
-function getLastIntervalId(): i64 {
-  const value = storage.getContextValue(INTERVAL_ID_KEY);
-  if (value === "") return i64(0);
-  return parseInt32(value);
-}
-
-function setLastIntervalId(value: i64): void {
-  storage.setContextValue(INTERVAL_ID_KEY, value.toString());
-}
-
-function registerIntervalIdKey(state: string, delay: string, intervalId: i64): string {
-  return `${INTERVAL_ID_KEY}_${state}_${delay}_${intervalId.toString()}`
-}
-
-function registerLastIntervalIdKey(state: string, delay: string): string {
-  return `${INTERVAL_ID_KEY}_${state}_${delay}`
-}
-
-function registerIntervalId(state: string, delay: string, intervalId: i64): void {
-  storage.setContextValue(registerLastIntervalIdKey(state, delay), intervalId.toString());
-  storage.setContextValue(registerIntervalIdKey(state, delay, intervalId), "1");
-}
-
-function getLastIntervalIdForState(state: string, delay: string): i64 {
-  const lastIntervalId = storage.getContextValue(registerLastIntervalIdKey(state, delay))
-  if (lastIntervalId == "") {
-    return 0;
-  }
-  return parseInt64(lastIntervalId);
-}
-
-function isRegisteredIntervalActive(state: string, delay: string, intervalId: i64): boolean {
-  const value = storage.getContextValue(registerIntervalIdKey(state, delay, intervalId));
-  if (value == "1") return true;
-  return false;
-}
-
-function cancelIntervals(state: string, delay: string): void {
-  const lastIntervalId = getLastIntervalIdForState(state, delay)
-  tryCancelIntervals(state, delay, lastIntervalId);
-}
-
-function tryCancelIntervals(state: string, delay: string, intervalId: i64): void {
-  LoggerDebug("cancel interval: ", ["state", state, "delay", delay, "intervalId", intervalId.toString()])
-  const active = isRegisteredIntervalActive(state, delay, intervalId);
-  // remove the interval data
-  removeInterval(state, delay, intervalId);
-  if (active && intervalId > 0) {
-    tryCancelIntervals(state, delay, intervalId - 1);
-  }
-}
-
-function removeInterval(state: string, delay: string, intervalId: i64): void {
-  return storage.setContextValue(registerIntervalIdKey(state, delay, intervalId), "");
-}
-
-function cancelActiveIntervals(
-  state: State,
-  params: ActionParam[],
-  event: EventObject,
-): void {
-  if (params.length == 0) {
-    params = event.params;
-  }
-  let delay = "";
-  for (let i = 0; i < params.length; i++) {
-    if (params[i].key === "after") {
-      delay = params[i].value;
-      break;
-    }
-  }
-  if (delay === "") {
-    revert("no delay found");
-  }
-  cancelIntervals(state.value, delay);
 }
 
 // we dont need this; eventual removes the interval data before guard is ran

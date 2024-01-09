@@ -11,6 +11,7 @@ import {
   machineConfigSemaphore,
   RAFTLogReplication,
   RAFT_Full,
+  Tendermint_1,
 } from './data.js';
 
 let currentState, value;
@@ -323,6 +324,14 @@ async function runTests() {
     currentState = await runFn("getCurrentState", machine, {});
     console.log("!!!!!currentState", decodeFromUtf8Array(currentState))
     assert.strictEqual(decodeFromUtf8Array(currentState), "#RAFT-FULL-1.initialized.Leader.active");
+
+    // Tendermint_1
+    machineConfig = parseMachine(Tendermint_1);
+    console.log("==Tendermint_1==");
+    console.log(JSON.stringify(machineConfig));
+    // Create the machine
+    machine = {id: machineConfig.id, states: machineConfig.states};
+    await runFn("instantiate", machine, {initialState: machineConfig.initial, context: machineConfig.context})
 }
 
 runTests();
