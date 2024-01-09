@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
-import { Base64String } from "./types";
+import { Base64String } from "wasmx-env/assembly/types";
 
 // @ts-ignore
 @serializable

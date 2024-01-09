@@ -1,6 +1,6 @@
-import * as wasmx from './wasmx';
-import { LoggerError } from "./wasmx_wrap";
-import { Base64String, HexString } from './types';
+import * as wasmx from 'wasmx-env/assembly/wasmx';
+import { LoggerError } from "wasmx-env/assembly/wasmx_wrap";
+import { Base64String, HexString } from 'wasmx-env/assembly/types';
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 
 export function arrayBufferToU8Array(buffer: ArrayBuffer): u8[] {

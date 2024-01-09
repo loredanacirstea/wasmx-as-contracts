@@ -2,24 +2,16 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmx from './wasmx';
 import {
+    MAX_LOGGED,
     CallRequest,
     CallResponse,
     Base64String,
+    WasmxLog,
+    GrpcResponse,
+    MerkleSlices,
+    StartTimeoutRequest,
+    LoggerLog,
 } from './types';
-
-const MAX_LOGGED = 2000
-
-// @ts-ignore
-@serializable
-export class WasmxLog {
-    type: string = 'fsmvm';
-    data: Uint8Array;
-    topics: Array<Uint8Array>;
-    constructor(data: Uint8Array, topics: Array<Uint8Array>) {
-        this.data = data;
-        this.topics = topics;
-    }
-}
 
 export function sstore(key: string, value: string): void {
     wasmx.storageStore(String.UTF8.encode(key), String.UTF8.encode(value));
@@ -43,17 +35,6 @@ export function log_fsm(
     const logs = new WasmxLog(data, topics)
     const logstr = JSON.stringify<WasmxLog>(logs);
     wasmx.log(String.UTF8.encode(logstr));
-}
-
-// @ts-ignore
-@serializable
-class GrpcResponse {
-    data: string // base64
-    error: string
-    constructor(data: string, error: string) {
-        this.data = data;
-        this.error = error;
-    }
 }
 
 export function grpcRequest(ip: string, contract: Uint8Array, data: string): GrpcResponse {
@@ -86,16 +67,6 @@ export function sha256(base64Data: string): string {
     return encodeBase64(Uint8Array.wrap(res));
 }
 
-
-// @ts-ignore
-@serializable
-class MerkleSlices {
-	slices: string[] // base64 encoded
-    constructor(slices: string[]) {
-        this.slices = slices;
-    }
-}
-
 // base64 encoded
 export function MerkleHash(slices: string[]): string {
     const data = new MerkleSlices(slices);
@@ -122,33 +93,9 @@ export function ed25519Verify(pubKeyStr: Base64String, signatureStr: Base64Strin
     return false;
 }
 
-// @ts-ignore
-@serializable
-class StartTimeoutRequest {
-	contract: string
-	delay: i64
-	args: Base64String
-    constructor(contract: string, delay: i64, args: Base64String) {
-        this.contract = contract
-        this.delay = delay
-        this.args = args
-    }
-}
-
 export function startTimeout(contract: string, delayms: i64, args: string): void {
     const req = new StartTimeoutRequest(contract, delayms, encodeBase64(Uint8Array.wrap(String.UTF8.encode(args))));
     wasmx.startTimeout(String.UTF8.encode(JSON.stringify<StartTimeoutRequest>(req)));
-}
-
-// @ts-ignore
-@serializable
-class LoggerLog {
-	msg: string
-	parts: string[]
-    constructor(msg: string, parts: string[]) {
-        this.msg = msg;
-        this.parts = parts;
-    }
 }
 
 export function LoggerInfo(msg: string, parts: string[]): void {

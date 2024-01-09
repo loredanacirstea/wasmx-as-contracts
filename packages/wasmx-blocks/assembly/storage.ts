@@ -1,7 +1,8 @@
 import { JSON } from "json-as/assembly";
 import * as types from './types';
-import * as wasmx from './wasmx';
-import * as wasmxwrap from './wasmx_wrap';
+import * as wasmx from 'wasmx-env/assembly/wasmx';
+import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
+import {Base64String } from 'wasmx-env/assembly/types';
 import { revert, parseInt64 } from "./utils";
 
 const BLOCK_LAST_INDEX = "block_last_index";
@@ -53,7 +54,7 @@ export function getBlockByIndex(index: i64): string {
     return wasmxwrap.sload(key);
 }
 
-export function getBlockByHash(hash: types.Base64String): string {
+export function getBlockByHash(hash: Base64String): string {
     const key = getBlockHashKey(hash);
     let value = wasmxwrap.sload(key);
     let index: i64 = 0;
@@ -87,13 +88,13 @@ export function setBlock(value: string, hash: string, txhashes: string[]): void 
     setLastBlockIndex(index);
 }
 
-export function setIndexedTransactionByHash(hash: types.Base64String, data: types.IndexedTransaction): void {
+export function setIndexedTransactionByHash(hash: Base64String, data: types.IndexedTransaction): void {
     const datastr = JSON.stringify<types.IndexedTransaction>(data);
     wasmxwrap.sstore(keyIndexedTransaction(hash), datastr);
     wasmxwrap.LoggerInfo("indexing transaction", ["height", data.height.toString(), "index", data.index.toString(), "hash", hash])
 }
 
-export function getIndexedTransactionByHash(hash: types.Base64String): string {
+export function getIndexedTransactionByHash(hash: Base64String): string {
     return wasmxwrap.sload(keyIndexedTransaction(hash));
 }
 

@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64, decode } from "as-base64/assembly";
 import * as consensus from './consensus';
-import * as wasmxwrap from './wasmx_wrap';
+import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
 import {
     ResponseWrap,
     RequestInitChain,

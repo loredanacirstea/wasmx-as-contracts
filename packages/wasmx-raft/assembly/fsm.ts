@@ -1,6 +1,6 @@
 
 import { JSON } from "json-as/assembly";
-import * as wasmx from './wasmx';
+import * as wasmx from 'wasmx-env/assembly/wasmx';
 
 // @ts-ignore
 @serializable

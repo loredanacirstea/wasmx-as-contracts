@@ -1,9 +1,5 @@
 import { JSON } from "json-as/assembly";
-
-export type HexString = string;
-export type Base64String = string;
-export type Bech32String = string;
-
+import {Base64String, Bech32String } from 'wasmx-env/assembly/types';
 
 // @ts-ignore
 @serializable

@@ -1,7 +1,8 @@
 import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64, encode } from "as-base64/assembly";
-import { Base64String, IndexedTransaction } from "./types";
-import * as wasmx from './wasmx';
+import { IndexedTransaction } from "./types";
+import { Base64String } from 'wasmx-env/assembly/types';
+import * as wasmx from 'wasmx-env/assembly/wasmx';
 import {
     setBlock,
     setIndexedData,

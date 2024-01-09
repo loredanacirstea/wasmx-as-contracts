@@ -2,17 +2,17 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64, encode } from "as-base64/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
-import * as wasmxwrap from './wasmx_wrap';
-import * as wasmx from './wasmx';
+import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
+import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as consensuswrap from './consensus_wrap';
 import * as fsm from './fsm';
 import * as blocks from './blocks';
-import { LoggerDebug, LoggerInfo, LoggerError } from "./wasmx_wrap";
+import { LoggerDebug, LoggerInfo, LoggerError } from "wasmx-env/assembly/wasmx_wrap";
 import {
   Base64String,
   CallRequest,
   CallResponse,
-} from './types';
+} from 'wasmx-env/assembly/types';
 import {
     EventObject,
     ActionParam,
