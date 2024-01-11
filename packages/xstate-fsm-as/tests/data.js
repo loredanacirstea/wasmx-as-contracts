@@ -843,98 +843,211 @@ export const RAFT_Full =  {
   }
 }
 
-var TENDERMINT_1 = {
-  id: "Tendermint_1",
-  initial: "uninitialized",
-  states: {
-    uninitialized: {
-      on: {
-        initialize: {
-          target: "initialized",
-        },
-      },
+export var TENDERMINT_1 = {
+  "context": {
+    "log": "",
+    "nodeIPs": "[]",
+    "votedFor": "0",
+    "nextIndex": "[]",
+    "currentTerm": "0",
+    "max_tx_bytes": "65536",
+    "currentNodeId": "0",
+    "max_block_gas": "20000000",
+    "roundTimeout": 10000
+  },
+  "id": "Tendermint_0",
+  "initial": "uninitialized",
+  "states": {
+    "uninitialized": {
+      "on": {
+        "initialize": {
+          "target": "initialized"
+        }
+      }
     },
-    initialized: {
-      initial: "unstarted",
-      states: {
-        unstarted: {
-          on: {
-            next: {
-              target: "Validator",
+    "initialized": {
+      "initial": "unstarted",
+      "states": {
+        "unstarted": {
+          "on": {
+            "setupNode": {
+              "target": "unstarted",
+              "actions": {
+                "type": "setupNode"
+              }
             },
-          },
+            "start": {
+              "target": "prestart"
+            },
+            "setup": {
+              "target": "unstarted",
+              "actions": {
+                "type": "setup"
+              }
+            }
+          }
         },
-        Validator: {
-          always: {
-            target: "ValidatorProposer",
-            guard: "isNextProposer",
-          },
-          on: {
-            newBlockPrevote: {
-              target: "Validator",
-              actions: {
-                type: "sendPrevoteResponse",
-              },
-            },
-            newBlockPrecommit: {
-              target: "Validator",
-              actions: {
-                type: "sendPrecommitResponse",
-              },
-            },
-          },
+        "prestart": {
+          "after": {
+            "roundTimeout": {
+              "target": "#Tendermint_0.initialized.Validator",
+              "actions": [],
+              "meta": {}
+            }
+          }
         },
-        ValidatorProposer: {
-          entry: {
-            type: "proposeBlock",
+        "Validator": {
+          "entry": [
+            {
+              "type": "registeredCheck"
+            },
+            {
+              "type": "cancelActiveIntervals",
+              "params": {
+                "after": "roundTimeout"
+              }
+            },
+            {
+              "type": "incrementCurrentTerm"
+            },
+            {
+              "type": "initializeNextIndex"
+            }
+          ],
+          "after": {
+            "roundTimeout": {
+              "target": "#Tendermint_0.initialized.Validator",
+              "actions": [],
+              "meta": {}
+            }
           },
-          after: {
-            roundTimeout: {
-              target: "#Tendermint_1.initialized.Validator",
-              actions: [],
-              meta: {},
-            },
+          "always": {
+            "target": "Proposer",
+            "cond": "isNextProposer"
           },
-          initial: "prevoteState",
-          states: {
-            prevoteState: {
-              always: {
-                target: "precommitState",
-                guard: "ifPrevoteThreshold",
-              },
-              on: {
-                prevote: {
-                  target: "prevoteState",
-                },
-              },
-            },
-            precommitState: {
-              always: {
-                target: "commitState",
-                guard: "ifPrecommitThreshold",
-              },
-              on: {
-                precommit: {
-                  target: "precommitState",
-                },
-              },
-            },
-            commitState: {
-              entry: [
+          "on": {
+            "receiveProposal": {
+              "actions": [
                 {
-                  type: "commit",
+                  "type": "processBlock"
                 },
                 {
-                  type: "cancelActiveIntervals",
+                  "type": "sendProposalResponse"
+                }
+              ]
+            },
+            "newTransaction": {
+              "actions": [
+                {
+                  "type": "addToMempool"
                 },
+                {
+                  "type": "sendNewTransactionResponse"
+                }
+              ]
+            },
+            "stop": {
+              "target": "#Tendermint_0.stopped"
+            },
+            "start": {
+              "target": "Validator"
+            },
+            "receivePrecommit": {
+              "actions": [
+                {
+                  "type": "commitBlock"
+                },
+                {
+                  "type": "sendPrecommitResponse"
+                }
+              ]
+            }
+          }
+        },
+        "Proposer": {
+          "initial": "active",
+          "states": {
+            "active": {
+              "entry": [
+                {
+                  "type": "cancelActiveIntervals",
+                  "params": {
+                    "after": "roundTimeout"
+                  }
+                },
+                {
+                  "type": "proposeBlock"
+                },
+                {
+                  "type": "sendAppendEntries"
+                },
+                {
+                  "type": "commitBlocks"
+                }
               ],
-              always: {
-                target: "#Tendermint_1.initialized.Validator",
+              "after": {
+                "roundTimeout": {
+                  "target": "#Tendermint_0.initialized.Validator",
+                  "actions": [],
+                  "meta": {}
+                }
               },
-            },
+              "on": {
+                "newTransaction": {
+                  "actions": [
+                    {
+                      "type": "addToMempool"
+                    },
+                    {
+                      "type": "sendNewTransactionResponse"
+                    }
+                  ]
+                },
+                "start": {
+                  "target": "active"
+                },
+                "nodeUpdate": {
+                  "actions": {
+                    "type": "updateNodeAndReturn"
+                  }
+                },
+                "receiveProposal": {
+                  "target": "#Tendermint_0.initialized.Validator",
+                  "actions": [
+                    {
+                      "type": "processBlock"
+                    },
+                    {
+                      "type": "sendProposalResponse"
+                    },
+                    {
+                      "type": "cancelActiveIntervals",
+                      "params": {
+                        "after": "roundTimeout"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
           },
-        },
+          "on": {
+            "stop": {
+              "target": "#Tendermint_0.stopped"
+            }
+          }
+        }
       },
+      "on": {
+        "start": {}
+      }
     },
+    "stopped": {
+      "on": {
+        "restart": {
+          "target": "#Tendermint_0.initialized.unstarted"
+        }
+      }
+    }
   }
 }

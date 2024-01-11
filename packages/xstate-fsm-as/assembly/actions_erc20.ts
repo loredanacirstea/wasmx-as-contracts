@@ -1,9 +1,9 @@
 import { JSON } from "json-as/assembly";
 import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
-import { revert } from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getAddressHex, hexToUint8Array } from 'wasmx-utils/assembly/utils';
 import * as storage from './storage';
+import { revert } from './utils';
 
 import {
   EventObject,

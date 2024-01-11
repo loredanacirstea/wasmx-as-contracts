@@ -87,7 +87,7 @@ function parseMachineStates(configStates = {}, statePath) {
             return {
                 name: eventName || "",
                 target: target,
-                guard: ev.guard || "",
+                guard: ev.guard || ev.cond ||  "",
                 actions,
                 meta,
             }
@@ -101,7 +101,7 @@ function parseMachineStates(configStates = {}, statePath) {
             return {
                 name: delayKey || "",
                 target: parseStateName(ev.target || "", statePath),
-                guard: ev.guard || "",
+                guard: ev.guard || ev.cond ||  "",
                 actions,
                 meta,
             }
@@ -115,6 +115,7 @@ function parseMachineStates(configStates = {}, statePath) {
             for (let i = 0; i < state.always.length; i++) {
                 const st = {
                     ...state.always[i],
+                    guard: state.always[i].guard || state.always[i].cond || "",
                     target: parseStateName(state.always[i].target || "", statePath),
                     actions: parseActions(state.always[i].actions || []),
                     meta: parseMeta(state.always[i].meta || {}),

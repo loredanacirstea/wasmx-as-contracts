@@ -4,7 +4,7 @@ import * as wblocks from "wasmx-blocks/assembly/types";
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
 import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { LoggerDebug, LoggerInfo, LoggerError, revert } from "wasmx-env/assembly/wasmx_wrap";
+import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
 import {
   Base64String,
   CallRequest,

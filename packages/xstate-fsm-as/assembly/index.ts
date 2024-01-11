@@ -17,6 +17,7 @@ import {
   getCurrentState,
   getContextValueInternal,
 } from './storage';
+import { revert } from './utils';
 
 export function wasmx_env_2(): void {}
 export function wasmx_consensus_json_1(): void {}
@@ -47,8 +48,8 @@ export function main(): u8[] {
       setup(config, calldata.setup!);
       result = new ArrayBuffer(0);
     } else {
-      wasmx.revert(String.UTF8.encode("invalid function call data"));
-      throw new Error("invalid function call data");
+      revert("invalid function call data");
+      return arrayBufferToU8Array(new ArrayBuffer(0));
     }
     wasmx.finish(result);
     return arrayBufferToU8Array(result);

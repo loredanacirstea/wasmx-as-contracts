@@ -4,7 +4,18 @@ import { createMachine } from "xstate";
 
 export const machine = createMachine(
   {
-    id: "Tendermint_1",
+    context: {
+      log: "",
+      nodeIPs: "[]",
+      votedFor: "0",
+      nextIndex: "[]",
+      currentTerm: "0",
+      max_tx_bytes: "65536",
+      currentNodeId: "0",
+      max_block_gas: "20000000",
+      roundTimeout: 10000,
+    },
+    id: "Tendermint_0",
     initial: "uninitialized",
     states: {
       uninitialized: {
@@ -19,80 +30,182 @@ export const machine = createMachine(
         states: {
           unstarted: {
             on: {
-              next: {
-                target: "Validator",
-              },
-            },
-          },
-          Validator: {
-            always: {
-              target: "ValidatorProposer",
-              guard: "isNextProposer",
-            },
-            on: {
-              newBlockPrevote: {
-                target: "Validator",
+              setupNode: {
+                target: "unstarted",
                 actions: {
-                  type: "sendPrevoteResponse",
+                  type: "setupNode",
                 },
               },
-              newBlockPrecommit: {
-                target: "Validator",
+              start: {
+                target: "prestart",
+              },
+              setup: {
+                target: "unstarted",
                 actions: {
-                  type: "sendPrecommitResponse",
+                  type: "setup",
                 },
               },
             },
           },
-          ValidatorProposer: {
-            entry: {
-              type: "proposeBlock",
-            },
+          prestart: {
             after: {
               roundTimeout: {
-                target: "#Tendermint_1.initialized.Validator",
+                target: "#Tendermint_0.initialized.Validator",
                 actions: [],
                 meta: {},
               },
             },
-            initial: "prevoteState",
-            states: {
-              prevoteState: {
-                always: {
-                  target: "precommitState",
-                  guard: "ifPrevoteThreshold",
-                },
-                on: {
-                  prevote: {
-                    target: "prevoteState",
-                  },
+          },
+          Validator: {
+            entry: [
+              {
+                type: "registeredCheck",
+              },
+              {
+                type: "cancelActiveIntervals",
+                params: {
+                  after: "roundTimeout",
                 },
               },
-              precommitState: {
-                always: {
-                  target: "commitState",
-                  guard: "ifPrecommitThreshold",
-                },
-                on: {
-                  precommit: {
-                    target: "precommitState",
-                  },
-                },
+              {
+                type: "incrementCurrentTerm",
               },
-              commitState: {
-                entry: [
+              {
+                type: "initializeNextIndex",
+              },
+            ],
+            after: {
+              roundTimeout: {
+                target: "#Tendermint_0.initialized.Validator",
+                actions: [],
+                meta: {},
+              },
+            },
+            always: {
+              target: "Proposer",
+              guard: "isNextProposer",
+            },
+            on: {
+              receiveProposal: {
+                actions: [
                   {
-                    type: "commit",
+                    type: "processBlock",
                   },
                   {
-                    type: "cancelActiveIntervals",
+                    type: "sendProposalResponse",
                   },
                 ],
-                always: {
-                  target: "#Tendermint_1.initialized.Validator",
+              },
+              newTransaction: {
+                actions: [
+                  {
+                    type: "addToMempool",
+                  },
+                  {
+                    type: "sendNewTransactionResponse",
+                  },
+                ],
+              },
+              stop: {
+                target: "#Tendermint_0.stopped",
+              },
+              start: {
+                target: "Validator",
+              },
+              receivePrecommit: {
+                actions: [
+                  {
+                    type: "commitBlock",
+                  },
+                  {
+                    type: "sendPrecommitResponse",
+                  },
+                ],
+              },
+            },
+          },
+          Proposer: {
+            initial: "active",
+            states: {
+              active: {
+                entry: [
+                  {
+                    type: "cancelActiveIntervals",
+                    params: {
+                      after: "roundTimeout",
+                    },
+                  },
+                  {
+                    type: "proposeBlock",
+                  },
+                  {
+                    type: "sendAppendEntries",
+                  },
+                  {
+                    type: "commitBlocks",
+                  },
+                ],
+                after: {
+                  roundTimeout: {
+                    target: "#Tendermint_0.initialized.Validator",
+                    actions: [],
+                    meta: {},
+                  },
+                },
+                on: {
+                  newTransaction: {
+                    actions: [
+                      {
+                        type: "addToMempool",
+                      },
+                      {
+                        type: "sendNewTransactionResponse",
+                      },
+                    ],
+                  },
+                  start: {
+                    target: "active",
+                  },
+                  nodeUpdate: {
+                    actions: {
+                      type: "updateNodeAndReturn",
+                    },
+                  },
+                  receiveProposal: {
+                    target: "#Tendermint_0.initialized.Validator",
+                    actions: [
+                      {
+                        type: "processBlock",
+                      },
+                      {
+                        type: "sendProposalResponse",
+                      },
+                      {
+                        type: "cancelActiveIntervals",
+                        params: {
+                          after: "roundTimeout",
+                        },
+                      },
+                    ],
+                  },
                 },
               },
             },
+            on: {
+              stop: {
+                target: "#Tendermint_0.stopped",
+              },
+            },
+          },
+        },
+        on: {
+          start: {},
+        },
+      },
+      stopped: {
+        on: {
+          restart: {
+            target: "#Tendermint_0.initialized.unstarted",
           },
         },
       },
@@ -100,38 +213,116 @@ export const machine = createMachine(
     types: {
       events: {} as
         | { type: "" }
-        | { type: "next" }
-        | { type: "prevote" }
-        | { type: "precommit" }
+        | { type: "stop" }
+        | { type: "setup"; address: string }
+        | { type: "start" }
+        | { type: "restart" }
+        | { type: "newChange"; transaction: string }
+        | {
+            type: "setupNode";
+            nodeIPs: string;
+            currentNodeId: string;
+            initChainSetup: string;
+          }
         | { type: "initialize" }
-        | { type: "newBlockPrevote" }
-        | { type: "newBlockPrecommit" },
+        | {
+            type: "nodeUpdate";
+            ip: string;
+            index: string;
+            removed: string;
+            signature: string;
+          }
+        | { type: "newTransaction"; transaction: string }
+        | { type: "nodeListUpdate"; ips: string }
+        | {
+            type: "receiveProposal";
+            value: string;
+            termId: string;
+            nodeIps: string;
+            signature: string;
+            proposerId: string;
+          }
+        | {
+            type: "receiveHeartbeat";
+            termId: string;
+            entries: string;
+            nodeIps: string;
+            leaderId: string;
+            signature: string;
+            prevLogTerm: string;
+            leaderCommit: string;
+            prevLogIndex: string;
+          }
+        | {
+            type: "receivePrecommit";
+            value: string;
+            termId: string;
+            signature: string;
+            proposerId: string;
+            index: string;
+          }
+        | { type: "heartbeatResponse"; term: string; success: string }
+        | {
+            type: "receiveVoteRequest";
+            termId: string;
+            signature: string;
+            candidateId: string;
+            lastLogTerm: string;
+            lastLogIndex: string;
+          },
+      context: {} as {
+        log: string;
+        nodeIPs: string;
+        templog: string;
+        votedFor: string;
+        nextIndex: string;
+        currentTerm: string;
+        max_tx_bytes: string;
+        prevLogIndex: string;
+        roundTimeout: string;
+        currentNodeId: string;
+        max_block_gas: string;
+      },
     },
   },
   {
     actions: {
-      reset: ({ context, event }) => {},
-      commit: ({ context, event }) => {},
+      vote: ({ context, event }) => {},
+      setup: ({ context, event }) => {},
+      selfVote: ({ context, event }) => {},
+      setupNode: ({ context, event }) => {},
+      commitBlock: ({ context, event }) => {},
+      addToMempool: ({ context, event }) => {},
+      commitBlocks: ({ context, event }) => {},
+      processBlock: ({ context, event }) => {},
       proposeBlock: ({ context, event }) => {},
-      sendPrevoteResponse: ({ context, event }) => {},
-      sendPrecommitResponse: ({ context, event }) => {},
+      registeredCheck: ({ context, event }) => {},
+      sendVoteRequests: ({ context, event }) => {},
+      sendAppendEntries: ({ context, event }) => {},
+      forwardTxsToLeader: ({ context, event }) => {},
+      initializeNextIndex: ({ context, event }) => {},
+      updateNodeAndReturn: ({ context, event }) => {},
+      incrementCurrentTerm: ({ context, event }) => {},
+      initializeMatchIndex: ({ context, event }) => {},
+      processAppendEntries: ({ context, event }) => {},
+      sendProposalResponse: ({ context, event }) => {},
       cancelActiveIntervals: ({ context, event }) => {},
+      sendHeartbeatResponse: ({ context, event }) => {},
+      sendPrecommitResponse: ({ context, event }) => {},
+      setRandomElectionTimeout: function ({ context, event }, params) {
+        // Add your action code here
+      },
+      sendNewTransactionResponse: ({ context, event }) => {},
     },
     actors: {},
     guards: {
+      isVotedLeader: ({ context, event }, params) => {
+        return false;
+      },
       isNextProposer: ({ context, event }, params) => {
         return false;
       },
-      "some condition": ({ context, event }, params) => {
-        return false;
-      },
-      ifPrevoteThreshold: ({ context, event }, params) => {
-        return false;
-      },
-      ifPrecommitThreshold: ({ context, event }, params) => {
-        return false;
-      },
-      "New guard": ({ context, event }, params) => {
+      ifIntervalActive: ({ context, event }, params) => {
         return false;
       },
     },

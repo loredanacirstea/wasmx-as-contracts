@@ -3,8 +3,8 @@ import * as types from './types';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
 import {Base64String } from 'wasmx-env/assembly/types';
-import { revert } from "wasmx-env/assembly/wasmx_wrap";
 import { parseInt64 } from "wasmx-utils/assembly/utils";
+import { LoggerInfo, LoggerDebug, revert } from './utils';
 
 const BLOCK_LAST_INDEX = "block_last_index";
 const BLOCK_INDEX_KEY = "block_";
@@ -92,7 +92,7 @@ export function setBlock(value: string, hash: string, txhashes: string[]): void 
 export function setIndexedTransactionByHash(hash: Base64String, data: types.IndexedTransaction): void {
     const datastr = JSON.stringify<types.IndexedTransaction>(data);
     wasmxwrap.sstore(keyIndexedTransaction(hash), datastr);
-    wasmxwrap.LoggerInfo("indexing transaction", ["height", data.height.toString(), "index", data.index.toString(), "hash", hash])
+    LoggerInfo("indexing transaction", ["height", data.height.toString(), "index", data.index.toString(), "hash", hash])
 }
 
 export function getIndexedTransactionByHash(hash: Base64String): string {
@@ -104,7 +104,7 @@ export function getConsensusParams(): string {
 }
 
 export function setConsensusParams(value: string): void {
-    wasmxwrap.LoggerDebug("setting consensus parameters", ["params", value])
+    LoggerDebug("setting consensus parameters", ["params", value])
     wasmxwrap.sstore(PARAMS_KEY, value);
 }
 

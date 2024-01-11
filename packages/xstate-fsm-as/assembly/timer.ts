@@ -1,6 +1,6 @@
 import {INTERVAL_ID_KEY} from './config';
 import * as storage from './storage';
-import { LoggerDebug, revert } from "wasmx-env/assembly/wasmx_wrap";
+import { LoggerDebug, revert } from "./utils";
 import {
   EventObject,
   State,

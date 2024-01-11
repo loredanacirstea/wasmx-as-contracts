@@ -1,7 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { LoggerDebug, revert } from "wasmx-env/assembly/wasmx_wrap";
 import { CallRequest, CallResponse, Base64String, Bech32String } from "wasmx-env/assembly/types";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import {
@@ -36,6 +35,7 @@ import {
   isRegisteredIntervalActive,
   removeInterval,
 } from './timer';
+import { LoggerDebug, revert } from "./utils";
 
 export function instantiate(
   config: MachineExternal,
@@ -296,7 +296,7 @@ function executeStateAction(
     // If action is not a local action, then it is an external action
     const resp = processExternalCall(service.machine, action.type, actionParams, event);
     if (resp.success > 0) {
-      return revert("action not recognized: " + actionType);
+      return revert("action failed: " + actionType + "; err=" + resp.data);
     }
     if (resp.data.length > 0) {
       wasmx.setFinishData(String.UTF8.encode(resp.data));

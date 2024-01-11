@@ -45,6 +45,16 @@ export function parseUint8ArrayToI32BigEndian(buff: Uint8Array): i32 {
     return view.getInt32(0, false);
 }
 
+export function parseUint8ArrayToU32BigEndian(buff: Uint8Array): u32 {
+    var view = new DataView(buff.buffer, 0);
+    return view.getUint32(0, false);
+}
+
+export function parseUint8ArrayToI64BigEndian(buff: Uint8Array): i64 {
+    var view = new DataView(buff.buffer, 0);
+    return view.getInt64(0, false);
+}
+
 export function i32ToUint8ArrayBE(value: i32): Uint8Array {
     const v = new ArrayBuffer(4);
     var view = new DataView(v, 0);
