@@ -11,6 +11,8 @@ import {
     MerkleSlices,
     StartTimeoutRequest,
     LoggerLog,
+    Bech32String,
+    Account,
 } from './types';
 
 export function revert(message: string): void {
@@ -27,6 +29,11 @@ export function sstore(key: string, value: string): void {
 export function sload(key: string): string {
     const value = wasmx.storageLoad(String.UTF8.encode(key));
     return String.UTF8.decode(value);
+}
+
+export function getAccount(addr: Bech32String): Account {
+    const acc = wasmx.getAccount(addr_canonicalize(addr));
+    return JSON.parse<Account>(String.UTF8.decode(acc));
 }
 
 export function intToString(value: i32): string {

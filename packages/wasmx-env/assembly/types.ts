@@ -8,6 +8,21 @@ export type Bech32String = string;
 
 // @ts-ignore
 @serializable
+export class Account {
+    address: Bech32String;
+    pubKey: Base64String;
+    accountNumber: i64;
+    sequence: i64;
+    constructor(address: Bech32String, pubKey: Base64String, accountNumber: i64, sequence: i64) {
+        this.address = address;
+        this.pubKey = pubKey;
+        this.accountNumber = accountNumber;
+        this.sequence = sequence;
+    }
+}
+
+// @ts-ignore
+@serializable
 export class CallRequest {
   to: string;
   calldata: string;
