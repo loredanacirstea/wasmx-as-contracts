@@ -46,6 +46,7 @@ export interface StateInfo {
 export type States = Map<string,StateInfo>
 
 export type ActionFunction = (event: EventObject) => void;
+// we dont use this. we use the "assign" action
 export type AssignAction = 'xstate.assign';
 
 export namespace StateMachine {
@@ -53,6 +54,7 @@ export namespace StateMachine {
     id: string;
     library: Bech32String;
     states: States;
+    ctx: Map<string,string>;
     transition(
       state: State,
       event: EventObject

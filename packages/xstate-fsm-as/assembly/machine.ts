@@ -26,7 +26,7 @@ import { getAddressHex, parseInt32, parseInt64 } from 'wasmx-utils/assembly/util
 import * as storage from './storage';
 import * as actionsCounter from "./actions_counter";
 import * as actionsErc20 from "./actions_erc20";
-import { INIT_EVENT, ASSIGN_ACTION, REVERT_IF_UNEXPECTED_STATE, WILDCARD } from './config';
+import { INIT_EVENT, ASSIGN_ACTION, REVERT_IF_UNEXPECTED_STATE, WILDCARD, VARIABLE_SYMBOL } from './config';
 import {
   getLastIntervalId,
   setLastIntervalId,
@@ -250,34 +250,35 @@ function executeStateAction(
     }
     const actionParams = action.params;
     for (let i = 0; i < actionParams.length; i++) {
-      if (actionParams[i].value.length > 0 && actionParams[i].value.at(0) == "$") {
-        const value = storage.getContextValue(actionParams[i].value.slice(1));
+      if (actionParams[i].value.length > 0 && actionParams[i].value.at(0) == VARIABLE_SYMBOL) {
+        const varname = actionParams[i].value.slice(1);
+        let value: string = ""
+        // first look into event parameters
+        for (let i = 0; i < event.params.length; i++) {
+          if (event.params[i].key == varname) {
+            value = event.params[i].value;
+            break;
+          }
+        }
+
+        // then look into the temporary context
+        if (value == "" && service.machine.ctx.has(varname)) {
+          value = service.machine.ctx.get(varname);
+        }
+
+        // then look into storage
+        if (value == "") {
+          value = storage.getContextValue(varname);
+        }
         actionParams[i].value = value;
       }
     }
-
-    if (actionType === "mint") {
-        actionsErc20.mint(actionParams, event);
-        return;
-    }
-    if (actionType === "move") {
-        actionsErc20.move(actionParams, event);
-        return;
-    }
-    if (actionType === "approve") {
-        actionsErc20.approve(actionParams, event);
-        return;
+    if (actionType === "assign") {
+      assign(service.machine, actionParams, event);
+      return;
     }
     if (actionType === "sendRequest") {
       sendRequest(actionParams, event);
-      return;
-    }
-    if (actionType === "logTransfer") {
-        actionsErc20.logTransfer(actionParams, event);
-        return;
-    }
-    if (actionType === "increment") {
-      actionsCounter.increment(actionParams);
       return;
     }
     if (actionType === "log") {
@@ -290,6 +291,26 @@ function executeStateAction(
     }
     if (actionType === "cancelActiveIntervals") {
       cancelActiveIntervals(state, actionParams, event);
+      return;
+    }
+    if (actionType === "mint") {
+      actionsErc20.mint(actionParams, event);
+      return;
+    }
+    if (actionType === "move") {
+        actionsErc20.move(actionParams, event);
+        return;
+    }
+    if (actionType === "approve") {
+        actionsErc20.approve(actionParams, event);
+        return;
+    }
+    if (actionType === "logTransfer") {
+        actionsErc20.logTransfer(actionParams, event);
+        return;
+    }
+    if (actionType === "increment") {
+      actionsCounter.increment(actionParams);
       return;
     }
 
@@ -307,6 +328,16 @@ function noaction(
   params: ActionParam[],
   event: EventObject,
 ): void {}
+
+function assign(
+  machine: StateMachine.Machine,
+  params: ActionParam[],
+  event: EventObject,
+): void {
+  for (let i = 0; i < params.length; i++) {
+    machine.ctx.set(params[i].key, params[i].value);
+  }
+}
 
 function processExternalCall(
     machine: StateMachine.Machine,
@@ -484,15 +515,18 @@ export class Machine implements StateMachine.Machine {
   id: string;
   library: Bech32String;
   states: States;
+  ctx: Map<string,string>;
 
   constructor(
     id: string,
     library: Bech32String,
     states: States,
+    ctx: Map<string,string>,
   ) {
     this.id = id;
     this.library = library;
     this.states = states;
+    this.ctx = ctx;
   }
 
   transition(
@@ -754,6 +788,7 @@ export class MachineExternal {
         this.id,
         this.library,
         states,
+        new Map<string,string>(),
     );
   }
 }

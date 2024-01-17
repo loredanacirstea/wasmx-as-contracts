@@ -5,6 +5,7 @@ import {
   machineConfig2Orig,
   machineConfig3Orig,
   machineWithGuard,
+  machineWithCtx,
   erc20Machine1Orig,
   consensusSMConfigOrig,
   consensusSMTimerConfigOrig,
@@ -144,6 +145,15 @@ async function runTests() {
     currentState = await runFn("getCurrentState", machine, {});
     console.log("!!!!!currentState", decodeFromUtf8Array(currentState))
     assert.strictEqual(decodeFromUtf8Array(currentState), "#lock-count-guard.unlocked");
+
+    // machineWithCtx
+    machineConfig = parseMachine(machineWithCtx);
+    console.log("==machineWithCtx==");
+    console.log(JSON.stringify(machineConfig));
+    // Create the machine
+    machine = {id: machineConfig.id, states: machineConfig.states};
+    await runFn("instantiate", machine, {initialState: machineConfig.initial, context: machineConfig.context})
+    await runFnOwner("run", machine, {event: {type: "query", params: [{key: "hash", value: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="}]}});
 
     // machine 5 - erc20
     const admin = new Uint8Array([1,1,1,1,1,1]);

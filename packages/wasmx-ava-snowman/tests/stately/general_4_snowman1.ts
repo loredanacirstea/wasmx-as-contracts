@@ -152,7 +152,7 @@ export const machine = createMachine(
         | { type: "" }
         | { type: "query"; hash: string }
         | { type: "initialize" }
-        | { type: "newTransaction" },
+        | { type: "newTransaction"; transaction: string },
     },
   },
   {

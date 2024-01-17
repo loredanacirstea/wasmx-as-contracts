@@ -266,6 +266,63 @@ export const machineWithGuard = {
     }
 }
 
+export const machineWithCtx = {
+  id: "tempctx",
+  initial: "uninitialized",
+  states: {
+    uninitialized: {
+      on: {
+        initialize: {
+          target: "initialized",
+        },
+      },
+    },
+    initialized: {
+      initial: "validator",
+      states: {
+        validator: {
+          on: {
+            query: {
+              target: "proposer",
+              actions: [
+                {
+                  type: "assign",
+                  params: {
+                    proposedHash: "$hash",
+                  },
+                },
+                {
+                  type: "log",
+                  params: {
+                    hash: "$proposedHash",
+                  },
+                },
+              ],
+            },
+          },
+        },
+        proposer: {
+          entry: {
+            type: "assign",
+            params: {
+              majority: 4,
+            },
+          },
+          always: {
+            target: "validator",
+            actions: {
+              type: "log",
+              params: {
+                majority: "$majority",
+              },
+            },
+          },
+        },
+      },
+    },
+  }
+}
+
 export const erc20Machine1Orig = {
     context: {
       admin: "",
