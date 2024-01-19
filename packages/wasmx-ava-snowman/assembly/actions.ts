@@ -86,6 +86,7 @@ export function ifIncrementedCounterLTBetaThreshold(
 ): boolean {
     const counter = getRoundsCounter();
     const betaThreshold = parseInt32(fsm.getContextValue(BETA_THRESHOLD_KEY) || "");
+    LoggerDebug("ifIncrementedCounterLTBetaThreshold", ["counter", counter.toString(), "betaThreshold", betaThreshold.toString()])
     if ((counter + 1) < betaThreshold) return true;
     return false;
 }
@@ -97,6 +98,23 @@ export function ifMajorityIsOther(
     const proposedHash = fsm.getContextValue(PROPOSED_HASH_KEY);
     const majority = fsm.getContextValue(MAJORITY_KEY);
     return majority != proposedHash;
+}
+
+export function ifBlockNotFinalized(
+    params: ActionParam[],
+    event: EventObject,
+): boolean {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("block")) {
+        revert("no block found");
+    }
+    let blockBase64: Base64String = ctx.get("block");
+    const block = JSON.parse<wblocks.BlockEntry>(String.UTF8.decode(decodeBase64(blockBase64).buffer))
+    // make sure we don't add an already finalized block
+    const lastIndex = getLastBlockIndex();
+    LoggerDebug("ifBlockNotFinalized", ["block height", block.index.toString(), "last finalized height", lastIndex.toString()])
+    return lastIndex < block.index;
 }
 
 /// actions
@@ -137,11 +155,24 @@ export function sendResponse(
     if (!ctx.has("header")) {
         revert("no header found");
     }
-    const block: Base64String = ctx.get("block");
-    const header: Base64String = ctx.get("header");
-    const response = new QueryResponse(block, header);
-    LoggerDebug("send query response", [])
-    wasmx.setFinishData(String.UTF8.encode(JSON.stringify<QueryResponse>(response)));
+    let blockBase64: Base64String = ctx.get("block");
+    let headerBase64: Base64String = ctx.get("header");
+
+    const block = JSON.parse<wblocks.BlockEntry>(String.UTF8.decode(decodeBase64(blockBase64).buffer))
+    // if it is an already finalized block, we send that block
+    const lastIndex = getLastBlockIndex();
+    if (lastIndex >= block.index) {
+        // send the finalized block
+        const data = getFinalBlock(block.index);
+        const blockData = JSON.parse<wblocks.BlockEntry>(data);
+        blockBase64 = blockData.data;
+        headerBase64 = blockData.header;
+    }
+
+    const response = JSON.stringify<QueryResponse>(new QueryResponse(blockBase64, headerBase64));
+    LoggerDebug("send query response", ["response", response])
+    wasmx.setFinishData(String.UTF8.encode(response));
+    return;
 }
 
 export function proposeBlock(
@@ -162,13 +193,12 @@ export function proposeBlock(
         maxbytes = MaxBlockSizeBytes;
     }
     const batch = mempool.batch(cparams.block.max_gas, maxbytes);
-    setMempool(mempool);
     // start proposal protocol
     // TODO correct gas
     startBlockProposal(batch.txs, 10000000, maxbytes);
 }
 
-export function setProposedHash(
+export function setProposedBlock(
     params: ActionParam[],
     event: EventObject,
 ): void {
@@ -177,10 +207,17 @@ export function setProposedHash(
     if (!ctx.has("header")) {
         revert("no header found");
     }
+    if (!ctx.has("block")) {
+        revert("no block found");
+    }
     const headerStr: Base64String = ctx.get("header");
+    const blockStr: Base64String = ctx.get("block");
+    // TODO block validation
     const header = JSON.parse<typestnd.Header>(String.UTF8.decode(decodeBase64(headerStr).buffer))
     const hash = getHeaderHash(header)
     fsm.setContextValue(PROPOSED_HASH_KEY, hash)
+    fsm.setContextValue(PROPOSED_HEADER_KEY, headerStr)
+    fsm.setContextValue(PROPOSED_BLOCK_KEY, blockStr)
 }
 
 export function sendQueryToRandomSet(
@@ -195,8 +232,11 @@ export function sendQueryToRandomSet(
     if (!ctx.has("threshold")) {
         revert("no threshold found");
     }
+    // sampleSize
     const k = parseInt32(ctx.get("k"));
-    const threshold = parseInt32(ctx.get("threshold"));
+    // alphaThreshold
+    const percentage = parseInt32(ctx.get("threshold"));
+    const threshold = i32(Math.ceil(f32(k * 80) / f32(100)))
 
     // get proposed block
     const proposedHash = fsm.getContextValue(PROPOSED_HASH_KEY);
@@ -209,7 +249,7 @@ export function sendQueryToRandomSet(
     // select from validators
     const nodeIps = getNodeIPs();
     const currentNode = getCurrentNodeId();
-    const sampleIndexes = getRandomSample(k, proposedHash, nodeIps.length - 1, currentNode);
+    const sampleIndexes = getRandomSample(k, proposedHash, nodeIps.length, currentNode);
     LoggerDebug("send query to random set", ["sample ips", sampleIndexes.join(",")])
     // we send the request to the same contract
     const contract = wasmx.getAddress();
@@ -241,6 +281,7 @@ export function sendQueryToRandomSet(
     }
     // calculate majority
     const allhashes = responseCounter.keys();
+    LoggerDebug("majority options", ["hashes", allhashes.join(",")])
     let majorityCount = 0;
     let majorityHash = allhashes[0];
     for (let i = 0; i < allhashes.length; i++) {
@@ -250,12 +291,19 @@ export function sendQueryToRandomSet(
             majorityHash = allhashes[i]
         }
     }
+    LoggerDebug("majority option", ["hash", majorityHash, "count", majorityCount.toString(), "threshold", threshold.toString()])
+    // if none of the options pass threshold, we reset the counter
+    if (threshold < majorityCount) {
+        setRoundsCounter(0);
+        return;
+    }
     fsm.setContextValue(MAJORITY_KEY, majorityHash);
     fsm.setContextValue(PROPOSED_HASH_KEY, majorityHash);
     fsm.setContextValue(PROPOSED_BLOCK_KEY, responses.get(majorityHash).block)
     fsm.setContextValue(PROPOSED_HEADER_KEY, responses.get(majorityHash).header)
 }
 
+// TODO only remove mempool transactions after the block was finalized
 export function changeProposedHash(
     params: ActionParam[],
     event: EventObject,
@@ -480,7 +528,7 @@ export function wrapGuard(value: boolean): ArrayBuffer {
 
 function startBlockProposal(txs: string[], cummulatedGas: i64, maxDataBytes: i64): void {
     // PrepareProposal TODO finish
-    const height = getLastLogIndex() + 1;
+    const height = getLastBlockIndex() + 1;
     LoggerDebug("start block proposal", ["height", height.toString()])
 
     const currentState = getCurrentState();
@@ -680,10 +728,16 @@ function getHeaderHash(header: typestnd.Header): string {
     return wasmxwrap.MerkleHash(data);
 }
 
-function getRandomInRange(min: i64, max: i64): i64 {
+function getRandomInRangeI64(min: i64, max: i64): i64 {
     const rand = Math.random()
     const numb = Math.floor(rand * f64((max - min + 1)))
     return i64(numb) + min;
+}
+
+function getRandomInRangeI32(min: i32, max: i32): i32 {
+    const rand = Math.random()
+    const numb = Math.floor(rand * f32((max - min + 1)))
+    return i32(numb) + min;
 }
 
 export function signMessage(msgstr: string): Base64String {
@@ -718,6 +772,9 @@ export function getLogEntryAggregate(index: i64): LogEntryAggregate {
 function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: boolean): boolean {
     const processReqStr = String.UTF8.decode(decodeBase64(entryobj.data.data).buffer);
     const processReq = JSON.parse<typestnd.RequestProcessProposal>(processReqStr);
+    const mempool = getMempool();
+    mempool.remove(processReq.txs);
+    setMempool(mempool);
     const finalizeReq = new typestnd.RequestFinalizeBlock(
         processReq.txs,
         processReq.proposed_last_commit,
@@ -853,7 +910,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     // if consensus changed, start the new contract
     if (newContract != "" && newContractSetup) {
         LoggerInfo("starting new consensus contract", ["address", newContract])
-        let calldata = `{"run":{"event":{"type":"start","params":[]}}}`
+        let calldata = `{"run":{"event":{"type":"prestart","params":[]}}}`
         let req = new CallRequest(newContract, calldata, 0, 100000000, false);
         let resp = wasmxwrap.call(req);
         if (resp.success > 0) {
@@ -903,7 +960,7 @@ function setFinalizedBlock(entry: LogEntryAggregate, hash: string, txhashes: str
     const calldatastr = `{"setBlock":${JSON.stringify<wblockscalld.CallDataSetBlock>(calldata)}}`;
     const resp = callStorage(calldatastr, false);
     if (resp.success > 0) {
-        revert("could not set finalized block");
+        revert(`could not set finalized block: ${resp.data}`);
     }
 }
 
@@ -961,26 +1018,29 @@ function callStorage(calldata: string, isQuery: boolean): CallResponse {
     const contractAddress = getStorageAddress();
     const req = new CallRequest(contractAddress, calldata, 0, 100000000, isQuery);
     const resp = wasmxwrap.call(req);
-    if (resp.success == 0) {
-        resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
-    }
+    // result or error
+    resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
     return resp;
 }
 
 // TODO some of these validators may be removed, if we use the same raft mechanism
 function getRandomSample(k: i32, hash: string, validatorCount: i32, exclude: i32): i32[] {
     // don't loop indefinitely
-    if (validatorCount < k) {
-        k = validatorCount;
+    if (validatorCount <= k) {
+        k = validatorCount - 1; // we exclude ourselves
     }
+    let pool = new Array<i32>(validatorCount);
+    for (let i = 0; i < validatorCount; i++) {
+        pool[i] = i;
+    }
+    pool.splice(exclude, 1);
     const indexes = new Array<i32>(k);
     for (let i = 0; i < k; i++) {
-        const index = getNextProposerIndex(validatorCount, hash);
-        if (!indexes.includes(index) && index !== exclude) {
-            indexes[i] = index;
-        } else {
-            i--;
-        }
+        // const index = getNextProposerIndex(validatorCount, hash);
+        const j = getRandomInRangeI32(0, pool.length - 1);
+        const index = pool[j];
+        indexes[i] = index;
+        pool.splice(j, 1);
     }
     return indexes;
 }
@@ -1012,11 +1072,21 @@ function getNextProposerIndex(count: i32, headerHash: string): i32 {
 }
 
 // block, header
+// TODO sign messages!!!
 function sendQuery(ip: string, contract: ArrayBuffer, req: QueryResponse): QueryResponse | null {
     LoggerInfo("send query", ["ip", ip]);
-    const data = encodeBase64(Uint8Array.wrap(String.UTF8.encode(JSON.stringify<QueryResponse>(req))))
-    const response = wasmxwrap.grpcRequest(ip, Uint8Array.wrap(contract), data);
-    LoggerInfo("register response", ["error", response.error, "data", response.data])
+
+    // TODO sign messages!!!
+    // const queryMsg = JSON.stringify<QueryResponse>(req)
+    // const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(queryMsg)))
+    // const signature = signMessage(queryMsg);
+    // const msgstr = `{"run":{"event":{"type":"nodeUpdate","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
+    const msgstr = `{"run":{"event":{"type":"query","params":[{"key": "block","value":"${req.block}"},{"key": "header","value":"${req.header}"}]}}}`
+    const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
+    LoggerDebug("query request", ["req", msgstr])
+
+    const response = wasmxwrap.grpcRequest(ip, Uint8Array.wrap(contract), msgBase64);
+    LoggerDebug("query response", ["error", response.error, "data", response.data])
     if (response.error.length > 0 || response.data.length == 0) {
         return null
     }

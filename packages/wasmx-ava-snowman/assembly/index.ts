@@ -22,6 +22,10 @@ export function main(): void {
         result = actions.wrapGuard(actions.ifMajorityIsOther(calld.params, calld.event));
         wasmx.finish(result);
         return;
+    } else if (calld.method === "ifBlockNotFinalized") {
+        result = actions.wrapGuard(actions.ifBlockNotFinalized(calld.params, calld.event));
+        wasmx.finish(result);
+        return;
     } else if (calld.method === "incrementRoundsCounter") {
         actions.incrementRoundsCounter(calld.params, calld.event);
     } else if (calld.method === "resetRoundsCounter") {
@@ -32,8 +36,8 @@ export function main(): void {
         actions.sendResponse(calld.params, calld.event);
     } else if (calld.method === "proposeBlock") {
         actions.proposeBlock(calld.params, calld.event);
-    } else if (calld.method === "setProposedHash") {
-        actions.setProposedHash(calld.params, calld.event);
+    } else if (calld.method === "setProposedBlock") {
+        actions.setProposedBlock(calld.params, calld.event);
     } else if (calld.method === "changeProposedHash") {
         actions.changeProposedHash(calld.params, calld.event);
     } else if (calld.method === "sendQueryToRandomSet") {

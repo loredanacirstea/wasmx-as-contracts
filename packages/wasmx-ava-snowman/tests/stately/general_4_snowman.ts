@@ -5,11 +5,10 @@ import { createMachine } from "xstate";
 export const machine = createMachine(
   {
     context: {
-      rounds: "3",
       sampleSize: "2",
       betaThreshold: 3,
       roundsCounter: "0",
-      alphaThreshold: "2",
+      alphaThreshold: 80,
     },
     id: "general_4_Snowman-BFT_2",
     initial: "uninitialized",
@@ -41,6 +40,9 @@ export const machine = createMachine(
                   type: "setup",
                 },
               },
+              prestart: {
+                target: "prestart",
+              },
             },
           },
           validator: {
@@ -63,12 +65,14 @@ export const machine = createMachine(
                 },
               },
               query: {
-                target: "proposer",
+                target: "preProposer",
+                guard: "ifBlockNotFinalized",
                 actions: [
                   {
-                    type: "setProposedHash",
+                    type: "setProposedBlock",
                     params: {
                       header: "$header",
+                      block: "$block",
                     },
                   },
                   {
@@ -82,6 +86,15 @@ export const machine = createMachine(
               },
               stop: {
                 target: "stopped",
+              },
+            },
+          },
+          prestart: {
+            after: {
+              "500": {
+                target: "#general_4_Snowman-BFT_2.initialized.validator",
+                actions: [],
+                meta: {},
               },
             },
           },
@@ -141,6 +154,26 @@ export const machine = createMachine(
               },
             },
           },
+          preProposer: {
+            after: {
+              "500": {
+                target: "#general_4_Snowman-BFT_2.initialized.proposer",
+                actions: [],
+                meta: {},
+              },
+            },
+            on: {
+              query: {
+                actions: {
+                  type: "sendResponse",
+                  params: {
+                    block: "$proposedBlock",
+                    header: "$proposedHeader",
+                  },
+                },
+              },
+            },
+          },
           stopped: {
             on: {
               restart: {
@@ -193,9 +226,9 @@ export const machine = createMachine(
             initChainSetup: string;
           }
         | { type: "initialize" }
-        | { type: "newTransaction"; transaction: string },
+        | { type: "newTransaction"; transaction: string }
+        | { type: "prestart" },
       context: {} as {
-        rounds: string;
         sampleSize: string;
         betaThreshold: number;
         roundsCounter: string;
@@ -228,6 +261,7 @@ export const machine = createMachine(
       calculateMajorityColor: ({ context, event }) => {},
       incrementRoundsCounter: ({ context, event }) => {},
       incrementProposedBlockConfidence: ({ context, event }) => {},
+      setProposedBlock: ({ context, event }) => {},
     },
     actors: {},
     guards: {
@@ -238,6 +272,9 @@ export const machine = createMachine(
         return false;
       },
       ifIncrementedCounterLTBetaThreshold: ({ context, event }, params) => {
+        return false;
+      },
+      ifBlockNotFinalized: ({ context, event }, params) => {
         return false;
       },
       "New guard": ({ context, event }, params) => {

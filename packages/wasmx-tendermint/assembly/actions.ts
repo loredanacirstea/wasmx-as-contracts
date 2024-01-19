@@ -1597,7 +1597,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     // if consensus changed, start the new contract
     if (newContract != "" && newContractSetup) {
         LoggerInfo("starting new consensus contract", ["address", newContract])
-        let calldata = `{"run":{"event":{"type":"start","params":[]}}}`
+        let calldata = `{"run":{"event":{"type":"prestart","params":[]}}}`
         let req = new CallRequest(newContract, calldata, 0, 100000000, false);
         let resp = wasmxwrap.call(req);
         if (resp.success > 0) {
@@ -1647,7 +1647,7 @@ function setFinalizedBlock(entry: LogEntryAggregate, hash: string, txhashes: str
     const calldatastr = `{"setBlock":${JSON.stringify<wblockscalld.CallDataSetBlock>(calldata)}}`;
     const resp = callStorage(calldatastr, false);
     if (resp.success > 0) {
-        revert("could not set finalized block");
+        revert(`could not set finalized block: ${resp.data}`);
     }
 }
 
@@ -1655,9 +1655,8 @@ function callStorage(calldata: string, isQuery: boolean): CallResponse {
     const contractAddress = getStorageAddress();
     const req = new CallRequest(contractAddress, calldata, 0, 100000000, isQuery);
     const resp = wasmxwrap.call(req);
-    if (resp.success == 0) {
-        resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
-    }
+    // result or error
+    resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
     return resp;
 }
 

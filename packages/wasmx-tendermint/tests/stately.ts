@@ -10,10 +10,11 @@ export const machine = createMachine(
       votedFor: "0",
       nextIndex: "[]",
       currentTerm: "0",
+      blockTimeout: "roundTimeout",
       max_tx_bytes: "65536",
+      roundTimeout: 10000,
       currentNodeId: "0",
       max_block_gas: "20000000",
-      roundTimeout: 10000,
     },
     id: "Tendermint_0",
     initial: "uninitialized",
@@ -36,7 +37,7 @@ export const machine = createMachine(
                   type: "setupNode",
                 },
               },
-              start: {
+              prestart: {
                 target: "prestart",
               },
               setup: {
@@ -45,11 +46,14 @@ export const machine = createMachine(
                   type: "setup",
                 },
               },
+              start: {
+                target: "Validator",
+              },
             },
           },
           prestart: {
             after: {
-              roundTimeout: {
+              "500": {
                 target: "#Tendermint_0.initialized.Validator",
                 actions: [],
                 meta: {},
@@ -255,11 +259,11 @@ export const machine = createMachine(
           }
         | {
             type: "receivePrecommit";
+            index: string;
             value: string;
             termId: string;
             signature: string;
             proposerId: string;
-            index: string;
           }
         | { type: "heartbeatResponse"; term: string; success: string }
         | {
@@ -269,7 +273,8 @@ export const machine = createMachine(
             candidateId: string;
             lastLogTerm: string;
             lastLogIndex: string;
-          },
+          }
+        | { type: "prestart" },
       context: {} as {
         log: string;
         nodeIPs: string;
@@ -277,6 +282,7 @@ export const machine = createMachine(
         votedFor: string;
         nextIndex: string;
         currentTerm: string;
+        blockTimeout: string;
         max_tx_bytes: string;
         prevLogIndex: string;
         roundTimeout: string;

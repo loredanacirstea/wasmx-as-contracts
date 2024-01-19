@@ -13,6 +13,7 @@ export const machine = createMachine(
       commitIndex: "0",
       currentTerm: "0",
       lastApplied: "0",
+      blockTimeout: "heartbeatTimeout",
       max_tx_bytes: "65536",
       prevLogIndex: "0",
       currentNodeId: "0",
@@ -52,6 +53,9 @@ export const machine = createMachine(
                 actions: {
                   type: "setup",
                 },
+              },
+              prestart: {
+                target: "prestart",
               },
             },
           },
@@ -117,6 +121,15 @@ export const machine = createMachine(
               },
               start: {
                 target: "Follower",
+              },
+            },
+          },
+          prestart: {
+            after: {
+              "500": {
+                target: "#RAFT-FULL-1.initialized.Follower",
+                actions: [],
+                meta: {},
               },
             },
           },
@@ -259,6 +272,7 @@ export const machine = createMachine(
         | { type: "reset" }
         | { type: "setup"; address: string }
         | { type: "start" }
+        | { type: "restart" }
         | { type: "newChange"; transaction: string }
         | {
             type: "setupNode";
@@ -296,7 +310,7 @@ export const machine = createMachine(
             lastLogTerm: string;
             lastLogIndex: string;
           }
-        | { type: "restart" },
+        | { type: "prestart" },
       context: {} as {
         log: string;
         nodeIPs: string;
@@ -307,6 +321,7 @@ export const machine = createMachine(
         commitIndex: string;
         currentTerm: string;
         lastApplied: string;
+        blockTimeout: string;
         max_tx_bytes: string;
         prevLogIndex: string;
         currentNodeId: string;
@@ -322,6 +337,7 @@ export const machine = createMachine(
   {
     actions: {
       vote: ({ context, event }) => {},
+      setup: ({ context, event }) => {},
       selfVote: ({ context, event }) => {},
       setupNode: ({ context, event }) => {},
       addToMempool: ({ context, event }) => {},
@@ -342,7 +358,6 @@ export const machine = createMachine(
         // Add your action code here
       },
       sendNewTransactionResponse: ({ context, event }) => {},
-      setup: ({ context, event }) => {},
     },
     actors: {},
     guards: {

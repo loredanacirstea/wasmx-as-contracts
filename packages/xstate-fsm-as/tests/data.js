@@ -659,6 +659,7 @@ export const RAFT_Full =  {
     commitIndex: "0",
     currentTerm: "0",
     lastApplied: "0",
+    blockTimeout: "heartbeatTimeout",
     max_tx_bytes: "65536",
     prevLogIndex: "0",
     currentNodeId: "0",
@@ -698,6 +699,9 @@ export const RAFT_Full =  {
               actions: {
                 type: "setup",
               },
+            },
+            prestart: {
+              target: "prestart",
             },
           },
         },
@@ -763,6 +767,15 @@ export const RAFT_Full =  {
             },
             start: {
               target: "Follower",
+            },
+          },
+        },
+        prestart: {
+          after: {
+            "500": {
+              target: "#RAFT-FULL-1.initialized.Follower",
+              actions: [],
+              meta: {},
             },
           },
         },
@@ -901,221 +914,224 @@ export const RAFT_Full =  {
 }
 
 export var TENDERMINT_1 = {
-  "context": {
-    "log": "",
-    "nodeIPs": "[]",
-    "votedFor": "0",
-    "nextIndex": "[]",
-    "currentTerm": "0",
-    "max_tx_bytes": "65536",
-    "currentNodeId": "0",
-    "max_block_gas": "20000000",
-    "roundTimeout": 10000
+  context: {
+    log: "",
+    nodeIPs: "[]",
+    votedFor: "0",
+    nextIndex: "[]",
+    currentTerm: "0",
+    blockTimeout: "roundTimeout",
+    max_tx_bytes: "65536",
+    roundTimeout: 10000,
+    currentNodeId: "0",
+    max_block_gas: "20000000",
   },
-  "id": "Tendermint_0",
-  "initial": "uninitialized",
-  "states": {
-    "uninitialized": {
-      "on": {
-        "initialize": {
-          "target": "initialized"
-        }
-      }
-    },
-    "initialized": {
-      "initial": "unstarted",
-      "states": {
-        "unstarted": {
-          "on": {
-            "setupNode": {
-              "target": "unstarted",
-              "actions": {
-                "type": "setupNode"
-              }
-            },
-            "start": {
-              "target": "prestart"
-            },
-            "setup": {
-              "target": "unstarted",
-              "actions": {
-                "type": "setup"
-              }
-            }
-          }
+  id: "Tendermint_0",
+  initial: "uninitialized",
+  states: {
+    uninitialized: {
+      on: {
+        initialize: {
+          target: "initialized",
         },
-        "prestart": {
-          "after": {
-            "roundTimeout": {
-              "target": "#Tendermint_0.initialized.Validator",
-              "actions": [],
-              "meta": {}
-            }
-          }
-        },
-        "Validator": {
-          "entry": [
-            {
-              "type": "registeredCheck"
-            },
-            {
-              "type": "cancelActiveIntervals",
-              "params": {
-                "after": "roundTimeout"
-              }
-            },
-            {
-              "type": "incrementCurrentTerm"
-            },
-            {
-              "type": "initializeNextIndex"
-            }
-          ],
-          "after": {
-            "roundTimeout": {
-              "target": "#Tendermint_0.initialized.Validator",
-              "actions": [],
-              "meta": {}
-            }
-          },
-          "always": {
-            "target": "Proposer",
-            "cond": "isNextProposer"
-          },
-          "on": {
-            "receiveProposal": {
-              "actions": [
-                {
-                  "type": "processBlock"
-                },
-                {
-                  "type": "sendProposalResponse"
-                }
-              ]
-            },
-            "newTransaction": {
-              "actions": [
-                {
-                  "type": "addToMempool"
-                },
-                {
-                  "type": "sendNewTransactionResponse"
-                }
-              ]
-            },
-            "stop": {
-              "target": "#Tendermint_0.stopped"
-            },
-            "start": {
-              "target": "Validator"
-            },
-            "receivePrecommit": {
-              "actions": [
-                {
-                  "type": "commitBlock"
-                },
-                {
-                  "type": "sendPrecommitResponse"
-                }
-              ]
-            }
-          }
-        },
-        "Proposer": {
-          "initial": "active",
-          "states": {
-            "active": {
-              "entry": [
-                {
-                  "type": "cancelActiveIntervals",
-                  "params": {
-                    "after": "roundTimeout"
-                  }
-                },
-                {
-                  "type": "proposeBlock"
-                },
-                {
-                  "type": "sendAppendEntries"
-                },
-                {
-                  "type": "commitBlocks"
-                }
-              ],
-              "after": {
-                "roundTimeout": {
-                  "target": "#Tendermint_0.initialized.Validator",
-                  "actions": [],
-                  "meta": {}
-                }
-              },
-              "on": {
-                "newTransaction": {
-                  "actions": [
-                    {
-                      "type": "addToMempool"
-                    },
-                    {
-                      "type": "sendNewTransactionResponse"
-                    }
-                  ]
-                },
-                "start": {
-                  "target": "active"
-                },
-                "nodeUpdate": {
-                  "actions": {
-                    "type": "updateNodeAndReturn"
-                  }
-                },
-                "receiveProposal": {
-                  "target": "#Tendermint_0.initialized.Validator",
-                  "actions": [
-                    {
-                      "type": "processBlock"
-                    },
-                    {
-                      "type": "sendProposalResponse"
-                    },
-                    {
-                      "type": "cancelActiveIntervals",
-                      "params": {
-                        "after": "roundTimeout"
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "on": {
-            "stop": {
-              "target": "#Tendermint_0.stopped"
-            }
-          }
-        }
       },
-      "on": {
-        "start": {}
-      }
     },
-    "stopped": {
-      "on": {
-        "restart": {
-          "target": "#Tendermint_0.initialized.unstarted"
-        }
-      }
-    }
+    initialized: {
+      initial: "unstarted",
+      states: {
+        unstarted: {
+          on: {
+            setupNode: {
+              target: "unstarted",
+              actions: {
+                type: "setupNode",
+              },
+            },
+            prestart: {
+              target: "prestart",
+            },
+            setup: {
+              target: "unstarted",
+              actions: {
+                type: "setup",
+              },
+            },
+            start: {
+              target: "Validator",
+            },
+          },
+        },
+        prestart: {
+          after: {
+            "500": {
+              target: "#Tendermint_0.initialized.Validator",
+              actions: [],
+              meta: {},
+            },
+          },
+        },
+        Validator: {
+          entry: [
+            {
+              type: "registeredCheck",
+            },
+            {
+              type: "cancelActiveIntervals",
+              params: {
+                after: "roundTimeout",
+              },
+            },
+            {
+              type: "incrementCurrentTerm",
+            },
+            {
+              type: "initializeNextIndex",
+            },
+          ],
+          after: {
+            roundTimeout: {
+              target: "#Tendermint_0.initialized.Validator",
+              actions: [],
+              meta: {},
+            },
+          },
+          always: {
+            target: "Proposer",
+            guard: "isNextProposer",
+          },
+          on: {
+            receiveProposal: {
+              actions: [
+                {
+                  type: "processBlock",
+                },
+                {
+                  type: "sendProposalResponse",
+                },
+              ],
+            },
+            newTransaction: {
+              actions: [
+                {
+                  type: "addToMempool",
+                },
+                {
+                  type: "sendNewTransactionResponse",
+                },
+              ],
+            },
+            stop: {
+              target: "#Tendermint_0.stopped",
+            },
+            start: {
+              target: "Validator",
+            },
+            receivePrecommit: {
+              actions: [
+                {
+                  type: "commitBlock",
+                },
+                {
+                  type: "sendPrecommitResponse",
+                },
+              ],
+            },
+          },
+        },
+        Proposer: {
+          initial: "active",
+          states: {
+            active: {
+              entry: [
+                {
+                  type: "cancelActiveIntervals",
+                  params: {
+                    after: "roundTimeout",
+                  },
+                },
+                {
+                  type: "proposeBlock",
+                },
+                {
+                  type: "sendAppendEntries",
+                },
+                {
+                  type: "commitBlocks",
+                },
+              ],
+              after: {
+                roundTimeout: {
+                  target: "#Tendermint_0.initialized.Validator",
+                  actions: [],
+                  meta: {},
+                },
+              },
+              on: {
+                newTransaction: {
+                  actions: [
+                    {
+                      type: "addToMempool",
+                    },
+                    {
+                      type: "sendNewTransactionResponse",
+                    },
+                  ],
+                },
+                start: {
+                  target: "active",
+                },
+                nodeUpdate: {
+                  actions: {
+                    type: "updateNodeAndReturn",
+                  },
+                },
+                receiveProposal: {
+                  target: "#Tendermint_0.initialized.Validator",
+                  actions: [
+                    {
+                      type: "processBlock",
+                    },
+                    {
+                      type: "sendProposalResponse",
+                    },
+                    {
+                      type: "cancelActiveIntervals",
+                      params: {
+                        after: "roundTimeout",
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+          on: {
+            stop: {
+              target: "#Tendermint_0.stopped",
+            },
+          },
+        },
+      },
+      on: {
+        start: {},
+      },
+    },
+    stopped: {
+      on: {
+        restart: {
+          target: "#Tendermint_0.initialized.unstarted",
+        },
+      },
+    },
   }
 }
 
 export const AVA_SNOWMAN = {
   context: {
-    rounds: "3",
     sampleSize: "2",
     betaThreshold: 3,
     roundsCounter: "0",
-    alphaThreshold: "2",
+    alphaThreshold: 80,
   },
   id: "general_4_Snowman-BFT_2",
   initial: "uninitialized",
@@ -1147,6 +1163,9 @@ export const AVA_SNOWMAN = {
                 type: "setup",
               },
             },
+            prestart: {
+              target: "prestart",
+            },
           },
         },
         validator: {
@@ -1169,12 +1188,14 @@ export const AVA_SNOWMAN = {
               },
             },
             query: {
-              target: "proposer",
+              target: "preProposer",
+              guard: "ifBlockNotFinalized",
               actions: [
                 {
-                  type: "setProposedHash",
+                  type: "setProposedBlock",
                   params: {
                     header: "$header",
+                    block: "$block",
                   },
                 },
                 {
@@ -1188,6 +1209,15 @@ export const AVA_SNOWMAN = {
             },
             stop: {
               target: "stopped",
+            },
+          },
+        },
+        prestart: {
+          after: {
+            "500": {
+              target: "#general_4_Snowman-BFT_2.initialized.validator",
+              actions: [],
+              meta: {},
             },
           },
         },
@@ -1244,6 +1274,26 @@ export const AVA_SNOWMAN = {
             },
             stop: {
               target: "stopped",
+            },
+          },
+        },
+        preProposer: {
+          after: {
+            "500": {
+              target: "#general_4_Snowman-BFT_2.initialized.proposer",
+              actions: [],
+              meta: {},
+            },
+          },
+          on: {
+            query: {
+              actions: {
+                type: "sendResponse",
+                params: {
+                  block: "$proposedBlock",
+                  header: "$proposedHeader",
+                },
+              },
             },
           },
         },

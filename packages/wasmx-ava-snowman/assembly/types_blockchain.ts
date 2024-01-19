@@ -47,6 +47,7 @@ class MempoolBatch {
 // @ts-ignore
 @serializable
 export class Mempool {
+    // TODO index on hash, so we dont add multiple times
     txs: Base64String[];
     gas: i32[];
     constructor(txs: Base64String[] = [], gas: i32[] = []) {
@@ -59,6 +60,7 @@ export class Mempool {
         this.txs = this.txs.concat([tx]);
     }
 
+    // we remove the tx after block finalization
     batch(maxGas: i64, maxBytes: i64): MempoolBatch {
         let batch: MempoolBatch = new MempoolBatch([], 0);
         let cummulatedBytes: i64 = 0;
@@ -74,9 +76,18 @@ export class Mempool {
             batch.cummulatedGas += this.gas[i];
             cummulatedBytes += bytelen;
         }
-        this.txs.splice(0, batch.txs.length);
-        this.gas.splice(0, batch.txs.length);
         return batch;
+    }
+
+    remove(txs: Base64String[]): void {
+        for (let i = 0; i < txs.length; i++) {
+            for (let j = 0; j < this.txs.length; j++) {
+                if (txs[i] == this.txs[j]) {
+                    this.txs.splice(j, 1);
+                    this.gas.splice(j, 1);
+                }
+            }
+        }
     }
 
     spliceTxs(limit: i32): Base64String[] {
