@@ -1194,8 +1194,8 @@ export const AVA_SNOWMAN = {
                 {
                   type: "setProposedBlock",
                   params: {
-                    header: "$header",
                     block: "$block",
+                    header: "$header",
                   },
                 },
                 {
@@ -1223,13 +1223,22 @@ export const AVA_SNOWMAN = {
         },
         proposer: {
           entry: {
-            type: "sendQueryToRandomSet",
+            type: "majorityFromRandomSet",
             params: {
               k: "$sampleSize",
-              threshold: "$alphaThreshold",
             },
           },
           always: [
+            {
+              target: "proposer",
+              guard: "ifMajorityLTAlphaThreshold",
+              actions: {
+                type: "resetRoundsCounter",
+                params: {
+                  roundsCounter: 0,
+                },
+              },
+            },
             {
               target: "limboProposer",
               guard: "ifMajorityIsOther",
@@ -1310,7 +1319,7 @@ export const AVA_SNOWMAN = {
               target: "proposer",
               guard: "ifMajorityConfidenceGTCurrent",
               actions: {
-                type: "changeProposedHash",
+                type: "changeProposedBlock",
                 params: {
                   hash: "$majority",
                 },

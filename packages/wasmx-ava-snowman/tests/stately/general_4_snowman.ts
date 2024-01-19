@@ -6,7 +6,7 @@ export const machine = createMachine(
   {
     context: {
       sampleSize: "2",
-      betaThreshold: 3,
+      betaThreshold: 2,
       roundsCounter: "0",
       alphaThreshold: 80,
     },
@@ -71,8 +71,8 @@ export const machine = createMachine(
                   {
                     type: "setProposedBlock",
                     params: {
-                      header: "$header",
                       block: "$block",
+                      header: "$header",
                     },
                   },
                   {
@@ -100,13 +100,22 @@ export const machine = createMachine(
           },
           proposer: {
             entry: {
-              type: "sendQueryToRandomSet",
+              type: "majorityFromRandomSet",
               params: {
                 k: "$sampleSize",
-                threshold: "$alphaThreshold",
               },
             },
             always: [
+              {
+                target: "proposer",
+                guard: "ifMajorityLTAlphaThreshold",
+                actions: {
+                  type: "resetRoundsCounter",
+                  params: {
+                    roundsCounter: 0,
+                  },
+                },
+              },
               {
                 target: "limboProposer",
                 guard: "ifMajorityIsOther",
@@ -187,7 +196,7 @@ export const machine = createMachine(
                 target: "proposer",
                 guard: "ifMajorityConfidenceGTCurrent",
                 actions: {
-                  type: "changeProposedHash",
+                  type: "changeProposedBlock",
                   params: {
                     hash: "$majority",
                   },
@@ -219,6 +228,7 @@ export const machine = createMachine(
         | { type: "setup"; address: string }
         | { type: "start" }
         | { type: "restart" }
+        | { type: "prestart" }
         | {
             type: "setupNode";
             nodeIPs: string;
@@ -226,8 +236,7 @@ export const machine = createMachine(
             initChainSetup: string;
           }
         | { type: "initialize" }
-        | { type: "newTransaction"; transaction: string }
-        | { type: "prestart" },
+        | { type: "newTransaction"; transaction: string },
       context: {} as {
         sampleSize: string;
         betaThreshold: number;
@@ -251,6 +260,7 @@ export const machine = createMachine(
       finalizeBlock: ({ context, event }) => {},
       setProposedHash: ({ context, event }) => {},
       resetConfidences: ({ context, event }) => {},
+      setProposedBlock: ({ context, event }) => {},
       changeProposedHash: ({ context, event }) => {},
       resetRoundsCounter: ({ context, event }) => {},
       selectRandomSample: ({ context, event }) => {},
@@ -261,11 +271,16 @@ export const machine = createMachine(
       calculateMajorityColor: ({ context, event }) => {},
       incrementRoundsCounter: ({ context, event }) => {},
       incrementProposedBlockConfidence: ({ context, event }) => {},
-      setProposedBlock: ({ context, event }) => {},
+      getMajorityFromToRandomSet: ({ context, event }) => {},
+      majorityFromRandomSet: ({ context, event }) => {},
+      changeProposedBlock: ({ context, event }) => {},
     },
     actors: {},
     guards: {
       ifMajorityIsOther: ({ context, event }, params) => {
+        return false;
+      },
+      ifBlockNotFinalized: ({ context, event }, params) => {
         return false;
       },
       ifMajorityConfidenceGTCurrent: ({ context, event }, params) => {
@@ -274,10 +289,10 @@ export const machine = createMachine(
       ifIncrementedCounterLTBetaThreshold: ({ context, event }, params) => {
         return false;
       },
-      ifBlockNotFinalized: ({ context, event }, params) => {
+      ifGTAlphaThreshold: ({ context, event }, params) => {
         return false;
       },
-      "New guard": ({ context, event }, params) => {
+      ifMajorityLTAlphaThreshold: ({ context, event }, params) => {
         return false;
       },
     },

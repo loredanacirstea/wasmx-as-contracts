@@ -26,6 +26,10 @@ export function main(): void {
         result = actions.wrapGuard(actions.ifBlockNotFinalized(calld.params, calld.event));
         wasmx.finish(result);
         return;
+    } else if (calld.method === "ifMajorityLTAlphaThreshold") {
+        result = actions.wrapGuard(actions.ifMajorityLTAlphaThreshold(calld.params, calld.event));
+        wasmx.finish(result);
+        return;
     } else if (calld.method === "incrementRoundsCounter") {
         actions.incrementRoundsCounter(calld.params, calld.event);
     } else if (calld.method === "resetRoundsCounter") {
@@ -38,10 +42,10 @@ export function main(): void {
         actions.proposeBlock(calld.params, calld.event);
     } else if (calld.method === "setProposedBlock") {
         actions.setProposedBlock(calld.params, calld.event);
-    } else if (calld.method === "changeProposedHash") {
-        actions.changeProposedHash(calld.params, calld.event);
-    } else if (calld.method === "sendQueryToRandomSet") {
-        actions.sendQueryToRandomSet(calld.params, calld.event);
+    } else if (calld.method === "changeProposedBlock") {
+        actions.changeProposedBlock(calld.params, calld.event);
+    } else if (calld.method === "majorityFromRandomSet") {
+        actions.majorityFromRandomSet(calld.params, calld.event);
     } else if (calld.method === "incrementConfidence") {
         actions.incrementConfidence(calld.params, calld.event);
     } else if (calld.method === "finalizeBlock") {

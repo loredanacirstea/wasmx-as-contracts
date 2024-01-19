@@ -10,6 +10,7 @@ export const PROPOSED_HEADER_KEY = "proposedHeader"
 export const PROPOSED_BLOCK_KEY = "proposedBlock"
 export const BLOCKS_KEY = "tempblocks"
 export const MAJORITY_KEY = "majority"
+export const MAJORITY_COUNT_KEY = "majority_count"
 
 //// Cosmos-specific
 export const MEMPOOL_KEY = "mempool";

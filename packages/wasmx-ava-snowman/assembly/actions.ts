@@ -24,6 +24,7 @@ import {
     getConfidence,
     getNodeIPs,
     getStorageAddress,
+    setBlocks,
     setConfidence,
 } from './storage';
 import { CurrentState, Mempool } from "./types_blockchain";
@@ -38,6 +39,9 @@ import {
     MAJORITY_KEY,
     PROPOSED_HEADER_KEY,
     PROPOSED_BLOCK_KEY,
+    ALPHA_THRESHOLD_KEY,
+    SAMPLE_SIZE_KEY,
+    MAJORITY_COUNT_KEY,
 } from './config';
 import {
     setNodeIPs,
@@ -86,7 +90,7 @@ export function ifIncrementedCounterLTBetaThreshold(
 ): boolean {
     const counter = getRoundsCounter();
     const betaThreshold = parseInt32(fsm.getContextValue(BETA_THRESHOLD_KEY) || "");
-    LoggerDebug("ifIncrementedCounterLTBetaThreshold", ["counter", counter.toString(), "betaThreshold", betaThreshold.toString()])
+    LoggerDebug("ifIncrementedCounterLTBetaThreshold", ["incremented_counter", (counter + 1).toString(), "beta_threshold", betaThreshold.toString()])
     if ((counter + 1) < betaThreshold) return true;
     return false;
 }
@@ -115,6 +119,18 @@ export function ifBlockNotFinalized(
     const lastIndex = getLastBlockIndex();
     LoggerDebug("ifBlockNotFinalized", ["block height", block.index.toString(), "last finalized height", lastIndex.toString()])
     return lastIndex < block.index;
+}
+
+export function ifMajorityLTAlphaThreshold(
+    params: ActionParam[],
+    event: EventObject,
+): boolean {
+    const percentage = parseInt32(fsm.getContextValue(ALPHA_THRESHOLD_KEY));
+    const k = parseInt32(fsm.getContextValue(SAMPLE_SIZE_KEY));
+    const threshold = i32(Math.ceil(f32(k * percentage) / f32(100)))
+    const majority = parseInt32(fsm.getContextValue(MAJORITY_COUNT_KEY));
+    LoggerDebug("ifMajorityLTAlphaThreshold", ["sampleSize", k.toString(), "threshold", threshold.toString(), "majority", majority.toString()]);
+    return majority < threshold;
 }
 
 /// actions
@@ -220,7 +236,7 @@ export function setProposedBlock(
     fsm.setContextValue(PROPOSED_BLOCK_KEY, blockStr)
 }
 
-export function sendQueryToRandomSet(
+export function majorityFromRandomSet(
     params: ActionParam[],
     event: EventObject,
 ): void {
@@ -229,21 +245,15 @@ export function sendQueryToRandomSet(
     if (!ctx.has("k")) {
         revert("no k found");
     }
-    if (!ctx.has("threshold")) {
-        revert("no threshold found");
-    }
     // sampleSize
     const k = parseInt32(ctx.get("k"));
-    // alphaThreshold
-    const percentage = parseInt32(ctx.get("threshold"));
-    const threshold = i32(Math.ceil(f32(k * 80) / f32(100)))
 
     // get proposed block
     const proposedHash = fsm.getContextValue(PROPOSED_HASH_KEY);
     const proposedHeader = fsm.getContextValue(PROPOSED_HEADER_KEY);
     const proposedBlock = fsm.getContextValue(PROPOSED_BLOCK_KEY);
 
-    LoggerDebug("send query to random set", ["k", k.toString(), "threshold", threshold.toString(), "proposedHash", proposedHash, "proposedHeader", proposedHeader])
+    LoggerDebug("send query to random set", ["k", k.toString(), "proposedHash", proposedHash, "proposedHeader", proposedHeader])
     console.debug("* block: " + proposedBlock);
 
     // select from validators
@@ -263,19 +273,17 @@ export function sendQueryToRandomSet(
         const nodeIp = nodeIps[sampleIndexes[i]];
         const resp = sendQuery(nodeIp, contract, request);
         if (resp != null) {
-            if (resp.block == proposedBlock) {
-                continue;
-            }
-            const header = JSON.parse<typestnd.Header>(String.UTF8.decode(decodeBase64(resp.header).buffer))
-            const hash = getHeaderHash(header)
-            if (!responseCounter.has(hash)) {
-                responseCounter.set(hash, 1);
+            if (resp.block != proposedBlock) {
+                const header = JSON.parse<typestnd.Header>(String.UTF8.decode(decodeBase64(resp.header).buffer))
+                const hash = getHeaderHash(header)
+                if (!responseCounter.has(hash)) {
+                    responseCounter.set(hash, 1);
+                } else {
+                    responseCounter.set(hash, responseCounter.get(hash) + 1);
+                }
+                responses.set(hash, resp);
             } else {
-                responseCounter.set(hash, responseCounter.get(hash) + 1);
-            }
-            responses.set(hash, resp);
-            if (responseCounter.get(hash) >= threshold) {
-                break;
+                responseCounter.set(proposedHash, responseCounter.get(proposedHash) + 1);
             }
         }
     }
@@ -284,27 +292,27 @@ export function sendQueryToRandomSet(
     LoggerDebug("majority options", ["hashes", allhashes.join(",")])
     let majorityCount = 0;
     let majorityHash = allhashes[0];
+    let majorityBlock_: QueryResponse | null = null;
     for (let i = 0; i < allhashes.length; i++) {
         const count = responseCounter.get(allhashes[i]);
         if (majorityCount < count) {
             majorityCount = count;
             majorityHash = allhashes[i]
+            majorityBlock_ = responses.get(majorityHash);
         }
     }
-    LoggerDebug("majority option", ["hash", majorityHash, "count", majorityCount.toString(), "threshold", threshold.toString()])
-    // if none of the options pass threshold, we reset the counter
-    if (threshold < majorityCount) {
-        setRoundsCounter(0);
+    LoggerDebug("majority option", ["hash", majorityHash, "count", majorityCount.toString()])
+    if (majorityBlock_ == null) {
         return;
     }
+    const majorityBlock: QueryResponse = majorityBlock_;
     fsm.setContextValue(MAJORITY_KEY, majorityHash);
-    fsm.setContextValue(PROPOSED_HASH_KEY, majorityHash);
-    fsm.setContextValue(PROPOSED_BLOCK_KEY, responses.get(majorityHash).block)
-    fsm.setContextValue(PROPOSED_HEADER_KEY, responses.get(majorityHash).header)
+    fsm.setContextValue(MAJORITY_COUNT_KEY, majorityCount.toString());
+    setBlocks(majorityBlock!.block, majorityBlock!.header, majorityHash);
 }
 
 // TODO only remove mempool transactions after the block was finalized
-export function changeProposedHash(
+export function changeProposedBlock(
     params: ActionParam[],
     event: EventObject,
 ): void {
