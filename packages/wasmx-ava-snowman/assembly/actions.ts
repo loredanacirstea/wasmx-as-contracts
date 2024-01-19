@@ -1,0 +1,1024 @@
+import { JSON } from "json-as/assembly";
+import { encode as encodeBase64, decode as decodeBase64, encode } from "as-base64/assembly";
+import * as wblocks from "wasmx-blocks/assembly/types";
+import * as wblockscalld from "wasmx-blocks/assembly/calldata";
+import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
+import * as wasmx from 'wasmx-env/assembly/wasmx';
+import {
+    EventObject,
+    ActionParam,
+} from 'xstate-fsm-as/assembly/types';
+import {
+    Base64String,
+    CallRequest,
+    CallResponse,
+  } from 'wasmx-env/assembly/types';
+  import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
+import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
+import * as fsm from 'xstate-fsm-as/assembly/storage';
+import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, parseUint8ArrayToU32BigEndian } from "wasmx-utils/assembly/utils";
+import { getParamsOrEventParams, actionParamsToMap } from 'xstate-fsm-as/assembly/utils';
+import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
+import {
+    getBlocks,
+    getConfidence,
+    getNodeIPs,
+    getStorageAddress,
+    setConfidence,
+} from './storage';
+import { CurrentState, Mempool } from "./types_blockchain";
+import { LogEntry, LogEntryAggregate, AppendEntry, NodeUpdate, UpdateNodeResponse, AppendEntryResponse, TransactionResponse, Precommit, QueryResponse, TempBlock } from "./types";
+import {
+    CURRENT_NODE_ID,
+    NODE_IPS,
+    BlockProtocol,
+    PROPOSED_HASH_KEY,
+    BETA_THRESHOLD_KEY,
+    MaxBlockSizeBytes,
+    MAJORITY_KEY,
+    PROPOSED_HEADER_KEY,
+    PROPOSED_BLOCK_KEY,
+} from './config';
+import {
+    setNodeIPs,
+    setValidators,
+    setCurrentState,
+    getMempool,
+    setMempool,
+    setCurrentNodeId,
+    setLastLogIndex,
+    getLastLogIndex,
+    getCurrentState,
+    getValidators,
+    appendLogEntry,
+    getLogEntryObj,
+    updateValidators,
+    removeLogEntry,
+    getCurrentNodeId,
+    getRoundsCounter,
+    setRoundsCounter,
+    resetBlocks,
+    resetConfidences as _resetConfidences,
+} from './storage';
+import { base64ToHex, hex64ToBase64 } from './utils';
+
+/// guards
+
+export function ifMajorityConfidenceGTCurrent(
+    params: ActionParam[],
+    event: EventObject,
+): boolean {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("majority")) {
+        revert("no majority found");
+    }
+    const majority = parseInt32(ctx.get("majority"));
+    const currentHash = fsm.getContextValue(PROPOSED_HASH_KEY);
+    const confidence = getConfidence(currentHash);
+    if (majority > confidence) return true;
+    return false;
+}
+
+export function ifIncrementedCounterLTBetaThreshold(
+    params: ActionParam[],
+    event: EventObject,
+): boolean {
+    const counter = getRoundsCounter();
+    const betaThreshold = parseInt32(fsm.getContextValue(BETA_THRESHOLD_KEY) || "");
+    if ((counter + 1) < betaThreshold) return true;
+    return false;
+}
+
+export function ifMajorityIsOther(
+    params: ActionParam[],
+    event: EventObject,
+): boolean {
+    const proposedHash = fsm.getContextValue(PROPOSED_HASH_KEY);
+    const majority = fsm.getContextValue(MAJORITY_KEY);
+    return majority != proposedHash;
+}
+
+/// actions
+
+export function incrementRoundsCounter(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const counter = getRoundsCounter();
+    setRoundsCounter(counter + 1);
+}
+
+export function resetRoundsCounter(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    setRoundsCounter(0);
+}
+
+export function resetConfidences(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    _resetConfidences();
+    // also remove temporary block data
+    resetBlocks();
+}
+
+export function sendResponse(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("block")) {
+        revert("no block found");
+    }
+    if (!ctx.has("header")) {
+        revert("no header found");
+    }
+    const block: Base64String = ctx.get("block");
+    const header: Base64String = ctx.get("header");
+    const response = new QueryResponse(block, header);
+    LoggerDebug("send query response", [])
+    wasmx.setFinishData(String.UTF8.encode(JSON.stringify<QueryResponse>(response)));
+}
+
+export function proposeBlock(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("transaction")) {
+        revert("no transaction found");
+    }
+    const transaction: Base64String = ctx.get("transaction");
+    const mempool = getMempool();
+    mempool.add(transaction, 3000000);
+    const cparams = getConsensusParams();
+    let maxbytes = cparams.block.max_bytes;
+    if (maxbytes == -1) {
+        maxbytes = MaxBlockSizeBytes;
+    }
+    const batch = mempool.batch(cparams.block.max_gas, maxbytes);
+    setMempool(mempool);
+    // start proposal protocol
+    // TODO correct gas
+    startBlockProposal(batch.txs, 10000000, maxbytes);
+}
+
+export function setProposedHash(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("header")) {
+        revert("no header found");
+    }
+    const headerStr: Base64String = ctx.get("header");
+    const header = JSON.parse<typestnd.Header>(String.UTF8.decode(decodeBase64(headerStr).buffer))
+    const hash = getHeaderHash(header)
+    fsm.setContextValue(PROPOSED_HASH_KEY, hash)
+}
+
+export function sendQueryToRandomSet(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("k")) {
+        revert("no k found");
+    }
+    if (!ctx.has("threshold")) {
+        revert("no threshold found");
+    }
+    const k = parseInt32(ctx.get("k"));
+    const threshold = parseInt32(ctx.get("threshold"));
+
+    // get proposed block
+    const proposedHash = fsm.getContextValue(PROPOSED_HASH_KEY);
+    const proposedHeader = fsm.getContextValue(PROPOSED_HEADER_KEY);
+    const proposedBlock = fsm.getContextValue(PROPOSED_BLOCK_KEY);
+
+    LoggerDebug("send query to random set", ["k", k.toString(), "threshold", threshold.toString(), "proposedHash", proposedHash, "proposedHeader", proposedHeader])
+    console.debug("* block: " + proposedBlock);
+
+    // select from validators
+    const nodeIps = getNodeIPs();
+    const currentNode = getCurrentNodeId();
+    const sampleIndexes = getRandomSample(k, proposedHash, nodeIps.length - 1, currentNode);
+    LoggerDebug("send query to random set", ["sample ips", sampleIndexes.join(",")])
+    // we send the request to the same contract
+    const contract = wasmx.getAddress();
+    const request = new QueryResponse(proposedBlock, proposedHeader);
+    const responseCounter = new Map<string,i32>();
+    const responses = new Map<string,QueryResponse>();
+    responseCounter.set(proposedHash, 1);
+    responses.set(proposedHash, request);
+
+    for (let i = 0; i < sampleIndexes.length; i++) {
+        const nodeIp = nodeIps[sampleIndexes[i]];
+        const resp = sendQuery(nodeIp, contract, request);
+        if (resp != null) {
+            if (resp.block == proposedBlock) {
+                continue;
+            }
+            const header = JSON.parse<typestnd.Header>(String.UTF8.decode(decodeBase64(resp.header).buffer))
+            const hash = getHeaderHash(header)
+            if (!responseCounter.has(hash)) {
+                responseCounter.set(hash, 1);
+            } else {
+                responseCounter.set(hash, responseCounter.get(hash) + 1);
+            }
+            responses.set(hash, resp);
+            if (responseCounter.get(hash) >= threshold) {
+                break;
+            }
+        }
+    }
+    // calculate majority
+    const allhashes = responseCounter.keys();
+    let majorityCount = 0;
+    let majorityHash = allhashes[0];
+    for (let i = 0; i < allhashes.length; i++) {
+        const count = responseCounter.get(allhashes[i]);
+        if (majorityCount < count) {
+            majorityCount = count;
+            majorityHash = allhashes[i]
+        }
+    }
+    fsm.setContextValue(MAJORITY_KEY, majorityHash);
+    fsm.setContextValue(PROPOSED_HASH_KEY, majorityHash);
+    fsm.setContextValue(PROPOSED_BLOCK_KEY, responses.get(majorityHash).block)
+    fsm.setContextValue(PROPOSED_HEADER_KEY, responses.get(majorityHash).header)
+}
+
+export function changeProposedHash(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("hash")) {
+        revert("no hash found");
+    }
+    const hash = ctx.get("hash")
+    // get block & header for this hash
+    const tempblocks = getBlocks()
+    let tempblock: TempBlock | null = null;
+    for (let i = 0; i < tempblocks.length; i++) {
+        if(tempblocks[i].hash == hash) {
+            tempblock = tempblocks[i];
+            break;
+        }
+    }
+    if (!tempblock) {
+        revert("block not found for majority hash ")
+    }
+    const block: TempBlock = tempblock!;
+
+    fsm.setContextValue(PROPOSED_HASH_KEY, hash);
+    fsm.setContextValue(PROPOSED_HEADER_KEY, block.header);
+    fsm.setContextValue(PROPOSED_BLOCK_KEY, block.block);
+}
+
+export function incrementConfidence(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    // hash
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("hash")) {
+        revert("no hash found");
+    }
+    const hash = ctx.get("hash");
+    const value = getConfidence(hash);
+    setConfidence(hash, value+1);
+}
+
+export function finalizeBlock(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const blockEntryBase64 = fsm.getContextValue(PROPOSED_BLOCK_KEY);
+    console.debug("* finalizeblock blockEntryBase64: " + blockEntryBase64);
+    const blockEntry = String.UTF8.decode(decodeBase64(blockEntryBase64).buffer);
+    console.debug("* finalizeblock blockEntry: " + blockEntry);
+    const block = JSON.parse<wblocks.BlockEntry>(blockEntry)
+    const entryobj = new LogEntryAggregate(block.index, 0, 0, block)
+    LoggerInfo("start block finalization", ["height", block.index.toString()])
+    startBlockFinalizationInternal(entryobj, false);
+}
+
+/// setup
+
+export function setup(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    LoggerInfo("setting up new raft consensus contract", [])
+    // get nodeIPs and validators from old contract
+    // get currentState
+    // get mempool
+    let oldContract = "";
+    if (params.length > 0) {
+        oldContract = params[0].value;
+    } else if (event.params.length > 0) {
+        oldContract = event.params[0].value;
+    }
+    if (oldContract == "") {
+        return revert("previous contract address not provided")
+    }
+
+    let calldata = `{"getContextValue":{"key":"nodeIPs"}}`
+    let req = new CallRequest(oldContract, calldata, 0, 100000000, true);
+    let resp = wasmxwrap.call(req);
+    if (resp.success > 0) {
+        return revert("cannot get nodeIPs from previous contract")
+    }
+    let data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    LoggerInfo("setting up nodeIPs", ["ips", data])
+    const nodeIps = JSON.parse<Array<string>>(data)
+    setNodeIPs(nodeIps);
+
+    calldata = `{"getContextValue":{"key":"validators"}}`
+    req = new CallRequest(oldContract, calldata, 0, 100000000, true);
+    resp = wasmxwrap.call(req);
+    if (resp.success > 0) {
+        return revert("cannot get validators from previous contract")
+    }
+    data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    LoggerInfo("setting up validators", ["data", data])
+    const validators = JSON.parse<typestnd.ValidatorInfo[]>(data)
+    setValidators(validators);
+
+    calldata = `{"getContextValue":{"key":"state"}}`
+    req = new CallRequest(oldContract, calldata, 0, 100000000, true);
+    resp = wasmxwrap.call(req);
+    if (resp.success > 0) {
+        return revert("cannot get state from previous contract")
+    }
+    data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    LoggerInfo("setting up state", ["data", data])
+    const state = JSON.parse<CurrentState>(data)
+    setCurrentState(state);
+
+    calldata = `{"getContextValue":{"key":"mempool"}}`
+    req = new CallRequest(oldContract, calldata, 0, 100000000, true);
+    resp = wasmxwrap.call(req);
+    if (resp.success > 0) {
+        return revert("cannot get mempool from previous contract")
+    }
+    data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    LoggerInfo("setting up mempool", ["data", data])
+    const mempool = JSON.parse<Mempool>(data)
+    setMempool(mempool);
+
+    calldata = `{"getContextValue":{"key":"currentNodeId"}}`
+    req = new CallRequest(oldContract, calldata, 0, 100000000, true);
+    resp = wasmxwrap.call(req);
+    if (resp.success > 0) {
+        return revert("cannot get currentNodeId from previous contract")
+    }
+    data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    LoggerInfo("setting up currentNodeId", ["data", data])
+    const currentNodeId = parseInt32(data);
+    setCurrentNodeId(currentNodeId);
+
+    // get last block index from storage contract
+    const lastIndex = getLastBlockIndex();
+    LoggerInfo("setting up last log index", ["index", lastIndex.toString()])
+    setLastLogIndex(lastIndex);
+}
+
+export function setupNode(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    let currentNodeId: string = "";
+    let nodeIPs: string = "";
+    let initChainSetup: string = "";
+    for (let i = 0; i < event.params.length; i++) {
+        if (event.params[i].key === CURRENT_NODE_ID) {
+            currentNodeId = event.params[i].value;
+            continue;
+        }
+        if (event.params[i].key === NODE_IPS) {
+            nodeIPs = event.params[i].value;
+            continue;
+        }
+        if (event.params[i].key === "initChainSetup") {
+            initChainSetup = event.params[i].value;
+            continue;
+        }
+    }
+    if (currentNodeId === "") {
+        revert("no currentNodeId found");
+    }
+    if (nodeIPs === "") {
+        revert("no nodeIPs found");
+    }
+    if (initChainSetup === "") {
+        revert("no initChainSetup found");
+    }
+    fsm.setContextValue(CURRENT_NODE_ID, currentNodeId);
+
+    // !! nodeIps must be the same for all nodes
+
+    // TODO ID@host:ip
+    // 6efc12ab37fc0e096d8618872f6930df53972879@0.0.0.0:26757
+    fsm.setContextValue(NODE_IPS, nodeIPs);
+
+    const datajson = String.UTF8.decode(decodeBase64(initChainSetup).buffer);
+    // TODO remove validator private key from logs in initChainSetup
+    LoggerDebug("setupNode", ["currentNodeId", currentNodeId, "nodeIPs", nodeIPs, "initChainSetup", datajson])
+    const data = JSON.parse<typestnd.InitChainSetup>(datajson);
+    const ips = JSON.parse<string[]>(nodeIPs);
+    // TODO better way; we may have the leader's node ip here
+    if (ips.length < data.validators.length) {
+        revert(`Node IPS count ${ips.length.toString()} mismatch validator count ${data.validators.length}`);
+    }
+    initChain(data);
+}
+
+function initChain(req: typestnd.InitChainSetup): void {
+    LoggerDebug("start chain init", [])
+
+    // TODO what are the correct empty valuew?
+    const emptyBlockId = new typestnd.BlockID("", new typestnd.PartSetHeader(0, ""))
+    const last_commit_hash = ""
+    const currentState = new CurrentState(
+        req.chain_id,
+        req.version,
+        req.app_hash,
+        emptyBlockId,
+        last_commit_hash,
+        req.last_results_hash,
+        req.validator_address,
+        req.validator_privkey,
+        req.validator_pubkey,
+        req.wasmx_blocks_contract,
+    );
+    setValidators(req.validators);
+
+    const valuestr = JSON.stringify<CurrentState>(currentState);
+    LoggerDebug("set current state", ["state", valuestr])
+    setCurrentState(currentState);
+    setConsensusParams(req.consensus_params);
+}
+
+/// implementations
+
+export function wrapGuard(value: boolean): ArrayBuffer {
+    if (value) return String.UTF8.encode("1");
+    return String.UTF8.encode("0");
+}
+
+function startBlockProposal(txs: string[], cummulatedGas: i64, maxDataBytes: i64): void {
+    // PrepareProposal TODO finish
+    const height = getLastLogIndex() + 1;
+    LoggerDebug("start block proposal", ["height", height.toString()])
+
+    const currentState = getCurrentState();
+    const validators = getValidators();
+
+    // TODO correct votes?
+    // lastExtCommit *types.ExtendedCommit
+    // lastExtCommit = cs.LastCommit.MakeExtendedCommit(cs.state.ConsensusParams.ABCI)
+    const localLastCommit = new typestnd.ExtendedCommitInfo(0, new Array<typestnd.ExtendedVoteInfo>(0));
+    const nextValidatorsHash = getValidatorsHash(validators);
+    const misbehavior: typestnd.Misbehavior[] = []; // block.Evidence.Evidence.ToABCI()
+    const time = new Date(Date.now())
+    const prepareReq = new typestnd.RequestPrepareProposal(
+        maxDataBytes,
+        txs,
+        localLastCommit,
+        misbehavior,
+        height,
+        time.toISOString(),
+        nextValidatorsHash,
+        currentState.validator_address,
+    );
+
+    const prepareResp = consensuswrap.PrepareProposal(prepareReq);
+
+    // ProcessProposal: now check block is valid
+    const lastCommit = new typestnd.CommitInfo(0, []); // TODO
+    const lastBlockCommit = new typestnd.BlockCommit(prepareReq.height -1, 0, currentState.last_block_id, []); // TODO
+    const evidence = new typestnd.Evidence(); // TODO
+    // TODO load app version from storage or Info()?
+
+    const header = new typestnd.Header(
+        new typestnd.VersionConsensus(BlockProtocol, currentState.version.consensus.app),
+        currentState.chain_id,
+        prepareReq.height,
+        prepareReq.time,
+        currentState.last_block_id,
+        base64ToHex(getCommitHash(lastBlockCommit)),
+        base64ToHex(getTxsHash(prepareResp.txs)),
+        base64ToHex(nextValidatorsHash),
+        base64ToHex(nextValidatorsHash),
+        base64ToHex(getConsensusParamsHash(getConsensusParams())),
+        base64ToHex(currentState.app_hash),
+        base64ToHex(currentState.last_results_hash),
+        base64ToHex(getEvidenceHash(evidence)),
+        prepareReq.proposer_address,
+    );
+    const hash = getHeaderHash(header);
+    LoggerInfo("start block proposal", ["height", height.toString(), "hash", hash])
+    const processReq = new typestnd.RequestProcessProposal(
+        prepareResp.txs,
+        lastCommit,
+        prepareReq.misbehavior,
+        hash,
+        prepareReq.height,
+        prepareReq.time,
+        prepareReq.next_validators_hash,
+        prepareReq.proposer_address,
+    )
+    const processResp = consensuswrap.ProcessProposal(processReq);
+    if (processResp.status === typestnd.ProposalStatus.REJECT) {
+        // TODO - what to do here? returning just discards the block and the transactions
+        LoggerError("new block rejected", ["height", processReq.height.toString(), "node type", "Leader"])
+        return;
+    }
+    // We have a valid proposal to propagate to other nodes
+    appendLogInternalVerified2(processReq, header, lastBlockCommit);
+}
+
+function appendLogInternalVerified2(processReq: typestnd.RequestProcessProposal, header: typestnd.Header, blockCommit: typestnd.BlockCommit): void {
+    const blockData = JSON.stringify<typestnd.RequestProcessProposal>(processReq);
+    const blockDataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(blockData)))
+    const blockHeader = JSON.stringify<typestnd.Header>(header);
+    const blockHeaderBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(blockHeader)))
+    const commit = JSON.stringify<typestnd.BlockCommit>(blockCommit);
+    const commitBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(commit)))
+    const contractAddress = encodeBase64(Uint8Array.wrap(wasmx.getAddress()));
+    const blockEntry = new wblocks.BlockEntry(
+        processReq.height,
+        contractAddress,
+        contractAddress,
+        blockDataBase64,
+        blockHeaderBase64,
+        commitBase64,
+        "",
+    )
+    const blockEntryBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(JSON.stringify<wblocks.BlockEntry>(blockEntry))))
+
+    fsm.setContextValue(PROPOSED_HASH_KEY, processReq.hash)
+    fsm.setContextValue(PROPOSED_HEADER_KEY, blockHeaderBase64)
+    fsm.setContextValue(PROPOSED_BLOCK_KEY, blockEntryBase64)
+}
+
+// not used
+function appendLogInternalVerified(processReq: typestnd.RequestProcessProposal, header: typestnd.Header, blockCommit: typestnd.BlockCommit): LogEntryAggregate {
+    const blockData = JSON.stringify<typestnd.RequestProcessProposal>(processReq);
+    const blockDataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(blockData)))
+    const blockHeader = JSON.stringify<typestnd.Header>(header);
+    const blockHeaderBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(blockHeader)))
+    const commit = JSON.stringify<typestnd.BlockCommit>(blockCommit);
+    const commitBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(commit)))
+    const leaderId = getCurrentNodeId();
+
+    const contractAddress = encodeBase64(Uint8Array.wrap(wasmx.getAddress()));
+
+    const blockEntry = new wblocks.BlockEntry(
+        processReq.height,
+        contractAddress,
+        contractAddress,
+        blockDataBase64,
+        blockHeaderBase64,
+        commitBase64,
+        "",
+    )
+    const entry = new LogEntryAggregate(processReq.height, 0, leaderId, blockEntry);
+    appendLogEntry(entry);
+    return entry
+}
+
+// ValidatorSet.Validators hash (ValidatorInfo[] hash)
+// TODO cometbft protobuf encodes cmtproto.SimpleValidator
+function getValidatorsHash(validators: typestnd.ValidatorInfo[]): string {
+    let data = new Array<string>(validators.length);
+    for (let i = 0; i < validators.length; i++) {
+        // hex
+        const pub_key = hexToUint8Array(validators[i].pub_key);
+        const power = i64ToUint8ArrayBE(validators[i].voting_power);
+        const newdata = new Uint8Array(pub_key.length + power.length);
+        newdata.set(pub_key, 0);
+        newdata.set(power, pub_key.length);
+        data[i] = uint8ArrayToHex(newdata);
+    }
+    return wasmxwrap.MerkleHash(data);
+}
+
+// Txs.Hash() -> [][]byte merkle.HashFromByteSlices
+// base64
+export function getTxsHash(txs: string[]): string {
+    return wasmxwrap.MerkleHash(txs);
+}
+
+// Hash returns a hash of a subset of the parameters to store in the block header.
+// Only the Block.MaxBytes and Block.MaxGas are included in the hash.
+// This allows the ConsensusParams to evolve more without breaking the block
+// protocol. No need for a Merkle tree here, just a small struct to hash.
+// cometbft: cmtproto.HashedParams
+export function getConsensusParamsHash(params: typestnd.ConsensusParams): string {
+    const value = JSON.stringify<typestnd.BlockParams>(params.block);
+    const hash = wasmx.sha256(String.UTF8.encode(value));
+    return encodeBase64(Uint8Array.wrap(hash));
+}
+
+// []Evidence hash
+// TODO
+export function getEvidenceHash(params: typestnd.Evidence): string {
+    return wasmxwrap.MerkleHash([]);
+}
+
+export function getCommitHash(lastCommit: typestnd.BlockCommit): string {
+    // TODO MerkleHash(lastCommit.signatures)
+    return wasmxwrap.MerkleHash([]);
+}
+
+export function getResultsHash(results: typestnd.ExecTxResult[]): string {
+    const data = new Array<string>(results.length);
+    for (let i = 0; i < results.length; i++) {
+        data[i] = encodeBase64(Uint8Array.wrap(String.UTF8.encode(JSON.stringify<typestnd.ExecTxResult>(results[i]))));
+    }
+    return wasmxwrap.MerkleHash(data);
+}
+
+// Hash returns the hash of the header.
+// It computes a Merkle tree from the header fields
+// ordered as they appear in the Header.
+// Returns nil if ValidatorHash is missing,
+// since a Header is not valid unless there is
+// a ValidatorsHash (corresponding to the validator set).
+function getHeaderHash(header: typestnd.Header): string {
+    const versionbz = String.UTF8.encode(JSON.stringify<typestnd.VersionConsensus>(header.version));
+    const blockidbz = String.UTF8.encode(JSON.stringify<typestnd.BlockID>(header.last_block_id));
+    const data = [
+        encodeBase64(Uint8Array.wrap(versionbz)),
+        encodeBase64(Uint8Array.wrap(String.UTF8.encode(header.chain_id))),
+        encodeBase64(i64ToUint8ArrayBE(header.height)),
+        encodeBase64(Uint8Array.wrap(String.UTF8.encode(header.time))),
+        encodeBase64(Uint8Array.wrap(blockidbz)),
+        hex64ToBase64(header.last_commit_hash),
+        hex64ToBase64(header.data_hash),
+        hex64ToBase64(header.validators_hash),
+        hex64ToBase64(header.next_validators_hash),
+        hex64ToBase64(header.consensus_hash),
+        hex64ToBase64(header.app_hash),
+        hex64ToBase64(header.last_results_hash),
+        hex64ToBase64(header.evidence_hash),
+        hex64ToBase64(header.proposer_address), // TODO transform hex to base64
+    ]
+    return wasmxwrap.MerkleHash(data);
+}
+
+function getRandomInRange(min: i64, max: i64): i64 {
+    const rand = Math.random()
+    const numb = Math.floor(rand * f64((max - min + 1)))
+    return i64(numb) + min;
+}
+
+export function signMessage(msgstr: string): Base64String {
+    const currentState = getCurrentState();
+    return wasmxwrap.ed25519Sign(currentState.validator_privkey, msgstr);
+}
+
+export function verifyMessage(nodeIndex: i32, signatureStr: Base64String, msg: string): boolean {
+    const validators = getValidators();
+    const validator = validators[nodeIndex];
+    return wasmxwrap.ed25519Verify(validator.pub_key, signatureStr, msg);
+}
+
+export function getLogEntryAggregate(index: i64): LogEntryAggregate {
+    const value = getLogEntryObj(index);
+    let data = value.data;
+    if (data != "") {
+        data = String.UTF8.decode(decodeBase64(data).buffer);
+    } else {
+        data = getFinalBlock(index);
+    }
+    const blockData = JSON.parse<wblocks.BlockEntry>(data);
+    const entry = new LogEntryAggregate(
+        value.index,
+        value.termId,
+        value.leaderId,
+        blockData,
+    )
+    return entry;
+}
+
+function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: boolean): boolean {
+    const processReqStr = String.UTF8.decode(decodeBase64(entryobj.data.data).buffer);
+    const processReq = JSON.parse<typestnd.RequestProcessProposal>(processReqStr);
+    const finalizeReq = new typestnd.RequestFinalizeBlock(
+        processReq.txs,
+        processReq.proposed_last_commit,
+        processReq.misbehavior,
+        processReq.hash,
+        processReq.height,
+        processReq.time,
+        processReq.next_validators_hash,
+        processReq.proposer_address,
+    )
+    let respWrap = consensuswrap.FinalizeBlock(finalizeReq);
+    if (respWrap.error.length > 0 && !retry) {
+        // ERR invalid height: 3232; expected: 3233
+        const mismatchErr = `expected: ${(finalizeReq.height + 1).toString()}`
+        if (respWrap.error.includes("invalid height") && respWrap.error.includes(mismatchErr)) {
+            const rollbackHeight = finalizeReq.height - 1;
+            LoggerInfo(`trying to rollback`, ["height", rollbackHeight.toString()])
+            const err = consensuswrap.RollbackToVersion(rollbackHeight);
+            if (err.length > 0) {
+                revert(`consensus break: ${respWrap.error}; ${err}`);
+                return false;
+            }
+            // repeat FinalizeBlock
+            return startBlockFinalizationInternal(entryobj, true);
+        } else {
+            revert(respWrap.error)
+            return false;
+        }
+    }
+    const finalizeResp = respWrap.data;
+    if (finalizeResp == null) {
+        revert("FinalizeBlock response is null");
+        return false;
+    }
+
+    const resultstr = JSON.stringify<typestnd.ResponseFinalizeBlock>(finalizeResp);
+    const resultBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(resultstr)));
+
+    entryobj.data.result = resultBase64;
+
+    const commitBz = String.UTF8.decode(decodeBase64(entryobj.data.commit).buffer);
+    const commit = JSON.parse<typestnd.BlockCommit>(commitBz);
+
+    const last_commit_hash = getCommitHash(commit);
+    const last_results_hash = getResultsHash(finalizeResp.tx_results);
+
+    // update current state
+    LoggerDebug("updating current state...", [])
+    const state = getCurrentState();
+    state.app_hash = finalizeResp.app_hash;
+    state.last_block_id = new typestnd.BlockID(
+        base64ToHex(finalizeReq.hash),
+        new typestnd.PartSetHeader(0, base64ToHex(finalizeReq.hash.slice(0, 8)))
+    );
+    state.last_commit_hash = last_commit_hash
+    state.last_results_hash = last_results_hash
+    setCurrentState(state);
+    // update consensus params
+    LoggerDebug("updating consensus parameters...", [])
+    updateConsensusParams(finalizeResp.consensus_param_updates);
+    // update validator info
+    LoggerDebug("updating validator info...", [])
+    updateValidators(finalizeResp.validator_updates);
+
+    // ! make all state changes before the commit
+
+    // save final block
+    const txhashes: string[] = [];
+    for (let i = 0; i < finalizeReq.txs.length; i++) {
+        const hash = wasmxwrap.sha256(finalizeReq.txs[i]);
+        txhashes.push(hash);
+    }
+    // also indexes transactions
+    setFinalizedBlock(entryobj, finalizeReq.hash, txhashes);
+
+    // remove temporary block data
+    removeLogEntry(entryobj.index);
+
+    // before commiting, we check if consensus contract was changed
+    let newContract = "";
+    let newLabel = "";
+    for (let i = 0; i < finalizeResp.events.length; i++) {
+        const ev = finalizeResp.events[i];
+        if (ev.type == "register_role") {
+            for (let j = 0; j < ev.attributes.length; j++) {
+                if (ev.attributes[j].key == "contract_address") {
+                    newContract = ev.attributes[j].value;
+                }
+                if (ev.attributes[j].key == "role_label") {
+                    newLabel = ev.attributes[j].value;
+                }
+            }
+            break;
+        }
+    }
+    // we have finalized and saved the new block
+    // so we can execute setup on the new contract
+    // this way, the delay of the timed action that starts the new consensus fsm is minimal.
+    let newContractSetup = false;
+    if (newContract !== "") {
+        const myaddress = wasmxwrap.addr_humanize(wasmx.getAddress());
+        LoggerInfo("setting up next consensus contract", ["new contract", newContract, "previous contract", myaddress])
+        let calldata = `{"run":{"event":{"type":"setup","params":[{"key":"address","value":"${myaddress}"}]}}}`
+        let req = new CallRequest(newContract, calldata, 0, 100000000, false);
+        let resp = wasmxwrap.call(req);
+        if (resp.success > 0) {
+            LoggerError("cannot setup next consensus contract", ["new contract", newContract, "err", resp.data]);
+        } else {
+            LoggerInfo("next consensus contract is set", ["new contract", newContract])
+            newContractSetup = true;
+
+            // stop this contract and any intervals on this contract
+            // TODO cancel all intervals on stop() action
+            calldata = `{"run":{"event":{"type":"stop","params":[]}}}`
+            req = new CallRequest(myaddress, calldata, 0, 100000000, false);
+            resp = wasmxwrap.call(req);
+            if (resp.success > 0) {
+                LoggerError("cannot stop previous consensus contract", ["err", resp.data]);
+                // TODO what now?
+            } else {
+                LoggerInfo("stopped current consensus contract", [])
+            }
+        }
+    }
+
+    const commitResponse = consensuswrap.Commit();
+    // TODO commitResponse.retainHeight
+    // Tendermint removes all data for heights lower than `retain_height`
+    LoggerInfo("block finalized", ["height", entryobj.index.toString()])
+
+    // TODO if we cannot start with the new contract, maybe we should remove its consensus role
+
+    // if consensus changed, start the new contract
+    if (newContract != "" && newContractSetup) {
+        LoggerInfo("starting new consensus contract", ["address", newContract])
+        let calldata = `{"run":{"event":{"type":"start","params":[]}}}`
+        let req = new CallRequest(newContract, calldata, 0, 100000000, false);
+        let resp = wasmxwrap.call(req);
+        if (resp.success > 0) {
+            LoggerError("cannot start next consensus contract", ["new contract", newContract, "err", resp.data]);
+            // we can restart the old contract here, so the chain does not stop
+            const myaddress = wasmxwrap.addr_humanize(wasmx.getAddress());
+            calldata = `{"run":{"event":{"type":"restart","params":[]}}}`
+            req = new CallRequest(myaddress, calldata, 0, 100000000, false);
+            resp = wasmxwrap.call(req);
+            if (resp.success > 0) {
+                LoggerError("cannot restart previous consensus contract", ["err", resp.data]);
+            } else {
+                LoggerInfo("restarted current consensus contract", [])
+            }
+        } else {
+            LoggerInfo("next consensus contract is started", ["new contract", newContract])
+            // consensus changed
+            return true;
+        }
+    }
+    return false;
+}
+
+function getLastBlockIndex(): i64 {
+    const calldatastr = `{"getLastBlockIndex":{}}`;
+    const resp = callStorage(calldatastr, false);
+    if (resp.success > 0) {
+        revert(`could not get last block index`);
+    }
+    const res = JSON.parse<wblockscalld.LastBlockIndexResult>(resp.data);
+    return res.index;
+}
+
+function getFinalBlock(index: i64): string {
+    const calldata = new wblockscalld.CallDataGetBlockByIndex(index);
+    const calldatastr = `{"getBlockByIndex":${JSON.stringify<wblockscalld.CallDataGetBlockByIndex>(calldata)}}`;
+    const resp = callStorage(calldatastr, false);
+    if (resp.success > 0) {
+        revert(`could not get finalized block: ${index.toString()}`);
+    }
+    return resp.data;
+}
+
+function setFinalizedBlock(entry: LogEntryAggregate, hash: string, txhashes: string[]): void {
+    const blockData = JSON.stringify<wblocks.BlockEntry>(entry.data)
+    const calldata = new wblockscalld.CallDataSetBlock(blockData, hash, txhashes);
+    const calldatastr = `{"setBlock":${JSON.stringify<wblockscalld.CallDataSetBlock>(calldata)}}`;
+    const resp = callStorage(calldatastr, false);
+    if (resp.success > 0) {
+        revert("could not set finalized block");
+    }
+}
+
+export function updateConsensusParams(updates: typestnd.ConsensusParams): void {
+    const params = getConsensusParams();
+    if (updates.abci) {
+        if (updates.abci.vote_extensions_enable_height) {
+            params.abci.vote_extensions_enable_height = updates.abci.vote_extensions_enable_height;
+        }
+    }
+    if (updates.block) {
+        if (updates.block.max_bytes) params.block.max_bytes = updates.block.max_bytes;
+        if (updates.block.max_gas) params.block.max_gas = updates.block.max_gas;
+    }
+    if (updates.evidence) {
+        if (updates.evidence.max_age_duration) params.evidence.max_age_duration = updates.evidence.max_age_duration;
+        if (updates.evidence.max_age_num_blocks) params.evidence.max_age_num_blocks = updates.evidence.max_age_num_blocks;
+        if (updates.evidence.max_bytes) params.evidence.max_bytes = updates.evidence.max_bytes;
+    }
+    if (updates.validator) {
+        if (updates.validator.pub_key_types) params.validator.pub_key_types = updates.validator.pub_key_types;
+    }
+    if (updates.version) {
+        if (updates.version.app) params.version.app = updates.version.app;
+    }
+    setConsensusParams(params);
+}
+
+export function getConsensusParams(): typestnd.ConsensusParams {
+    const calldata = `{"getConsensusParams":{}}`
+    const resp = callStorage(calldata, true);
+    if (resp.success > 0) {
+        revert("could not get consensus params");
+    }
+    if (resp.data === "") return new typestnd.ConsensusParams(
+        new typestnd.BlockParams(0, 0),
+        new typestnd.EvidenceParams(0, 0, 0),
+        new typestnd.ValidatorParams([]),
+        new typestnd.VersionParams(0),
+        new typestnd.ABCIParams(0),
+    );
+    return JSON.parse<typestnd.ConsensusParams>(resp.data);
+}
+
+export function setConsensusParams(value: typestnd.ConsensusParams): void {
+    const valuestr = JSON.stringify<typestnd.ConsensusParams>(value)
+    const calldata = `{"setConsensusParams":{"params":"${encodeBase64(Uint8Array.wrap(String.UTF8.encode(valuestr)))}"}}`
+    const resp = callStorage(calldata, false);
+    if (resp.success > 0) {
+        revert("could not set consensus params");
+    }
+}
+
+function callStorage(calldata: string, isQuery: boolean): CallResponse {
+    const contractAddress = getStorageAddress();
+    const req = new CallRequest(contractAddress, calldata, 0, 100000000, isQuery);
+    const resp = wasmxwrap.call(req);
+    if (resp.success == 0) {
+        resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    }
+    return resp;
+}
+
+// TODO some of these validators may be removed, if we use the same raft mechanism
+function getRandomSample(k: i32, hash: string, validatorCount: i32, exclude: i32): i32[] {
+    // don't loop indefinitely
+    if (validatorCount < k) {
+        k = validatorCount;
+    }
+    const indexes = new Array<i32>(k);
+    for (let i = 0; i < k; i++) {
+        const index = getNextProposerIndex(validatorCount, hash);
+        if (!indexes.includes(index) && index !== exclude) {
+            indexes[i] = index;
+        } else {
+            i--;
+        }
+    }
+    return indexes;
+}
+
+function getNextProposerIndex(count: i32, headerHash: string): i32 {
+    const votingPower = 50;
+    const totalVotingPower = votingPower * count;
+    const hashbz = decodeBase64(headerHash);
+    const normalizer = Math.pow(2, 32);
+    const hashslice = Uint8Array.wrap(hashbz.buffer, 0, 4)
+    const part = parseUint8ArrayToU32BigEndian(hashslice)
+    const valf = f64(part) / f64(normalizer) * f64(totalVotingPower);
+    const val = i64(valf);
+    let closestVal: i32 = -1;
+    let aggregatedVP: i64[] = new Array<i64>(count);
+    let lastSumVP: i64 = 0;
+    for (let i = 0; i < count; i++) {
+        aggregatedVP[i] = votingPower + lastSumVP;
+        lastSumVP = aggregatedVP[i];
+        if (aggregatedVP[i] >= val) {
+            if (closestVal == -1) {
+                closestVal = i;
+            } else if (aggregatedVP[i] < aggregatedVP[closestVal]) {
+                closestVal = i;
+            }
+        }
+    }
+    return closestVal;
+}
+
+// block, header
+function sendQuery(ip: string, contract: ArrayBuffer, req: QueryResponse): QueryResponse | null {
+    LoggerInfo("send query", ["ip", ip]);
+    const data = encodeBase64(Uint8Array.wrap(String.UTF8.encode(JSON.stringify<QueryResponse>(req))))
+    const response = wasmxwrap.grpcRequest(ip, Uint8Array.wrap(contract), data);
+    LoggerInfo("register response", ["error", response.error, "data", response.data])
+    if (response.error.length > 0 || response.data.length == 0) {
+        return null
+    }
+    return JSON.parse<QueryResponse>(response.data);
+}

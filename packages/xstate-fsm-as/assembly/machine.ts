@@ -35,7 +35,7 @@ import {
   isRegisteredIntervalActive,
   removeInterval,
 } from './timer';
-import { LoggerDebug, revert } from "./utils";
+import { LoggerDebug, revert, ctxToActionParams } from "./utils";
 
 export function instantiate(
   config: MachineExternal,
@@ -128,7 +128,7 @@ function executeGuard(
     if (guard === "hasEnoughAllowance") return actionsErc20.hasEnoughAllowance([], event);
 
     // If guard is not a local function, then it is an external function
-    const resp = processExternalCall(machine, guard, [], event);
+    const resp = processExternalCall(machine, guard, ctxToActionParams(machine.ctx), event);
     if (resp.success > 0) return false;
     // "1" = true ; "0" = false
     if (resp.data == "1") return true;
@@ -364,7 +364,6 @@ function processExternalCall(
   if (contractAddress === "") {
     return new CallResponse(1, "empty contract address");
   }
-
   const calldata = new ExternalActionCallData(actionType, params, event);
   const calldatastr = JSON.stringify<ExternalActionCallData>(calldata);
   const req = new CallRequest(contractAddress, calldatastr, 0, 10000000, false);

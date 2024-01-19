@@ -26,7 +26,10 @@
     "as-base64": "^0.2.0",
     "json-as": "file:../../../as-json",
     "visitor-as": "^0.11.4",
+    "wasmx-blocks": "file:../wasmx-blocks",
     "wasmx-env": "file:../wasmx-env",
-    "wasmx-utils": "file:../wasmx-utils"
+    "wasmx-consensus": "file:../wasmx-consensus",
+    "wasmx-utils": "file:../wasmx-utils",
+    "xstate-fsm-as": "file:../xstate-fsm-as"
   }
 }

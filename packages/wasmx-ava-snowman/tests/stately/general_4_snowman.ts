@@ -4,7 +4,14 @@ import { createMachine } from "xstate";
 
 export const machine = createMachine(
   {
-    id: "general_4_Snowman-BFT_LoresVersion",
+    context: {
+      rounds: "3",
+      sampleSize: "2",
+      betaThreshold: 3,
+      roundsCounter: "0",
+      alphaThreshold: "2",
+    },
+    id: "general_4_Snowman-BFT_2",
     initial: "uninitialized",
     states: {
       uninitialized: {
@@ -15,8 +22,27 @@ export const machine = createMachine(
         },
       },
       initialized: {
-        initial: "validator",
+        initial: "unstarted",
         states: {
+          unstarted: {
+            on: {
+              start: {
+                target: "validator",
+              },
+              setupNode: {
+                target: "unstarted",
+                actions: {
+                  type: "setupNode",
+                },
+              },
+              setup: {
+                target: "unstarted",
+                actions: {
+                  type: "setup",
+                },
+              },
+            },
+          },
           validator: {
             entry: [
               {
@@ -29,23 +55,12 @@ export const machine = createMachine(
             on: {
               newTransaction: {
                 target: "proposer",
-                actions: [
-                  {
-                    type: "prepareBlock",
+                actions: {
+                  type: "proposeBlock",
+                  params: {
+                    transaction: "$transaction",
                   },
-                  {
-                    type: "setProposedHash",
-                    params: {
-                      proposedHash: "proposedHash",
-                    },
-                  },
-                  {
-                    type: "incrementConfidence",
-                    params: {
-                      field: "proposedHash",
-                    },
-                  },
-                ],
+                },
               },
               query: {
                 target: "proposer",
@@ -53,67 +68,83 @@ export const machine = createMachine(
                   {
                     type: "setProposedHash",
                     params: {
-                      proposedHash: "hash",
+                      header: "$header",
                     },
                   },
                   {
                     type: "sendResponse",
                     params: {
-                      hash: "hash",
+                      block: "$block",
+                      header: "$header",
                     },
                   },
                 ],
               },
+              stop: {
+                target: "stopped",
+              },
             },
           },
           proposer: {
-            entry: [
+            entry: {
+              type: "sendQueryToRandomSet",
+              params: {
+                k: "$sampleSize",
+                threshold: "$alphaThreshold",
+              },
+            },
+            always: [
               {
-                type: "selectRandomSample",
-                params: {
-                  k: "sampleSize",
+                target: "limboProposer",
+                guard: "ifMajorityIsOther",
+                actions: [
+                  {
+                    type: "resetRoundsCounter",
+                    params: {
+                      roundsCounter: 0,
+                    },
+                  },
+                  {
+                    type: "incrementConfidence",
+                    params: {
+                      hash: "$majority",
+                    },
+                  },
+                ],
+              },
+              {
+                target: "proposer",
+                guard: "ifIncrementedCounterLTBetaThreshold",
+                actions: {
+                  type: "incrementRoundsCounter",
                 },
               },
               {
-                type: "sendQuery",
-                params: {
-                  hash: "proposedHash",
-                },
-              },
-              {
-                type: "calculateMajorityHash",
-                params: {
-                  field: "majority",
-                  threshold: "alphaThreshold",
+                target: "validator",
+                actions: {
+                  type: "finalizeBlock",
                 },
               },
             ],
-            always: {
-              target: "limboProposer",
-              guard: "ifMajorityIsOther",
-              actions: [
-                {
-                  type: "resetRoundsCounter",
-                  params: {
-                    roundsCounter: 0,
-                  },
-                },
-                {
-                  type: "incrementConfidence",
-                  params: {
-                    field: "majority",
-                  },
-                },
-              ],
-            },
             on: {
               query: {
                 actions: {
                   type: "sendResponse",
                   params: {
-                    hash: "proposedHash",
+                    block: "$proposedBlock",
+                    header: "$proposedHeader",
                   },
                 },
+              },
+              stop: {
+                target: "stopped",
+              },
+            },
+          },
+          stopped: {
+            on: {
+              restart: {
+                target: "unstarted",
               },
             },
           },
@@ -123,9 +154,9 @@ export const machine = createMachine(
                 target: "proposer",
                 guard: "ifMajorityConfidenceGTCurrent",
                 actions: {
-                  type: "setProposedHash",
+                  type: "changeProposedHash",
                   params: {
-                    proposedHash: "majority",
+                    hash: "$majority",
                   },
                 },
               },
@@ -150,25 +181,49 @@ export const machine = createMachine(
     types: {
       events: {} as
         | { type: "" }
-        | { type: "query"; hash: string }
+        | { type: "stop" }
+        | { type: "query"; block: string; header: string }
+        | { type: "setup"; address: string }
+        | { type: "start" }
+        | { type: "restart" }
+        | {
+            type: "setupNode";
+            nodeIPs: string;
+            currentNodeId: string;
+            initChainSetup: string;
+          }
         | { type: "initialize" }
         | { type: "newTransaction"; transaction: string },
+      context: {} as {
+        rounds: string;
+        sampleSize: string;
+        betaThreshold: number;
+        roundsCounter: string;
+        alphaThreshold: string;
+      },
     },
   },
   {
     actions: {
+      setup: ({ context, event }) => {},
+      assign: ({ context, event }) => {},
       selectRan: ({ context, event }) => {},
       sendQuery: ({ context, event }) => {},
+      setupNode: ({ context, event }) => {},
       resetRounds: ({ context, event }) => {},
       prepareBlock: ({ context, event }) => {},
+      proposeBlock: ({ context, event }) => {},
       sendResponse: ({ context, event }) => {},
       setBlockHash: ({ context, event }) => {},
       finalizeBlock: ({ context, event }) => {},
       setProposedHash: ({ context, event }) => {},
       resetConfidences: ({ context, event }) => {},
+      changeProposedHash: ({ context, event }) => {},
       resetRoundsCounter: ({ context, event }) => {},
       selectRandomSample: ({ context, event }) => {},
       incrementConfidence: ({ context, event }) => {},
+      sendQueryToRandomSet: ({ context, event }) => {},
+      setMajorityAsCurrent: ({ context, event }) => {},
       calculateMajorityHash: ({ context, event }) => {},
       calculateMajorityColor: ({ context, event }) => {},
       incrementRoundsCounter: ({ context, event }) => {},
@@ -183,6 +238,9 @@ export const machine = createMachine(
         return false;
       },
       ifIncrementedCounterLTBetaThreshold: ({ context, event }, params) => {
+        return false;
+      },
+      "New guard": ({ context, event }, params) => {
         return false;
       },
     },

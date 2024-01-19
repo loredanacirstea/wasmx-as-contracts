@@ -5,6 +5,7 @@ import { createMachine } from "xstate";
 export const machine = createMachine(
   {
     context: {
+      rounds: 3,
       sampleSize: 20,
       betaThreshold: 3,
       redConfidence: 0,
@@ -84,21 +85,30 @@ export const machine = createMachine(
             },
           },
         ],
-        always: {
-          target: "limboRed",
-          guard: "ifMajorityIsBlue",
-          actions: [
-            {
-              type: "resetRoundsCounter",
-              params: {
-                roundsCounter: 0,
+        always: [
+          {
+            target: "limboRed",
+            guard: "ifMajorityIsBlue",
+            actions: [
+              {
+                type: "resetRoundsCounter",
+                params: {
+                  roundsCounter: 0,
+                },
               },
+              {
+                type: "incrementBlueConfidence",
+              },
+            ],
+          },
+          {
+            target: "red",
+            guard: "ifIncrementedCounterLTBetaThreshold",
+            actions: {
+              type: "incrementRoundsCounter",
             },
-            {
-              type: "incrementBlueConfidence",
-            },
-          ],
-        },
+          },
+        ],
         on: {
           queryRed: {
             actions: {
@@ -142,21 +152,30 @@ export const machine = createMachine(
             },
           },
         ],
-        always: {
-          target: "limboBlue",
-          guard: "ifMajorityIsRed",
-          actions: [
-            {
-              type: "resetRoundsCounter",
-              params: {
-                roundsCounter: 0,
+        always: [
+          {
+            target: "limboBlue",
+            guard: "ifMajorityIsRed",
+            actions: [
+              {
+                type: "resetRoundsCounter",
+                params: {
+                  roundsCounter: 0,
+                },
               },
+              {
+                type: "incrementRedConfidence",
+              },
+            ],
+          },
+          {
+            target: "blue",
+            guard: "ifIncrementedCounterLTBetaThreshold",
+            actions: {
+              type: "incrementRoundsCounter",
             },
-            {
-              type: "incrementRedConfidence",
-            },
-          ],
-        },
+          },
+        ],
         on: {
           queryRed: {
             actions: {

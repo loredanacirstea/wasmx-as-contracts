@@ -5,6 +5,7 @@ import { createMachine } from "xstate";
 export const machine = createMachine(
   {
     context: {
+      rounds: 3,
       sampleSize: 20,
       betaThreshold: 3,
       roundsCounter: 0,

@@ -1108,3 +1108,180 @@ export var TENDERMINT_1 = {
     }
   }
 }
+
+export const AVA_SNOWMAN = {
+  context: {
+    rounds: "3",
+    sampleSize: "2",
+    betaThreshold: 3,
+    roundsCounter: "0",
+    alphaThreshold: "2",
+  },
+  id: "general_4_Snowman-BFT_2",
+  initial: "uninitialized",
+  states: {
+    uninitialized: {
+      on: {
+        initialize: {
+          target: "initialized",
+        },
+      },
+    },
+    initialized: {
+      initial: "unstarted",
+      states: {
+        unstarted: {
+          on: {
+            start: {
+              target: "validator",
+            },
+            setupNode: {
+              target: "unstarted",
+              actions: {
+                type: "setupNode",
+              },
+            },
+            setup: {
+              target: "unstarted",
+              actions: {
+                type: "setup",
+              },
+            },
+          },
+        },
+        validator: {
+          entry: [
+            {
+              type: "resetRoundsCounter",
+            },
+            {
+              type: "resetConfidences",
+            },
+          ],
+          on: {
+            newTransaction: {
+              target: "proposer",
+              actions: {
+                type: "proposeBlock",
+                params: {
+                  transaction: "$transaction",
+                },
+              },
+            },
+            query: {
+              target: "proposer",
+              actions: [
+                {
+                  type: "setProposedHash",
+                  params: {
+                    header: "$header",
+                  },
+                },
+                {
+                  type: "sendResponse",
+                  params: {
+                    block: "$block",
+                    header: "$header",
+                  },
+                },
+              ],
+            },
+            stop: {
+              target: "stopped",
+            },
+          },
+        },
+        proposer: {
+          entry: {
+            type: "sendQueryToRandomSet",
+            params: {
+              k: "$sampleSize",
+              threshold: "$alphaThreshold",
+            },
+          },
+          always: [
+            {
+              target: "limboProposer",
+              guard: "ifMajorityIsOther",
+              actions: [
+                {
+                  type: "resetRoundsCounter",
+                  params: {
+                    roundsCounter: 0,
+                  },
+                },
+                {
+                  type: "incrementConfidence",
+                  params: {
+                    hash: "$majority",
+                  },
+                },
+              ],
+            },
+            {
+              target: "proposer",
+              guard: "ifIncrementedCounterLTBetaThreshold",
+              actions: {
+                type: "incrementRoundsCounter",
+              },
+            },
+            {
+              target: "validator",
+              actions: {
+                type: "finalizeBlock",
+              },
+            },
+          ],
+          on: {
+            query: {
+              actions: {
+                type: "sendResponse",
+                params: {
+                  block: "$proposedBlock",
+                  header: "$proposedHeader",
+                },
+              },
+            },
+            stop: {
+              target: "stopped",
+            },
+          },
+        },
+        stopped: {
+          on: {
+            restart: {
+              target: "unstarted",
+            },
+          },
+        },
+        limboProposer: {
+          always: [
+            {
+              target: "proposer",
+              guard: "ifMajorityConfidenceGTCurrent",
+              actions: {
+                type: "changeProposedHash",
+                params: {
+                  hash: "$majority",
+                },
+              },
+            },
+            {
+              target: "proposer",
+              guard: "ifIncrementedCounterLTBetaThreshold",
+              actions: {
+                type: "incrementRoundsCounter",
+              },
+            },
+            {
+              target: "validator",
+              actions: {
+                type: "finalizeBlock",
+              },
+            },
+          ],
+        },
+      },
+    },
+  }
+}

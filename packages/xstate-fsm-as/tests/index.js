@@ -13,6 +13,7 @@ import {
   RAFTLogReplication,
   RAFT_Full,
   TENDERMINT_1,
+  AVA_SNOWMAN,
 } from './data.js';
 
 let currentState, value;
@@ -342,6 +343,16 @@ async function runTests() {
     // Create the machine
     machine = {id: machineConfig.id, states: machineConfig.states};
     await runFn("instantiate", machine, {initialState: machineConfig.initial, context: machineConfig.context})
+
+    // AVA_SNOWMAN
+    machineConfig = parseMachine(AVA_SNOWMAN);
+    console.log("==AVA_SNOWMAN==");
+    console.log(JSON.stringify(machineConfig));
+    // Create the machine
+    machine = {id: machineConfig.id, states: machineConfig.states};
+    await runFn("instantiate", machine, {initialState: machineConfig.initial, context: machineConfig.context})
+    // await runFnOwner("run", machine, {event: {type: "query", params: [{key: "hash", value: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="}]}});
+    // await runFnOwner("run", machine, {event: {type: "newTransaction", params: [{key: "transaction", value: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="}]}});
 }
 
 runTests();

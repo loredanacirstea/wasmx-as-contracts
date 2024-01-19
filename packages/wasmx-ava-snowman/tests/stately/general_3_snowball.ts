@@ -76,24 +76,33 @@ export const machine = createMachine(
             },
           },
         ],
-        always: {
-          target: "limboColor",
-          guard: "ifMajorityIsOther",
-          actions: [
-            {
-              type: "resetRoundsCounter",
-              params: {
-                roundsCounter: 0,
+        always: [
+          {
+            target: "limboColor",
+            guard: "ifMajorityIsOther",
+            actions: [
+              {
+                type: "resetRoundsCounter",
+                params: {
+                  roundsCounter: 0,
+                },
               },
-            },
-            {
-              type: "incrementColorConfidence",
-              params: {
-                color: "majority",
+              {
+                type: "incrementColorConfidence",
+                params: {
+                  color: "majority",
+                },
               },
+            ],
+          },
+          {
+            target: "colored",
+            guard: "ifIncrementedCounterLTBetaThreshold",
+            actions: {
+              type: "incrementRoundsCounter",
             },
-          ],
-        },
+          },
+        ],
         on: {
           query: {
             actions: {
@@ -199,6 +208,9 @@ export const machine = createMachine(
         return false;
       },
       ifIncrementedCounterLTBetaThreshold: ({ context, event }, params) => {
+        return false;
+      },
+      "New guard": ({ context, event }, params) => {
         return false;
       },
     },

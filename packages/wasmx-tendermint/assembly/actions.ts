@@ -1017,6 +1017,7 @@ function startBlockProposal(txs: string[], cummulatedGas: i64, maxDataBytes: i64
     // lastExtCommit *types.ExtendedCommit
     // lastExtCommit = cs.LastCommit.MakeExtendedCommit(cs.state.ConsensusParams.ABCI)
     const localLastCommit = new typestnd.ExtendedCommitInfo(0, new Array<typestnd.ExtendedVoteInfo>(0));
+    // TODO next validators hash?
     const nextValidatorsHash = getValidatorsHash(validators);
     const misbehavior: typestnd.Misbehavior[] = []; // block.Evidence.Evidence.ToABCI()
     const time = new Date(Date.now())
@@ -1192,7 +1193,6 @@ function getTermId(): i32 {
 function setTermId(value: i32): void {
     fsm.setContextValue(TERM_ID, value.toString());
 }
-
 
 export function getLastLogIndexKey(): string {
     return "logs_last_index";
