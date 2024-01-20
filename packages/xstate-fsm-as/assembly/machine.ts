@@ -161,7 +161,7 @@ function executeStateActions(
   }
 
   if (newstateconfig.always.length > 0) {
-    const newstate = applyAlwaysIfElse(service, state, newstateconfig.always)
+    const newstate = applyTransitions(service.machine, state, newstateconfig.always, new EventObject("", []), 0)
     if (newstate != null) {
       // Set new state before executing actions
       storage.setCurrentState(newstate);
@@ -197,15 +197,17 @@ function executeStateActions(
     registerIntervalId(state.value, delayKeys[i], intervalId);
 
     let contractAddress = "";
-    const meta = afterTimers.get(delayKeys[i]).meta;
-    if (meta.length > 0) {
-      for (let i = 0; i < meta.length; i++) {
-        if (meta[i].key == "contract") {
-          contractAddress = meta[i].value;
-          break;
-        }
-      }
-    }
+
+    // TODO - do we allow contract calls to other contracts?
+    // const meta = afterTimers.get(delayKeys[i]).meta;
+    // if (meta.length > 0) {
+    //   for (let i = 0; i < meta.length; i++) {
+    //     if (meta[i].key == "contract") {
+    //       contractAddress = meta[i].value;
+    //       break;
+    //     }
+    //   }
+    // }
     if (contractAddress == "") {
       contractAddress = wasmxwrap.addr_humanize(wasmx.getAddress());
     }
@@ -216,18 +218,28 @@ function executeStateActions(
   }
 }
 
-function applyAlwaysIfElse(
-  service: Service,
+function applyTransitions(
+  machine: StateMachine.Machine,
   state: State,
-  alwaysTransitions: Transition[],
+  transitions: Transition[],
+  event: EventObject,
+  ifElse: i32, // 0 = normal transition; 2 > = if/else
 ): State | null {
-  if (alwaysTransitions.length == 0) return null;
-  const emptyEvent = new EventObject("", [])
-  console.debug(`apply if/else - ${alwaysTransitions[0].target}`);
-  const newstate = service.machine.applyTransition(state, alwaysTransitions[0], emptyEvent);
+  if (transitions.length == 0) return null;
+  if (transitions.length > 1 && ifElse == 0) {
+    ifElse = transitions.length;
+  }
+  if (ifElse > 1) {
+    if (transitions.length == ifElse) {
+      LoggerDebug(`apply if`, ["target", transitions[0].target]);
+    } else {
+      LoggerDebug(`apply else`, ["target", transitions[0].target]);
+    }
+  }
+  const newstate = machine.applyTransition(state, transitions[0], event);
   if (newstate != null) return newstate;
-  alwaysTransitions.shift();
-  return applyAlwaysIfElse(service, state, alwaysTransitions);
+  transitions.shift();
+  return applyTransitions(machine, state, transitions, event, ifElse);
 }
 
 function executeStateAction(
@@ -540,17 +552,16 @@ export class Machine implements StateMachine.Machine {
         wasmx.revert(String.UTF8.encode(message));
         throw new Error(message);
     }
-    let transition: Transition | null = null;
+    let transitions: Transition[] | null = null;
 
     if (stateConfig.on) {
       if (stateConfig.on.has(eventObject.type)) {
-        transition = stateConfig.on.get(eventObject.type);
-        console.debug("* transition next target: " + transition.target)
+        transitions = stateConfig.on.get(eventObject.type);
       } else {
         // search for transition in the parents
-        transition = findTransitionInParents(this.states, value, eventObject);
+        transitions = findTransitionInParents(this.states, value, eventObject);
 
-        if (transition == null) {
+        if (transitions == null) {
           const message = `cannot apply "${eventObject.type}" event in current "${value}" state`;
           if (REVERT_IF_UNEXPECTED_STATE) {
             wasmx.revert(String.UTF8.encode(message));
@@ -564,8 +575,8 @@ export class Machine implements StateMachine.Machine {
       }
     }
 
-    if (transition !== null) {
-      return this.applyTransition(state, transition, eventObject);
+    if (transitions !== null) {
+      return applyTransitions(this, state, transitions, eventObject, 0)
     }
 
     // No transitions match
@@ -590,7 +601,9 @@ export class Machine implements StateMachine.Machine {
 
     if (stateConfig.on.has(WILDCARD)) {
       const _trans = stateConfig.on.get(WILDCARD);
-      transitions.push(_trans);
+      // TODO is this correct?
+      applyTransitions(this, state, _trans, eventObject, 0)
+      // transitions.push(_trans);
       // for (let i = 0; i < _trans.length; i++) {
       //   transitions.push(_trans[i]);
       // }
@@ -804,7 +817,7 @@ export function loadServiceFromConfig(config: MachineExternal): Service {
     return new ServiceExternal(config, status).toInternal();
 }
 
-function findTransitionInParents(states: States, stateName: string, eventObject: EventObject): Transition | null {
+function findTransitionInParents(states: States, stateName: string, eventObject: EventObject): Transition[] | null {
   // all state values must be absolute
   if (stateName.at(0) != "#") {
     revert("state must be absolute: " + stateName);
@@ -815,7 +828,7 @@ function findTransitionInParents(states: States, stateName: string, eventObject:
   return findTransitionInternal(states, statePath, eventObject)
 }
 
-function findTransitionInternal(states: States, statePath: string[], eventObject: EventObject): Transition | null {
+function findTransitionInternal(states: States, statePath: string[], eventObject: EventObject): Transition[] | null {
   const stateConfig = findStateInfoByPath(states, statePath);
   if (stateConfig != null && stateConfig.on.has(eventObject.type)) {
     return stateConfig.on.get(eventObject.type);
@@ -915,8 +928,8 @@ export function eventual(config: MachineExternal, args: TimerArgs): void {
   }
   LoggerDebug("eventual: execute delayed action", ["delay", args.delay]);
   // delay is in milliseconds
-  const transition = afterTimers.get(args.delay);
-  if (!transition) {
+  const transitions = afterTimers.get(args.delay);
+  if (!transitions) {
     revert("delayed transition not found: " + args.delay);
   }
 
@@ -927,7 +940,7 @@ export function eventual(config: MachineExternal, args: TimerArgs): void {
   let stateField = new ActionParam("state", args.state)
   let delayField = new ActionParam("delay", args.delay)
   let emptyEvent = new EventObject("", [intervalIdField, stateField, delayField]);
-  const newstate = service.machine.applyTransition(state, transition, emptyEvent);
+  const newstate = applyTransitions(service.machine, state, transitions, emptyEvent, 0);
   if (newstate == null) {
     return;
   }

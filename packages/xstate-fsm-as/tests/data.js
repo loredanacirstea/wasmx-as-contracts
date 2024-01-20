@@ -7,12 +7,16 @@ export const machineConfigSemaphore = {
     states: [
         {
             name: "uninitialized",
-            on: [{
+            on: [
+              {
                 name: "initialize",
-                target: "#Semaphore.red",
-                guard: "",
-                actions: [],
-            }],
+                transitions: [{
+                  target: "#Semaphore.red",
+                  guard: "",
+                  actions: [],
+                }]
+              }
+            ],
             always: [],
             after: [],
             exit: [],
@@ -23,12 +27,14 @@ export const machineConfigSemaphore = {
         {
             name: "red",
             on: [
-                {
-                    name: "next",
+              {
+                name: "next",
+                transitions: [{
                     target: "#Semaphore.blue",
                     guard: "",
                     actions: [],
-                },
+                }],
+              },
             ],
             always: [],
             after: [],
@@ -40,12 +46,14 @@ export const machineConfigSemaphore = {
         {
             name: "blue",
             on: [
-                {
-                    name: "next",
+              {
+                  name: "next",
+                  transitions: [{
                     target: "#Semaphore.red",
                     guard: "",
                     actions: [],
-                },
+                  }]
+              },
             ],
             always: [],
             after: [],
@@ -1129,7 +1137,7 @@ export var TENDERMINT_1 = {
 export const AVA_SNOWMAN = {
   context: {
     sampleSize: "2",
-    betaThreshold: 3,
+    betaThreshold: 2,
     roundsCounter: "0",
     alphaThreshold: 80,
   },
@@ -1187,26 +1195,34 @@ export const AVA_SNOWMAN = {
                 },
               },
             },
-            query: {
-              target: "preProposer",
-              guard: "ifBlockNotFinalized",
-              actions: [
-                {
-                  type: "setProposedBlock",
-                  params: {
-                    block: "$block",
-                    header: "$header",
+            query: [
+              {
+                target: "preProposer",
+                guard: "ifBlockNotFinalized",
+                actions: [
+                  {
+                    type: "setProposedBlock",
+                    params: {
+                      block: "$block",
+                      header: "$header",
+                    },
                   },
-                },
-                {
+                  {
+                    type: "sendResponse",
+                    params: {
+                      block: "$block",
+                      header: "$header",
+                    },
+                  },
+                ],
+              },
+              {
+                target: "validator",
+                actions: {
                   type: "sendResponse",
-                  params: {
-                    block: "$block",
-                    header: "$header",
-                  },
                 },
-              ],
-            },
+              },
+            ],
             stop: {
               target: "stopped",
             },

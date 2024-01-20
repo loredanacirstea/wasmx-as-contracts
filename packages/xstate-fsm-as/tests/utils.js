@@ -80,30 +80,56 @@ function parseMachineStates(configStates = {}, statePath) {
         const state = configStates[key];
         let _stateon = state.on || {};
         const stateon = Object.keys(_stateon).map(eventName => {
-            const ev = _stateon[eventName];
-            const actions = parseActions(ev.actions);
-            const target = parseStateName(ev.target || "", statePath);
-            const meta = parseMeta(ev.meta || {});
+            let evs = _stateon[eventName];
+            // evs can be a transition object
+            // or an array of transitions (if/else)
+            const transitions = [];
+            if (!(evs instanceof Array)) {
+                evs = [evs];
+            }
+            for (let i = 0; i < evs.length; i++) {
+                const ev = evs[i];
+                const actions = parseActions(ev.actions);
+                const target = parseStateName(ev.target || "", statePath);
+                const meta = parseMeta(ev.meta || {});
+                const tr = {
+                    target: target,
+                    guard: ev.guard || ev.cond ||  "",
+                    actions,
+                    meta,
+                }
+                transitions.push(tr)
+            }
+
             return {
                 name: eventName || "",
-                target: target,
-                guard: ev.guard || ev.cond ||  "",
-                actions,
-                meta,
+                transitions,
             }
         })
 
         let _stateafter = state.after || {};
         const stateafter = Object.keys(_stateafter).map(delayKey => {
-            const ev = _stateafter[delayKey];
-            const actions = parseActions(ev.actions);
-            const meta = parseMeta(ev.meta || {});
+            let evs = _stateafter[delayKey];
+            if (!(evs instanceof Array)) {
+                evs = [evs];
+            }
+            const transitions = [];
+            for (let i = 0; i < evs.length; i++) {
+                const ev = evs[i];
+                const actions = parseActions(ev.actions);
+                const meta = parseMeta(ev.meta || {});
+                const tr = {
+                    target: parseStateName(ev.target || "", statePath),
+                    guard: ev.guard || ev.cond ||  "",
+                    actions,
+                    meta,
+                }
+                transitions.push(tr)
+            }
+
             return {
                 name: delayKey || "",
-                target: parseStateName(ev.target || "", statePath),
-                guard: ev.guard || ev.cond ||  "",
-                actions,
-                meta,
+                transitions: transitions,
             }
         })
 
@@ -113,12 +139,16 @@ function parseMachineStates(configStates = {}, statePath) {
                 state.always = [state.always];
             }
             for (let i = 0; i < state.always.length; i++) {
-                const st = {
+                const tr = {
                     ...state.always[i],
                     guard: state.always[i].guard || state.always[i].cond || "",
                     target: parseStateName(state.always[i].target || "", statePath),
                     actions: parseActions(state.always[i].actions || []),
                     meta: parseMeta(state.always[i].meta || {}),
+                }
+                const st = {
+                    name: "always",
+                    transitions: [tr],
                 }
                 statealways.push(st);
             }

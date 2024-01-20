@@ -64,26 +64,34 @@ export const machine = createMachine(
                   },
                 },
               },
-              query: {
-                target: "preProposer",
-                guard: "ifBlockNotFinalized",
-                actions: [
-                  {
-                    type: "setProposedBlock",
-                    params: {
-                      block: "$block",
-                      header: "$header",
+              query: [
+                {
+                  target: "preProposer",
+                  guard: "ifBlockNotFinalized",
+                  actions: [
+                    {
+                      type: "setProposedBlock",
+                      params: {
+                        block: "$block",
+                        header: "$header",
+                      },
                     },
-                  },
-                  {
+                    {
+                      type: "sendResponse",
+                      params: {
+                        block: "$block",
+                        header: "$header",
+                      },
+                    },
+                  ],
+                },
+                {
+                  target: "validator",
+                  actions: {
                     type: "sendResponse",
-                    params: {
-                      block: "$block",
-                      header: "$header",
-                    },
                   },
-                ],
-              },
+                },
+              ],
               stop: {
                 target: "stopped",
               },
@@ -293,6 +301,9 @@ export const machine = createMachine(
         return false;
       },
       ifMajorityLTAlphaThreshold: ({ context, event }, params) => {
+        return false;
+      },
+      "New guard": ({ context, event }, params) => {
         return false;
       },
     },
