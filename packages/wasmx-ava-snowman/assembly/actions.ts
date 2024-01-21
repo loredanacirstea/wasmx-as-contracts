@@ -377,9 +377,9 @@ export function finalizeBlock(
     event: EventObject,
 ): void {
     const blockEntryBase64 = fsm.getContextValue(PROPOSED_BLOCK_KEY);
-    console.debug("* finalizeblock blockEntryBase64: " + blockEntryBase64);
+    console.debug("* finalizeBlock blockEntryBase64: " + blockEntryBase64);
     const blockEntry = String.UTF8.decode(decodeBase64(blockEntryBase64).buffer);
-    console.debug("* finalizeblock blockEntry: " + blockEntry);
+    console.debug("* finalizeBlock blockEntry: " + blockEntry);
     const block = JSON.parse<wblocks.BlockEntry>(blockEntry)
     const entryobj = new LogEntryAggregate(block.index, 0, 0, block)
     LoggerInfo("start block finalization", ["height", block.index.toString()])

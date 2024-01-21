@@ -721,8 +721,8 @@ export const RAFT_Full =  {
             {
               type: "setRandomElectionTimeout",
               params: {
-                max: "$maxElectionTime",
                 min: "$minElectionTime",
+                max: "$maxElectionTime",
               },
             },
             {
@@ -731,14 +731,19 @@ export const RAFT_Full =  {
                 after: "electionTimeout",
               },
             },
-            {
-              type: "forwardTxsToLeader",
-            },
           ],
           after: {
             electionTimeout: {
               target: "#RAFT-FULL-1.initialized.Candidate",
               actions: [],
+              meta: {},
+            },
+            heartbeatTimeout: {
+              actions: [
+                {
+                  type: "forwardTxsToLeader",
+                },
+              ],
               meta: {},
             },
           },
@@ -798,8 +803,8 @@ export const RAFT_Full =  {
             {
               type: "setRandomElectionTimeout",
               params: {
-                max: "$maxElectionTime",
                 min: "$minElectionTime",
+                max: "$maxElectionTime",
               },
             },
             {

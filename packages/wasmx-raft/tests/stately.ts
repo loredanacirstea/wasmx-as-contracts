@@ -67,8 +67,8 @@ export const machine = createMachine(
               {
                 type: "setRandomElectionTimeout",
                 params: {
-                  max: "$maxElectionTime",
                   min: "$minElectionTime",
+                  max: "$maxElectionTime",
                 },
               },
               {
@@ -77,14 +77,19 @@ export const machine = createMachine(
                   after: "electionTimeout",
                 },
               },
-              {
-                type: "forwardTxsToLeader",
-              },
             ],
             after: {
               electionTimeout: {
                 target: "#RAFT-FULL-1.initialized.Candidate",
                 actions: [],
+                meta: {},
+              },
+              heartbeatTimeout: {
+                actions: [
+                  {
+                    type: "forwardTxsToLeader",
+                  },
+                ],
                 meta: {},
               },
             },
@@ -144,8 +149,8 @@ export const machine = createMachine(
               {
                 type: "setRandomElectionTimeout",
                 params: {
-                  max: "$maxElectionTime",
                   min: "$minElectionTime",
+                  max: "$maxElectionTime",
                 },
               },
               {
@@ -273,6 +278,7 @@ export const machine = createMachine(
         | { type: "setup"; address: string }
         | { type: "start" }
         | { type: "restart" }
+        | { type: "prestart" }
         | { type: "newChange"; transaction: string }
         | {
             type: "setupNode";
@@ -309,8 +315,7 @@ export const machine = createMachine(
             candidateId: string;
             lastLogTerm: string;
             lastLogIndex: string;
-          }
-        | { type: "prestart" },
+          },
       context: {} as {
         log: string;
         nodeIPs: string;
@@ -362,9 +367,6 @@ export const machine = createMachine(
     actors: {},
     guards: {
       isVotedLeader: ({ context, event }, params) => {
-        return false;
-      },
-      ifIntervalActive: ({ context, event }, params) => {
         return false;
       },
     },
