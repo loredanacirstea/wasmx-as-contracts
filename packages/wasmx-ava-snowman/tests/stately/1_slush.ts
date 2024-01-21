@@ -10,7 +10,7 @@ export const machine = createMachine(
       roundsCounter: 0,
       alphaThreshold: 11,
     },
-    id: "1_Slush",
+    id: "1_Slush_1",
     initial: "uncolored",
     states: {
       uncolored: {
@@ -48,29 +48,46 @@ export const machine = createMachine(
         },
       },
       red: {
-        entry: [
-          {
-            type: "selectRandomSample",
-            params: {
-              k: "sampleSize",
-            },
+        initial: "limbo",
+        states: {
+          limbo: {
+            always: [
+              {
+                target: "active",
+                guard: "ifCounterLTRounds",
+              },
+              {
+                target: "final",
+              },
+            ],
           },
-          {
-            type: "sendQuery",
-            params: {
-              color: "red",
-            },
+          active: {
+            entry: [
+              {
+                type: "selectRandomSample",
+                params: {
+                  k: "$sampleSize",
+                },
+              },
+              {
+                type: "sendQuery",
+                params: {
+                  color: "red",
+                },
+              },
+              {
+                type: "getMajorityColor",
+                params: {
+                  threshold: "$alphaThreshold",
+                },
+              },
+              {
+                type: "incrementRoundCounter",
+              },
+            ],
           },
-          {
-            type: "getMajorityColor",
-            params: {
-              threshold: "alphaThreshold",
-            },
-          },
-          {
-            type: "incrementRoundCounter",
-          },
-        ],
+          final: {},
+        },
         always: [
           {
             target: "blue",
@@ -78,7 +95,6 @@ export const machine = createMachine(
           },
           {
             target: "red",
-            guard: "ifCounterLTRounds",
           },
         ],
         on: {
@@ -104,29 +120,46 @@ export const machine = createMachine(
         },
       },
       blue: {
-        entry: [
-          {
-            type: "selectRandomSample",
-            params: {
-              k: "sampleSize",
-            },
+        initial: "limbo",
+        states: {
+          limbo: {
+            always: [
+              {
+                target: "active",
+                guard: "ifCounterLTRounds",
+              },
+              {
+                target: "final",
+              },
+            ],
           },
-          {
-            type: "sendQuery",
-            params: {
-              color: "blue",
-            },
+          active: {
+            entry: [
+              {
+                type: "selectRandomSample",
+                params: {
+                  k: "$sampleSize",
+                },
+              },
+              {
+                type: "sendQuery",
+                params: {
+                  color: "blue",
+                },
+              },
+              {
+                type: "getMajorityColor",
+                params: {
+                  threshold: "$alphaThreshold",
+                },
+              },
+              {
+                type: "incrementRoundCounter",
+              },
+            ],
           },
-          {
-            type: "getMajorityColor",
-            params: {
-              threshold: "alphaThreshold",
-            },
-          },
-          {
-            type: "incrementRoundCounter",
-          },
-        ],
+          final: {},
+        },
         always: [
           {
             target: "red",
@@ -134,7 +167,6 @@ export const machine = createMachine(
           },
           {
             target: "blue",
-            guard: "ifCounterLTRounds",
           },
         ],
         on: {

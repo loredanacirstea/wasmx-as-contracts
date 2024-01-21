@@ -5,6 +5,7 @@ import {Base64String, Bech32String } from 'wasmx-env/assembly/types';
 @serializable
 export class BlockEntry {
     index: i64;
+    // TODO hash: string
     readerContract: Base64String
     writerContract: Base64String
     data: string; // base64-encoded RequestFinalizeBlock

@@ -272,38 +272,35 @@ export const machine = createMachine(
       changeProposedHash: ({ context, event }) => {},
       resetRoundsCounter: ({ context, event }) => {},
       selectRandomSample: ({ context, event }) => {},
+      changeProposedBlock: ({ context, event }) => {},
       incrementConfidence: ({ context, event }) => {},
       sendQueryToRandomSet: ({ context, event }) => {},
       setMajorityAsCurrent: ({ context, event }) => {},
       calculateMajorityHash: ({ context, event }) => {},
+      majorityFromRandomSet: ({ context, event }) => {},
       calculateMajorityColor: ({ context, event }) => {},
       incrementRoundsCounter: ({ context, event }) => {},
-      incrementProposedBlockConfidence: ({ context, event }) => {},
       getMajorityFromToRandomSet: ({ context, event }) => {},
-      majorityFromRandomSet: ({ context, event }) => {},
-      changeProposedBlock: ({ context, event }) => {},
+      incrementProposedBlockConfidence: ({ context, event }) => {},
     },
     actors: {},
     guards: {
       ifMajorityIsOther: ({ context, event }, params) => {
         return false;
       },
+      ifGTAlphaThreshold: ({ context, event }, params) => {
+        return false;
+      },
       ifBlockNotFinalized: ({ context, event }, params) => {
+        return false;
+      },
+      ifMajorityLTAlphaThreshold: ({ context, event }, params) => {
         return false;
       },
       ifMajorityConfidenceGTCurrent: ({ context, event }, params) => {
         return false;
       },
       ifIncrementedCounterLTBetaThreshold: ({ context, event }, params) => {
-        return false;
-      },
-      ifGTAlphaThreshold: ({ context, event }, params) => {
-        return false;
-      },
-      ifMajorityLTAlphaThreshold: ({ context, event }, params) => {
-        return false;
-      },
-      "New guard": ({ context, event }, params) => {
         return false;
       },
     },

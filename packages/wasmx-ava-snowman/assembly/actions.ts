@@ -80,6 +80,7 @@ export function ifMajorityConfidenceGTCurrent(
     const majority = parseInt32(ctx.get("majority"));
     const currentHash = fsm.getContextValue(PROPOSED_HASH_KEY);
     const confidence = getConfidence(currentHash);
+    LoggerInfo("ifMajorityConfidenceGTCurrent", ["majority", majority.toString(), "confidence", confidence.toString(), "currentHash", currentHash])
     if (majority > confidence) return true;
     return false;
 }
@@ -90,7 +91,7 @@ export function ifIncrementedCounterLTBetaThreshold(
 ): boolean {
     const counter = getRoundsCounter();
     const betaThreshold = parseInt32(fsm.getContextValue(BETA_THRESHOLD_KEY) || "");
-    LoggerDebug("ifIncrementedCounterLTBetaThreshold", ["incremented_counter", (counter + 1).toString(), "beta_threshold", betaThreshold.toString()])
+    LoggerInfo("ifIncrementedCounterLTBetaThreshold", ["incremented_counter", (counter + 1).toString(), "beta_threshold", betaThreshold.toString()])
     if ((counter + 1) < betaThreshold) return true;
     return false;
 }
@@ -101,6 +102,7 @@ export function ifMajorityIsOther(
 ): boolean {
     const proposedHash = fsm.getContextValue(PROPOSED_HASH_KEY);
     const majority = fsm.getContextValue(MAJORITY_KEY);
+    LoggerInfo("ifMajorityIsOther", ["majority", majority.toString(), "proposedHash", proposedHash])
     return majority != proposedHash;
 }
 
@@ -114,10 +116,11 @@ export function ifBlockNotFinalized(
         revert("no block found");
     }
     let blockBase64: Base64String = ctx.get("block");
+    console.debug("ifBlockNotFinalized: " + blockBase64);
     const block = JSON.parse<wblocks.BlockEntry>(String.UTF8.decode(decodeBase64(blockBase64).buffer))
     // make sure we don't add an already finalized block
     const lastIndex = getLastBlockIndex();
-    LoggerDebug("ifBlockNotFinalized", ["block height", block.index.toString(), "last finalized height", lastIndex.toString()])
+    LoggerInfo("ifBlockNotFinalized", ["block_height", block.index.toString(), "last_finalized_height", lastIndex.toString()])
     return lastIndex < block.index;
 }
 
@@ -129,7 +132,7 @@ export function ifMajorityLTAlphaThreshold(
     const k = parseInt32(fsm.getContextValue(SAMPLE_SIZE_KEY));
     const threshold = i32(Math.ceil(f32(k * percentage) / f32(100)))
     const majority = parseInt32(fsm.getContextValue(MAJORITY_COUNT_KEY));
-    LoggerDebug("ifMajorityLTAlphaThreshold", ["sampleSize", k.toString(), "threshold", threshold.toString(), "majority", majority.toString()]);
+    LoggerInfo("ifMajorityLTAlphaThreshold", ["sampleSize", k.toString(), "threshold", threshold.toString(), "majority", majority.toString()]);
     return majority < threshold;
 }
 
@@ -183,7 +186,13 @@ export function sendResponse(
         const blockData = JSON.parse<wblocks.BlockEntry>(data);
         blockBase64 = blockData.data;
         headerBase64 = blockData.header;
+        LoggerInfo("send query response: block already finalized", ["height", blockData.index.toString()])
     }
+
+    // temp
+    // const data = JSON.parse<typestnd.RequestFinalizeBlock>(block.data)
+    // LoggerInfo("send query response", ["height", block.index.toString(), "hash", data.hash])
+    LoggerInfo("send query response", ["height", block.index.toString()])
 
     const response = JSON.stringify<QueryResponse>(new QueryResponse(blockBase64, headerBase64));
     LoggerDebug("send query response", ["response", response])
@@ -269,6 +278,9 @@ export function majorityFromRandomSet(
     responseCounter.set(proposedHash, 1);
     responses.set(proposedHash, request);
 
+    const roundCounter = getRoundsCounter();
+    LoggerInfo("sending query to random set", ["sample_size", k.toString(), "proposed_hash", proposedHash, "round_counter", roundCounter.toString()])
+
     for (let i = 0; i < sampleIndexes.length; i++) {
         const nodeIp = nodeIps[sampleIndexes[i]];
         const resp = sendQuery(nodeIp, contract, request);
@@ -282,14 +294,16 @@ export function majorityFromRandomSet(
                     responseCounter.set(hash, responseCounter.get(hash) + 1);
                 }
                 responses.set(hash, resp);
+                LoggerInfo("query response", ["from", nodeIp, "proposed_hash", hash])
             } else {
                 responseCounter.set(proposedHash, responseCounter.get(proposedHash) + 1);
+                LoggerInfo("query response", ["from", nodeIp, "proposed_hash", proposedHash])
             }
         }
     }
     // calculate majority
     const allhashes = responseCounter.keys();
-    LoggerDebug("majority options", ["hashes", allhashes.join(",")])
+    LoggerInfo("block options", ["hashes", allhashes.join(",")])
     let majorityCount = 0;
     let majorityHash = allhashes[0];
     let majorityBlock_: QueryResponse | null = null;
@@ -301,7 +315,7 @@ export function majorityFromRandomSet(
             majorityBlock_ = responses.get(majorityHash);
         }
     }
-    LoggerDebug("majority option", ["hash", majorityHash, "count", majorityCount.toString()])
+    LoggerInfo("majority block", ["hash", majorityHash, "count", majorityCount.toString()])
     if (majorityBlock_ == null) {
         return;
     }
@@ -335,6 +349,8 @@ export function changeProposedBlock(
         revert("block not found for majority hash ")
     }
     const block: TempBlock = tempblock!;
+
+    LoggerInfo("changing block option", ["hash", hash])
 
     fsm.setContextValue(PROPOSED_HASH_KEY, hash);
     fsm.setContextValue(PROPOSED_HEADER_KEY, block.header);
@@ -1082,7 +1098,7 @@ function getNextProposerIndex(count: i32, headerHash: string): i32 {
 // block, header
 // TODO sign messages!!!
 function sendQuery(ip: string, contract: ArrayBuffer, req: QueryResponse): QueryResponse | null {
-    LoggerInfo("send query", ["ip", ip]);
+    LoggerDebug("send query", ["ip", ip]);
 
     // TODO sign messages!!!
     // const queryMsg = JSON.stringify<QueryResponse>(req)

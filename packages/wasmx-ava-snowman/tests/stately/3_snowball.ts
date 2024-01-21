@@ -69,7 +69,7 @@ export const machine = createMachine(
           {
             type: "selectRandomSample",
             params: {
-              k: "sampleSize",
+              k: "$sampleSize",
             },
           },
           {
@@ -81,7 +81,7 @@ export const machine = createMachine(
           {
             type: "getMajorityColor",
             params: {
-              threshold: "alphaThreshold",
+              threshold: "$alphaThreshold",
             },
           },
         ],
@@ -136,7 +136,7 @@ export const machine = createMachine(
           {
             type: "selectRandomSample",
             params: {
-              k: "sampleSize",
+              k: "$sampleSize",
             },
           },
           {
@@ -148,7 +148,7 @@ export const machine = createMachine(
           {
             type: "getMajorityColor",
             params: {
-              threshold: "alphaThreshold",
+              threshold: "$alphaThreshold",
             },
           },
         ],
