@@ -29,6 +29,7 @@
     "wasmx-blocks": "file:../wasmx-blocks",
     "wasmx-consensus": "file:../wasmx-consensus",
     "wasmx-env": "file:../wasmx-env",
+    "wasmx-p2p": "file:../wasmx-p2p",
     "wasmx-utils": "file:../wasmx-utils",
     "xstate-fsm-as": "file:../xstate-fsm-as"
   }

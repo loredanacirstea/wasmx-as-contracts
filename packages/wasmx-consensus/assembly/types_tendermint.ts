@@ -400,11 +400,17 @@ export class ValidatorInfo {
     pub_key: Base64String // crypto.PubKey
     voting_power: i64
     proposer_priority: i64
-    constructor(address: HexString, pub_key: string, voting_power: i64, proposer_priority: i64) {
+    p2p_id: Base64String
+    host: string
+    port: string
+    constructor(address: HexString, pub_key: string, voting_power: i64, proposer_priority: i64, p2p_id: Base64String, host: string, port: string) {
         this.address = address;
         this.pub_key = pub_key;
         this.voting_power = voting_power;
         this.proposer_priority = proposer_priority;
+        this.p2p_id = p2p_id;
+        this.host = host;
+        this.port = port;
     }
 }
 

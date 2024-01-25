@@ -65,4 +65,3 @@ export function eventual(): void {
   const _args = JSON.parse<TimerArgs>(argsStr);
   _eventual(config, _args);
 }
-

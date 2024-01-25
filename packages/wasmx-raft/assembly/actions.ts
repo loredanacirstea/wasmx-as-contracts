@@ -317,9 +317,12 @@ export function forwardTxsToLeader(
 }
 
 function getCurrentValidator(): typestnd.ValidatorInfo {
-    const currentState = getCurrentState();
-    // TODO voting_power & proposer_priority
-    return new typestnd.ValidatorInfo(currentState.validator_address, currentState.validator_pubkey, 0, 0);
+    const validators = getValidators()
+    const index = getCurrentNodeId()
+    if (index >= validators.length) {
+        revert("validator index out of bounds")
+    }
+    return validators[index];
 }
 
 function checkValidatorsUpdate(validators: typestnd.ValidatorInfo[], validatorInfo: typestnd.ValidatorInfo, nodeId: i32): void {
@@ -1892,5 +1895,4 @@ function callStorage(calldata: string, isQuery: boolean): CallResponse {
 function getStorageAddress(): string {
     const state = getCurrentState();
     return state.wasmx_blocks_contract;
-
 }
