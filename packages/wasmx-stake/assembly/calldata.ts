@@ -1,12 +1,17 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { MsgCreateValidator } from './types';
+import { MsgCreateValidator, MsgInitGenesis } from './types';
 
+// @ts-ignore
+@serializable
 export class CallData {
-    createValidator: MsgCreateValidator | null = null;
+    InitGenesis: MsgInitGenesis | null = null;
+    CreateValidator: MsgCreateValidator | null = null;
 }
 
 export function getCallDataWrap(): CallData {
     const calldraw = wasmx.getCallData();
-    return JSON.parse<CallData>(String.UTF8.decode(calldraw));
+    let calldstr = String.UTF8.decode(calldraw)
+    calldstr = calldstr.replaceAll(`"@type"`, `"anytype"`)
+    return JSON.parse<CallData>(calldstr);
 }

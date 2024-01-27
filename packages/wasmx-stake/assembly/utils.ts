@@ -13,15 +13,15 @@ export function hex64ToBase64(value: HexString): Base64String {
 }
 
 export function LoggerInfo(msg: string, parts: string[]): void {
-    wasmxwrap.LoggerInfo("stake", msg, parts)
+    wasmxwrap.LoggerInfo("staking", msg, parts)
 }
 
 export function LoggerError(msg: string, parts: string[]): void {
-    wasmxwrap.LoggerError("stake", msg, parts)
+    wasmxwrap.LoggerError("staking", msg, parts)
 }
 
 export function LoggerDebug(msg: string, parts: string[]): void {
-    wasmxwrap.LoggerDebug("stake", msg, parts)
+    wasmxwrap.LoggerDebug("staking", msg, parts)
 }
 
 export function revert(message: string): void {
