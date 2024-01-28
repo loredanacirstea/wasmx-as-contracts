@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
-import { Base64String } from "wasmx-env/assembly/types";
+import { Base64String, Bech32String } from "wasmx-env/assembly/types";
 
 // @ts-ignore
 @serializable
@@ -92,9 +92,9 @@ export class AppendEntry {
     entries: Array<LogEntryAggregate>
     // leader’s commitIndex
     leaderCommit: i64;
-    nodeIps: Array<string>;
+    nodeIps: Array<ValidatorIp>;
     validators: Base64String;
-    constructor(termId: i32, leaderId: i32, prevLogIndex: i64, prevLogTerm: i32, entries: Array<LogEntryAggregate>, leaderCommit: i64, nodeIps: Array<string>, validators: Base64String) {
+    constructor(termId: i32, leaderId: i32, prevLogIndex: i64, prevLogTerm: i32, entries: Array<LogEntryAggregate>, leaderCommit: i64, nodeIps: Array<ValidatorIp>, validators: Base64String) {
         this.termId = termId;
         this.leaderId = leaderId;
         this.prevLogIndex = prevLogIndex;
@@ -137,25 +137,23 @@ export class VoteRequest {
 // @ts-ignore
 @serializable
 export class NodeUpdate {
-    ip: string;
+    node: ValidatorIp;
     index: i32;
     type: i32; // removed = 0; added = 1; updated = 2;
-    validator_info: Base64String; // "" if a remove or update; ValidatorInfo if added
-    constructor(ip: string, index: i32, type: i32, validator_info: Base64String) {
-        this.ip = ip;
+    constructor(node: ValidatorIp, index: i32, type: i32, validator_info: Base64String) {
+        this.node = node;
         this.index = index;
         this.type = type;
-        this.validator_info = validator_info;
     }
 }
 
 // @ts-ignore
 @serializable
 export class UpdateNodeResponse {
-  nodeIPs: string[]
+  nodeIPs: ValidatorIp[]
   nodeId: i32
   validators: Base64String
-  constructor(nodeIPs: string[], nodeId: i32, validators: Base64String) {
+  constructor(nodeIPs: ValidatorIp[], nodeId: i32, validators: Base64String) {
     this.nodeIPs = nodeIPs
     this.nodeId = nodeId
     this.validators = validators
@@ -170,5 +168,16 @@ export class VoteResponse {
     constructor(termId: i32, voteGranted: bool) {
         this.termId = termId;
         this.voteGranted = voteGranted;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class ValidatorIp {
+    address: Bech32String
+    ip: string
+    constructor(address: Bech32String, ip: string) {
+        this.address = address
+        this.ip = ip
     }
 }

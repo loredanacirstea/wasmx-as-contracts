@@ -1,7 +1,8 @@
 import { JSON } from "json-as/assembly";
 import { getParamsInternal, setParams, setNewValidator, getParams } from './storage';
-import { MsgInitGenesis, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate } from './types';
+import { MsgInitGenesis, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS } from './types';
 import { revert } from './utils';
+import { parseInt64 } from "wasmx-utils/assembly/utils";
 
 const POWER_REDUCTION = 1000000
 
@@ -14,10 +15,11 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
     for (let i = 0; i < req.validators.length; i++) {
         const validator = req.validators[i];
         setNewValidator(validator);
-        const power = validator.tokens / POWER_REDUCTION;
+        const tokens = parseInt64(validator.tokens)
+        const power = tokens / POWER_REDUCTION;
         vupdates.push(new ValidatorUpdate(validator.consensus_pubkey, power))
     }
-    let data = JSON.stringify<ValidatorUpdate[]>(vupdates)
+    let data = JSON.stringify<InitGenesisResponse>(new InitGenesisResponse(vupdates))
     data = data.replaceAll(`"anytype"`, `"@type"`)
     return String.UTF8.encode(data)
 }
@@ -27,14 +29,14 @@ export function CreateValidator(req: MsgCreateValidator): void {
         req.validator_address,
         req.pubkey, // TODO codec any?
         false,
-        Unbonded,
-        0,
-        f64(0),
+        UnbondedS,
+        "0",
+        "0.0",
         req.description,
         0,
-        0,
-        new Commission(req.commission, 0),
-        req.min_self_delegation || 1,
+        new Date(0),
+        new Commission(req.commission, new Date(0)),
+        req.min_self_delegation || "1",
         0,
         [],
     )
@@ -45,7 +47,8 @@ export function CreateValidator(req: MsgCreateValidator): void {
     if (params.bond_denom != req.value.denom) {
         revert(`cannot create validator with ${req.value.denom}; need ${params.bond_denom}`)
     }
-    validator.tokens += req.value.amount
+    const tokens = parseInt64(validator.tokens) + req.value.amount
+    validator.tokens = tokens.toString();
     // validator.delegator_shares += ?
     setNewValidator(validator);
 }
@@ -78,3 +81,9 @@ export function ExportGenesis(): void {
 
 }
 
+export function UpdateValidators(req: MsgUpdateValidators): ArrayBuffer {
+    // TODO
+    console.debug("--staking UpdateValidators--")
+    // const updates = req.updates;
+    return new ArrayBuffer(0)
+}

@@ -20,7 +20,8 @@ export function setNewValidator(value: Validator): void {
     setValidatorsAddresses(addrs);
     setValidator(value);
     let total = getTotalStake();
-    total += value.tokens;
+    const tokes = parseInt64(value.tokens);
+    total += tokes;
     setTotalStake(total);
 }
 

@@ -509,11 +509,12 @@ export function setupNode(
     // TODO remove validator private key from logs in initChainSetup
     LoggerDebug("setupNode", ["currentNodeId", currentNodeId, "nodeIPs", nodeIPs, "initChainSetup", datajson])
     const data = JSON.parse<typestnd.InitChainSetup>(datajson);
-    const ips = JSON.parse<string[]>(nodeIPs);
+    // const ips = JSON.parse<string[]>(nodeIPs);
     // TODO better way; we may have the leader's node ip here
-    if (ips.length < data.validators.length) {
-        revert(`Node IPS count ${ips.length.toString()} mismatch validator count ${data.validators.length}`);
-    }
+    // if (ips.length < data.validators.length) {
+    //     revert(`Node IPS count ${ips.length.toString()} mismatch validator count ${data.validators.length}`);
+    // }
+
     initChain(data);
 }
 

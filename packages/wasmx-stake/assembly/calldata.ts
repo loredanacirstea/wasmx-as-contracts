@@ -1,12 +1,14 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { MsgCreateValidator, MsgInitGenesis } from './types';
+import { MsgCreateValidator, MsgInitGenesis, MsgGetAllValidators, MsgUpdateValidators } from './types';
 
 // @ts-ignore
 @serializable
 export class CallData {
     InitGenesis: MsgInitGenesis | null = null;
     CreateValidator: MsgCreateValidator | null = null;
+    GetAllValidators: MsgGetAllValidators | null = null;
+    UpdateValidators: MsgUpdateValidators | null = null;
 }
 
 export function getCallDataWrap(): CallData {

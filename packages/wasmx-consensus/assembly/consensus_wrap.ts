@@ -54,8 +54,10 @@ export function FinalizeBlock(req: RequestFinalizeBlock): ResponseFinalizeBlockW
     const wrap = JSON.parse<ResponseWrap>(respstr);
     const response = new ResponseFinalizeBlockWrap(wrap.error, null);
     if (wrap.error.length == 0) {
-        const data = String.UTF8.decode(decodeBase64(wrap.data).buffer)
+        let data = String.UTF8.decode(decodeBase64(wrap.data).buffer)
         LoggerDebug("FinalizeBlock", ["response data", data]);
+        // replace @type with anytype for public keys
+        data = data.replaceAll(`"@type"`, `"anytype"`)
         response.data = JSON.parse<ResponseFinalizeBlock>(data);
     }
     return response;

@@ -384,10 +384,21 @@ export class ExecTxResult { // same as ResponseCheckTx
 
 // @ts-ignore
 @serializable
+export class PublicKey {
+    anytype: string
+    key: Base64String
+    constructor(type: string, key: Base64String) {
+        this.anytype = type;
+        this.key = key
+    }
+}
+
+// @ts-ignore
+@serializable
 export class ValidatorUpdate {
-    pub_key: string // crypto.PublicKey
+    pub_key: PublicKey
 	power: i64
-    constructor(pub_key: string, power: i64) {
+    constructor(pub_key: PublicKey, power: i64) {
         this.pub_key = pub_key;
         this.power = power;
     }
@@ -629,24 +640,22 @@ export class InitChainSetup {
     chain_id: string
     version: Version
 	consensus_params: ConsensusParams
-	validators: ValidatorInfo[]
 	app_hash: Base64String
     last_results_hash: Base64String
     validator_address: HexString
     validator_privkey: Base64String
     validator_pubkey: Base64String
-    wasmx_blocks_contract: Base64String
-    constructor(chain_id: string, version: Version, consensus_params: ConsensusParams, validators: ValidatorInfo[], app_hash: Base64String, last_results_hash: Base64String, validator_address: HexString, validator_privkey: Base64String, validator_pubkey: Base64String, wasmx_blocks_contract: Base64String) {
+    peers: string[]
+    constructor(chain_id: string, version: Version, consensus_params: ConsensusParams, app_hash: Base64String, last_results_hash: Base64String, validator_address: HexString, validator_privkey: Base64String, validator_pubkey: Base64String, peers: string[]) {
         this.chain_id = chain_id
         this.version = version
         this.consensus_params = consensus_params
-        this.validators = validators
         this.app_hash = app_hash
         this.last_results_hash = last_results_hash
         this.validator_address = validator_address
         this.validator_privkey = validator_privkey
         this.validator_pubkey = validator_pubkey
-        this.wasmx_blocks_contract = wasmx_blocks_contract
+        this.peers = peers
     }
 }
 

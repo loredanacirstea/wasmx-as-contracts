@@ -3,7 +3,7 @@ import { Base64String, Bech32String, HexString } from 'wasmx-env/assembly/types'
 
 // @ts-ignore
 @serializable
-export type BondStatus = i32
+export type BondStatusNumber = i32
 // UNSPECIFIED defines an invalid validator status.
 export const Unspecified = 0;
 // UNBONDED defines a validator that is not bonded.
@@ -12,6 +12,18 @@ export const Unbonded = 1;
 export const Unbonding = 2;
 // BONDED defines a validator that is bonded.
 export const Bonded = 3;
+
+// @ts-ignore
+@serializable
+export type BondStatusString = string
+// UNSPECIFIED defines an invalid validator status.
+export const UnspecifiedS = "BOND_STATUS_UNSPECIFIED"; // Unspecified
+// UNBONDED defines a validator that is not bonded.
+export const UnbondedS = "BOND_STATUS_UNBONDED"; // Unbonded
+// UNBONDING defines a validator that is unbonding.
+export const UnbondingS = "BOND_STATUS_UNBONDING"; // Unbonding
+// BONDED defines a validator that is bonded.
+export const BondedS = "BOND_STATUS_BONDED"; // Bonded
 
 // @ts-ignore
 @serializable
@@ -50,12 +62,12 @@ export class Description {
 @serializable
 export class CommissionRates {
     // rate is the commission rate charged to delegators, as a fraction.
-    rate: f64
+    rate: string // f64
     // max_rate defines the maximum commission rate which validator can ever charge, as a fraction.
-    max_rate: f64
+    max_rate: string // f64
     // max_change_rate defines the maximum daily increase of the validator commission, as a fraction.
-    max_change_rate: f64
-    constructor(rate: f64, max_rate: f64, max_change_rate: f64) {
+    max_change_rate: string // f64
+    constructor(rate: string, max_rate: string, max_change_rate: string) {
         this.rate = rate
         this.max_rate = max_rate
         this.max_change_rate = max_change_rate
@@ -67,14 +79,14 @@ export class CommissionRates {
 export class MsgCreateValidator {
     description: Description
     commission: CommissionRates
-    min_self_delegation: i64 // TODO Int
+    min_self_delegation: string // TODO Int
     // Deprecated: Use of Delegator Address in MsgCreateValidator is deprecated.
     // The validator address bytes and delegator address bytes refer to the same account while creating validator (defer
     // only in bech32 notation).
     validator_address: string
     pubkey: PublicKey
     value: Coin
-    constructor(description: Description, commission: CommissionRates, min_self_delegation: i64, validator_address: string, pubkey: PublicKey, value: Coin) {
+    constructor(description: Description, commission: CommissionRates, min_self_delegation: string, validator_address: string, pubkey: PublicKey, value: Coin) {
         this.description = description
         this.commission = commission
         this.min_self_delegation = min_self_delegation
@@ -230,6 +242,15 @@ export class MsgInitGenesis {
 
 // @ts-ignore
 @serializable
+export class InitGenesisResponse {
+    updates: ValidatorUpdate[]
+    constructor(updates: ValidatorUpdate[]) {
+        this.updates = updates
+    }
+}
+
+// @ts-ignore
+@serializable
 export class Params {
 	// unbonding_time is the time duration of unbonding.
 	unbonding_time: i64
@@ -259,8 +280,8 @@ export class Commission {
     // commission_rates defines the initial commission rates to be used for creating a validator.
     commission_rates: CommissionRates
     // update_time is the last time the commission rate was changed.
-    update_time: i64
-    constructor(commission_rates: CommissionRates, update_time: i64) {
+    update_time: Date // Date
+    constructor(commission_rates: CommissionRates, update_time: Date) {
         this.commission_rates = commission_rates
         this.update_time = update_time
     }
@@ -288,7 +309,54 @@ export class Validator {
 	// jailed defined whether the validator has been jailed from bonded status or not.
 	jailed: bool
 	// status is the validator status (bonded/unbonding/unbonded).
-	status: BondStatus
+	status: BondStatusString
+	// tokens define the delegated tokens (incl. self-delegation).
+	tokens: string // TODO Int
+	// delegator_shares defines total shares issued to a validator's delegators.
+	delegator_shares: string // f64
+	// description defines the description terms for the validator.
+	description: Description
+	// unbonding_height defines, if unbonding, the height at which this validator has begun unbonding.
+	unbonding_height: i64
+	// unbonding_time defines, if unbonding, the min time for the validator to complete unbonding.
+	unbonding_time: Date
+	// commission defines the commission parameters.
+	commission: Commission
+	// min_self_delegation is the validator's self declared minimum self delegation.
+	// Since: cosmos-sdk 0.46
+	min_self_delegation: string // TODO Int
+	// strictly positive if this validator's unbonding has been stopped by external modules
+	unbonding_on_hold_ref_count: i64
+	// list of unbonding ids, each uniquely identifing an unbonding of this validator
+	unbonding_ids: u64[]
+    constructor(operator_address: string, consensus_pubkey: PublicKey, jailed: bool, status: BondStatusString, tokens: string, delegator_shares: string, description: Description, unbonding_height: i64, unbonding_time: Date, commission: Commission, min_self_delegation: string, unbonding_on_hold_ref_count: i64, unbonding_ids: u64[]) {
+        this.operator_address = operator_address
+        this.consensus_pubkey = consensus_pubkey
+        this.jailed = jailed
+        this.status = status
+        this.tokens = tokens
+        this.delegator_shares = delegator_shares
+        this.description = description
+        this.unbonding_height = unbonding_height
+        this.unbonding_time = unbonding_time
+        this.commission = commission
+        this.min_self_delegation = min_self_delegation
+        this.unbonding_on_hold_ref_count = unbonding_on_hold_ref_count
+        this.unbonding_ids = unbonding_ids
+    }
+}
+
+// @ts-ignore
+@serializable
+export class ValidatorInternal {
+	// operator_address defines the address of the validator's operator; bech encoded in JSON.
+	operator_address: Bech32String
+	// consensus_pubkey is the consensus public key of the validator, as a Protobuf Any.
+	consensus_pubkey: PublicKey
+	// jailed defined whether the validator has been jailed from bonded status or not.
+	jailed: bool
+	// status is the validator status (bonded/unbonding/unbonded).
+	status: BondStatusString
 	// tokens define the delegated tokens (incl. self-delegation).
 	tokens: i64 // TODO Int
 	// delegator_shares defines total shares issued to a validator's delegators.
@@ -303,12 +371,12 @@ export class Validator {
 	commission: Commission
 	// min_self_delegation is the validator's self declared minimum self delegation.
 	// Since: cosmos-sdk 0.46
-	min_self_delegation: i64 // TODO Int
+	min_self_delegation: string // TODO Int
 	// strictly positive if this validator's unbonding has been stopped by external modules
 	unbonding_on_hold_ref_count: i64
 	// list of unbonding ids, each uniquely identifing an unbonding of this validator
 	unbonding_ids: u64[]
-    constructor(operator_address: string, consensus_pubkey: PublicKey, jailed: bool, status: BondStatus, tokens: i64, delegator_shares: f64, description: Description, unbonding_height: i64, unbonding_time: i64, commission: Commission, min_self_delegation: i64, unbonding_on_hold_ref_count: i64, unbonding_ids: u64[]) {
+    constructor(operator_address: string, consensus_pubkey: PublicKey, jailed: bool, status: BondStatusString, tokens: i64, delegator_shares: f64, description: Description, unbonding_height: i64, unbonding_time: i64, commission: Commission, min_self_delegation: string, unbonding_on_hold_ref_count: i64, unbonding_ids: u64[]) {
         this.operator_address = operator_address
         this.consensus_pubkey = consensus_pubkey
         this.jailed = jailed
@@ -346,5 +414,27 @@ export class ValidatorUpdate {
     constructor(pub_key: PublicKey, power:  i64) {
         this.pub_key = pub_key;
         this.power = power;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class MsgGetAllValidators {}
+
+// @ts-ignore
+@serializable
+export class MsgUpdateValidators {
+    updates: ValidatorUpdate[]
+    constructor(updates: ValidatorUpdate[]) {
+        this.updates = updates
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryValidatorsResponse {
+    validators: Validator[]
+    constructor(validators: Validator[]) {
+        this.validators = validators
     }
 }
