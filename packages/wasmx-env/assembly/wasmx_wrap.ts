@@ -141,3 +141,7 @@ export function addr_humanize(value: ArrayBuffer): string {
 export function addr_canonicalize(value: string): ArrayBuffer {
     return wasmx.addr_canonicalize(String.UTF8.encode(value));
 }
+
+export function getCaller(): Bech32String {
+    return addr_humanize(wasmx.getCaller())
+}
