@@ -13,6 +13,10 @@ import {
     LoggerLog,
     Bech32String,
     Account,
+    CreateAccountRequest,
+    CreateAccountResponse,
+    Create2AccountRequest,
+    Create2AccountResponse,
 } from './types';
 
 export function revert(message: string): void {
@@ -72,6 +76,22 @@ export function call(req: CallRequest): CallResponse {
     const requestStr = JSON.stringify<CallRequest>(req);
     const responsebz = wasmx.call(String.UTF8.encode(requestStr));
     return JSON.parse<CallResponse>(String.UTF8.decode(responsebz));
+}
+
+export function createAccount(req: CreateAccountRequest): Bech32String {
+    LoggerDebug("wasmx_env", "createAccount", ["code_id", req.code_id.toString()])
+    const requestStr = JSON.stringify<CreateAccountRequest>(req);
+    const responsebz = wasmx.call(String.UTF8.encode(requestStr));
+    const resp = JSON.parse<CreateAccountResponse>(String.UTF8.decode(responsebz));
+    return resp.address
+}
+
+export function create2Account(req: Create2AccountRequest): Bech32String {
+    LoggerDebug("wasmx_env", "create2Account", ["code_id", req.code_id.toString()])
+    const requestStr = JSON.stringify<Create2AccountRequest>(req);
+    const responsebz = wasmx.call(String.UTF8.encode(requestStr));
+    const resp = JSON.parse<Create2AccountResponse>(String.UTF8.decode(responsebz));
+    return resp.address
 }
 
 // base64 encoded data
@@ -144,4 +164,9 @@ export function addr_canonicalize(value: string): ArrayBuffer {
 
 export function getCaller(): Bech32String {
     return addr_humanize(wasmx.getCaller())
+}
+
+export function getAddressByRole(value: string): Bech32String {
+    const addr = wasmx.getAddressByRole(String.UTF8.encode(value))
+    return addr_humanize(addr);
 }

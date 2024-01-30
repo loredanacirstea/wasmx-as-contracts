@@ -17,6 +17,8 @@ export declare function getAccount(address: ArrayBuffer): ArrayBuffer
 export declare function externalCall(data: ArrayBuffer): ArrayBuffer
 export declare function call(data: ArrayBuffer): ArrayBuffer
 
+export declare function createAccount(data: ArrayBuffer): ArrayBuffer
+
 export declare function grpcRequest(data: ArrayBuffer): ArrayBuffer
 export declare function startTimeout(req: ArrayBuffer): void
 
@@ -33,3 +35,5 @@ export declare function ed25519Verify(pubKey: ArrayBuffer, signature: ArrayBuffe
 
 export declare function addr_humanize(value: ArrayBuffer): ArrayBuffer
 export declare function addr_canonicalize(value: ArrayBuffer): ArrayBuffer
+
+export declare function getAddressByRole(value: ArrayBuffer): ArrayBuffer

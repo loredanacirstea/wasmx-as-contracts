@@ -51,6 +51,69 @@ export class CallResponse {
 
 // @ts-ignore
 @serializable
+export class Coin {
+    denom: string
+    amount: i64 // TODO Int, at least u128
+    constructor(denom: string, amount: i64) {
+        this.denom = denom
+        this.amount = amount
+    }
+}
+
+// @ts-ignore
+@serializable
+export class CreateAccountRequest {
+    code_id: u64
+	msg: Base64String
+	funds: Coin[]
+	label: string
+
+    constructor(code_id: u64, msg: Base64String, funds: Coin[], label: string) {
+        this.code_id = code_id;
+        this.msg = msg;
+        this.funds = funds;
+        this.label = label;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class Create2AccountRequest {
+    code_id: u64
+	msg: Base64String
+    salt: Base64String
+	funds: Coin[]
+	label: string
+
+    constructor(code_id: u64, msg: Base64String, salt: Base64String, funds: Coin[], label: string) {
+        this.code_id = code_id;
+        this.msg = msg;
+        this.salt = salt;
+        this.funds = funds;
+        this.label = label;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class CreateAccountResponse {
+    address: Bech32String
+    constructor(address: Bech32String) {
+        this.address = address
+    }
+}
+
+// @ts-ignore
+@serializable
+export class Create2AccountResponse {
+    address: Bech32String
+    constructor(address: Bech32String) {
+        this.address = address
+    }
+}
+
+// @ts-ignore
+@serializable
 export class WasmxLog {
     type: string = 'fsmvm';
     data: Uint8Array;

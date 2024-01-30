@@ -160,7 +160,7 @@ export function create(
 ): BigInt {
     const data = new CreateAccountRequest(bytecode, value)
     const datastr = JSON.stringify<CreateAccountRequest>(data);
-    const addressbz = wasmx.createAccount(String.UTF8.encode(datastr));
+    const addressbz = wasmx.createAccountInterpreted(String.UTF8.encode(datastr));
     return new BigInt(addressbz, false);
 }
 
@@ -171,7 +171,7 @@ export function create2(
 ): BigInt {
     const data = new Create2AccountRequest (bytecode, value, salt)
     const datastr = JSON.stringify<Create2AccountRequest>(data);
-    const addressbz = wasmx.create2Account(String.UTF8.encode(datastr));
+    const addressbz = wasmx.create2AccountInterpreted(String.UTF8.encode(datastr));
     return new BigInt(addressbz, false);
 }
 
