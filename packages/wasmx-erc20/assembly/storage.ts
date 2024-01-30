@@ -7,7 +7,8 @@ import { parseInt32 } from "wasmx-utils/assembly/utils";
 export const ALLOWANCE_KEY = "allowance_"
 export const BALANCE_KEY = "balance_"
 export const TOTAL_SUPPLY_KEY = "totalSupply"
-export const OWNER_KEY = "owner"
+export const ADMIN_KEY = "admin"
+export const MINTER_KEY = "minter"
 export const INFO_KEY = "info"
 
 export function getBalanceKey(addr: string): string {
@@ -23,17 +24,25 @@ export function setInfo(value: TokenInfo): void {
 }
 
 export function getInfo(): TokenInfo {
-    const value = wasmxw.sload(OWNER_KEY);
+    const value = wasmxw.sload(INFO_KEY);
     if (value == "") return new TokenInfo("", "", 0);
     return JSON.parse<TokenInfo>(value);
 }
 
-export function setOwner(owner: Bech32String): void {
-    wasmxw.sstore(OWNER_KEY, owner);
+export function setAdmin(admin: Bech32String): void {
+    wasmxw.sstore(ADMIN_KEY, admin);
 }
 
-export function getOwner(): Bech32String {
-    return wasmxw.sload(OWNER_KEY);
+export function getAdmin(): Bech32String {
+    return wasmxw.sload(ADMIN_KEY);
+}
+
+export function setMinter(value: Bech32String): void {
+    wasmxw.sstore(MINTER_KEY, value);
+}
+
+export function getMinter(): Bech32String {
+    return wasmxw.sload(MINTER_KEY);
 }
 
 export function setTotalSupply(value: i64): void {

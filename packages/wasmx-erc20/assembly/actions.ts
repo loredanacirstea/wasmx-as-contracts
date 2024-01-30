@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { Bech32String } from "wasmx-env/assembly/types";
 import { hexToUint8Array, i32ToUint8ArrayBE, i64ToUint8ArrayBE } from "wasmx-utils/assembly/utils";
-import { setOwner, getOwner, setInfo, getInfo, getBalance, setBalance, getAllowance, setAllowance, getTotalSupply, setTotalSupply } from "./storage";
+import { setInfo, getInfo, getBalance, setBalance, getAllowance, setAllowance, getTotalSupply, setTotalSupply, getAdmin, getMinter } from "./storage";
 import { MsgAllowance, MsgAllowanceResponse, MsgApprove, MsgBalanceOf, MsgBalanceOfResponse, MsgDecimalsResponse, MsgMint, MsgNameResponse, MsgSymbolResponse, MsgTotalSupplyResponse, MsgTransfer, MsgTransferFrom, MsgTransferFromResponse, MsgTransferResponse } from "./types";
 import { revert } from "./utils";
 
@@ -39,12 +39,21 @@ export function transfer(req: MsgTransfer): ArrayBuffer {
 
 export function transferFrom(req: MsgTransferFrom): ArrayBuffer {
     const spender = wasmxw.getCaller();
-    let allow = getAllowance(req.from, spender)
+    const admin = getAdmin();
+    let authorized = spender == admin;
+    if (!authorized) {
+        authorized = spender == wasmxw.getAddressByRole(admin);
+    }
     let success = false;
-    if (allow >= req.value) {
+    if (authorized) {
         success = move(req.from, req.to, req.value)
-        allow -= req.value;
-        setAllowance(req.from, spender, allow);
+    } else {
+        let allow = getAllowance(req.from, spender)
+        if (allow >= req.value) {
+            success = move(req.from, req.to, req.value)
+            allow -= req.value;
+            setAllowance(req.from, spender, allow);
+        }
     }
     return String.UTF8.encode(JSON.stringify<MsgTransferFromResponse>(new MsgTransferFromResponse(success)))
 }
@@ -64,9 +73,13 @@ export function allowance(req: MsgAllowance): ArrayBuffer {
 
 export function mint(req: MsgMint): ArrayBuffer {
     const caller = wasmxw.getCaller();
-    const owner = getOwner();
-    if (caller != owner) {
-        revert("only owner can mint");
+    const minter = getMinter();
+    let authorized = caller == minter;
+    if (!authorized) {
+        authorized = caller == wasmxw.getAddressByRole(minter);
+    }
+    if (!authorized) {
+        revert(`caller cannot mint: ${caller}`);
     }
     let balance = getBalance(req.to);
     balance += i64(req.value);

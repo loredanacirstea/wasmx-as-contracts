@@ -3,13 +3,23 @@ import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { CallData, getCallDataWrap } from './calldata';
 import { name, symbol, decimals, totalSupply, balanceOf, transfer, transferFrom, approve, allowance } from "./actions";
-import { setOwner } from "./storage";
+import { setAdmin, setInfo, setMinter } from "./storage";
+import { CallDataInstantiate, TokenInfo } from "./types";
 
 export function wasmx_env_2(): void {}
 
 export function instantiate(): void {
-  const owner = wasmxw.getCaller()
-  setOwner(owner);
+  const calldraw = wasmx.getCallData();
+  const calld = JSON.parse<CallDataInstantiate>(String.UTF8.decode(calldraw));
+  if (calld.admin != "") {
+    setAdmin(calld.admin);
+  }
+  let minter = calld.minter
+  if (minter == "") {
+    minter = wasmxw.getCaller()
+  }
+  setMinter(minter);
+  setInfo(new TokenInfo(calld.name, calld.symbol, calld.decimals));
 }
 
 export function main(): void {
