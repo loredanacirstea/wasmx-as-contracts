@@ -276,10 +276,10 @@ export class PageRequest {
 // @ts-ignore
 @serializable
 export class PageResponse {
-    next_key: u8
+    // next_key: Base64String
     total: u64
-    constructor(next_key: u8, total: u64) {
-        this.next_key = next_key
+    constructor(total: u64) {
+        // this.next_key = next_key
         this.total = total
     }
 }

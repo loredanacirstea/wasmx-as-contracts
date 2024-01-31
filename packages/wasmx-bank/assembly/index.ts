@@ -1,7 +1,18 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, getCallDataWrap } from './calldata';
-import { InitGenesis, Send, MultiSend, UpdateParams, SetSendEnabled } from "./actions";
+import {
+  InitGenesis, Send, MultiSend, UpdateParams, SetSendEnabled,
+  GetBalance, AllBalances, SpendableBalances,
+  SpendableBalanceByDenom,
+  TotalSupply,
+  SupplyOf,
+  Params,
+  DenomMetadata,
+  DenomMetadataByQueryString,
+  DenomOwners,
+  SendEnabled,
+} from "./actions";
 import { CallDataInstantiate } from "./types"
 import { setAuthorities } from "./storage";
 
@@ -25,6 +36,28 @@ export function main(): void {
     result = UpdateParams(calld.UpdateParams!);
   } else if (calld.SetSendEnabled !== null) {
     result = SetSendEnabled(calld.SetSendEnabled!);
+  } else if (calld.GetBalance !== null) {
+    result = GetBalance(calld.GetBalance!);
+  } else if (calld.GetAllBalances !== null) {
+    result = AllBalances(calld.GetAllBalances!);
+  } else if (calld.GetSpendableBalances !== null) {
+    result = SpendableBalances(calld.GetSpendableBalances!);
+  } else if (calld.GetSpendableBalanceByDenom !== null) {
+    result = SpendableBalanceByDenom(calld.GetSpendableBalanceByDenom!);
+  } else if (calld.GetTotalSupply !== null) {
+    result = TotalSupply(calld.GetTotalSupply!);
+  } else if (calld.GetSupplyOf !== null) {
+    result = SupplyOf(calld.GetSupplyOf!);
+  } else if (calld.GetParams !== null) {
+    result = Params(calld.GetParams!);
+  } else if (calld.GetDenomMetadata !== null) {
+    result = DenomMetadata(calld.GetDenomMetadata!);
+  } else if (calld.GetDenomMetadataByQueryString !== null) {
+    result = DenomMetadataByQueryString(calld.GetDenomMetadataByQueryString!);
+  } else if (calld.GetDenomOwners !== null) {
+    result = DenomOwners(calld.GetDenomOwners!);
+  } else if (calld.GetSendEnabled !== null) {
+    result = SendEnabled(calld.GetSendEnabled!);
   } else if (calld.InitGenesis !== null) {
     result = InitGenesis(calld.InitGenesis!);
   } else {
