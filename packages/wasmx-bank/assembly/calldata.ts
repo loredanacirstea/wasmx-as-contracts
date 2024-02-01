@@ -24,6 +24,11 @@ export class CallData {
     MultiSend: MsgMultiSend | null = null;
     UpdateParams: MsgUpdateParams | null = null;
     SetSendEnabled: MsgSetSendEnabled | null = null;
+    // for efficiency of role checking
+    SendCoinsFromModuleToAccount: MsgSend | null = null;
+    SendCoinsFromModuleToModule: MsgSend | null = null;
+    SendCoinsFromAccountToModule: MsgSend | null = null;
+
     // queries
     GetBalance: QueryBalanceRequest | null = null;
     GetAllBalances: QueryAllBalancesRequest | null = null;

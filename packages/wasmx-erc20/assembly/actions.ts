@@ -1,22 +1,37 @@
 import { JSON } from "json-as/assembly";
+import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
+import { checkAuthorization } from "wasmx-env/assembly/utils";
 import { Bech32String } from "wasmx-env/assembly/types";
 import { hexToUint8Array, i32ToUint8ArrayBE, i64ToUint8ArrayBE } from "wasmx-utils/assembly/utils";
-import { setInfo, getInfo, getBalance, setBalance, getAllowance, setAllowance, getTotalSupply, setTotalSupply, getAdmin, getMinter } from "./storage";
+import { setInfo, getInfo, getBalance, setBalance, getAllowance, setAllowance, getTotalSupply, setTotalSupply, getAdmins, getMinters, setMinters, setAdmins } from "./storage";
 import { MsgAllowance, MsgAllowanceResponse, MsgApprove, MsgBalanceOf, MsgBalanceOfResponse, MsgDecimalsResponse, MsgMint, MsgNameResponse, MsgSymbolResponse, MsgTotalSupplyResponse, MsgTransfer, MsgTransferFrom, MsgTransferFromResponse, MsgTransferResponse } from "./types";
 import { revert } from "./utils";
+import { CallDataInstantiate, TokenInfo } from "./types";
 
-export function name(): ArrayBuffer {
+export function instantiateToken(): void {
+    const calldraw = wasmx.getCallData();
+    const calld = JSON.parse<CallDataInstantiate>(String.UTF8.decode(calldraw));
+    setAdmins(calld.admins)
+    let minters = calld.minters
+    if (minters.length == 0) {
+      minters = [wasmxw.getCaller()]
+    }
+    setMinters(minters);
+    setInfo(new TokenInfo(calld.name, calld.symbol, calld.decimals));
+}
+
+export function getName(): ArrayBuffer {
     const value = getInfo()
     return String.UTF8.encode(JSON.stringify<MsgNameResponse>(new MsgNameResponse(value.name)))
 }
 
-export function symbol(): ArrayBuffer {
+export function getSymbol(): ArrayBuffer {
     const value = getInfo()
     return String.UTF8.encode(JSON.stringify<MsgSymbolResponse>(new MsgSymbolResponse(value.symbol)))
 }
 
-export function decimals(): ArrayBuffer {
+export function getDecimals(): ArrayBuffer {
     const value = getInfo()
     return String.UTF8.encode(JSON.stringify<MsgDecimalsResponse>(new MsgDecimalsResponse(value.decimals)))
 }
@@ -39,11 +54,8 @@ export function transfer(req: MsgTransfer): ArrayBuffer {
 
 export function transferFrom(req: MsgTransferFrom): ArrayBuffer {
     const spender = wasmxw.getCaller();
-    const admin = getAdmin();
-    let authorized = spender == admin;
-    if (!authorized) {
-        authorized = spender == wasmxw.getAddressByRole(admin);
-    }
+    const admins = getAdmins();
+    const authorized = checkAuthorization(spender, admins);
     let success = false;
     if (authorized) {
         success = move(req.from, req.to, req.value)
@@ -73,11 +85,8 @@ export function allowance(req: MsgAllowance): ArrayBuffer {
 
 export function mint(req: MsgMint): ArrayBuffer {
     const caller = wasmxw.getCaller();
-    const minter = getMinter();
-    let authorized = caller == minter;
-    if (!authorized) {
-        authorized = caller == wasmxw.getAddressByRole(minter);
-    }
+    const minters = getMinters();
+    let authorized = checkAuthorization(caller, minters);
     if (!authorized) {
         revert(`caller cannot mint: ${caller}`);
     }
@@ -110,3 +119,4 @@ export function logTransfer(from: Bech32String, to: Bech32String, amount: i64): 
     const topic3 = hexToUint8Array(amount.toString(16));
     wasmxw.log_fsm(new Uint8Array(0), [topic1, topic2, topic3]);
 }
+

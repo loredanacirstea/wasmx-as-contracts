@@ -2,7 +2,9 @@ import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, getCallDataWrap } from './calldata';
 import {
-  InitGenesis, Send, MultiSend, UpdateParams, SetSendEnabled,
+  InitGenesis,
+  Send, SendCoinsFromModuleToAccount, SendCoinsFromModuleToModule, SendCoinsFromAccountToModule,
+  MultiSend, UpdateParams, SetSendEnabled,
   GetBalance, AllBalances, SpendableBalances,
   SpendableBalanceByDenom,
   TotalSupply,
@@ -30,6 +32,12 @@ export function main(): void {
   if (calld.Send !== null) {
     Send(calld.Send!);
     result = new ArrayBuffer(0)
+  } else if (calld.SendCoinsFromModuleToAccount !== null) {
+    result = SendCoinsFromModuleToAccount(calld.SendCoinsFromModuleToAccount!);
+  } else if (calld.SendCoinsFromModuleToModule !== null) {
+    result = SendCoinsFromModuleToModule(calld.SendCoinsFromModuleToModule!);
+  } else if (calld.SendCoinsFromAccountToModule !== null) {
+    result = SendCoinsFromAccountToModule(calld.SendCoinsFromAccountToModule!);
   } else if (calld.MultiSend !== null) {
     result = MultiSend(calld.MultiSend!);
   } else if (calld.UpdateParams !== null) {

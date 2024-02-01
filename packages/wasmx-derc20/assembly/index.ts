@@ -1,7 +1,8 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { getCallDataWrap } from './calldata';
-import { getName, getSymbol, getDecimals, totalSupply, balanceOf, transfer, transferFrom, approve, allowance, instantiateToken } from "./actions";
+import { getName, getSymbol, getDecimals, totalSupply, balanceOf, transfer, transferFrom, approve, allowance, instantiateToken } from "wasmx-erc20/assembly/actions";
+import { CallData, getCallDataWrap } from './calldata';
+import { delegate, redelegate, undelegate } from "./actions";
 
 export function wasmx_env_2(): void {}
 
@@ -22,10 +23,12 @@ export function main(): void {
     result = totalSupply();
   } else if (calld.balanceOf !== null) {
     result = balanceOf(calld.balanceOf!);
-  } else if (calld.transfer !== null) {
-    result = transfer(calld.transfer!);
-  } else if (calld.transferFrom !== null) {
-    result = transferFrom(calld.transferFrom!);
+  } else if (calld.delegate !== null) {
+    result = delegate(calld.delegate!);
+  } else if (calld.redelegate !== null) {
+    result = redelegate(calld.redelegate!);
+  } else if (calld.undelegate !== null) {
+    result = undelegate(calld.undelegate!);
   } else if (calld.approve !== null) {
     result = approve(calld.approve!);
   } else if (calld.allowance !== null) {

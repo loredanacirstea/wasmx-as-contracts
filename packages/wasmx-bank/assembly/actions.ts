@@ -1,6 +1,7 @@
 import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
+import { checkAuthorization } from "wasmx-env/assembly/utils";
 import { Bech32String, parseInt64 } from "wasmx-utils/assembly/utils";
 import { CallRequest, CallResponse, CreateAccountRequest } from 'wasmx-env/assembly/types';
 import * as erc20 from "wasmx-erc20/assembly/types";
@@ -39,12 +40,30 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
 // TODO
 export function RegisterDenom(msg: MsgRegisterDenom): ArrayBuffer {
     // check denom contract has bank as owner?
+    // check auth
     return new ArrayBuffer(0)
 }
 
 export function Send(req: MsgSend): ArrayBuffer {
+    requireOwnerOrAuthorization(req.from_address, "SendCoins")
     sendCoins(req.from_address, req.to_address, req.amount)
     return new ArrayBuffer(0)
+}
+
+export function SendCoinsFromModuleToAccount(req: MsgSend): ArrayBuffer {
+    req.from_address = wasmxw.getAddressByRole(req.from_address)
+    return Send(req);
+}
+
+export function SendCoinsFromModuleToModule(req: MsgSend): ArrayBuffer {
+    req.from_address = wasmxw.getAddressByRole(req.from_address)
+    req.to_address = wasmxw.getAddressByRole(req.to_address)
+    return Send(req);
+}
+
+export function SendCoinsFromAccountToModule(req: MsgSend): ArrayBuffer {
+    req.to_address = wasmxw.getAddressByRole(req.to_address)
+    return Send(req);
 }
 
 // one to many transfer of coins
@@ -196,7 +215,6 @@ export function totalSupplyInternal(denom: string): Coin {
     return new Coin(denomInfo.denom, data.totalSupply)
 }
 
-
 export function deployDenom(codeId: u64, metadata: Metadata): Bech32String {
     const denoms = getBaseDenoms()
     denoms.push(metadata.base);
@@ -204,8 +222,8 @@ export function deployDenom(codeId: u64, metadata: Metadata): Bech32String {
     // deploy denom contract
     const name = metadata.name || metadata.display
     const symbol = metadata.symbol
-    const admin = "bank"
-    const minter = "bank"
+    const admins = ["bank"]
+    const minters = ["bank"]
     let decimals = u32(0)
     for (let i = 0; i < metadata.denom_units.length; i++) {
         const unit = metadata.denom_units[i]
@@ -213,7 +231,7 @@ export function deployDenom(codeId: u64, metadata: Metadata): Bech32String {
             decimals = unit.exponent;
         }
     }
-    const msg = JSON.stringify<erc20.CallDataInstantiate>(new erc20.CallDataInstantiate(admin, minter, name, symbol, decimals))
+    const msg = JSON.stringify<erc20.CallDataInstantiate>(new erc20.CallDataInstantiate(admins, minters, name, symbol, decimals))
     const label = "Bank_" + metadata.base
     const addr = wasmxw.createAccount(new CreateAccountRequest(codeId, msg, [], label))
     return addr
@@ -267,4 +285,17 @@ export function callToken(address: Bech32String, calldata: string, isQuery: bool
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
     return resp;
+}
+
+export function checkOwnerOrAuthorization(owner: Bech32String) {
+    // caller is always an address
+    const caller = wasmxw.getCaller()
+    if (caller == owner) return true;
+    return checkAuthorization(caller, getAuthorities())
+}
+
+export function requireOwnerOrAuthorization(owner: Bech32String, msg: string) {
+    if (!checkOwnerOrAuthorization(owner)) {
+        revert(`unauthorized bank action: ${msg}`)
+    }
 }

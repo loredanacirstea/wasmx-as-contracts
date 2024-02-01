@@ -7,8 +7,8 @@ import { parseInt32 } from "wasmx-utils/assembly/utils";
 export const ALLOWANCE_KEY = "allowance_"
 export const BALANCE_KEY = "balance_"
 export const TOTAL_SUPPLY_KEY = "totalSupply"
-export const ADMIN_KEY = "admin"
-export const MINTER_KEY = "minter"
+export const ADMINS_KEY = "admins"
+export const MINTERS_KEY = "minters"
 export const INFO_KEY = "info"
 
 export function getBalanceKey(addr: string): string {
@@ -29,20 +29,24 @@ export function getInfo(): TokenInfo {
     return JSON.parse<TokenInfo>(value);
 }
 
-export function setAdmin(admin: Bech32String): void {
-    wasmxw.sstore(ADMIN_KEY, admin);
+export function setAdmins(admins: Bech32String[]): void {
+    wasmxw.sstore(ADMINS_KEY, JSON.stringify<Bech32String[]>(admins));
 }
 
-export function getAdmin(): Bech32String {
-    return wasmxw.sload(ADMIN_KEY);
+export function getAdmins(): Bech32String[] {
+    const value = wasmxw.sload(ADMINS_KEY);
+    if (value == "") return []
+    return JSON.parse<Bech32String[]>(value);
 }
 
-export function setMinter(value: Bech32String): void {
-    wasmxw.sstore(MINTER_KEY, value);
+export function setMinters(minters: Bech32String[]): void {
+    wasmxw.sstore(MINTERS_KEY, JSON.stringify<Bech32String[]>(minters));
 }
 
-export function getMinter(): Bech32String {
-    return wasmxw.sload(MINTER_KEY);
+export function getMinters(): Bech32String[] {
+    const value = wasmxw.sload(MINTERS_KEY);
+    if (value == "") return []
+    return JSON.parse<Bech32String[]>(value);
 }
 
 export function setTotalSupply(value: i64): void {

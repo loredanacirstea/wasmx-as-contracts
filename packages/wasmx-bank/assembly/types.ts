@@ -63,10 +63,10 @@ export class Output {
 // @ts-ignore
 @serializable
 export class MsgSend {
-    from_address: string
-    to_address: string
+    from_address: Bech32String
+    to_address: Bech32String
     amount: Coin[]
-    constructor(from_address: string, to_address: string, amount: Coin[]) {
+    constructor(from_address: Bech32String, to_address: Bech32String, amount: Coin[]) {
         this.from_address = from_address
         this.to_address = to_address
         this.amount = amount

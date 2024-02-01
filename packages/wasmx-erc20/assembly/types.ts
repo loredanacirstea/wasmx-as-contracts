@@ -4,14 +4,14 @@ import { Base64String, Bech32String, HexString } from 'wasmx-env/assembly/types'
 // @ts-ignore
 @serializable
 export class CallDataInstantiate {
-    admin: Base64String
-    minter: Base64String
+    admins: Base64String[]
+    minters: Base64String[]
     name: string
     symbol: string
     decimals: i32
-    constructor(admin: Base64String, minter: Base64String, name: string, symbol: string,  decimals: i32) {
-        this.admin = admin
-        this.minter = minter
+    constructor(admins: Base64String[], minters: Base64String[], name: string, symbol: string,  decimals: i32) {
+        this.admins = admins
+        this.minters = minters
         this.name = name
         this.symbol = symbol
         this.decimals = decimals
