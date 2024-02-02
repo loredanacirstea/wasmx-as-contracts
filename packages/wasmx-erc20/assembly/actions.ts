@@ -6,12 +6,14 @@ import { Bech32String } from "wasmx-env/assembly/types";
 import { hexToUint8Array, i32ToUint8ArrayBE, i64ToUint8ArrayBE } from "wasmx-utils/assembly/utils";
 import { setInfo, getInfo, getBalance, setBalance, getAllowance, setAllowance, getTotalSupply, setTotalSupply, getAdmins, getMinters, setMinters, setAdmins } from "./storage";
 import { MsgAllowance, MsgAllowanceResponse, MsgApprove, MsgBalanceOf, MsgBalanceOfResponse, MsgDecimalsResponse, MsgMint, MsgNameResponse, MsgSymbolResponse, MsgTotalSupplyResponse, MsgTransfer, MsgTransferFrom, MsgTransferFromResponse, MsgTransferResponse } from "./types";
-import { revert } from "./utils";
+import { LoggerDebug, revert } from "./utils";
 import { CallDataInstantiate, TokenInfo } from "./types";
 
 export function instantiateToken(): void {
     const calldraw = wasmx.getCallData();
-    const calld = JSON.parse<CallDataInstantiate>(String.UTF8.decode(calldraw));
+    const calldrawstr = String.UTF8.decode(calldraw);
+    LoggerDebug("instantiate token", ["args", calldrawstr])
+    const calld = JSON.parse<CallDataInstantiate>(calldrawstr);
     setAdmins(calld.admins)
     let minters = calld.minters
     if (minters.length == 0) {

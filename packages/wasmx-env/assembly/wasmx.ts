@@ -18,6 +18,7 @@ export declare function externalCall(data: ArrayBuffer): ArrayBuffer
 export declare function call(data: ArrayBuffer): ArrayBuffer
 
 export declare function createAccount(data: ArrayBuffer): ArrayBuffer
+export declare function create2Account(data: ArrayBuffer): ArrayBuffer
 
 export declare function grpcRequest(data: ArrayBuffer): ArrayBuffer
 export declare function startTimeout(req: ArrayBuffer): void

@@ -8,11 +8,12 @@ import { move } from "wasmx-erc20/assembly/actions";
 import { setInfo, getInfo, getBalance, setBalance, getAllowance, setAllowance, getTotalSupply, setTotalSupply, getAdmins, getMinters } from "wasmx-erc20/assembly/storage";
 import * as banktypes from "wasmx-bank/assembly/types";
 import { MsgDelegate, MsgRedelegate, MsgUndelegate } from "./types";
-import { revert } from "./utils";
+import { LoggerDebug, revert } from "./utils";
 import { addDelegatorToValidator, addValidatorToDelegator, setDelegatorToValidatorDelegation, addTotalDelegationToValidator, removeValidatorFromDelegator, removeDelegatorFromValidator, removeValidatorDelegationFromDelegator, removeDelegationAmountFromValidator, getDelegatorToValidatorDelegation } from "./storage";
 
 // can only be called by the staking contract, which vets validators
 export function delegate(req: MsgDelegate): ArrayBuffer {
+    LoggerDebug(`delegate`, ["delegator", req.delegator, "validator", req.validator, "value", req.value.toString()])
     const caller = wasmxw.getCaller();
     const admins = getAdmins();
     let authorized = checkAuthorization(caller, admins);
@@ -44,6 +45,7 @@ export function delegate(req: MsgDelegate): ArrayBuffer {
 }
 
 export function undelegate(req: MsgUndelegate): ArrayBuffer {
+    LoggerDebug(`undelegate`, ["delegator", req.delegator, "validator", req.validator, "value", req.value.toString()])
     const caller = wasmxw.getCaller();
     const admins = getAdmins();
     let authorized = checkAuthorization(caller, admins);
@@ -82,6 +84,7 @@ export function undelegate(req: MsgUndelegate): ArrayBuffer {
 }
 
 export function redelegate(req: MsgRedelegate): ArrayBuffer {
+    LoggerDebug(`redelegate`, ["delegator", req.delegator, "validatorSource", req.validatorSource, "validatorDestination", req.validatorDestination, "value", req.value.toString()])
     const caller = wasmxw.getCaller();
     const admins = getAdmins();
     let authorized = checkAuthorization(caller, admins);

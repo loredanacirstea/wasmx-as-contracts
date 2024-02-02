@@ -3,6 +3,7 @@ import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import { DenomUnit_, DenomUnit, Params, DenomInfo } from "./types";
 import { Bech32String } from "wasmx-env/assembly/types";
 import { parseInt32, parseInt64 } from "wasmx-utils/assembly/utils";
+import { LoggerInfo } from "./utils";
 
 const PARAM_KEY = "params"
 const BASE_DENOMS_KEY = "base_denoms"
@@ -14,6 +15,7 @@ const AUTHORITIES_KEY = "authorities"
 export function registerDenomContract(address: Bech32String, baseDenom: string, altdenoms: DenomUnit[]): void {
     wasmxw.sstore(ADDRESS_DENOM_KEY + address, baseDenom)
     wasmxw.sstore(DENOM_ADDRESS_KEY + baseDenom, address)
+    LoggerInfo(`stored denom`, ["baseDenom", baseDenom, "address", address])
     for (let i = 0; i < altdenoms.length; i++) {
         const coin = new DenomUnit_(baseDenom, i64(Math.pow(10, altdenoms[i].exponent)))
         const data = JSON.stringify<DenomUnit_>(coin)

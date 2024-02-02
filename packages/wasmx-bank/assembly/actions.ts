@@ -11,7 +11,7 @@ import {
     QueryAddressByDenom,
     QueryAddressByDenomResponse
 } from './types';
-import { revert } from './utils';
+import { LoggerDebug, LoggerInfo, revert } from './utils';
 import { getParamsInternal, setParams, getParams, getDenomInfoByAnyDenom, getAuthorities, getBaseDenoms, setBaseDenoms, registerDenomContract, getAddressByDenom } from './storage';
 
 export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
@@ -20,14 +20,14 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
     }
     const genesis = req;
     setParams(genesis.params)
-    if (genesis.supply.length != genesis.denom_info.length) {
-        revert("supply count must be equal to denom info count")
-    }
+    LoggerDebug(`init genesis`, ["balances", req.balances.length.toString(), "denom_info", req.denom_info.length.toString()])
     for (let i = 0; i < genesis.denom_info.length; i++) {
         const info = genesis.denom_info[i]
+        LoggerDebug(`init denom`, ["base_denom", info.metadata.base, "code_id", info.code_id.toString(), "contract", info.contract])
         // we do not give supply, because we mint below
         if (info.contract == "") {
             info.contract = deployDenom(info.code_id, info.metadata, info.admins, info.minters)
+            LoggerInfo(`deployed denom`, ["address", info.contract, "denom", info.metadata.base, "code_id", info.code_id.toString()])
         }
         registerDenomContract(info.contract, info.metadata.base, info.metadata.denom_units)
     }
@@ -48,6 +48,7 @@ export function RegisterDenom(msg: MsgRegisterDenom): ArrayBuffer {
 
 export function Send(req: MsgSend): ArrayBuffer {
     requireOwnerOrAuthorization(req.from_address, "SendCoins")
+    LoggerDebug(`send coins`, ["from_address", req.from_address, "to_address", req.to_address, "amount", JSON.stringify<Coin[]>(req.amount)])
     sendCoins(req.from_address, req.to_address, req.amount)
     return new ArrayBuffer(0)
 }
@@ -73,6 +74,7 @@ export function MultiSend(req: MsgMultiSend): ArrayBuffer {
     if (req.inputs.length != 1) {
         revert("multisend must have 1 input");
     }
+    LoggerDebug(`multisend`, ["from_address", req.inputs[0].address, "outputs", req.outputs.length.toString()])
     const input = req.inputs[0];
     const coinMap = new Map<string,i64>()
     for (let i = 0; i < req.outputs.length; i++) {
@@ -105,6 +107,7 @@ export function UpdateParams(req: MsgUpdateParams): ArrayBuffer {
     if (!auth.includes(req.authority)) {
         revert(`unautorized: expected ${auth.join(",")}, got ${req.authority}`)
     }
+    LoggerDebug(`update params`, ["authority", req.authority])
     setParams(req.params)
     return new ArrayBuffer(0)
 }

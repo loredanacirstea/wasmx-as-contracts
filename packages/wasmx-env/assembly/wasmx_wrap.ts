@@ -79,17 +79,19 @@ export function call(req: CallRequest): CallResponse {
 }
 
 export function createAccount(req: CreateAccountRequest): Bech32String {
-    LoggerDebug("wasmx_env", "createAccount", ["code_id", req.code_id.toString()])
+    req.msg = encodeBase64(Uint8Array.wrap(String.UTF8.encode(req.msg)))
     const requestStr = JSON.stringify<CreateAccountRequest>(req);
-    const responsebz = wasmx.call(String.UTF8.encode(requestStr));
+    LoggerDebug("wasmx_env", "createAccount", ["request", requestStr])
+    const responsebz = wasmx.createAccount(String.UTF8.encode(requestStr));
     const resp = JSON.parse<CreateAccountResponse>(String.UTF8.decode(responsebz));
     return resp.address
 }
 
 export function create2Account(req: Create2AccountRequest): Bech32String {
-    LoggerDebug("wasmx_env", "create2Account", ["code_id", req.code_id.toString()])
+    req.msg = encodeBase64(Uint8Array.wrap(String.UTF8.encode(req.msg)))
     const requestStr = JSON.stringify<Create2AccountRequest>(req);
-    const responsebz = wasmx.call(String.UTF8.encode(requestStr));
+    LoggerDebug("wasmx_env", "create2Account", ["request", requestStr])
+    const responsebz = wasmx.create2Account(String.UTF8.encode(requestStr));
     const resp = JSON.parse<Create2AccountResponse>(String.UTF8.decode(responsebz));
     return resp.address
 }
