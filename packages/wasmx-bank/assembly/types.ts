@@ -216,12 +216,25 @@ export class BankInitGenesis {
 
 // @ts-ignore
 @serializable
+export class Deployment {
+    code_id: u64
+    admins: string[]
+    minters: string[]
+    constructor(code_id: u64, admins: string[], minters: string[]) {
+        this.code_id = code_id
+        this.admins = admins
+        this.minters = minters
+    }
+}
+
+// @ts-ignore
+@serializable
 export class MsgInitGenesis {
     genesis: BankInitGenesis
-    code_ids: u64[]
-    constructor(genesis: BankInitGenesis, code_ids: u64[]) {
+    deployments: Deployment[]
+    constructor(genesis: BankInitGenesis, deployments: Deployment[]) {
         this.genesis = genesis
-        this.code_ids = code_ids
+        this.deployments = deployments
     }
 }
 
@@ -408,3 +421,21 @@ export class QuerySendEnabledRequest {}
 // @ts-ignore
 @serializable
 export class QuerySendEnabledResponse {}
+
+// @ts-ignore
+@serializable
+export class QueryAddressByDenom {
+    denom: string
+    constructor(denom: string) {
+        this.denom = denom
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryAddressByDenomResponse {
+    address: Bech32String
+    constructor(address: Bech32String) {
+        this.address = address
+    }
+}

@@ -14,6 +14,7 @@ import {
     QueryDenomMetadataByQueryStringRequest,
     QueryDenomOwnersRequest,
     QuerySendEnabledRequest,
+    QueryAddressByDenom,
 } from './types';
 
 // @ts-ignore
@@ -42,6 +43,9 @@ export class CallData {
     GetDenomMetadataByQueryString: QueryDenomMetadataByQueryStringRequest | null = null;
     GetDenomOwners: QueryDenomOwnersRequest | null = null;
     GetSendEnabled: QuerySendEnabledRequest | null = null;
+
+    // core
+    GetAddressByDenom: QueryAddressByDenom | null = null;
 }
 
 export function getCallDataWrap(): CallData {

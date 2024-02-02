@@ -311,6 +311,7 @@ export class Validator {
 	// status is the validator status (bonded/unbonding/unbonded).
 	status: BondStatusString
 	// tokens define the delegated tokens (incl. self-delegation).
+    // !not used in staking
 	tokens: string // TODO Int
 	// delegator_shares defines total shares issued to a validator's delegators.
 	delegator_shares: string // f64

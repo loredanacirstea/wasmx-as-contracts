@@ -14,6 +14,7 @@ import {
   DenomMetadataByQueryString,
   DenomOwners,
   SendEnabled,
+  GetAddressByDenom,
 } from "./actions";
 import { CallDataInstantiate } from "./types"
 import { setAuthorities } from "./storage";
@@ -54,6 +55,8 @@ export function main(): void {
     result = SpendableBalanceByDenom(calld.GetSpendableBalanceByDenom!);
   } else if (calld.GetTotalSupply !== null) {
     result = TotalSupply(calld.GetTotalSupply!);
+  } else if (calld.GetAddressByDenom !== null) {
+    result = GetAddressByDenom(calld.GetAddressByDenom!);
   } else if (calld.GetSupplyOf !== null) {
     result = SupplyOf(calld.GetSupplyOf!);
   } else if (calld.GetParams !== null) {

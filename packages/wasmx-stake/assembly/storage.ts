@@ -4,25 +4,15 @@ import {ValidatorInfo, Params, Validator} from "./types";
 import { Bech32String } from "wasmx-env/assembly/types";
 import { parseInt32, parseInt64 } from "wasmx-utils/assembly/utils";
 
-const VALIDATORS_KEY = "validators"
 const VALIDATOR_ADDRESSES = "validators_addresses"
 const VALIDATOR_KEY = "validator_"
 const PARAM_KEY = "params"
-const TOTAL_STAKED = "total_staked"
-
-export function delegate(): void {
-
-}
 
 export function setNewValidator(value: Validator): void {
     const addrs = getValidatorsAddresses();
     addrs.push(value.operator_address);
     setValidatorsAddresses(addrs);
     setValidator(value);
-    let total = getTotalStake();
-    const tokes = parseInt64(value.tokens);
-    total += tokes;
-    setTotalStake(total);
 }
 
 export function getValidatorsAddresses(): string[] {
@@ -57,16 +47,6 @@ export function getParamsInternal(): string {
 
 export function setParams(params: Params): void {
     return wasmx.sstore(PARAM_KEY, JSON.stringify<Params>(params));
-}
-
-export function getTotalStake(): i64 {
-    const value = wasmx.sload(TOTAL_STAKED);
-    if (value == "") return 0;
-    return parseInt64(value);
-}
-
-export function setTotalStake(value: i64): void {
-    return wasmx.sstore(TOTAL_STAKED, value.toString());
 }
 
 

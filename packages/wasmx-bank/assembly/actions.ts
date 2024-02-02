@@ -7,27 +7,32 @@ import { CallRequest, CallResponse, CreateAccountRequest } from 'wasmx-env/assem
 import * as erc20 from "wasmx-erc20/assembly/types";
 import {
     MsgInitGenesis, MsgSend, MsgMultiSend, MsgSetSendEnabled, MsgUpdateParams, MsgRegisterDenom, Coin, Metadata, Balance, CoinMap,
-    PageResponse, QueryAllBalancesRequest, QueryAllBalancesResponse, QueryBalanceRequest, QueryBalanceResponse, QueryDenomMetadataByQueryStringRequest, QueryDenomMetadataRequest, QueryDenomOwnersRequest, QueryDenomsMetadataRequest, QueryParamsRequest, QuerySendEnabledRequest, QuerySpendableBalanceByDenomRequest, QuerySpendableBalancesRequest, QuerySupplyOfRequest, QueryTotalSupplyRequest, QueryTotalSupplyResponse
+    PageResponse, QueryAllBalancesRequest, QueryAllBalancesResponse, QueryBalanceRequest, QueryBalanceResponse, QueryDenomMetadataByQueryStringRequest, QueryDenomMetadataRequest, QueryDenomOwnersRequest, QueryDenomsMetadataRequest, QueryParamsRequest, QuerySendEnabledRequest, QuerySpendableBalanceByDenomRequest, QuerySpendableBalancesRequest, QuerySupplyOfRequest, QueryTotalSupplyRequest, QueryTotalSupplyResponse,
+    QueryAddressByDenom,
+    QueryAddressByDenomResponse
 } from './types';
 import { revert } from './utils';
-import { getParamsInternal, setParams, getParams, getDenomInfoByAnyDenom, getAuthorities, getBaseDenoms, setBaseDenoms } from './storage';
+import { getParamsInternal, setParams, getParams, getDenomInfoByAnyDenom, getAuthorities, getBaseDenoms, setBaseDenoms, registerDenomContract, getAddressByDenom } from './storage';
 
 export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
     if (getParamsInternal() != "") {
         revert("already called initGenesis")
     }
     const genesis = req.genesis;
-    const codeIds = req.code_ids;
+    const deployments = req.deployments;
     setParams(genesis.params)
     if (genesis.supply.length != genesis.denom_metadata.length) {
         revert("supply count must be equal to metadata count")
     }
-    if (genesis.supply.length != codeIds.length) {
+    if (genesis.supply.length != deployments.length) {
         revert("supply count must be equal to code ids count")
     }
     for (let i = 0; i < genesis.denom_metadata.length; i++) {
+        const depl = deployments[i]
+        const metad = genesis.denom_metadata[i]
         // we do not give supply, because we mint below
-        deployDenom(codeIds[i], genesis.denom_metadata[i])
+        const addr = deployDenom(depl.code_id, metad, depl.admins, depl.minters)
+        registerDenomContract(addr, metad.base, metad.denom_units)
     }
     for (let i = 0; i < genesis.balances.length; i++) {
         mint(genesis.balances[i]);
@@ -181,6 +186,11 @@ export function SendEnabled(req: QuerySendEnabledRequest): ArrayBuffer {
     return new ArrayBuffer(0)
 }
 
+export function GetAddressByDenom(req: QueryAddressByDenom): ArrayBuffer {
+    const addr = getAddressByDenom(req.denom)
+    return String.UTF8.encode(JSON.stringify<QueryAddressByDenomResponse>(new QueryAddressByDenomResponse(addr)))
+}
+
 export function balanceInternal(address: Bech32String, denom: string): Coin {
     const denomInfo = getDenomInfoByAnyDenom(denom);
     if (denomInfo.contract == "") {
@@ -215,15 +225,13 @@ export function totalSupplyInternal(denom: string): Coin {
     return new Coin(denomInfo.denom, data.totalSupply)
 }
 
-export function deployDenom(codeId: u64, metadata: Metadata): Bech32String {
+export function deployDenom(codeId: u64, metadata: Metadata, admins: string[], minters: string[]): Bech32String {
     const denoms = getBaseDenoms()
     denoms.push(metadata.base);
     setBaseDenoms(denoms)
     // deploy denom contract
     const name = metadata.name || metadata.display
     const symbol = metadata.symbol
-    const admins = ["bank"]
-    const minters = ["bank"]
     let decimals = u32(0)
     for (let i = 0; i < metadata.denom_units.length; i++) {
         const unit = metadata.denom_units[i]
