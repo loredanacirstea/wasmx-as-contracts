@@ -198,43 +198,36 @@ export class Metadata {
 
 // @ts-ignore
 @serializable
-export class BankInitGenesis {
+export class MsgInitGenesis {
     // params defines all the parameters of related to deposit.
     params: Params
     balances: Balance[]
     supply: Coin[]
-    denom_metadata: Metadata[]
+    denom_info: DenomDeploymentInfo[]
     send_enabled: SendEnabled[]
-    constructor(params: Params, balances: Balance[],  supply: Coin[], denom_metadata: Metadata[], send_enabled: SendEnabled[]) {
+    constructor(params: Params, balances: Balance[],  supply: Coin[], denom_info: DenomDeploymentInfo[], send_enabled: SendEnabled[]) {
         this.params = params
         this.balances = balances
         this.supply = supply
-        this.denom_metadata = denom_metadata
+        this.denom_info = denom_info
         this.send_enabled = send_enabled
     }
 }
 
 // @ts-ignore
 @serializable
-export class Deployment {
+export class DenomDeploymentInfo {
+    metadata: Metadata
     code_id: u64
     admins: string[]
     minters: string[]
-    constructor(code_id: u64, admins: string[], minters: string[]) {
+    contract: Bech32String
+    constructor(metadata: Metadata, code_id: u64, admins: string[], minters: string[], contract: Bech32String) {
+        this.metadata = metadata
         this.code_id = code_id
         this.admins = admins
         this.minters = minters
-    }
-}
-
-// @ts-ignore
-@serializable
-export class MsgInitGenesis {
-    genesis: BankInitGenesis
-    deployments: Deployment[]
-    constructor(genesis: BankInitGenesis, deployments: Deployment[]) {
-        this.genesis = genesis
-        this.deployments = deployments
+        this.contract = contract
     }
 }
 

@@ -18,21 +18,18 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
     if (getParamsInternal() != "") {
         revert("already called initGenesis")
     }
-    const genesis = req.genesis;
-    const deployments = req.deployments;
+    const genesis = req;
     setParams(genesis.params)
-    if (genesis.supply.length != genesis.denom_metadata.length) {
-        revert("supply count must be equal to metadata count")
+    if (genesis.supply.length != genesis.denom_info.length) {
+        revert("supply count must be equal to denom info count")
     }
-    if (genesis.supply.length != deployments.length) {
-        revert("supply count must be equal to code ids count")
-    }
-    for (let i = 0; i < genesis.denom_metadata.length; i++) {
-        const depl = deployments[i]
-        const metad = genesis.denom_metadata[i]
+    for (let i = 0; i < genesis.denom_info.length; i++) {
+        const info = genesis.denom_info[i]
         // we do not give supply, because we mint below
-        const addr = deployDenom(depl.code_id, metad, depl.admins, depl.minters)
-        registerDenomContract(addr, metad.base, metad.denom_units)
+        if (info.contract == "") {
+            info.contract = deployDenom(info.code_id, info.metadata, info.admins, info.minters)
+        }
+        registerDenomContract(info.contract, info.metadata.base, info.metadata.denom_units)
     }
     for (let i = 0; i < genesis.balances.length; i++) {
         mint(genesis.balances[i]);
