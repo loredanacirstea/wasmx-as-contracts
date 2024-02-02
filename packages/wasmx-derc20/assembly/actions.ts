@@ -81,7 +81,7 @@ export function undelegate(req: MsgUndelegate): ArrayBuffer {
     return new ArrayBuffer(0);
 }
 
-export function redelegate(req: MsgRedelegate) {
+export function redelegate(req: MsgRedelegate): ArrayBuffer {
     const caller = wasmxw.getCaller();
     const admins = getAdmins();
     let authorized = checkAuthorization(caller, admins);

@@ -15,7 +15,7 @@ export function registerDenomContract(address: Bech32String, baseDenom: string, 
     wasmxw.sstore(ADDRESS_DENOM_KEY + address, baseDenom)
     wasmxw.sstore(DENOM_ADDRESS_KEY + baseDenom, address)
     for (let i = 0; i < altdenoms.length; i++) {
-        const coin = new DenomUnit_(baseDenom, Math.pow(10, altdenoms[i].exponent))
+        const coin = new DenomUnit_(baseDenom, i64(Math.pow(10, altdenoms[i].exponent)))
         const data = JSON.stringify<DenomUnit_>(coin)
         wasmxw.sstore(DENOMS_KEY + altdenoms[i].denom, data)
         for (let j = 0; j < altdenoms[i].aliases.length; j++) {

@@ -295,14 +295,14 @@ export function callToken(address: Bech32String, calldata: string, isQuery: bool
     return resp;
 }
 
-export function checkOwnerOrAuthorization(owner: Bech32String) {
+export function checkOwnerOrAuthorization(owner: Bech32String): boolean {
     // caller is always an address
     const caller = wasmxw.getCaller()
     if (caller == owner) return true;
     return checkAuthorization(caller, getAuthorities())
 }
 
-export function requireOwnerOrAuthorization(owner: Bech32String, msg: string) {
+export function requireOwnerOrAuthorization(owner: Bech32String, msg: string): void {
     if (!checkOwnerOrAuthorization(owner)) {
         revert(`unauthorized bank action: ${msg}`)
     }

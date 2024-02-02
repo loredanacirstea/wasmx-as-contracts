@@ -122,18 +122,18 @@ export function getValidatorToTotalDelegation(validator: Bech32String): i64 {
 }
 
 // validator => total delegation SET
-export function setValidatorToTotalDelegation(validator: Bech32String, value: i64) {
+export function setValidatorToTotalDelegation(validator: Bech32String, value: i64): void {
     wasmxw.sstore(getValidatorToTotalDelegationKey(validator), value.toString())
 }
 
 // validator => total delegation ADD
-export function addTotalDelegationToValidator(validator: Bech32String, value: i64) {
+export function addTotalDelegationToValidator(validator: Bech32String, value: i64): void {
     const total = getValidatorToTotalDelegation(validator) + value
     wasmxw.sstore(getValidatorToTotalDelegationKey(validator), total.toString())
 }
 
 // validator => total delegation REMOVE
-export function removeDelegationAmountFromValidator(validator: Bech32String, value: i64) {
+export function removeDelegationAmountFromValidator(validator: Bech32String, value: i64): void {
     const total = getValidatorToTotalDelegation(validator) - value
     wasmxw.sstore(getValidatorToTotalDelegationKey(validator), total.toString())
 }
