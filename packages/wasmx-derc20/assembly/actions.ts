@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { Bech32String, CallRequest, CallResponse } from "wasmx-env/assembly/types";
-import { checkAuthorization } from "wasmx-env/assembly/utils";
+import { isAuthorized } from "wasmx-env/assembly/utils";
 import { hexToUint8Array, i32ToUint8ArrayBE, i64ToUint8ArrayBE } from "wasmx-utils/assembly/utils";
 import { move } from "wasmx-erc20/assembly/actions";
 import { setInfo, getInfo, getBalance, setBalance, getAllowance, setAllowance, getTotalSupply, setTotalSupply, getAdmins, getMinters } from "wasmx-erc20/assembly/storage";
@@ -11,18 +11,21 @@ import { MsgDelegate, MsgRedelegate, MsgUndelegate } from "./types";
 import { LoggerDebug, revert } from "./utils";
 import { addDelegatorToValidator, addValidatorToDelegator, setDelegatorToValidatorDelegation, addTotalDelegationToValidator, removeValidatorFromDelegator, removeDelegatorFromValidator, removeValidatorDelegationFromDelegator, removeDelegationAmountFromValidator, getDelegatorToValidatorDelegation } from "./storage";
 
+// TODO this must be in genesis
+const DENOM_BASE = "amyt"
+
 // can only be called by the staking contract, which vets validators
 export function delegate(req: MsgDelegate): ArrayBuffer {
-    LoggerDebug(`delegate`, ["delegator", req.delegator, "validator", req.validator, "value", req.value.toString()])
+    LoggerDebug(`delegating`, ["delegator", req.delegator, "validator", req.validator, "value", req.value.toString()])
     const caller = wasmxw.getCaller();
     const admins = getAdmins();
-    let authorized = checkAuthorization(caller, admins);
+    let authorized = isAuthorized(caller, admins);
     if (!authorized) {
         revert(`caller cannot delegate: ${caller}`);
     }
 
     // call bank to withdraw amount from delegator's account
-    bankSendCoin(req.delegator, wasmxw.getCaller(), req.value)
+    bankSendCoin(req.delegator, wasmxw.getCaller(), req.value, DENOM_BASE)
 
     // add to delegator's balance
     let balance = getBalance(req.delegator);
@@ -48,7 +51,7 @@ export function undelegate(req: MsgUndelegate): ArrayBuffer {
     LoggerDebug(`undelegate`, ["delegator", req.delegator, "validator", req.validator, "value", req.value.toString()])
     const caller = wasmxw.getCaller();
     const admins = getAdmins();
-    let authorized = checkAuthorization(caller, admins);
+    let authorized = isAuthorized(caller, admins);
     if (!authorized) {
         revert(`caller cannot undelegate: ${caller}`);
     }
@@ -77,8 +80,8 @@ export function undelegate(req: MsgUndelegate): ArrayBuffer {
     // remove from validator's total delegation
     removeDelegationAmountFromValidator(req.validator, req.value)
 
-    // call bank to withdraw amount from delegator's account
-    bankSendCoin(wasmxw.getCaller(), req.delegator, req.value)
+    // call bank to give back amount to delegator's account
+    bankSendCoin(wasmxw.getAddress(), req.delegator, req.value, DENOM_BASE)
 
     return new ArrayBuffer(0);
 }
@@ -87,7 +90,7 @@ export function redelegate(req: MsgRedelegate): ArrayBuffer {
     LoggerDebug(`redelegate`, ["delegator", req.delegator, "validatorSource", req.validatorSource, "validatorDestination", req.validatorDestination, "value", req.value.toString()])
     const caller = wasmxw.getCaller();
     const admins = getAdmins();
-    let authorized = checkAuthorization(caller, admins);
+    let authorized = isAuthorized(caller, admins);
     if (!authorized) {
         revert(`caller cannot redelegate: ${caller}`);
     }
@@ -122,8 +125,8 @@ function getCoin(value: i64): banktypes.Coin {
     return new banktypes.Coin(info.symbol, value)
 }
 
-function bankSendCoin (from: Bech32String, to: Bech32String, value: i64): void {
-    const valuestr = JSON.stringify<banktypes.MsgSend>(new banktypes.MsgSend(from, to, [getCoin(value)]))
+function bankSendCoin (from: Bech32String, to: Bech32String, value: i64, denom: string): void {
+    const valuestr = JSON.stringify<banktypes.MsgSend>(new banktypes.MsgSend(from, to, [new banktypes.Coin(denom, value)]))
     const calldata = `{"Send":${valuestr}}`
     const resp = callBank(calldata, false);
     if (resp.success > 0) {

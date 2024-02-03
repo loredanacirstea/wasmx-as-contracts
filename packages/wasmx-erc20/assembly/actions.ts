@@ -1,7 +1,8 @@
 import { JSON } from "json-as/assembly";
+import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
-import { checkAuthorization } from "wasmx-env/assembly/utils";
+import { isAuthorized } from "wasmx-env/assembly/utils";
 import { Bech32String } from "wasmx-env/assembly/types";
 import { hexToUint8Array, i32ToUint8ArrayBE, i64ToUint8ArrayBE } from "wasmx-utils/assembly/utils";
 import { setInfo, getInfo, getBalance, setBalance, getAllowance, setAllowance, getTotalSupply, setTotalSupply, getAdmins, getMinters, setMinters, setAdmins } from "./storage";
@@ -50,6 +51,7 @@ export function balanceOf(req: MsgBalanceOf): ArrayBuffer {
 
 export function transfer(req: MsgTransfer): ArrayBuffer {
     const from = wasmxw.getCaller();
+    LoggerDebug("transfer", ["from", from, "to", req.to, "value", req.value.toString()])
     const success = move(from, req.to, req.value);
     return String.UTF8.encode(JSON.stringify<MsgTransferResponse>(new MsgTransferResponse(success)))
 }
@@ -57,7 +59,8 @@ export function transfer(req: MsgTransfer): ArrayBuffer {
 export function transferFrom(req: MsgTransferFrom): ArrayBuffer {
     const spender = wasmxw.getCaller();
     const admins = getAdmins();
-    const authorized = checkAuthorization(spender, admins);
+    const authorized = isAuthorized(spender, admins);
+    LoggerDebug("transferFrom", ["from", req.from, "to", req.to, "value", req.value.toString(), "caller", spender, "authorized", authorized.toString()])
     let success = false;
     if (authorized) {
         success = move(req.from, req.to, req.value)
@@ -77,6 +80,7 @@ export function approve(req: MsgApprove): ArrayBuffer {
     let allowance = getAllowance(owner, req.spender);
     allowance += req.value;
     setAllowance(owner, req.spender, allowance);
+    logApproval(owner, req.spender, req.value)
     return new ArrayBuffer(0);
 }
 
@@ -88,10 +92,11 @@ export function allowance(req: MsgAllowance): ArrayBuffer {
 export function mint(req: MsgMint): ArrayBuffer {
     const caller = wasmxw.getCaller();
     const minters = getMinters();
-    let authorized = checkAuthorization(caller, minters);
+    let authorized = isAuthorized(caller, minters);
     if (!authorized) {
         revert(`caller cannot mint: ${caller}`);
     }
+    LoggerDebug("mint", ["to", req.to, "value", req.value.toString(), "authorized", authorized.toString()])
     let balance = getBalance(req.to);
     balance += i64(req.value);
     setBalance(req.to, balance);
@@ -104,6 +109,7 @@ export function mint(req: MsgMint): ArrayBuffer {
 export function move(from: Bech32String, to: Bech32String, amount: i64): boolean {
     let balanceFrom = getBalance(from);
     if (balanceFrom < amount) {
+        LoggerDebug("cannot move coins", ["from", from, "to", to, "balanceFrom", balanceFrom.toString(), "value", amount.toString()])
         return false;
     }
     let balanceTo = getBalance(to);
@@ -116,9 +122,18 @@ export function move(from: Bech32String, to: Bech32String, amount: i64): boolean
 }
 
 export function logTransfer(from: Bech32String, to: Bech32String, amount: i64): void {
+    const topic0str = `Transfer(address,address,uint256)`
     const topic1 = hexToUint8Array(from);
     const topic2 = hexToUint8Array(to);
     const topic3 = hexToUint8Array(amount.toString(16));
-    wasmxw.log_fsm(new Uint8Array(0), [topic1, topic2, topic3]);
+    wasmxw.logWithMsgTopic(topic0str, new Uint8Array(0), [topic1, topic2, topic3]);
+}
+
+export function logApproval(owner: Bech32String, spender: Bech32String, amount: i64): void {
+    const topic0str = `Approval(address,address,uint256)`
+    const topic1 = hexToUint8Array(owner);
+    const topic2 = hexToUint8Array(spender);
+    const topic3 = hexToUint8Array(amount.toString(16));
+    wasmxw.logWithMsgTopic(topic0str, new Uint8Array(0), [topic1, topic2, topic3]);
 }
 

@@ -5,7 +5,7 @@ import * as banktypes from "wasmx-bank/assembly/types"
 import * as derc20types from "wasmx-derc20/assembly/types"
 import { getParamsInternal, setParams, setNewValidator, getParams } from './storage';
 import { MsgInitGenesis, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS } from './types';
-import { revert } from './utils';
+import { LoggerDebug, revert } from './utils';
 import { parseInt64 } from "wasmx-utils/assembly/utils";
 import { Bech32String, CallRequest, CallResponse } from "wasmx-env/assembly/types";
 
@@ -17,6 +17,7 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
     }
     const genesis = req;
     setParams(genesis.params)
+    LoggerDebug(`init genesis`, ["validators", req.validators.length.toString(), "delegations", req.delegations.length.toString()])
     const vupdates: ValidatorUpdate[] = [];
     for (let i = 0; i < genesis.validators.length; i++) {
         const validator = genesis.validators[i];
@@ -24,6 +25,11 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
         const tokens = parseInt64(validator.tokens)
         const power = tokens / POWER_REDUCTION;
         vupdates.push(new ValidatorUpdate(validator.consensus_pubkey, power))
+    }
+    for (let i = 0; i < genesis.delegations.length; i++) {
+        const delegation = genesis.delegations[i]
+        const tokenAddr = getTokenAddress()
+        callDelegate(tokenAddr, delegation.delegator_address, delegation.validator_address, delegation.amount)
     }
     let data = JSON.stringify<InitGenesisResponse>(new InitGenesisResponse(vupdates))
     data = data.replaceAll(`"anytype"`, `"@type"`)
@@ -104,17 +110,18 @@ export function callDelegate(tokenAddress: Bech32String, delegator: Bech32String
     const calldatastr = `{"delegate":${JSON.stringify<derc20types.MsgDelegate>(calldata)}}`;
     const resp = callContract(tokenAddress, calldatastr, false)
     if (resp.success > 0) {
-        revert("could not delegate")
+        revert(`could not delegate: ${resp.data}`)
     }
 }
 
+// TODO this should be through the alias contract
 export function getTokenAddress(): Bech32String {
     const denom = getParams().bond_denom;
     const calldata = new banktypes.QueryAddressByDenom(denom);
     const calldatastr = `{"GetAddressByDenom":${JSON.stringify<banktypes.QueryAddressByDenom>(calldata)}}`;
     const resp = callBank(calldatastr, true)
     if (resp.success > 0) {
-        revert("could not get staking token address")
+        revert(`could not get staking token address: ${resp.data}`)
     }
     const result = JSON.parse<banktypes.QueryAddressByDenomResponse>(resp.data)
     return result.address

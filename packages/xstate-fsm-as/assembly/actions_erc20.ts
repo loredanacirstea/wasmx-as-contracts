@@ -237,8 +237,9 @@ export function logTransfer(
     if (amount === 0) {
         return;
     }
+    const topic0str = `Transfer(address,address,uint256)`
     const topic1 = hexToUint8Array(from);
     const topic2 = hexToUint8Array(to);
     const topic3 = hexToUint8Array(amount.toString(16));
-    wasmxwrap.log_fsm(new Uint8Array(0), [topic1, topic2, topic3]);
+    wasmxwrap.logWithMsgTopic(topic0str, new Uint8Array(0), [topic1, topic2, topic3]);
 }

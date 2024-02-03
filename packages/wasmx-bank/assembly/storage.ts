@@ -38,6 +38,10 @@ export function getDenomInfoByAnyDenom(denom: string): DenomInfo {
     return new DenomInfo(unit.denom, unit.value, addr);
 }
 
+export function getDenomByAddress(addr: Bech32String): string {
+    return wasmxw.sload(ADDRESS_DENOM_KEY + addr)
+}
+
 export function getAddressByDenom(denom: string): Bech32String {
     return wasmxw.sload(DENOM_ADDRESS_KEY + denom)
 }

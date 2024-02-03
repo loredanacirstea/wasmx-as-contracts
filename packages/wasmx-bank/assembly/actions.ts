@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
-import { checkAuthorization } from "wasmx-env/assembly/utils";
+import { isAuthorized } from "wasmx-env/assembly/utils";
 import { Bech32String, parseInt64 } from "wasmx-utils/assembly/utils";
 import { CallRequest, CallResponse, CreateAccountRequest } from 'wasmx-env/assembly/types';
 import * as erc20 from "wasmx-erc20/assembly/types";
@@ -12,7 +12,7 @@ import {
     QueryAddressByDenomResponse
 } from './types';
 import { LoggerDebug, LoggerInfo, revert } from './utils';
-import { getParamsInternal, setParams, getParams, getDenomInfoByAnyDenom, getAuthorities, getBaseDenoms, setBaseDenoms, registerDenomContract, getAddressByDenom } from './storage';
+import { getParamsInternal, setParams, getParams, getDenomInfoByAnyDenom, getAuthorities, getBaseDenoms, setBaseDenoms, registerDenomContract, getAddressByDenom, getDenomByAddress } from './storage';
 
 export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
     if (getParamsInternal() != "") {
@@ -231,7 +231,7 @@ export function deployDenom(codeId: u64, metadata: Metadata, admins: string[], m
     setBaseDenoms(denoms)
     // deploy denom contract
     const name = metadata.name || metadata.display
-    const symbol = metadata.symbol
+    const symbol = metadata.base // TODO metadata.symbol
     let decimals = u32(0)
     for (let i = 0; i < metadata.denom_units.length; i++) {
         const unit = metadata.denom_units[i]
@@ -299,11 +299,19 @@ export function checkOwnerOrAuthorization(owner: Bech32String): boolean {
     // caller is always an address
     const caller = wasmxw.getCaller()
     if (caller == owner) return true;
-    return checkAuthorization(caller, getAuthorities())
+    if(isFromDenomContract(caller)) return true
+    if(isAuthorized(caller, getAuthorities())) return true;
+    return false;
 }
 
 export function requireOwnerOrAuthorization(owner: Bech32String, msg: string): void {
     if (!checkOwnerOrAuthorization(owner)) {
         revert(`unauthorized bank action: ${msg}`)
     }
+}
+
+export function isFromDenomContract(caller: Bech32String): boolean {
+    const denom = getDenomByAddress(caller)
+    if (denom != "") return true
+    return false
 }

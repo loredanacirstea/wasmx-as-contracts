@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap } from './calldata';
-import { getName, getSymbol, getDecimals, totalSupply, balanceOf, transfer, transferFrom, approve, allowance, instantiateToken } from "./actions";
+import { getName, getSymbol, getDecimals, totalSupply, balanceOf, transfer, transferFrom, approve, allowance, instantiateToken, mint } from "./actions";
 
 export function wasmx_env_2(): void {}
 
@@ -30,6 +30,8 @@ export function main(): void {
     result = approve(calld.approve!);
   } else if (calld.allowance !== null) {
     result = allowance(calld.allowance!);
+  } else if (calld.mint !== null) {
+    result = mint(calld.mint!);
   } else {
     wasmx.revert(String.UTF8.encode("invalid function call data"));
     throw new Error("invalid function call data");

@@ -46,13 +46,27 @@ export function intToString(value: i32): string {
     return vstr.substring(0, vstr.length - 2);
 }
 
-export function log_fsm(
+export function log(
     data: Uint8Array,
     topics: Array<Uint8Array>,
 ): void {
     const logs = new WasmxLog(data, topics)
     const logstr = JSON.stringify<WasmxLog>(logs);
     wasmx.log(String.UTF8.encode(logstr));
+}
+
+export function logWithMsgTopic(
+    msg: string,
+    data: Uint8Array,
+    topics: Array<Uint8Array>,
+): void {
+    const topic0 = wasmx.sha256(String.UTF8.encode(encodeBase64(Uint8Array.wrap(String.UTF8.encode(msg)))))
+    const newtopics = new Array<Uint8Array>(topics.length + 1)
+    newtopics[0] = Uint8Array.wrap(topic0)
+    for (let i = 0; i < topics.length; i++) {
+        newtopics[i + 1] = topics[i];
+    }
+    log(data, newtopics)
 }
 
 export function grpcRequest(ip: string, contract: Uint8Array, data: string): GrpcResponse {
@@ -166,6 +180,10 @@ export function addr_canonicalize(value: string): ArrayBuffer {
 
 export function getCaller(): Bech32String {
     return addr_humanize(wasmx.getCaller())
+}
+
+export function getAddress(): Bech32String {
+    return addr_humanize(wasmx.getAddress())
 }
 
 export function getAddressByRole(value: string): Bech32String {

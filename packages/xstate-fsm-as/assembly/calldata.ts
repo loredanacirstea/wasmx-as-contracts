@@ -111,15 +111,6 @@ export function intToString(value: i32): string {
     return vstr.substring(0, vstr.length - 2);
 }
 
-export function log_fsm(
-    data: Uint8Array,
-    topics: Array<Uint8Array>,
-): void {
-    const logs = new WasmxLog(data, topics)
-    const logstr = JSON.stringify<WasmxLog>(logs);
-    wasmx.log(String.UTF8.encode(logstr));
-}
-
 // @ts-ignore
 @serializable
 class GrpcResponse {
