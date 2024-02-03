@@ -1,7 +1,8 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { MsgName, MsgSymbol, MsgDecimals, MsgTotalSupply, MsgBalanceOf, MsgTransfer, MsgTransferFrom, MsgApprove, MsgAllowance, MsgMint } from 'wasmx-erc20/assembly/types';
-import { MsgDelegate, MsgUndelegate, MsgRedelegate } from "./types";
+import { QueryDelegationRequest } from "wasmx-stake/assembly/types";
+import { MsgDelegate, MsgUndelegate, MsgRedelegate, MsgGetAllSDKDelegations } from "./types";
 
 // @ts-ignore
 @serializable
@@ -17,6 +18,10 @@ export class CallData {
     delegate: MsgDelegate | null = null;
     undelegate: MsgUndelegate | null = null;
     redelegate: MsgRedelegate | null = null;
+
+    // query
+    GetAllSDKDelegations: MsgGetAllSDKDelegations | null = null;
+    GetDelegation: QueryDelegationRequest | null = null;
 }
 
 export function getCallDataWrap(): CallData {

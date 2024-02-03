@@ -3,10 +3,10 @@ import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { Bech32String } from 'wasmx-env/assembly/types';
 import { parseInt32, parseInt64 } from "wasmx-utils/assembly/utils";
 
-export const DELEGATOR_TO_VALIDATORS_KEY = "delegator_to_validators_"
-export const DELEGATOR_TO_DELEGATION_KEY = "delegator_to_delegation_"
-export const VALIDATOR_TO_DELEGATORS_KEY = "validator_to_delegators_"
-export const VALIDATOR_DELEGATION_KEY = "validator_delegation_"
+export const DELEGATOR_TO_VALIDATORS_KEY = "delegator_to_validators."
+export const DELEGATOR_TO_DELEGATION_KEY = "delegator_to_delegation."
+export const VALIDATOR_TO_DELEGATORS_KEY = "validator_to_delegators."
+export const VALIDATOR_DELEGATION_KEY = "validator_delegation."
 
 // delegator => validators[]
 export function getDelegatorToValidatorsKey(delegator: Bech32String): string {
@@ -15,7 +15,7 @@ export function getDelegatorToValidatorsKey(delegator: Bech32String): string {
 
 // delegator => validator => amount
 export function getDelegatorToValidatorDelegationKey(delegator: Bech32String, validator: Bech32String): string {
-    return DELEGATOR_TO_DELEGATION_KEY + delegator + "_" + validator;
+    return DELEGATOR_TO_DELEGATION_KEY + delegator + "." + validator;
 }
 
 // validator => delegator[]

@@ -29,6 +29,7 @@
     "wasmx-bank": "file:../wasmx-bank",
     "wasmx-env": "file:../wasmx-env",
     "wasmx-erc20": "file:../wasmx-erc20",
+    "wasmx-stake": "file:../wasmx-stake",
     "wasmx-utils": "file:../wasmx-utils"
   }
 }

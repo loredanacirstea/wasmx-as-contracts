@@ -58,3 +58,29 @@ export class MsgUndelegate {
         this.value = value
     }
 }
+
+// @ts-ignore
+@serializable
+export class MsgGetAllSDKDelegations {}
+
+// @ts-ignore
+@serializable
+export class MsgGetAllSDKDelegationsResponse {
+    delegations: SDKDelegations[]
+    constructor(delegations: SDKDelegations[]) {
+        this.delegations = delegations
+    }
+}
+
+// @ts-ignore
+@serializable
+export class SDKDelegations {
+    delegator_address: Bech32String
+    validator_address: Bech32String
+    shares: string
+    constructor(delegator_address: Bech32String, validator_address: Bech32String, shares: string) {
+        this.delegator_address = delegator_address
+        this.validator_address = validator_address
+        this.shares = shares
+    }
+}

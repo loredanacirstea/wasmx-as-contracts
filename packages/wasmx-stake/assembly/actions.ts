@@ -3,8 +3,8 @@ import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assemb
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap"
 import * as banktypes from "wasmx-bank/assembly/types"
 import * as derc20types from "wasmx-derc20/assembly/types"
-import { getParamsInternal, setParams, setNewValidator, getParams } from './storage';
-import { MsgInitGenesis, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS } from './types';
+import { getParamsInternal, setParams, setNewValidator, getParams, getValidator, getValidatorsAddresses } from './storage';
+import { MsgInitGenesis, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse } from './types';
 import { LoggerDebug, revert } from './utils';
 import { parseInt64 } from "wasmx-utils/assembly/utils";
 import { Bech32String, CallRequest, CallResponse } from "wasmx-env/assembly/types";
@@ -104,6 +104,49 @@ export function UpdateValidators(req: MsgUpdateValidators): ArrayBuffer {
     // const updates = req.updates;
     return new ArrayBuffer(0)
 }
+
+
+export function GetAllValidators(): ArrayBuffer {
+    const addrs = getValidatorsAddresses()
+    const validators = new Array<Validator>(addrs.length)
+    for (let i = 0; i < validators.length; i++) {
+        const valid = getValidator(addrs[i]);
+        if (valid != null) {
+            validators[i] = valid;
+        }
+    }
+    let data = JSON.stringify<QueryValidatorsResponse>(new QueryValidatorsResponse(validators))
+    data = data.replaceAll(`"anytype"`, `"@type"`)
+    return String.UTF8.encode(data)
+}
+
+export function GetValidator(req: QueryValidatorRequest): ArrayBuffer {
+    const validator = getValidator(req.validator_addr)
+    if (validator == null) {
+        revert(`validator not found: ${req.validator_addr}`)
+        return new ArrayBuffer(0)
+    }
+    let data = JSON.stringify<QueryValidatorResponse>(new QueryValidatorResponse(validator))
+    data = data.replaceAll(`"anytype"`, `"@type"`)
+    return String.UTF8.encode(data)
+}
+
+export function GetDelegation(req: QueryDelegationRequest): ArrayBuffer {
+    const tokenAddr = getTokenAddress()
+    const data = callGetDelegation(tokenAddr, req.delegator_addr, req.validator_addr)
+    return String.UTF8.encode(data)
+}
+
+export function callGetDelegation(tokenAddress: Bech32String, delegator: Bech32String, validator: Bech32String): string {
+    const calldata = new QueryDelegationRequest(delegator, validator);
+    const calldatastr = `{"GetDelegation":${JSON.stringify<QueryDelegationRequest>(calldata)}}`;
+    const resp = callContract(tokenAddress, calldatastr, false)
+    if (resp.success > 0) {
+        revert(`delegation not found`)
+    }
+    return resp.data
+}
+
 
 export function callDelegate(tokenAddress: Bech32String, delegator: Bech32String, validator: Bech32String, value: i64): void {
     const calldata = new derc20types.MsgDelegate(delegator, validator, value);

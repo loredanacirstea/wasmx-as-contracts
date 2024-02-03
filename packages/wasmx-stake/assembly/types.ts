@@ -38,6 +38,17 @@ export class Coin {
 
 // @ts-ignore
 @serializable
+export class CoinCosmos {
+    denom: string
+    amount: string // TODO Int, at least u128
+    constructor(denom: string, amount: string) {
+        this.denom = denom
+        this.amount = amount
+    }
+}
+
+// @ts-ignore
+@serializable
 export class Description {
     // moniker defines a human-readable name for the validator.
     moniker: string
@@ -437,5 +448,67 @@ export class QueryValidatorsResponse {
     validators: Validator[]
     constructor(validators: Validator[]) {
         this.validators = validators
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryValidatorRequest {
+    validator_addr: Bech32String
+    constructor(validator_addr: Bech32String) {
+        this.validator_addr = validator_addr
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryValidatorResponse {
+    validator: Validator
+    constructor(validator: Validator) {
+        this.validator = validator
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryDelegationRequest {
+    delegator_addr: Bech32String
+    validator_addr: Bech32String
+    constructor(delegator_addr: Bech32String, validator_addr: Bech32String) {
+        this.delegator_addr = delegator_addr
+        this.validator_addr = validator_addr
+    }
+}
+
+// @ts-ignore
+@serializable
+export class DelegationCosmos {
+    delegator_address: Bech32String
+    validator_address: Bech32String
+    shares: string
+    constructor(delegator_address: Bech32String, validator_address: Bech32String, shares: string) {
+        this.delegator_address = delegator_address
+        this.validator_address = validator_address
+        this.shares = shares
+    }
+}
+
+// @ts-ignore
+@serializable
+export class DelegationResponse {
+    delegation: DelegationCosmos
+    balance: CoinCosmos
+    constructor(delegation: DelegationCosmos, balance: CoinCosmos) {
+        this.delegation = delegation
+        this.balance = balance
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryDelegationResponse {
+    delegation_response: DelegationResponse
+    constructor(delegation_response: DelegationResponse) {
+        this.delegation_response = delegation_response
     }
 }

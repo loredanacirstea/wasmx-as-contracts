@@ -4,10 +4,11 @@ import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { Bech32String, CallRequest, CallResponse } from "wasmx-env/assembly/types";
 import { isAuthorized } from "wasmx-env/assembly/utils";
 import { hexToUint8Array, i32ToUint8ArrayBE, i64ToUint8ArrayBE } from "wasmx-utils/assembly/utils";
+import { QueryDelegationRequest, QueryDelegationResponse, Delegation, DelegationResponse, Coin, DelegationCosmos, CoinCosmos } from "wasmx-stake/assembly/types";
 import { move } from "wasmx-erc20/assembly/actions";
 import { setInfo, getInfo, getBalance, setBalance, getAllowance, setAllowance, getTotalSupply, setTotalSupply, getAdmins, getMinters } from "wasmx-erc20/assembly/storage";
 import * as banktypes from "wasmx-bank/assembly/types";
-import { MsgDelegate, MsgRedelegate, MsgUndelegate } from "./types";
+import { MsgDelegate, MsgGetAllSDKDelegations, MsgRedelegate, MsgUndelegate, SDKDelegations } from "./types";
 import { LoggerDebug, revert } from "./utils";
 import { addDelegatorToValidator, addValidatorToDelegator, setDelegatorToValidatorDelegation, addTotalDelegationToValidator, removeValidatorFromDelegator, removeDelegatorFromValidator, removeValidatorDelegationFromDelegator, removeDelegationAmountFromValidator, getDelegatorToValidatorDelegation } from "./storage";
 
@@ -120,9 +121,22 @@ export function redelegate(req: MsgRedelegate): ArrayBuffer {
     return new ArrayBuffer(0);
 }
 
-function getCoin(value: i64): banktypes.Coin {
+export function GetAllSDKDelegations(req: MsgGetAllSDKDelegations): ArrayBuffer {
+    const delegations: SDKDelegations[] = [];
+    revert("not implemented yet")
+    return new ArrayBuffer(0)
+}
+
+export function GetDelegation(req: QueryDelegationRequest): ArrayBuffer {
+    const amount = getDelegatorToValidatorDelegation(req.delegator_addr, req.validator_addr)
+    const delegation = new DelegationCosmos(req.delegator_addr, req.validator_addr, amount.toString())
+    const data = new QueryDelegationResponse(new DelegationResponse(delegation, getCoin(amount)))
+    return String.UTF8.encode(JSON.stringify<QueryDelegationResponse>(data))
+}
+
+function getCoin(value: i64): CoinCosmos {
     const info = getInfo()
-    return new banktypes.Coin(info.symbol, value)
+    return new CoinCosmos(info.symbol, value.toString())
 }
 
 function bankSendCoin (from: Bech32String, to: Bech32String, value: i64, denom: string): void {
