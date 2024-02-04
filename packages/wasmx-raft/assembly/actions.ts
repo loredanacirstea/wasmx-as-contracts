@@ -703,11 +703,12 @@ export function processAppendEntries(
         LoggerDebug("our node ID has changed", ["old", nodeId.toString(), "new", newId.toString()])
         setCurrentNodeId(newId);
     }
-    const allvalidStr = String.UTF8.decode(decodeBase64(entry.validators).buffer);
-    console.debug("* processAppendEntries allvalidStr: " + allvalidStr)
-    const allvalidators = JSON.parse<typestnd.ValidatorInfo[]>(allvalidStr);
-    const validatorInfo = getCurrentValidator();
-    checkValidatorsUpdate(allvalidators, validatorInfo, newId);
+    // TODO validator update
+    // const allvalidStr = String.UTF8.decode(decodeBase64(entry.validators).buffer);
+    // console.debug("* processAppendEntries allvalidStr: " + allvalidStr)
+    // const allvalidators = JSON.parse<typestnd.ValidatorInfo[]>(allvalidStr);
+    // const validatorInfo = getCurrentValidator();
+    // checkValidatorsUpdate(allvalidators, validatorInfo, newId);
     setNodeIPs(entry.nodeIps);
     setTermId(entry.termId);
 
