@@ -36,6 +36,7 @@ import {
   removeInterval,
 } from './timer';
 import { LoggerDebug, revert, ctxToActionParams } from "./utils";
+import { BigInt } from "wasmx-env/assembly/bn";
 
 export function instantiate(
   config: MachineExternal,
@@ -379,7 +380,7 @@ function processExternalCall(
   }
   const calldata = new ExternalActionCallData(actionType, params, event);
   const calldatastr = JSON.stringify<ExternalActionCallData>(calldata);
-  const req = new CallRequest(contractAddress, calldatastr, 0, 10000000, false);
+  const req = new CallRequest(contractAddress, calldatastr, BigInt.zero(), 10000000, false);
   const resp = wasmxwrap.call(req);
   if (resp.success == 0) {
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
@@ -958,7 +959,7 @@ export function setup(config: MachineExternal, contractAddress: string): void {
   const param = new ActionParam("previousAddress", contractAddress);
   const calldata = new ExternalActionCallData("setup", [param], new EventObject("",[]));
   const calldatastr = JSON.stringify<ExternalActionCallData>(calldata);
-  const req = new CallRequest(config.library, calldatastr, 0, 10000000, false);
+  const req = new CallRequest(config.library, calldatastr, BigInt.zero(), 10000000, false);
   const resp = wasmxwrap.call(req);
   if (resp.success > 0) {
     return revert("could not execute setup");

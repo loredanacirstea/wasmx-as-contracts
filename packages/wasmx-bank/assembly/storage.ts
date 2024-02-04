@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import { DenomUnit_, DenomUnit, Params, DenomInfo } from "./types";
 import { Bech32String } from "wasmx-env/assembly/types";
-import { parseInt32, parseInt64 } from "wasmx-utils/assembly/utils";
+import { BigInt } from "wasmx-env/assembly/bn";
 import { LoggerInfo } from "./utils";
 
 const PARAM_KEY = "params"
@@ -17,7 +17,7 @@ export function registerDenomContract(address: Bech32String, baseDenom: string, 
     wasmxw.sstore(DENOM_ADDRESS_KEY + baseDenom, address)
     LoggerInfo(`stored denom`, ["baseDenom", baseDenom, "address", address])
     for (let i = 0; i < altdenoms.length; i++) {
-        const coin = new DenomUnit_(baseDenom, i64(Math.pow(10, altdenoms[i].exponent)))
+        const coin = new DenomUnit_(baseDenom, BigInt.fromU32(10).pown(altdenoms[i].exponent))
         const data = JSON.stringify<DenomUnit_>(coin)
         wasmxw.sstore(DENOMS_KEY + altdenoms[i].denom, data)
         for (let j = 0; j < altdenoms[i].aliases.length; j++) {
@@ -29,7 +29,7 @@ export function registerDenomContract(address: Bech32String, baseDenom: string, 
 export function getDenomInfoByAnyDenom(denom: string): DenomInfo {
     let addr = getAddressByDenom(denom)
     if (addr != "") {
-        return new DenomInfo(denom, 1, addr);
+        return new DenomInfo(denom, BigInt.fromU32(1), addr);
     }
     const unit = getDenomByAltDenom(denom)
     if (unit.denom != "") {
@@ -48,7 +48,7 @@ export function getAddressByDenom(denom: string): Bech32String {
 
 export function getDenomByAltDenom(denom: string): DenomUnit_ {
     const value = wasmxw.sload(DENOMS_KEY + denom)
-    if (value == "") return new DenomUnit_("", 0);
+    if (value == "") return new DenomUnit_("", BigInt.zero());
     return JSON.parse<DenomUnit_>(value)
 }
 

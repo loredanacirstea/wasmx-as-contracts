@@ -2,6 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { Bech32String } from 'wasmx-env/assembly/types';
 import { parseInt32, parseInt64 } from "wasmx-utils/assembly/utils";
+import { BigInt } from "wasmx-env/assembly/bn";
 
 export const DELEGATOR_TO_VALIDATORS_KEY = "delegator_to_validators."
 export const DELEGATOR_TO_DELEGATION_KEY = "delegator_to_delegation."
@@ -63,19 +64,20 @@ export function removeValidatorFromDelegator(delegator: Bech32String, validator:
 }
 
 // delegator => validator => amount GET
-export function getDelegatorToValidatorDelegation(delegator: Bech32String, validator: Bech32String): i64 {
+export function getDelegatorToValidatorDelegation(delegator: Bech32String, validator: Bech32String): BigInt {
     const value = wasmxw.sload(getDelegatorToValidatorDelegationKey(delegator, validator))
-    if (value == "") return 0
-    return parseInt64(value)
+    if (value == "") return BigInt.zero();
+    return BigInt.fromString(value)
 }
 
 // delegator => validator => amount SET
-export function setDelegatorToValidatorDelegation(delegator: Bech32String, validator: Bech32String, amount: i64): void {
+export function setDelegatorToValidatorDelegation(delegator: Bech32String, validator: Bech32String, amount: BigInt): void {
     wasmxw.sstore(getDelegatorToValidatorDelegationKey(delegator, validator), amount.toString())
 }
 
 // delegator => validator => amount REMOVE
-export function removeValidatorDelegationFromDelegator(delegator: Bech32String, validator: Bech32String, amount: i64): void {
+export function removeValidatorDelegationFromDelegator(delegator: Bech32String, validator: Bech32String, amount: BigInt): void {
+    // @ts-ignore
     const total = getDelegatorToValidatorDelegation(delegator, validator) - amount;
     wasmxw.sstore(getDelegatorToValidatorDelegationKey(delegator, validator), total.toString())
 }
@@ -115,25 +117,27 @@ export function removeDelegatorFromValidator(validator: Bech32String, delegator:
 }
 
 // validator => total delegation GET
-export function getValidatorToTotalDelegation(validator: Bech32String): i64 {
+export function getValidatorToTotalDelegation(validator: Bech32String): BigInt {
     const value = wasmxw.sload(getValidatorToTotalDelegationKey(validator))
-    if (value == "") return 0;
-    return parseInt64(value)
+    if (value == "") return BigInt.zero();
+    return BigInt.fromString(value);
 }
 
 // validator => total delegation SET
-export function setValidatorToTotalDelegation(validator: Bech32String, value: i64): void {
+export function setValidatorToTotalDelegation(validator: Bech32String, value: BigInt): void {
     wasmxw.sstore(getValidatorToTotalDelegationKey(validator), value.toString())
 }
 
 // validator => total delegation ADD
-export function addTotalDelegationToValidator(validator: Bech32String, value: i64): void {
+export function addTotalDelegationToValidator(validator: Bech32String, value: BigInt): void {
+    // @ts-ignore
     const total = getValidatorToTotalDelegation(validator) + value
     wasmxw.sstore(getValidatorToTotalDelegationKey(validator), total.toString())
 }
 
 // validator => total delegation REMOVE
-export function removeDelegationAmountFromValidator(validator: Bech32String, value: i64): void {
+export function removeDelegationAmountFromValidator(validator: Bech32String, value: BigInt): void {
+    // @ts-ignore
     const total = getValidatorToTotalDelegation(validator) - value
     wasmxw.sstore(getValidatorToTotalDelegationKey(validator), total.toString())
 }

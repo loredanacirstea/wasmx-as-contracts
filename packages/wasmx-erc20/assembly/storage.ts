@@ -1,8 +1,9 @@
 import { JSON } from "json-as/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { Bech32String } from 'wasmx-env/assembly/types';
-import { TokenInfo } from './types';
+import { BigInt } from "wasmx-env/assembly/bn";
 import { parseInt32 } from "wasmx-utils/assembly/utils";
+import { TokenInfo } from './types';
 
 export const ALLOWANCE_KEY = "allowance_"
 export const BALANCE_KEY = "balance_"
@@ -49,31 +50,28 @@ export function getMinters(): Bech32String[] {
     return JSON.parse<Bech32String[]>(value);
 }
 
-export function setTotalSupply(value: i64): void {
+export function setTotalSupply(value: BigInt): void {
     wasmxw.sstore(TOTAL_SUPPLY_KEY, value.toString());
 }
 
-export function getTotalSupply(): i64 {
+export function getTotalSupply(): BigInt {
     const value = wasmxw.sload(TOTAL_SUPPLY_KEY);
-    if (value == "") return 0;
-    return parseInt32(value);
+    if (value == "") return BigInt.zero();
+    return BigInt.fromString(value)
 }
 
 export function getBalance(
     addr: string,
-): i64 {
+): BigInt {
     const key = getBalanceKey(addr);
-    const balancestr = wasmxw.sload(key);
-    if (balancestr) {
-        const balance = parseInt(balancestr);
-        return i64(balance);
-    }
-    return i64(0);
+    const value = wasmxw.sload(key);
+    if (value == "") return BigInt.zero();
+    return BigInt.fromString(value)
 }
 
 export function setBalance(
     addr: string,
-    amount: i64,
+    amount: BigInt,
 ): void {
     const key = getBalanceKey(addr);
     wasmxw.sstore(key, amount.toString());
@@ -82,20 +80,17 @@ export function setBalance(
 export function getAllowance(
     owner: string,
     spender: string,
-): i64 {
+): BigInt {
     const key = getAllowanceKey(owner, spender);
-    const allowancestr = wasmxw.sload(key);
-    if (allowancestr) {
-        const allowance = parseInt(allowancestr);
-        return i64(allowance);
-    }
-    return i64(0);
+    const value = wasmxw.sload(key);
+    if (value == "") return BigInt.zero();
+    return BigInt.fromString(value)
 }
 
 export function setAllowance(
     owner: string,
     spender: string,
-    amount: i64,
+    amount: BigInt,
 ): void {
     const key = getAllowanceKey(owner, spender);
     wasmxw.sstore(key, amount.toString());

@@ -1,5 +1,6 @@
 import { JSON } from "json-as/assembly";
 import { Base64String, Bech32String, HexString } from 'wasmx-env/assembly/types';
+import { BigInt } from "wasmx-env/assembly/bn"
 
 // @ts-ignore
 @serializable
@@ -29,19 +30,8 @@ export const BondedS = "BOND_STATUS_BONDED"; // Bonded
 @serializable
 export class Coin {
     denom: string
-    amount: i64 // TODO Int, at least u128
-    constructor(denom: string, amount: i64) {
-        this.denom = denom
-        this.amount = amount
-    }
-}
-
-// @ts-ignore
-@serializable
-export class CoinCosmos {
-    denom: string
-    amount: string // TODO Int, at least u128
-    constructor(denom: string, amount: string) {
+    amount: BigInt
+    constructor(denom: string, amount: BigInt) {
         this.denom = denom
         this.amount = amount
     }
@@ -90,14 +80,14 @@ export class CommissionRates {
 export class MsgCreateValidator {
     description: Description
     commission: CommissionRates
-    min_self_delegation: string // TODO Int
+    min_self_delegation: BigInt // TODO Int
     // Deprecated: Use of Delegator Address in MsgCreateValidator is deprecated.
     // The validator address bytes and delegator address bytes refer to the same account while creating validator (defer
     // only in bech32 notation).
     validator_address: string
     pubkey: PublicKey
     value: Coin
-    constructor(description: Description, commission: CommissionRates, min_self_delegation: string, validator_address: string, pubkey: PublicKey, value: Coin) {
+    constructor(description: Description, commission: CommissionRates, min_self_delegation: BigInt, validator_address: string, pubkey: PublicKey, value: Coin) {
         this.description = description
         this.commission = commission
         this.min_self_delegation = min_self_delegation
@@ -131,8 +121,8 @@ export class ValidatorInfo {
 export class Delegation {
     delegator_address: Bech32String
     validator_address: Bech32String
-    amount: i64
-    constructor(delegator_address: Bech32String, validator_address: Bech32String, amount: i64) {
+    amount: BigInt
+    constructor(delegator_address: Bech32String, validator_address: Bech32String, amount: BigInt) {
         this.delegator_address = delegator_address
         this.validator_address = validator_address
         this.amount = amount
@@ -160,14 +150,14 @@ export class UnbondingDelegationEntry {
     // completion_time is the unix time for unbonding completion.
     completion_time: i64
     // initial_balance defines the tokens initially scheduled to receive at completion.
-    initial_balance: i64
+    initial_balance: BigInt
     // balance defines the tokens to receive at completion.
-    balance: i64
+    balance: BigInt
     // Incrementing id that uniquely identifies this entry
     unbonding_id: u64
     // Strictly positive if this entry's unbonding has been stopped by external modules
     unbonding_on_hold_ref_count: i64
-    constructor(creation_height: i64, completion_time: i64, initial_balance: i64, balance: i64, unbonding_id: u64, unbonding_on_hold_ref_count: i64) {
+    constructor(creation_height: i64, completion_time: i64, initial_balance: BigInt, balance: BigInt, unbonding_id: u64, unbonding_on_hold_ref_count: i64) {
         this.creation_height = creation_height
         this.completion_time = completion_time
         this.initial_balance = initial_balance
@@ -323,7 +313,7 @@ export class Validator {
 	status: BondStatusString
 	// tokens define the delegated tokens (incl. self-delegation).
     // !not used in staking
-	tokens: string // TODO Int
+	tokens: BigInt
 	// delegator_shares defines total shares issued to a validator's delegators.
 	delegator_shares: string // f64
 	// description defines the description terms for the validator.
@@ -336,59 +326,12 @@ export class Validator {
 	commission: Commission
 	// min_self_delegation is the validator's self declared minimum self delegation.
 	// Since: cosmos-sdk 0.46
-	min_self_delegation: string // TODO Int
+	min_self_delegation: BigInt
 	// strictly positive if this validator's unbonding has been stopped by external modules
 	unbonding_on_hold_ref_count: i64
 	// list of unbonding ids, each uniquely identifing an unbonding of this validator
 	unbonding_ids: u64[]
-    constructor(operator_address: string, consensus_pubkey: PublicKey, jailed: bool, status: BondStatusString, tokens: string, delegator_shares: string, description: Description, unbonding_height: i64, unbonding_time: Date, commission: Commission, min_self_delegation: string, unbonding_on_hold_ref_count: i64, unbonding_ids: u64[]) {
-        this.operator_address = operator_address
-        this.consensus_pubkey = consensus_pubkey
-        this.jailed = jailed
-        this.status = status
-        this.tokens = tokens
-        this.delegator_shares = delegator_shares
-        this.description = description
-        this.unbonding_height = unbonding_height
-        this.unbonding_time = unbonding_time
-        this.commission = commission
-        this.min_self_delegation = min_self_delegation
-        this.unbonding_on_hold_ref_count = unbonding_on_hold_ref_count
-        this.unbonding_ids = unbonding_ids
-    }
-}
-
-// @ts-ignore
-@serializable
-export class ValidatorInternal {
-	// operator_address defines the address of the validator's operator; bech encoded in JSON.
-	operator_address: Bech32String
-	// consensus_pubkey is the consensus public key of the validator, as a Protobuf Any.
-	consensus_pubkey: PublicKey
-	// jailed defined whether the validator has been jailed from bonded status or not.
-	jailed: bool
-	// status is the validator status (bonded/unbonding/unbonded).
-	status: BondStatusString
-	// tokens define the delegated tokens (incl. self-delegation).
-	tokens: i64 // TODO Int
-	// delegator_shares defines total shares issued to a validator's delegators.
-	delegator_shares: f64
-	// description defines the description terms for the validator.
-	description: Description
-	// unbonding_height defines, if unbonding, the height at which this validator has begun unbonding.
-	unbonding_height: i64
-	// unbonding_time defines, if unbonding, the min time for the validator to complete unbonding.
-	unbonding_time: i64
-	// commission defines the commission parameters.
-	commission: Commission
-	// min_self_delegation is the validator's self declared minimum self delegation.
-	// Since: cosmos-sdk 0.46
-	min_self_delegation: string // TODO Int
-	// strictly positive if this validator's unbonding has been stopped by external modules
-	unbonding_on_hold_ref_count: i64
-	// list of unbonding ids, each uniquely identifing an unbonding of this validator
-	unbonding_ids: u64[]
-    constructor(operator_address: string, consensus_pubkey: PublicKey, jailed: bool, status: BondStatusString, tokens: i64, delegator_shares: f64, description: Description, unbonding_height: i64, unbonding_time: i64, commission: Commission, min_self_delegation: string, unbonding_on_hold_ref_count: i64, unbonding_ids: u64[]) {
+    constructor(operator_address: string, consensus_pubkey: PublicKey, jailed: bool, status: BondStatusString, tokens: BigInt, delegator_shares: string, description: Description, unbonding_height: i64, unbonding_time: Date, commission: Commission, min_self_delegation: BigInt, unbonding_on_hold_ref_count: i64, unbonding_ids: u64[]) {
         this.operator_address = operator_address
         this.consensus_pubkey = consensus_pubkey
         this.jailed = jailed
@@ -485,8 +428,8 @@ export class QueryDelegationRequest {
 export class DelegationCosmos {
     delegator_address: Bech32String
     validator_address: Bech32String
-    shares: string
-    constructor(delegator_address: Bech32String, validator_address: Bech32String, shares: string) {
+    shares: BigInt
+    constructor(delegator_address: Bech32String, validator_address: Bech32String, shares: BigInt) {
         this.delegator_address = delegator_address
         this.validator_address = validator_address
         this.shares = shares
@@ -497,8 +440,8 @@ export class DelegationCosmos {
 @serializable
 export class DelegationResponse {
     delegation: DelegationCosmos
-    balance: CoinCosmos
-    constructor(delegation: DelegationCosmos, balance: CoinCosmos) {
+    balance: Coin
+    constructor(delegation: DelegationCosmos, balance: Coin) {
         this.delegation = delegation
         this.balance = balance
     }

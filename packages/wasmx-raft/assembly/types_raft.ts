@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
-import { Base64String, Bech32String } from "wasmx-env/assembly/types";
+import { Base64String, Bech32String, Coin } from "wasmx-env/assembly/types";
 
 // @ts-ignore
 @serializable
@@ -31,17 +31,6 @@ export class LogEntryAggregate {
         this.termId = termId;
         this.leaderId = leaderId;
         this.data = data;
-    }
-}
-
-// @ts-ignore
-@serializable
-export class Coin {
-    amount: string;
-    denom: string;
-    constructor(amount: string, denom: string) {
-        this.amount = amount;
-        this.denom = denom;
     }
 }
 

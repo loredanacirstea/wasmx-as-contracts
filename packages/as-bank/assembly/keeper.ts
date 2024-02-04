@@ -40,7 +40,7 @@ export function SpendableCoins(addr: AccAddress): Coins {
 
 // SpendableCoin(ctx context.Context, addr sdk.AccAddress, denom string) sdk.Coin
 export function SpendableCoin(addr: AccAddress, denom: string): Coin {
-    return new Coin(denom, BigInt.empty());
+    return new Coin(denom, BigInt.zero());
 }
 
 // IterateAccountBalances(ctx context.Context, addr sdk.AccAddress, cb func(coin sdk.Coin) (stop bool))

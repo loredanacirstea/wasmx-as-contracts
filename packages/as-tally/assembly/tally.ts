@@ -19,6 +19,109 @@ export class tally {
         }
     }
 
+    @operator('+')
+    static __add(a: tally, b: tally): tally  {
+        return a.add(b)
+    }
+
+    // @operator('+')
+    // __add(other: tally): tally  {
+    //     return this.add(other)
+    // }
+
+    @operator('-')
+    static __sub(a: tally, b: tally): tally  {
+        return a.sub(b)
+    }
+
+    // @operator('-')
+    // __sub(other: tally): tally  {
+    //     return this.sub(other)
+    // }
+
+    @operator('*')
+    static __mul(a: tally, b: tally): tally  {
+        return a.mul(b)
+    }
+
+    // @operator('*')
+    // __mul(other: tally): tally  {
+    //     return this.mul(other)
+    // }
+
+    @operator('/')
+    static __div(a: tally, b: tally): tally  {
+        return a.div(b)
+    }
+
+    // @operator('/')
+    // __div(other: tally): tally  {
+    //     return this.div(other)
+    // }
+
+    // "%"
+    // "**"
+
+    @operator('>')
+    static ___gt(a: tally, b: tally): bool  {
+        return a.gt(b)
+    }
+
+    // @operator('>')
+    // ___gt(other: tally): bool  {
+    //     return this.gt(other)
+    // }
+
+    @operator('<')
+    static ___lt(a: tally, b: tally): bool  {
+        return a.lt(b)
+    }
+
+    // @operator('<')
+    // ___lt(other: tally): bool  {
+    //     return this.lt(other)
+    // }
+
+    @operator('>=')
+    static ___gte(a: tally, b: tally): bool  {
+        return a.gte(b)
+    }
+
+    // @operator('>=')
+    // ___gte(other: tally): bool  {
+    //     return this.gte(other)
+    // }
+
+    @operator('<=')
+    static ___lte(a: tally, b: tally): bool  {
+        return a.lte(b)
+    }
+
+    // @operator('<=')
+    // ___lte(other: tally): bool  {
+    //     return this.lte(other)
+    // }
+
+    @operator('==')
+    static ___eq(a: tally, b: tally): bool  {
+        return a.eq(b)
+    }
+
+    // @operator('==')
+    // ___eq(other: tally): bool  {
+    //     return this.eq(other)
+    // }
+
+    @operator('!=')
+    static ___neq(a: tally, b: tally): bool  {
+        return !a.eq(b)
+    }
+
+    // @operator('!=')
+    // ___neq(other: tally): bool  {
+    //     return !this.eq(other)
+    // }
+
     setU32(value: u32): void {
         this.a32[0] = value;
     }
@@ -95,6 +198,10 @@ export class tally {
         return tally.gte_t(this, b);
     }
 
+    lte(b: tally): bool {
+        return tally.lte(this, b);
+    }
+
     isZero(): bool {
         return tally.isZero(this);
     }
@@ -152,7 +259,7 @@ export class tally {
         return tally.sar(this, b, maxbits);
     }
 
-    toInt32(): i32 {
+    toI32(): i32 {
         return this.a32[0];
     }
 
@@ -162,6 +269,13 @@ export class tally {
 
     toU64(): u64 {
         return this.a32[0] + this.a32[1] * MAX32;
+    }
+
+    toI64(): i64 {
+        // TODO sign
+        const isneg = this.isNeg()
+        const value = i64(this.a32[0]) + i64(this.a32[1]) * i64(MAX32)
+        return isneg ? (-value) : value
     }
 
     toU8Array(littleEndian: bool = true): Array<u8> {
@@ -246,7 +360,7 @@ export class tally {
         return this.a8.slice(0, size).reverse();
     }
 
-    toString(radix: u32 = 0): string {
+    toString(radix: u32 = 16): string {
         return tally.toString(this, radix);
     }
 
@@ -264,6 +378,14 @@ export class tally {
     static empty(byteLength: i32 = 32): tally {
         const buf = new ArrayBuffer(byteLength);
         return new tally(buf);
+    }
+
+    static zero(byteLength: i32 = 32): tally {
+        return tally.empty(byteLength)
+    }
+
+    static one(byteLength: i32 = 32): tally {
+        return tally.fromU32(1, byteLength)
     }
 
     static fromU32(value: u32, size: i32 = 32): tally {
@@ -550,7 +672,7 @@ export class tally {
 
     static sar(value: tally, bitsno: tally, maxbits: u32 = 256): tally {
         const msb = tally.isNeg(value) ? 1 : 0;
-        const _bitsno = bitsno.toInt32();
+        const _bitsno = bitsno.toI32();
         let v = value.shr(_bitsno);
         if (msb == 0) return v;
         for (let i = 0; i < _bitsno; i++) {
@@ -578,6 +700,10 @@ export class tally {
     static lt(a: tally, b: tally): bool {
         const i = i32(Math.max(a.a32.length, b.a32.length)) - 1;
         return tally.__lt(a, b, i);
+    }
+
+    static lte(a: tally, b: tally): bool {
+        return tally.lt(a, b) || tally.eq(a, b);
     }
 
     static __lt(a: tally, b: tally, i: i32): bool {
@@ -826,17 +952,47 @@ export class tally {
 
     // this is used by as-json to stringify BigInt
     static toString(a: tally, radix: u32 = 0, littleEndian: bool = false): string {
-        if (radix == 16) return u8ArrayToHex(a.toU8ArrayBe());
+        if (radix == 16) {
+            const hex = u8ArrayToHex(a.toU8ArrayBe())
+            return "0x" + removeZerosLeft(hex);
+        }
         if (radix == 0) return "[" + a.a8.slice(0).reverse().toString() + "]";
         throw new Error("invalid radix");
     }
 
     static fromString(value: string, radix: u32 = 16): tally {
-        if (radix == 16) {
+        const hexPrefix = value.slice(0, 2) == "0x"
+        if (radix == 16 || hexPrefix) {
+            if (hexPrefix) {
+                value = value.slice(2)
+            }
             const arr = hexToU8(value);
             return tally.fromU8Array(arr);
         }
+        if (radix == 10) {
+            return tally.fromStringBase10(value);
+        }
         throw new Error("invalid radix");
+    }
+
+    static fromStringBase10(value: string): tally {
+        // max u64 18446744073709551615 -> we use 19 digits
+        const partLen = 19
+        const len = value.length
+        let v = value;
+        let bn = tally.zero();
+        const parts = i32(Math.floor(f64(len) / f64(partLen)))
+        for (let i = 0; i < parts; i++) {
+            const part = v.slice(0, partLen)
+            v = v.slice(partLen)
+            const partValue = u64(parseInt(part, 10))
+            bn = bn.add(tally.fromU64(partValue).mul(tally.fromU32(10).pown(v.length)))
+        }
+        if (v.length > 0) {
+            const partValue = u64(parseInt(v, 10))
+            bn = bn.add(tally.fromU64(partValue))
+        }
+        return bn;
     }
 
     // static random(l: i32): tally {
@@ -899,8 +1055,16 @@ export function hexToU8(value: string): u8[] {
     return arr;
 }
 
-// function removeZerosLeft(value: string) {
-//   if (!value || typeof value !== 'string') return value;
-//   if (value.length <= 1 || value[0] !== '0') return value;
-//   return removeZerosLeft(value.slice(1));
-// }
+function removeZerosLeft(value: string): string {
+    let ndx = -1
+    for (let i = 0; i < value.length; i++) {
+        if (value.slice(i, i+1) != "0") {
+            ndx = i;
+            break;
+        }
+    }
+    if (ndx == -1) return "0";
+    if (ndx == 0) return value;
+    if (ndx == (value.length - 1)) return "0"
+    return value.slice(ndx);
+}

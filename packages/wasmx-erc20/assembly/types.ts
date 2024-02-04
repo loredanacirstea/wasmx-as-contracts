@@ -1,5 +1,6 @@
 import { JSON } from "json-as/assembly";
 import { Base64String, Bech32String, HexString } from 'wasmx-env/assembly/types';
+import { BigInt } from "wasmx-env/assembly/bn";
 
 // @ts-ignore
 @serializable
@@ -64,8 +65,8 @@ export class MsgTotalSupply {}
 // @ts-ignore
 @serializable
 export class MsgTotalSupplyResponse {
-    totalSupply: i64
-    constructor(totalSupply: i64) {
+    totalSupply: BigInt
+    constructor(totalSupply: BigInt) {
         this.totalSupply = totalSupply
     }
 }
@@ -82,8 +83,8 @@ export class MsgBalanceOf {
 // @ts-ignore
 @serializable
 export class MsgBalanceOfResponse {
-    balance: i64
-    constructor(balance: i64) {
+    balance: BigInt
+    constructor(balance: BigInt) {
         this.balance = balance
     }
 }
@@ -92,8 +93,8 @@ export class MsgBalanceOfResponse {
 @serializable
 export class MsgTransfer {
     to: Bech32String
-    value: i64
-    constructor(to: Bech32String, value: i64) {
+    value: BigInt
+    constructor(to: Bech32String, value: BigInt) {
         this.to = to
         this.value = value
     }
@@ -113,8 +114,8 @@ export class MsgTransferResponse {
 export class MsgTransferFrom {
     from: Bech32String
     to: Bech32String
-    value: i64
-    constructor(from: Bech32String, to: Bech32String, value: i64) {
+    value: BigInt
+    constructor(from: Bech32String, to: Bech32String, value: BigInt) {
         this.from = from
         this.to = to
         this.value = value
@@ -134,8 +135,8 @@ export class MsgTransferFromResponse {
 @serializable
 export class MsgApprove {
     spender: Bech32String
-    value: i64
-    constructor(spender: Bech32String,  value: i64) {
+    value: BigInt
+    constructor(spender: Bech32String,  value: BigInt) {
         this.spender = spender
         this.value = value
     }
@@ -164,8 +165,8 @@ export class MsgAllowance {
 // @ts-ignore
 @serializable
 export class MsgAllowanceResponse {
-    remaining: i64
-    constructor(remaining: i64) {
+    remaining: BigInt
+    constructor(remaining: BigInt) {
         this.remaining = remaining
     }
 }
@@ -174,8 +175,8 @@ export class MsgAllowanceResponse {
 @serializable
 export class MsgMint {
     to: Bech32String
-    value: i64
-    constructor(to: Bech32String, value: i64) {
+    value: BigInt
+    constructor(to: Bech32String, value: BigInt) {
         this.to = to
         this.value = value
     }

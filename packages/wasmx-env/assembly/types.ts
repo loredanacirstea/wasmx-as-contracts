@@ -1,4 +1,5 @@
 import { JSON } from "json-as/assembly";
+import { BigInt } from "./bn";
 
 export const MAX_LOGGED = 2000
 
@@ -26,10 +27,10 @@ export class Account {
 export class CallRequest {
   to: string;
   calldata: string;
-  value: i64;
+  value: BigInt;
   gasLimit: i64;
   isQuery: boolean;
-  constructor(to: string, calldata: string, value: i64, gasLimit: i64, isQuery: boolean) {
+  constructor(to: string, calldata: string, value: BigInt, gasLimit: i64, isQuery: boolean) {
     this.to = to;
     this.calldata = calldata;
     this.value = value;
@@ -53,8 +54,8 @@ export class CallResponse {
 @serializable
 export class Coin {
     denom: string
-    amount: i64 // TODO Int, at least u128
-    constructor(denom: string, amount: i64) {
+    amount: BigInt
+    constructor(denom: string, amount: BigInt) {
         this.denom = denom
         this.amount = amount
     }

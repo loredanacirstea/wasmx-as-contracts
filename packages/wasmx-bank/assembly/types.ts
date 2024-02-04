@@ -1,14 +1,15 @@
 import { JSON } from "json-as/assembly";
 import { Base64String, Bech32String, HexString } from 'wasmx-env/assembly/types';
+import { BigInt } from "wasmx-env/assembly/bn";
 
-export type CoinMap = Map<string,i64>
+export type CoinMap = Map<string,BigInt>
 
 // @ts-ignore
 @serializable
 export class Coin {
     denom: string
-    amount: i64 // TODO Int, at least u128
-    constructor(denom: string, amount: i64) {
+    amount: BigInt
+    constructor(denom: string, amount: BigInt) {
         this.denom = denom
         this.amount = amount
     }
@@ -18,8 +19,8 @@ export class Coin {
 @serializable
 export class DenomUnit_ {
     denom: string
-    value: i64 // 10^exponent TODO Int, at least u128
-    constructor(denom: string, value: i64) {
+    value: BigInt // 10^exponent
+    constructor(denom: string, value: BigInt) {
         this.denom = denom
         this.value = value
     }
@@ -29,9 +30,9 @@ export class DenomUnit_ {
 @serializable
 export class DenomInfo {
     denom: string
-    value: i64 // 10^exponent TODO Int, at least u128
+    value: BigInt // 10^exponent
     contract: Bech32String
-    constructor(denom: string, value: i64, contract: Bech32String) {
+    constructor(denom: string, value: BigInt, contract: Bech32String) {
         this.denom = denom
         this.value = value
         this.contract = contract

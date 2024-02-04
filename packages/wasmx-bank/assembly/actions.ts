@@ -13,6 +13,7 @@ import {
 } from './types';
 import { LoggerDebug, LoggerInfo, revert } from './utils';
 import { getParamsInternal, setParams, getParams, getDenomInfoByAnyDenom, getAuthorities, getBaseDenoms, setBaseDenoms, registerDenomContract, getAddressByDenom, getDenomByAddress } from './storage';
+import { BigInt } from "wasmx-env/assembly/bn";
 
 export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
     if (getParamsInternal() != "") {
@@ -76,14 +77,14 @@ export function MultiSend(req: MsgMultiSend): ArrayBuffer {
     }
     LoggerDebug(`multisend`, ["from_address", req.inputs[0].address, "outputs", req.outputs.length.toString()])
     const input = req.inputs[0];
-    const coinMap = new Map<string,i64>()
+    const coinMap = new Map<string,BigInt>()
     for (let i = 0; i < req.outputs.length; i++) {
         const output = req.outputs[i]
         const coinMap_ = sendCoins(input.address, output.address, output.coins)
         const keys = coinMap_.keys()
         for (let j = 0; j < keys.length; j++) {
             if (!coinMap.has(keys[j])) {
-                coinMap.set(keys[j], 0)
+                coinMap.set(keys[j], BigInt.zero())
             }
             coinMap.set(keys[j], coinMap.get(keys[j]) + coinMap_.get(keys[j]))
         }
@@ -129,7 +130,7 @@ export function AllBalances(req: QueryAllBalancesRequest): ArrayBuffer {
     const balances = new Array<Coin>(0)
     for (let i = 0; i < denoms.length; i++) {
         const balance = balanceInternal(req.address, denoms[i])
-        if (balance.amount > 0) {
+        if (balance.amount > BigInt.zero()) {
             balances.push(balance);
         }
     }
@@ -150,7 +151,7 @@ export function TotalSupply(req: QueryTotalSupplyRequest): ArrayBuffer {
     const supply = new Array<Coin>(0)
     for (let i = 0; i < denoms.length; i++) {
         const value = totalSupplyInternal(denoms[i])
-        if (value.amount > 0) {
+        if (value.amount > BigInt.zero()) {
             supply.push(value);
         }
     }
@@ -202,7 +203,7 @@ export function balanceInternal(address: Bech32String, denom: string): Coin {
     if (resp.success > 0) {
         // TODO? this may be used in other functions
         // revert(`could not get balanceOf ${denomInfo.denom}; err: ${resp.data}`)
-        return new Coin(denom, 0)
+        return new Coin(denom, BigInt.zero())
     }
     const data = JSON.parse<erc20.MsgBalanceOfResponse>(resp.data)
     return new Coin(denomInfo.denom, data.balance)
@@ -219,7 +220,7 @@ export function totalSupplyInternal(denom: string): Coin {
     if (resp.success > 0) {
         // TODO? this may be used in other functions
         // revert(`could not get balanceOf ${denomInfo.denom}; err: ${resp.data}`)
-        return new Coin(denom, 0)
+        return new Coin(denom, BigInt.zero())
     }
     const data = JSON.parse<erc20.MsgTotalSupplyResponse>(resp.data)
     return new Coin(denomInfo.denom, data.totalSupply)
@@ -264,7 +265,7 @@ export function mint(balance: Balance): ArrayBuffer {
 }
 
 export function sendCoins(from: Bech32String, to: Bech32String, coins: Coin[]): CoinMap {
-    const coinMap = new Map<string,i64>();
+    const coinMap = new Map<string,BigInt>();
     for (let i = 0; i < coins.length; i++) {
         const coin = coins[i]
         const denomInfo = getDenomInfoByAnyDenom(coin.denom)
@@ -273,7 +274,7 @@ export function sendCoins(from: Bech32String, to: Bech32String, coins: Coin[]): 
         }
         const amount = denomInfo.value * coin.amount
         if (!coinMap.has(denomInfo.denom)) {
-            coinMap.set(denomInfo.denom, 0)
+            coinMap.set(denomInfo.denom, BigInt.zero())
         }
         coinMap.set(denomInfo.denom, coinMap.get(denomInfo.denom) + amount);
         const calldata = new erc20.MsgTransferFrom(from, to, amount);
@@ -288,7 +289,7 @@ export function sendCoins(from: Bech32String, to: Bech32String, coins: Coin[]): 
 
 export function callToken(address: Bech32String, calldata: string, isQuery: boolean): CallResponse {
     // TODO denom as alias! when we have alias contract
-    const req = new CallRequest(address, calldata, 0, 100000000, isQuery);
+    const req = new CallRequest(address, calldata, BigInt.zero(), 100000000, isQuery);
     const resp = wasmxw.call(req);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);

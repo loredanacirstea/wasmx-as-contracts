@@ -3,8 +3,8 @@ import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assemb
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { Bech32String, CallRequest, CallResponse } from "wasmx-env/assembly/types";
 import { isAuthorized } from "wasmx-env/assembly/utils";
-import { hexToUint8Array, i32ToUint8ArrayBE, i64ToUint8ArrayBE } from "wasmx-utils/assembly/utils";
-import { QueryDelegationRequest, QueryDelegationResponse, Delegation, DelegationResponse, Coin, DelegationCosmos, CoinCosmos } from "wasmx-stake/assembly/types";
+import { BigInt } from "wasmx-env/assembly/bn";
+import { QueryDelegationRequest, QueryDelegationResponse, Delegation, DelegationResponse, Coin, DelegationCosmos } from "wasmx-stake/assembly/types";
 import { move } from "wasmx-erc20/assembly/actions";
 import { setInfo, getInfo, getBalance, setBalance, getAllowance, setAllowance, getTotalSupply, setTotalSupply, getAdmins, getMinters } from "wasmx-erc20/assembly/storage";
 import * as banktypes from "wasmx-bank/assembly/types";
@@ -12,7 +12,7 @@ import { MsgDelegate, MsgGetAllSDKDelegations, MsgRedelegate, MsgUndelegate, SDK
 import { LoggerDebug, revert } from "./utils";
 import { addDelegatorToValidator, addValidatorToDelegator, setDelegatorToValidatorDelegation, addTotalDelegationToValidator, removeValidatorFromDelegator, removeDelegatorFromValidator, removeValidatorDelegationFromDelegator, removeDelegationAmountFromValidator, getDelegatorToValidatorDelegation } from "./storage";
 
-// TODO this must be in genesis
+// TODO this must be in initialization
 const DENOM_BASE = "amyt"
 
 // can only be called by the staking contract, which vets validators
@@ -30,11 +30,11 @@ export function delegate(req: MsgDelegate): ArrayBuffer {
 
     // add to delegator's balance
     let balance = getBalance(req.delegator);
-    balance += i64(req.value);
+    balance += req.value;
     setBalance(req.delegator, balance);
     // increase staked supply
     let supply = getTotalSupply();
-    supply += i64(req.value);
+    supply += req.value;
     setTotalSupply(supply);
 
     // add validator to delegator's list
@@ -60,12 +60,12 @@ export function undelegate(req: MsgUndelegate): ArrayBuffer {
     // sub delegator's balance
     let balance = getBalance(req.delegator);
     if (balance < req.value) revert("underflow")
-    balance -= i64(req.value);
+    balance -= req.value;
     setBalance(req.delegator, balance);
     // decrease staked supply
     let supply = getTotalSupply();
     if (supply < req.value) revert("underflow")
-    supply -= i64(req.value);
+    supply -= req.value;
     setTotalSupply(supply);
 
     const delegation = getDelegatorToValidatorDelegation(req.delegator, req.validator)
@@ -129,17 +129,17 @@ export function GetAllSDKDelegations(req: MsgGetAllSDKDelegations): ArrayBuffer 
 
 export function GetDelegation(req: QueryDelegationRequest): ArrayBuffer {
     const amount = getDelegatorToValidatorDelegation(req.delegator_addr, req.validator_addr)
-    const delegation = new DelegationCosmos(req.delegator_addr, req.validator_addr, amount.toString())
+    const delegation = new DelegationCosmos(req.delegator_addr, req.validator_addr, amount)
     const data = new QueryDelegationResponse(new DelegationResponse(delegation, getCoin(amount)))
     return String.UTF8.encode(JSON.stringify<QueryDelegationResponse>(data))
 }
 
-function getCoin(value: i64): CoinCosmos {
+function getCoin(value: BigInt): Coin {
     const info = getInfo()
-    return new CoinCosmos(info.symbol, value.toString())
+    return new Coin(info.symbol, value)
 }
 
-function bankSendCoin (from: Bech32String, to: Bech32String, value: i64, denom: string): void {
+function bankSendCoin (from: Bech32String, to: Bech32String, value: BigInt, denom: string): void {
     const valuestr = JSON.stringify<banktypes.MsgSend>(new banktypes.MsgSend(from, to, [new banktypes.Coin(denom, value)]))
     const calldata = `{"Send":${valuestr}}`
     const resp = callBank(calldata, false);
@@ -149,7 +149,7 @@ function bankSendCoin (from: Bech32String, to: Bech32String, value: i64, denom: 
 }
 
 function callBank(calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest("bank", calldata, 0, 100000000, isQuery);
+    const req = new CallRequest("bank", calldata, BigInt.zero(), 100000000, isQuery);
     const resp = wasmxw.call(req);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);

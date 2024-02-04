@@ -1,5 +1,6 @@
 import { JSON } from "json-as/assembly";
 import { Base64String, Bech32String, Coin, HexString } from 'wasmx-env/assembly/types';
+import { BigInt } from "wasmx-env/assembly/bn";
 
 // @ts-ignore
 @serializable
@@ -23,8 +24,8 @@ export class CallDataInstantiate {
 export class MsgDelegate {
     delegator: Bech32String
     validator: Bech32String
-    value: i64
-    constructor(delegator: Bech32String, validator: Bech32String, value: i64) {
+    value: BigInt
+    constructor(delegator: Bech32String, validator: Bech32String, value: BigInt) {
         this.delegator = delegator
         this.validator = validator
         this.value = value
@@ -37,8 +38,8 @@ export class MsgRedelegate {
     delegator: Bech32String
     validatorSource: Bech32String
     validatorDestination: Bech32String
-    value: i64
-    constructor(delegator: Bech32String, validatorSource: Bech32String, validatorDestination: Bech32String, value: i64) {
+    value: BigInt
+    constructor(delegator: Bech32String, validatorSource: Bech32String, validatorDestination: Bech32String, value: BigInt) {
         this.delegator = delegator
         this.validatorSource = validatorSource
         this.validatorDestination = validatorDestination
@@ -51,8 +52,8 @@ export class MsgRedelegate {
 export class MsgUndelegate {
     delegator: Bech32String
     validator: Bech32String
-    value: i64
-    constructor(delegator: Bech32String, validator: Bech32String, value: i64) {
+    value: BigInt
+    constructor(delegator: Bech32String, validator: Bech32String, value: BigInt) {
         this.delegator = delegator
         this.validator = validator
         this.value = value
@@ -77,8 +78,8 @@ export class MsgGetAllSDKDelegationsResponse {
 export class SDKDelegations {
     delegator_address: Bech32String
     validator_address: Bech32String
-    shares: string
-    constructor(delegator_address: Bech32String, validator_address: Bech32String, shares: string) {
+    shares: BigInt
+    constructor(delegator_address: Bech32String, validator_address: Bech32String, shares: BigInt) {
         this.delegator_address = delegator_address
         this.validator_address = validator_address
         this.shares = shares

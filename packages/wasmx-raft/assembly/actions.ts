@@ -22,6 +22,7 @@ import {
 import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE } from "wasmx-utils/assembly/utils";
 import { base64ToHex, hex64ToBase64 } from './utils';
 import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, AppendEntryResponse, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse, ValidatorIp } from "./types_raft";
+import { BigInt } from "wasmx-env/assembly/bn";
 
 // Docs: https://raft.github.io/raft.pdf
 
@@ -1222,7 +1223,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         const myaddress = wasmxwrap.addr_humanize(wasmx.getAddress());
         LoggerInfo("setting up next consensus contract", ["new contract", newContract, "previous contract", myaddress])
         let calldata = `{"run":{"event":{"type":"setup","params":[{"key":"address","value":"${myaddress}"}]}}}`
-        let req = new CallRequest(newContract, calldata, 0, 100000000, false);
+        let req = new CallRequest(newContract, calldata, BigInt.zero(), 100000000, false);
         let resp = wasmxwrap.call(req);
         if (resp.success > 0) {
             LoggerError("cannot setup next consensus contract", ["new contract", newContract, "err", resp.data]);
@@ -1233,7 +1234,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
             // stop this contract and any intervals on this contract
             // TODO cancel all intervals on stop() action
             calldata = `{"run":{"event":{"type":"stop","params":[]}}}`
-            req = new CallRequest(myaddress, calldata, 0, 100000000, false);
+            req = new CallRequest(myaddress, calldata, BigInt.zero(), 100000000, false);
             resp = wasmxwrap.call(req);
             if (resp.success > 0) {
                 LoggerError("cannot stop previous consensus contract", ["err", resp.data]);
@@ -1255,14 +1256,14 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     if (newContract != "" && newContractSetup) {
         LoggerInfo("starting new consensus contract", ["address", newContract])
         let calldata = `{"run":{"event":{"type":"prestart","params":[]}}}`
-        let req = new CallRequest(newContract, calldata, 0, 100000000, false);
+        let req = new CallRequest(newContract, calldata, BigInt.zero(), 100000000, false);
         let resp = wasmxwrap.call(req);
         if (resp.success > 0) {
             LoggerError("cannot start next consensus contract", ["new contract", newContract, "err", resp.data]);
             // we can restart the old contract here, so the chain does not stop
             const myaddress = wasmxwrap.addr_humanize(wasmx.getAddress());
             calldata = `{"run":{"event":{"type":"restart","params":[]}}}`
-            req = new CallRequest(myaddress, calldata, 0, 100000000, false);
+            req = new CallRequest(myaddress, calldata, BigInt.zero(), 100000000, false);
             resp = wasmxwrap.call(req);
             if (resp.success > 0) {
                 LoggerError("cannot restart previous consensus contract", ["err", resp.data]);
@@ -1606,7 +1607,7 @@ export function setup(
     }
 
     let calldata = `{"getContextValue":{"key":"nodeIPs"}}`
-    let req = new CallRequest(oldContract, calldata, 0, 100000000, true);
+    let req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
     let resp = wasmxwrap.call(req);
     if (resp.success > 0) {
         return revert("cannot get nodeIPs from previous contract")
@@ -1617,7 +1618,7 @@ export function setup(
     setNodeIPs(nodeIps);
 
     calldata = `{"getContextValue":{"key":"state"}}`
-    req = new CallRequest(oldContract, calldata, 0, 100000000, true);
+    req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
     resp = wasmxwrap.call(req);
     if (resp.success > 0) {
         return revert("cannot get state from previous contract")
@@ -1628,7 +1629,7 @@ export function setup(
     setCurrentState(state);
 
     calldata = `{"getContextValue":{"key":"mempool"}}`
-    req = new CallRequest(oldContract, calldata, 0, 100000000, true);
+    req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
     resp = wasmxwrap.call(req);
     if (resp.success > 0) {
         return revert("cannot get mempool from previous contract")
@@ -1639,7 +1640,7 @@ export function setup(
     setMempool(mempool);
 
     calldata = `{"getContextValue":{"key":"currentNodeId"}}`
-    req = new CallRequest(oldContract, calldata, 0, 100000000, true);
+    req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
     resp = wasmxwrap.call(req);
     if (resp.success > 0) {
         return revert("cannot get currentNodeId from previous contract")
@@ -1650,7 +1651,7 @@ export function setup(
     setCurrentNodeId(currentNodeId);
 
     calldata = `{"getContextValue":{"key":"currentTerm"}}`
-    req = new CallRequest(oldContract, calldata, 0, 100000000, true);
+    req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
     resp = wasmxwrap.call(req);
     if (resp.success > 0) {
         return revert("cannot get currentTerm from previous contract")
@@ -1714,7 +1715,7 @@ function getValidatorsHash(validators: staking.Validator[]): string {
     for (let i = 0; i < validators.length; i++) {
         // hex
         const pub_key = hexToUint8Array(validators[i].consensus_pubkey.key);
-        const tokens = i64ToUint8ArrayBE(parseInt64(validators[i].tokens));
+        const tokens = validators[i].tokens.toU8ArrayBe()
         const newdata = new Uint8Array(pub_key.length + tokens.length);
         newdata.set(pub_key, 0);
         newdata.set(tokens, pub_key.length);
@@ -1901,7 +1902,7 @@ function getAllValidators(): staking.Validator[] {
 }
 
 function callStorage(calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest("storage", calldata, 0, 100000000, isQuery);
+    const req = new CallRequest("storage", calldata, BigInt.zero(), 100000000, isQuery);
     const resp = wasmxwrap.call(req);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
@@ -1909,7 +1910,7 @@ function callStorage(calldata: string, isQuery: boolean): CallResponse {
 }
 
 function callStaking(calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest("staking", calldata, 0, 100000000, isQuery);
+    const req = new CallRequest("staking", calldata, BigInt.zero(), 100000000, isQuery);
     const resp = wasmxwrap.call(req);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
