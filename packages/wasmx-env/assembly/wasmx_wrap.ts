@@ -84,27 +84,27 @@ export function grpcRequest(ip: string, contract: Uint8Array, data: string): Grp
     return response;
 }
 
-export function call(req: CallRequest): CallResponse {
-    LoggerDebug("wasmx_env", "call", ["to", req.to, "calldata", req.calldata])
+export function call(req: CallRequest, moduleName: string = ""): CallResponse {
+    LoggerDebug(`${moduleName}:wasmx_env`, "call", ["to", req.to, "calldata", req.calldata])
     req.calldata = encodeBase64(Uint8Array.wrap(String.UTF8.encode(req.calldata)))
     const requestStr = JSON.stringify<CallRequest>(req);
     const responsebz = wasmx.call(String.UTF8.encode(requestStr));
     return JSON.parse<CallResponse>(String.UTF8.decode(responsebz));
 }
 
-export function createAccount(req: CreateAccountRequest): Bech32String {
+export function createAccount(req: CreateAccountRequest, moduleName: string = ""): Bech32String {
     req.msg = encodeBase64(Uint8Array.wrap(String.UTF8.encode(req.msg)))
     const requestStr = JSON.stringify<CreateAccountRequest>(req);
-    LoggerDebug("wasmx_env", "createAccount", ["request", requestStr])
+    LoggerDebug(`${moduleName}:wasmx_env`, "createAccount", ["request", requestStr])
     const responsebz = wasmx.createAccount(String.UTF8.encode(requestStr));
     const resp = JSON.parse<CreateAccountResponse>(String.UTF8.decode(responsebz));
     return resp.address
 }
 
-export function create2Account(req: Create2AccountRequest): Bech32String {
+export function create2Account(req: Create2AccountRequest, moduleName: string = ""): Bech32String {
     req.msg = encodeBase64(Uint8Array.wrap(String.UTF8.encode(req.msg)))
     const requestStr = JSON.stringify<Create2AccountRequest>(req);
-    LoggerDebug("wasmx_env", "create2Account", ["request", requestStr])
+    LoggerDebug(`${moduleName}:wasmx_env`, "create2Account", ["request", requestStr])
     const responsebz = wasmx.create2Account(String.UTF8.encode(requestStr));
     const resp = JSON.parse<Create2AccountResponse>(String.UTF8.decode(responsebz));
     return resp.address

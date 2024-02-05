@@ -1,5 +1,5 @@
 import { JSON } from "json-as/assembly";
-import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
+import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallRequest, CallResponse, Base64String, Bech32String } from "wasmx-env/assembly/types";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
@@ -21,6 +21,7 @@ import {
   AssignAction,
   Transition,
   ExternalActionCallData,
+  MODULE_NAME,
 } from './types';
 import { getAddressHex, parseInt32, parseInt64 } from 'wasmx-utils/assembly/utils';
 import * as storage from './storage';
@@ -210,12 +211,12 @@ function executeStateActions(
     //   }
     // }
     if (contractAddress == "") {
-      contractAddress = wasmxwrap.addr_humanize(wasmx.getAddress());
+      contractAddress = wasmxw.addr_humanize(wasmx.getAddress());
     }
     const args = new TimerArgs(delayKeys[i], state.value, intervalId);
     const argsStr = JSON.stringify<TimerArgs>(args);
     LoggerDebug("starting timeout", ["intervalId", intervalId.toString()]);
-    wasmxwrap.startTimeout(contractAddress, delay, argsStr);
+    wasmxw.startTimeout(contractAddress, delay, argsStr);
   }
 }
 
@@ -381,7 +382,7 @@ function processExternalCall(
   const calldata = new ExternalActionCallData(actionType, params, event);
   const calldatastr = JSON.stringify<ExternalActionCallData>(calldata);
   const req = new CallRequest(contractAddress, calldatastr, BigInt.zero(), 10000000, false);
-  const resp = wasmxwrap.call(req);
+  const resp = wasmxw.call(req, MODULE_NAME);
   if (resp.success == 0) {
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
   }
@@ -430,7 +431,7 @@ function sendRequest(
       revert("sendRequest empty data");
   }
   const contract = wasmx.getCaller();
-  wasmxwrap.grpcRequest(address, Uint8Array.wrap(contract), data);
+  wasmxw.grpcRequest(address, Uint8Array.wrap(contract), data);
 }
 
 export class Service implements StateMachine.Service {
@@ -960,7 +961,7 @@ export function setup(config: MachineExternal, contractAddress: string): void {
   const calldata = new ExternalActionCallData("setup", [param], new EventObject("",[]));
   const calldatastr = JSON.stringify<ExternalActionCallData>(calldata);
   const req = new CallRequest(config.library, calldatastr, BigInt.zero(), 10000000, false);
-  const resp = wasmxwrap.call(req);
+  const resp = wasmxw.call(req, MODULE_NAME);
   if (resp.success > 0) {
     return revert("could not execute setup");
   }

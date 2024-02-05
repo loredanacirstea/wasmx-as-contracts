@@ -8,7 +8,7 @@ import { QueryDelegationRequest, QueryDelegationResponse, Delegation, Delegation
 import { move } from "wasmx-erc20/assembly/actions";
 import { setInfo, getInfo, getBalance, setBalance, getAllowance, setAllowance, getTotalSupply, setTotalSupply, getAdmins, getMinters } from "wasmx-erc20/assembly/storage";
 import * as banktypes from "wasmx-bank/assembly/types";
-import { MsgDelegate, MsgGetAllSDKDelegations, MsgRedelegate, MsgUndelegate, SDKDelegations } from "./types";
+import { MODULE_NAME, MsgDelegate, MsgGetAllSDKDelegations, MsgRedelegate, MsgUndelegate, SDKDelegations } from "./types";
 import { LoggerDebug, revert } from "./utils";
 import { addDelegatorToValidator, addValidatorToDelegator, setDelegatorToValidatorDelegation, addTotalDelegationToValidator, removeValidatorFromDelegator, removeDelegatorFromValidator, removeValidatorDelegationFromDelegator, removeDelegationAmountFromValidator, getDelegatorToValidatorDelegation } from "./storage";
 
@@ -30,10 +30,12 @@ export function delegate(req: MsgDelegate): ArrayBuffer {
 
     // add to delegator's balance
     let balance = getBalance(req.delegator);
+    // @ts-ignore
     balance += req.value;
     setBalance(req.delegator, balance);
     // increase staked supply
     let supply = getTotalSupply();
+    // @ts-ignore
     supply += req.value;
     setTotalSupply(supply);
 
@@ -60,11 +62,13 @@ export function undelegate(req: MsgUndelegate): ArrayBuffer {
     // sub delegator's balance
     let balance = getBalance(req.delegator);
     if (balance < req.value) revert("underflow")
+    // @ts-ignore
     balance -= req.value;
     setBalance(req.delegator, balance);
     // decrease staked supply
     let supply = getTotalSupply();
     if (supply < req.value) revert("underflow")
+    // @ts-ignore
     supply -= req.value;
     setTotalSupply(supply);
 
@@ -150,7 +154,7 @@ function bankSendCoin (from: Bech32String, to: Bech32String, value: BigInt, deno
 
 function callBank(calldata: string, isQuery: boolean): CallResponse {
     const req = new CallRequest("bank", calldata, BigInt.zero(), 100000000, isQuery);
-    const resp = wasmxw.call(req);
+    const resp = wasmxw.call(req, MODULE_NAME);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
     return resp;

@@ -5,7 +5,7 @@ import { BigInt } from "wasmx-env/assembly/bn"
 import * as banktypes from "wasmx-bank/assembly/types"
 import * as derc20types from "wasmx-derc20/assembly/types"
 import { getParamsInternal, setParams, setNewValidator, getParams, getValidator, getValidatorsAddresses } from './storage';
-import { MsgInitGenesis, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse } from './types';
+import { MsgInitGenesis, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME } from './types';
 import { LoggerDebug, revert } from './utils';
 import { parseInt64 } from "wasmx-utils/assembly/utils";
 import { Bech32String, CallRequest, CallResponse } from "wasmx-env/assembly/types";
@@ -26,6 +26,7 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
     for (let i = 0; i < genesis.validators.length; i++) {
         const validator = genesis.validators[i];
         setNewValidator(validator);
+        // @ts-ignore
         const power: BigInt = validator.tokens / BigInt.fromU32(POWER_REDUCTION);
         vupdates.push(new ValidatorUpdate(validator.consensus_pubkey, power.toI64()))
     }
@@ -175,7 +176,7 @@ export function getTokenAddress(): Bech32String {
 export function callBank(calldata: string, isQuery: boolean): CallResponse {
     // TODO denom as alias! when we have alias contract
     const req = new CallRequest("bank", calldata, BigInt.zero(), 100000000, isQuery);
-    const resp = wasmxw.call(req);
+    const resp = wasmxw.call(req, MODULE_NAME);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
     return resp;
@@ -183,7 +184,7 @@ export function callBank(calldata: string, isQuery: boolean): CallResponse {
 
 export function callContract(addr: Bech32String, calldata: string, isQuery: boolean): CallResponse {
     const req = new CallRequest(addr, calldata, BigInt.zero(), 100000000, isQuery);
-    const resp = wasmxw.call(req);
+    const resp = wasmxw.call(req, MODULE_NAME);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
     return resp;

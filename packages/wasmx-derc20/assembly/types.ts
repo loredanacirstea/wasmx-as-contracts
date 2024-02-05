@@ -2,6 +2,8 @@ import { JSON } from "json-as/assembly";
 import { Base64String, Bech32String, Coin, HexString } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn";
 
+export const MODULE_NAME = "derc20"
+
 // @ts-ignore
 @serializable
 export class CallDataInstantiate {

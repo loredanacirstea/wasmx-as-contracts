@@ -2,6 +2,8 @@ import { JSON } from "json-as/assembly";
 import { Base64String, Bech32String, HexString } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn"
 
+export const MODULE_NAME = "staking"
+
 // @ts-ignore
 @serializable
 export type BondStatusNumber = i32

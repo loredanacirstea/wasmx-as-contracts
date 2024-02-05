@@ -9,7 +9,8 @@ import {
     MsgInitGenesis, MsgSend, MsgMultiSend, MsgSetSendEnabled, MsgUpdateParams, MsgRegisterDenom, Coin, Metadata, Balance, CoinMap,
     PageResponse, QueryAllBalancesRequest, QueryAllBalancesResponse, QueryBalanceRequest, QueryBalanceResponse, QueryDenomMetadataByQueryStringRequest, QueryDenomMetadataRequest, QueryDenomOwnersRequest, QueryDenomsMetadataRequest, QueryParamsRequest, QuerySendEnabledRequest, QuerySpendableBalanceByDenomRequest, QuerySpendableBalancesRequest, QuerySupplyOfRequest, QueryTotalSupplyRequest, QueryTotalSupplyResponse,
     QueryAddressByDenom,
-    QueryAddressByDenomResponse
+    QueryAddressByDenomResponse,
+    MODULE_NAME
 } from './types';
 import { LoggerDebug, LoggerInfo, revert } from './utils';
 import { getParamsInternal, setParams, getParams, getDenomInfoByAnyDenom, getAuthorities, getBaseDenoms, setBaseDenoms, registerDenomContract, getAddressByDenom, getDenomByAddress } from './storage';
@@ -86,7 +87,9 @@ export function MultiSend(req: MsgMultiSend): ArrayBuffer {
             if (!coinMap.has(keys[j])) {
                 coinMap.set(keys[j], BigInt.zero())
             }
-            coinMap.set(keys[j], coinMap.get(keys[j]) + coinMap_.get(keys[j]))
+            // @ts-ignore
+            const value = coinMap.get(keys[j]) + coinMap_.get(keys[j])
+            coinMap.set(keys[j], value)
         }
     }
     // check that inputs are == sum of outputs
@@ -242,7 +245,7 @@ export function deployDenom(codeId: u64, metadata: Metadata, admins: string[], m
     }
     const msg = JSON.stringify<erc20.CallDataInstantiate>(new erc20.CallDataInstantiate(admins, minters, name, symbol, decimals))
     const label = "Bank_" + metadata.base
-    const addr = wasmxw.createAccount(new CreateAccountRequest(codeId, msg, [], label))
+    const addr = wasmxw.createAccount(new CreateAccountRequest(codeId, msg, [], label), MODULE_NAME)
     return addr
 }
 
@@ -253,7 +256,8 @@ export function mint(balance: Balance): ArrayBuffer {
         if (denomInfo.contract == "") {
             revert(`denom ${coin.denom} does not have registered metadata`);
         }
-        const amount = denomInfo.value * coin.amount
+        // @ts-ignore
+        const amount: BigInt = denomInfo.value * coin.amount
         const calldata = new erc20.MsgMint(balance.address, amount);
         const calldatastr = `{"mint":${JSON.stringify<erc20.MsgMint>(calldata)}}`;
         const resp = callToken(denomInfo.contract, calldatastr, false)
@@ -272,11 +276,14 @@ export function sendCoins(from: Bech32String, to: Bech32String, coins: Coin[]): 
         if (denomInfo.contract == "") {
             revert(`denom ${coin.denom} does not have registered metadata`);
         }
-        const amount = denomInfo.value * coin.amount
+        // @ts-ignore
+        const amount: BigInt = denomInfo.value * coin.amount
         if (!coinMap.has(denomInfo.denom)) {
             coinMap.set(denomInfo.denom, BigInt.zero())
         }
-        coinMap.set(denomInfo.denom, coinMap.get(denomInfo.denom) + amount);
+        // @ts-ignore
+        const value = coinMap.get(denomInfo.denom) + amount
+        coinMap.set(denomInfo.denom, value);
         const calldata = new erc20.MsgTransferFrom(from, to, amount);
         const calldatastr = `{"transferFrom":${JSON.stringify<erc20.MsgTransferFrom>(calldata)}}`;
         const resp = callToken(denomInfo.contract, calldatastr, false)
@@ -290,7 +297,7 @@ export function sendCoins(from: Bech32String, to: Bech32String, coins: Coin[]): 
 export function callToken(address: Bech32String, calldata: string, isQuery: boolean): CallResponse {
     // TODO denom as alias! when we have alias contract
     const req = new CallRequest(address, calldata, BigInt.zero(), 100000000, isQuery);
-    const resp = wasmxw.call(req);
+    const resp = wasmxw.call(req, MODULE_NAME);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
     return resp;

@@ -13,6 +13,7 @@ import {
     setChainInfo,
 } from './storage';
 import { revert } from "./utils";
+import { BigInt } from "wasmx-env/assembly/bn";
 
 export function registerChain(chainId: string, lightClientAddress: Bech32String, validatorAddress: Bech32String) {
     // store chainArray
@@ -119,7 +120,7 @@ function getMajority(value: i32): i32 {
 }
 
 function callLightClient(lcAddress: Bech32String, calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest(lcAddress, calldata, 0, 100000000, isQuery);
+    const req = new CallRequest(lcAddress, calldata, BigInt.zero(), 100000000, isQuery);
     const resp = wasmxwrap.call(req);
     if (resp.success == 0) {
         resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);

@@ -2,6 +2,8 @@ import { JSON } from "json-as/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
 import { Base64String } from "wasmx-env/assembly/types";
 
+export const MODULE_NAME = "tendermint"
+
 // @ts-ignore
 @serializable
 export class LogEntry {

@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
-import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
+import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import {
   Base64String,
@@ -19,8 +19,9 @@ import {
 } from 'xstate-fsm-as/assembly/types';
 import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, parseUint8ArrayToU32BigEndian } from "wasmx-utils/assembly/utils";
 import { base64ToHex, hex64ToBase64 } from './utils';
-import { LogEntry, LogEntryAggregate, AppendEntry, NodeUpdate, UpdateNodeResponse, AppendEntryResponse, TransactionResponse, Precommit } from "./types";
+import { LogEntry, LogEntryAggregate, AppendEntry, NodeUpdate, UpdateNodeResponse, AppendEntryResponse, TransactionResponse, Precommit, MODULE_NAME } from "./types";
 import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
+import { BigInt } from "wasmx-env/assembly/bn";
 
 const ROUND_TIMEOUT = "roundTimeout";
 
@@ -259,7 +260,7 @@ export function registeredCheck(
         // don't send to ourselves or to removed nodes
         if (i == nodeId || ips[i] == "") continue;
         LoggerInfo("register request", ["IP", ips[i]])
-        const response = wasmxwrap.grpcRequest(ips[i], Uint8Array.wrap(contract), msgBase64);
+        const response = wasmxw.grpcRequest(ips[i], Uint8Array.wrap(contract), msgBase64);
         LoggerInfo("register response", ["error", response.error, "data", response.data])
         if (response.error.length > 0 || response.data.length == 0) {
             return
@@ -438,7 +439,7 @@ export function sendAppendEntry(
     const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
     // we send the request to the same contract
     const contract = wasmx.getAddress();
-    const response = wasmxwrap.grpcRequest(nodeIp, Uint8Array.wrap(contract), msgBase64);
+    const response = wasmxw.grpcRequest(nodeIp, Uint8Array.wrap(contract), msgBase64);
     if (response.error.length > 0) {
         return
     }
@@ -483,7 +484,7 @@ export function sendPrecommit(
     const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
     // we send the request to the same contract
     const contract = wasmx.getAddress();
-    const response = wasmxwrap.grpcRequest(nodeIp, Uint8Array.wrap(contract), msgBase64);
+    const response = wasmxw.grpcRequest(nodeIp, Uint8Array.wrap(contract), msgBase64);
     if (response.error.length > 0) {
         LoggerError("precommit failed", ["nodeId", nodeId.toString(), "nodeIp", nodeIp])
     }
@@ -596,7 +597,7 @@ export function updateNodeAndReturn(
 
         // verify signature and store the new validator
         const validatorInfo = JSON.parse<typestnd.ValidatorInfo>(String.UTF8.decode(decodeBase64(entry.validator_info).buffer))
-        const isSender = wasmxwrap.ed25519Verify(validatorInfo.pub_key, signature, entryStr);
+        const isSender = wasmxw.ed25519Verify(validatorInfo.pub_key, signature, entryStr);
         if (!isSender) {
             LoggerError("signature verification failed", ["nodeIndex", entryIndex.toString(), "nodeIp", entry.ip]);
             return;
@@ -731,8 +732,8 @@ export function setup(
     }
 
     let calldata = `{"getContextValue":{"key":"nodeIPs"}}`
-    let req = new CallRequest(oldContract, calldata, 0, 100000000, true);
-    let resp = wasmxwrap.call(req);
+    let req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
+    let resp = wasmxw.call(req, MODULE_NAME);
     if (resp.success > 0) {
         return revert("cannot get nodeIPs from previous contract")
     }
@@ -742,8 +743,8 @@ export function setup(
     setNodeIPs(nodeIps);
 
     calldata = `{"getContextValue":{"key":"validators"}}`
-    req = new CallRequest(oldContract, calldata, 0, 100000000, true);
-    resp = wasmxwrap.call(req);
+    req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
+    resp = wasmxw.call(req, MODULE_NAME);
     if (resp.success > 0) {
         return revert("cannot get validators from previous contract")
     }
@@ -753,8 +754,8 @@ export function setup(
     setValidators(validators);
 
     calldata = `{"getContextValue":{"key":"state"}}`
-    req = new CallRequest(oldContract, calldata, 0, 100000000, true);
-    resp = wasmxwrap.call(req);
+    req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
+    resp = wasmxw.call(req, MODULE_NAME);
     if (resp.success > 0) {
         return revert("cannot get state from previous contract")
     }
@@ -764,8 +765,8 @@ export function setup(
     setCurrentState(state);
 
     calldata = `{"getContextValue":{"key":"mempool"}}`
-    req = new CallRequest(oldContract, calldata, 0, 100000000, true);
-    resp = wasmxwrap.call(req);
+    req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
+    resp = wasmxw.call(req, MODULE_NAME);
     if (resp.success > 0) {
         return revert("cannot get mempool from previous contract")
     }
@@ -775,8 +776,8 @@ export function setup(
     setMempool(mempool);
 
     calldata = `{"getContextValue":{"key":"currentNodeId"}}`
-    req = new CallRequest(oldContract, calldata, 0, 100000000, true);
-    resp = wasmxwrap.call(req);
+    req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
+    resp = wasmxw.call(req, MODULE_NAME);
     if (resp.success > 0) {
         return revert("cannot get currentNodeId from previous contract")
     }
@@ -786,8 +787,8 @@ export function setup(
     setCurrentNodeId(currentNodeId);
 
     calldata = `{"getContextValue":{"key":"currentTerm"}}`
-    req = new CallRequest(oldContract, calldata, 0, 100000000, true);
-    resp = wasmxwrap.call(req);
+    req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
+    resp = wasmxw.call(req, MODULE_NAME);
     if (resp.success > 0) {
         return revert("cannot get currentTerm from previous contract")
     }
@@ -1334,13 +1335,13 @@ function getValidatorsHash(validators: typestnd.ValidatorInfo[]): string {
         newdata.set(power, pub_key.length);
         data[i] = uint8ArrayToHex(newdata);
     }
-    return wasmxwrap.MerkleHash(data);
+    return wasmxw.MerkleHash(data);
 }
 
 // Txs.Hash() -> [][]byte merkle.HashFromByteSlices
 // base64
 export function getTxsHash(txs: string[]): string {
-    return wasmxwrap.MerkleHash(txs);
+    return wasmxw.MerkleHash(txs);
 }
 
 // Hash returns a hash of a subset of the parameters to store in the block header.
@@ -1357,12 +1358,12 @@ export function getConsensusParamsHash(params: typestnd.ConsensusParams): string
 // []Evidence hash
 // TODO
 export function getEvidenceHash(params: typestnd.Evidence): string {
-    return wasmxwrap.MerkleHash([]);
+    return wasmxw.MerkleHash([]);
 }
 
 export function getCommitHash(lastCommit: typestnd.BlockCommit): string {
     // TODO MerkleHash(lastCommit.signatures)
-    return wasmxwrap.MerkleHash([]);
+    return wasmxw.MerkleHash([]);
 }
 
 export function getResultsHash(results: typestnd.ExecTxResult[]): string {
@@ -1370,7 +1371,7 @@ export function getResultsHash(results: typestnd.ExecTxResult[]): string {
     for (let i = 0; i < results.length; i++) {
         data[i] = encodeBase64(Uint8Array.wrap(String.UTF8.encode(JSON.stringify<typestnd.ExecTxResult>(results[i]))));
     }
-    return wasmxwrap.MerkleHash(data);
+    return wasmxw.MerkleHash(data);
 }
 
 // Hash returns the hash of the header.
@@ -1398,7 +1399,7 @@ function getHeaderHash(header: typestnd.Header): string {
         hex64ToBase64(header.evidence_hash),
         hex64ToBase64(header.proposer_address), // TODO transform hex to base64
     ]
-    return wasmxwrap.MerkleHash(data);
+    return wasmxw.MerkleHash(data);
 }
 
 function getRandomInRange(min: i64, max: i64): i64 {
@@ -1409,13 +1410,13 @@ function getRandomInRange(min: i64, max: i64): i64 {
 
 export function signMessage(msgstr: string): Base64String {
     const currentState = getCurrentState();
-    return wasmxwrap.ed25519Sign(currentState.validator_privkey, msgstr);
+    return wasmxw.ed25519Sign(currentState.validator_privkey, msgstr);
 }
 
 export function verifyMessage(nodeIndex: i32, signatureStr: Base64String, msg: string): boolean {
     const validators = getValidators();
     const validator = validators[nodeIndex];
-    return wasmxwrap.ed25519Verify(validator.pub_key, signatureStr, msg);
+    return wasmxw.ed25519Verify(validator.pub_key, signatureStr, msg);
 }
 
 function startBlockFinalizationLeader(index: i64): boolean {
@@ -1531,7 +1532,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     // save final block
     const txhashes: string[] = [];
     for (let i = 0; i < finalizeReq.txs.length; i++) {
-        const hash = wasmxwrap.sha256(finalizeReq.txs[i]);
+        const hash = wasmxw.sha256(finalizeReq.txs[i]);
         txhashes.push(hash);
     }
     // also indexes transactions
@@ -1562,11 +1563,11 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     // this way, the delay of the timed action that starts the new consensus fsm is minimal.
     let newContractSetup = false;
     if (newContract !== "") {
-        const myaddress = wasmxwrap.addr_humanize(wasmx.getAddress());
+        const myaddress = wasmxw.addr_humanize(wasmx.getAddress());
         LoggerInfo("setting up next consensus contract", ["new contract", newContract, "previous contract", myaddress])
         let calldata = `{"run":{"event":{"type":"setup","params":[{"key":"address","value":"${myaddress}"}]}}}`
-        let req = new CallRequest(newContract, calldata, 0, 100000000, false);
-        let resp = wasmxwrap.call(req);
+        let req = new CallRequest(newContract, calldata, BigInt.zero(), 100000000, false);
+        let resp = wasmxw.call(req, MODULE_NAME);
         if (resp.success > 0) {
             LoggerError("cannot setup next consensus contract", ["new contract", newContract, "err", resp.data]);
         } else {
@@ -1576,8 +1577,8 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
             // stop this contract and any intervals on this contract
             // TODO cancel all intervals on stop() action
             calldata = `{"run":{"event":{"type":"stop","params":[]}}}`
-            req = new CallRequest(myaddress, calldata, 0, 100000000, false);
-            resp = wasmxwrap.call(req);
+            req = new CallRequest(myaddress, calldata, BigInt.zero(), 100000000, false);
+            resp = wasmxw.call(req, MODULE_NAME);
             if (resp.success > 0) {
                 LoggerError("cannot stop previous consensus contract", ["err", resp.data]);
                 // TODO what now?
@@ -1598,15 +1599,15 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     if (newContract != "" && newContractSetup) {
         LoggerInfo("starting new consensus contract", ["address", newContract])
         let calldata = `{"run":{"event":{"type":"prestart","params":[]}}}`
-        let req = new CallRequest(newContract, calldata, 0, 100000000, false);
-        let resp = wasmxwrap.call(req);
+        let req = new CallRequest(newContract, calldata, BigInt.zero(), 100000000, false);
+        let resp = wasmxw.call(req, MODULE_NAME);
         if (resp.success > 0) {
             LoggerError("cannot start next consensus contract", ["new contract", newContract, "err", resp.data]);
             // we can restart the old contract here, so the chain does not stop
-            const myaddress = wasmxwrap.addr_humanize(wasmx.getAddress());
+            const myaddress = wasmxw.addr_humanize(wasmx.getAddress());
             calldata = `{"run":{"event":{"type":"restart","params":[]}}}`
-            req = new CallRequest(myaddress, calldata, 0, 100000000, false);
-            resp = wasmxwrap.call(req);
+            req = new CallRequest(myaddress, calldata, BigInt.zero(), 100000000, false);
+            resp = wasmxw.call(req, MODULE_NAME);
             if (resp.success > 0) {
                 LoggerError("cannot restart previous consensus contract", ["err", resp.data]);
             } else {
@@ -1653,8 +1654,8 @@ function setFinalizedBlock(entry: LogEntryAggregate, hash: string, txhashes: str
 
 function callStorage(calldata: string, isQuery: boolean): CallResponse {
     const contractAddress = getStorageAddress();
-    const req = new CallRequest(contractAddress, calldata, 0, 100000000, isQuery);
-    const resp = wasmxwrap.call(req);
+    const req = new CallRequest(contractAddress, calldata, BigInt.zero(), 100000000, isQuery);
+    const resp = wasmxw.call(req, MODULE_NAME);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
     return resp;

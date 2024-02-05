@@ -1,6 +1,8 @@
 import { JSON } from "json-as/assembly";
 import { Base64String, Bech32String } from "wasmx-env/assembly/types";
 
+export const MODULE_NAME = "fsm"
+
 // @ts-ignore
 @serializable
 export enum InterpreterStatus {

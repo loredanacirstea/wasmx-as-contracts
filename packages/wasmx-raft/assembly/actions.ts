@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
-import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
+import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
 import {
@@ -21,7 +21,7 @@ import {
 } from 'xstate-fsm-as/assembly/types';
 import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE } from "wasmx-utils/assembly/utils";
 import { base64ToHex, hex64ToBase64 } from './utils';
-import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, AppendEntryResponse, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse, ValidatorIp } from "./types_raft";
+import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, AppendEntryResponse, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse, ValidatorIp, MODULE_NAME } from "./types_raft";
 import { BigInt } from "wasmx-env/assembly/bn";
 
 // Docs: https://raft.github.io/raft.pdf
@@ -155,7 +155,7 @@ export function registeredCheck(
         // don't send to ourselves or to removed nodes
         if (i == nodeId || ips[i].ip == "") continue;
         LoggerInfo("register request", ["IP", ips[i].ip, "address", ips[i].address])
-        const response = wasmxwrap.grpcRequest(ips[i].ip, Uint8Array.wrap(contract), msgBase64);
+        const response = wasmxw.grpcRequest(ips[i].ip, Uint8Array.wrap(contract), msgBase64);
         LoggerInfo("register response", ["error", response.error, "data", response.data])
         if (response.error.length > 0 || response.data.length == 0) {
             return
@@ -231,7 +231,7 @@ export function updateNodeAndReturn(
             return revert("validator must be registered first on-chain");
         }
 
-        const isSender = wasmxwrap.ed25519Verify(validatorInfo.consensus_pubkey.key, signature, entryStr);
+        const isSender = wasmxw.ed25519Verify(validatorInfo.consensus_pubkey.key, signature, entryStr);
         if (!isSender) {
             LoggerError("signature verification failed", ["nodeIndex", entryIndex.toString(), "nodeIp", entry.node.ip, "address", entry.node.address]);
             return;
@@ -303,7 +303,7 @@ export function forwardTxsToLeader(
         const tx = txs[0];
         const msgstr = `{"run":{"event":{"type":"newTransaction","params":[{"key": "transaction","value":"${tx}"}]}}}`
         const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
-        const response = wasmxwrap.grpcRequest(nodeIp.ip, Uint8Array.wrap(contract), msgBase64);
+        const response = wasmxw.grpcRequest(nodeIp.ip, Uint8Array.wrap(contract), msgBase64);
         LoggerDebug("forwarding tx to leader", ["nodeId", nodeId.toString(), "nodeIp", nodeIp.ip, "batch", i.toString(), "error", response.error])
 
         if (response.error.length == 0) {
@@ -500,7 +500,7 @@ function sendVoteRequest(nodeId: i32, node: ValidatorIp, request: VoteRequest, t
 
     const contract = wasmx.getAddress();
     LoggerDebug("sending vote request", ["nodeId", nodeId.toString(), "nodeIp", node.ip, "termId", termId.toString(), "data", datastr])
-    const response = wasmxwrap.grpcRequest(node.ip, Uint8Array.wrap(contract), msgBase64);
+    const response = wasmxw.grpcRequest(node.ip, Uint8Array.wrap(contract), msgBase64);
     LoggerDebug("vote request response", ["nodeId", nodeId.toString(), "nodeIp", node.ip, "termId", termId.toString(), "data", response.data, "error", response.error])
     if (response.error.length > 0 || response.data.length == 0) {
         return
@@ -886,7 +886,7 @@ export function sendAppendEntry(
     const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
     // we send the request to the same contract
     const contract = wasmx.getAddress();
-    const response = wasmxwrap.grpcRequest(node.ip, Uint8Array.wrap(contract), msgBase64);
+    const response = wasmxw.grpcRequest(node.ip, Uint8Array.wrap(contract), msgBase64);
     if (response.error.length > 0) {
         return
     }
@@ -1190,7 +1190,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     // save final block
     const txhashes: string[] = [];
     for (let i = 0; i < finalizeReq.txs.length; i++) {
-        const hash = wasmxwrap.sha256(finalizeReq.txs[i]);
+        const hash = wasmxw.sha256(finalizeReq.txs[i]);
         txhashes.push(hash);
     }
     // also indexes transactions
@@ -1221,11 +1221,11 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     // this way, the delay of the timed action that starts the new consensus fsm is minimal.
     let newContractSetup = false;
     if (newContract !== "") {
-        const myaddress = wasmxwrap.addr_humanize(wasmx.getAddress());
+        const myaddress = wasmxw.addr_humanize(wasmx.getAddress());
         LoggerInfo("setting up next consensus contract", ["new contract", newContract, "previous contract", myaddress])
         let calldata = `{"run":{"event":{"type":"setup","params":[{"key":"address","value":"${myaddress}"}]}}}`
         let req = new CallRequest(newContract, calldata, BigInt.zero(), 100000000, false);
-        let resp = wasmxwrap.call(req);
+        let resp = wasmxw.call(req, MODULE_NAME);
         if (resp.success > 0) {
             LoggerError("cannot setup next consensus contract", ["new contract", newContract, "err", resp.data]);
         } else {
@@ -1236,7 +1236,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
             // TODO cancel all intervals on stop() action
             calldata = `{"run":{"event":{"type":"stop","params":[]}}}`
             req = new CallRequest(myaddress, calldata, BigInt.zero(), 100000000, false);
-            resp = wasmxwrap.call(req);
+            resp = wasmxw.call(req, MODULE_NAME);
             if (resp.success > 0) {
                 LoggerError("cannot stop previous consensus contract", ["err", resp.data]);
                 // TODO what now?
@@ -1258,14 +1258,14 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         LoggerInfo("starting new consensus contract", ["address", newContract])
         let calldata = `{"run":{"event":{"type":"prestart","params":[]}}}`
         let req = new CallRequest(newContract, calldata, BigInt.zero(), 100000000, false);
-        let resp = wasmxwrap.call(req);
+        let resp = wasmxw.call(req, MODULE_NAME);
         if (resp.success > 0) {
             LoggerError("cannot start next consensus contract", ["new contract", newContract, "err", resp.data]);
             // we can restart the old contract here, so the chain does not stop
-            const myaddress = wasmxwrap.addr_humanize(wasmx.getAddress());
+            const myaddress = wasmxw.addr_humanize(wasmx.getAddress());
             calldata = `{"run":{"event":{"type":"restart","params":[]}}}`
             req = new CallRequest(myaddress, calldata, BigInt.zero(), 100000000, false);
-            resp = wasmxwrap.call(req);
+            resp = wasmxw.call(req, MODULE_NAME);
             if (resp.success > 0) {
                 LoggerError("cannot restart previous consensus contract", ["err", resp.data]);
             } else {
@@ -1609,7 +1609,7 @@ export function setup(
 
     let calldata = `{"getContextValue":{"key":"nodeIPs"}}`
     let req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
-    let resp = wasmxwrap.call(req);
+    let resp = wasmxw.call(req, MODULE_NAME);
     if (resp.success > 0) {
         return revert("cannot get nodeIPs from previous contract")
     }
@@ -1620,7 +1620,7 @@ export function setup(
 
     calldata = `{"getContextValue":{"key":"state"}}`
     req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
-    resp = wasmxwrap.call(req);
+    resp = wasmxw.call(req, MODULE_NAME);
     if (resp.success > 0) {
         return revert("cannot get state from previous contract")
     }
@@ -1631,7 +1631,7 @@ export function setup(
 
     calldata = `{"getContextValue":{"key":"mempool"}}`
     req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
-    resp = wasmxwrap.call(req);
+    resp = wasmxw.call(req, MODULE_NAME);
     if (resp.success > 0) {
         return revert("cannot get mempool from previous contract")
     }
@@ -1642,7 +1642,7 @@ export function setup(
 
     calldata = `{"getContextValue":{"key":"currentNodeId"}}`
     req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
-    resp = wasmxwrap.call(req);
+    resp = wasmxw.call(req, MODULE_NAME);
     if (resp.success > 0) {
         return revert("cannot get currentNodeId from previous contract")
     }
@@ -1653,7 +1653,7 @@ export function setup(
 
     calldata = `{"getContextValue":{"key":"currentTerm"}}`
     req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
-    resp = wasmxwrap.call(req);
+    resp = wasmxw.call(req, MODULE_NAME);
     if (resp.success > 0) {
         return revert("cannot get currentTerm from previous contract")
     }
@@ -1708,7 +1708,7 @@ function getValidatorsHash1(validators: typestnd.ValidatorInfo[]): string {
         newdata.set(power, pub_key.length);
         data[i] = uint8ArrayToHex(newdata);
     }
-    return wasmxwrap.MerkleHash(data);
+    return wasmxw.MerkleHash(data);
 }
 
 function getValidatorsHash(validators: staking.Validator[]): string {
@@ -1722,13 +1722,13 @@ function getValidatorsHash(validators: staking.Validator[]): string {
         newdata.set(tokens, pub_key.length);
         data[i] = uint8ArrayToHex(newdata);
     }
-    return wasmxwrap.MerkleHash(data);
+    return wasmxw.MerkleHash(data);
 }
 
 // Txs.Hash() -> [][]byte merkle.HashFromByteSlices
 // base64
 export function getTxsHash(txs: string[]): string {
-    return wasmxwrap.MerkleHash(txs);
+    return wasmxw.MerkleHash(txs);
 }
 
 // Hash returns a hash of a subset of the parameters to store in the block header.
@@ -1745,12 +1745,12 @@ export function getConsensusParamsHash(params: typestnd.ConsensusParams): string
 // []Evidence hash
 // TODO
 export function getEvidenceHash(params: typestnd.Evidence): string {
-    return wasmxwrap.MerkleHash([]);
+    return wasmxw.MerkleHash([]);
 }
 
 export function getCommitHash(lastCommit: typestnd.BlockCommit): string {
     // TODO MerkleHash(lastCommit.signatures)
-    return wasmxwrap.MerkleHash([]);
+    return wasmxw.MerkleHash([]);
 }
 
 export function getResultsHash(results: typestnd.ExecTxResult[]): string {
@@ -1758,7 +1758,7 @@ export function getResultsHash(results: typestnd.ExecTxResult[]): string {
     for (let i = 0; i < results.length; i++) {
         data[i] = encodeBase64(Uint8Array.wrap(String.UTF8.encode(JSON.stringify<typestnd.ExecTxResult>(results[i]))));
     }
-    return wasmxwrap.MerkleHash(data);
+    return wasmxw.MerkleHash(data);
 }
 
 // Hash returns the hash of the header.
@@ -1786,7 +1786,7 @@ function getHeaderHash(header: typestnd.Header): string {
         hex64ToBase64(header.evidence_hash),
         hex64ToBase64(header.proposer_address), // TODO transform hex to base64
     ]
-    return wasmxwrap.MerkleHash(data);
+    return wasmxw.MerkleHash(data);
 }
 
 function getRandomInRange(min: i64, max: i64): i64 {
@@ -1797,7 +1797,7 @@ function getRandomInRange(min: i64, max: i64): i64 {
 
 export function signMessage(msgstr: string): Base64String {
     const currentState = getCurrentState();
-    return wasmxwrap.ed25519Sign(currentState.validator_privkey, msgstr);
+    return wasmxw.ed25519Sign(currentState.validator_privkey, msgstr);
 }
 
 export function verifyMessage(nodeIndex: i32, signatureStr: Base64String, msg: string): boolean {
@@ -1815,7 +1815,7 @@ export function verifyMessage(nodeIndex: i32, signatureStr: Base64String, msg: s
         return false;
     }
     const pubKey = validator.consensus_pubkey!;
-    return wasmxwrap.ed25519Verify(pubKey.key, signatureStr, msg);
+    return wasmxw.ed25519Verify(pubKey.key, signatureStr, msg);
 }
 
 function setFinalizedBlock(entry: LogEntryAggregate, hash: string, txhashes: string[]): void {
@@ -1898,13 +1898,14 @@ function getAllValidators(): staking.Validator[] {
         revert("could not get validators");
     }
     if (resp.data === "") return [];
+    LoggerDebug("GetAllValidators", ["data", resp.data])
     const result = JSON.parse<staking.QueryValidatorsResponse>(resp.data);
     return result.validators;
 }
 
 function callStorage(calldata: string, isQuery: boolean): CallResponse {
     const req = new CallRequest("storage", calldata, BigInt.zero(), 100000000, isQuery);
-    const resp = wasmxwrap.call(req);
+    const resp = wasmxw.call(req, MODULE_NAME);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
     return resp;
@@ -1912,7 +1913,7 @@ function callStorage(calldata: string, isQuery: boolean): CallResponse {
 
 function callStaking(calldata: string, isQuery: boolean): CallResponse {
     const req = new CallRequest("staking", calldata, BigInt.zero(), 100000000, isQuery);
-    const resp = wasmxwrap.call(req);
+    const resp = wasmxw.call(req, MODULE_NAME);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
     return resp;

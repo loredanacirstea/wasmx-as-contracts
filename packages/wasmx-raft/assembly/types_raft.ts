@@ -2,6 +2,8 @@ import { JSON } from "json-as/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
 import { Base64String, Bech32String, Coin } from "wasmx-env/assembly/types";
 
+export const MODULE_NAME = "raft"
+
 // @ts-ignore
 @serializable
 export class LogEntry {
