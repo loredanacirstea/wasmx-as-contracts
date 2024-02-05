@@ -8,7 +8,7 @@ export class tally {
     a16: Uint16Array;
     a8: Uint8Array;
 
-    constructor(buf: ArrayBuffer, littleEndian: bool = true) {
+    constructor(buf: ArrayBuffer, littleEndian: bool = false) {
         this.buf = buf;
         // this.a64 = Uint64Array.wrap(buf);
         this.a32 = Uint32Array.wrap(buf);
@@ -278,7 +278,7 @@ export class tally {
         return isneg ? (-value) : value
     }
 
-    toU8Array(littleEndian: bool = true): Array<u8> {
+    toU8Array(littleEndian: bool = false): Array<u8> {
         if (littleEndian) return this.toU8ArrayLe();
         return this.toU8ArrayBe();
     }
@@ -300,7 +300,7 @@ export class tally {
         return arr;
     }
 
-    toI32Array(littleEndian: bool = true): Array<i32> {
+    toI32Array(littleEndian: bool = false): Array<i32> {
         if (littleEndian) return this.toI32ArrayLe();
         return this.toI32ArrayBe();
     }
@@ -322,7 +322,7 @@ export class tally {
         return arr;
     }
 
-    toArrayBuffer(littleEndian: bool = true): ArrayBuffer {
+    toArrayBuffer(littleEndian: bool = false): ArrayBuffer {
         if (littleEndian) return this.toArrayBufferLe();
         return this.toArrayBufferBe();
     }
@@ -335,7 +335,7 @@ export class tally {
         return this.a8.slice(0).reverse().buffer;
     }
 
-    toUint8Array(littleEndian: bool = true, size: i32 = 0): Uint8Array {
+    toUint8Array(littleEndian: bool = false, size: i32 = 0): Uint8Array {
         if (littleEndian) return this.toUint8ArrayLe(size);
         return this.toUint8ArrayBe(size);
     }
@@ -360,8 +360,8 @@ export class tally {
         return this.a8.slice(0, size).reverse();
     }
 
-    toString(radix: u32 = 16): string {
-        return tally.toString(this, radix);
+    toString(radix: u32 = 16, byteLength: i32 = 0, littleEndian: bool = false, usePrefix: bool = true): string {
+        return tally.toString(this, radix, byteLength, littleEndian, usePrefix);
     }
 
     clone(): tally {
@@ -400,7 +400,7 @@ export class tally {
         return v;
     }
 
-    static fromU8Array(value: Array<u8>, bytesLength: i32 = 32, littleEndian: bool = true): tally {
+    static fromU8Array(value: Array<u8>, bytesLength: i32 = 32, littleEndian: bool = false): tally {
         if (bytesLength < value.length) throw new Error("invalid length");
         const v = tally.empty(bytesLength);
         if (littleEndian) {
@@ -411,8 +411,8 @@ export class tally {
         return v;
     }
 
-    static fromUint8Array(value: Uint8Array, bytesLength: i32 = 0, littleEndian: bool = true): tally {
-        if (bytesLength == 0) bytesLength = value.byteLength;
+    static fromUint8Array(value: Uint8Array, bytesLength: i32 = 0, littleEndian: bool = false): tally {
+        if (bytesLength == 0) bytesLength = i32(Math.max(value.byteLength, 4));
         if (bytesLength < value.byteLength) throw new Error("invalid length");
         const v = tally.empty(bytesLength);
         if (littleEndian) {
@@ -951,10 +951,12 @@ export class tally {
     }
 
     // this is used by as-json to stringify BigInt
-    static toString(a: tally, radix: u32 = 0, littleEndian: bool = false): string {
+    static toString(a: tally, radix: u32 = 0, byteLength: i32 = 0, littleEndian: bool = false, usePrefix: bool = true): string {
         if (radix == 16) {
-            const hex = u8ArrayToHex(a.toU8ArrayBe())
-            return "0x" + removeZerosLeft(hex);
+            let hex = u8ArrayToHex(a.toU8ArrayBe())
+            hex = processZeros(hex, byteLength);
+            if (usePrefix) return "0x" + hex;
+            return hex;
         }
         if (radix == 0) return "[" + a.a8.slice(0).reverse().toString() + "]";
         throw new Error("invalid radix");
@@ -1055,7 +1057,10 @@ export function hexToU8(value: string): u8[] {
     return arr;
 }
 
-function removeZerosLeft(value: string): string {
+function processZeros(value: string, byteLength: i32): string {
+    const hexlen = byteLength * 2
+    if (hexlen > 0 && hexlen == value.length) return value;
+    if (hexlen > 0 && hexlen > value.length) return "0".repeat(hexlen - value.length) + value;
     let ndx = -1
     for (let i = 0; i < value.length; i++) {
         if (value.slice(i, i+1) != "0") {
@@ -1064,7 +1069,10 @@ function removeZerosLeft(value: string): string {
         }
     }
     if (ndx == -1) return "0";
+    if (hexlen > 0) {
+        ndx = i32(Math.max(ndx, value.length - hexlen))
+    }
     if (ndx == 0) return value;
-    if (ndx == (value.length - 1)) return "0"
+    if (ndx == (value.length - 1)) return "0" + value.slice(ndx)
     return value.slice(ndx);
 }
