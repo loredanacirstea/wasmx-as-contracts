@@ -19,6 +19,7 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
 
     for (let i = 0; i < req.proposals.length; i++) {
         const proposal = req.proposals[i]
+        // TODO validate proposal
         setProposal(proposal.proposal_id, proposal)
     }
     for (let i = 0; i < req.deposits.length; i++) {
@@ -37,6 +38,10 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
 export function SubmitProposal(req: MsgSubmitProposal): ArrayBuffer {
     const params = getParams()
     const timenow = new Date(Date.now());
+    let deposit = req.initial_deposit;
+    if (req.initial_deposit.length == 0) {
+        deposit = [new Coin(DENOM_BASE, BigInt.zero())]
+    }
     const proposal = new Proposal(
         0,
         req.content,
@@ -44,10 +49,14 @@ export function SubmitProposal(req: MsgSubmitProposal): ArrayBuffer {
         new TallyResult(BigInt.zero(), BigInt.zero(), BigInt.zero(), BigInt.zero()),
         timenow,
         new Date(timenow.getTime() + params.deposit_params.max_deposit_period),
-        req.initial_deposit,
+        deposit,
         new Date(0),
         new Date(0),
     )
+    // we only use one type of coin
+    if (deposit[0].amount > params.deposit_params.min_deposit[0].amount) {
+        proposal.status = PROPOSAL_STATUS_VOTING_PERIOD
+    }
     const proposal_id = addProposal(proposal);
 
     // transfer deposit from proposer to this contract
@@ -156,6 +165,11 @@ export function DoDeposit(req: MsgDeposit): ArrayBuffer {
         if (!found) {
             proposal!.total_deposit.push(req.amount[i])
         }
+    }
+    const params = getParams()
+    // we only use one type of coin
+    if (proposal!.total_deposit[0].amount > params.deposit_params.min_deposit[0].amount) {
+        proposal!.status = PROPOSAL_STATUS_VOTING_PERIOD
     }
     setProposal(proposal!.proposal_id, proposal!)
     return new ArrayBuffer(0)
