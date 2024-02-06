@@ -1,21 +1,11 @@
 import { JSON } from "json-as/assembly";
 import { Base64String, Bech32String, HexString } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn";
+import { Coin } from "wasmx-env/assembly/types"
 
 export const MODULE_NAME = "bank"
 
 export type CoinMap = Map<string,BigInt>
-
-// @ts-ignore
-@serializable
-export class Coin {
-    denom: string
-    amount: BigInt
-    constructor(denom: string, amount: BigInt) {
-        this.denom = denom
-        this.amount = amount
-    }
-}
 
 // @ts-ignore
 @serializable

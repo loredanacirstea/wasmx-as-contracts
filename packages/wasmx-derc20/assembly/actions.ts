@@ -1,10 +1,10 @@
 import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
-import { Bech32String, CallRequest, CallResponse } from "wasmx-env/assembly/types";
+import { Bech32String, CallRequest, CallResponse, Coin } from "wasmx-env/assembly/types";
 import { isAuthorized } from "wasmx-env/assembly/utils";
 import { BigInt } from "wasmx-env/assembly/bn";
-import { QueryDelegationRequest, QueryDelegationResponse, Delegation, DelegationResponse, Coin, DelegationCosmos } from "wasmx-stake/assembly/types";
+import { QueryDelegationRequest, QueryDelegationResponse, Delegation, DelegationResponse, DelegationCosmos } from "wasmx-stake/assembly/types";
 import { move } from "wasmx-erc20/assembly/actions";
 import { setInfo, getInfo, getBalance, setBalance, getAllowance, setAllowance, getTotalSupply, setTotalSupply, getAdmins, getMinters } from "wasmx-erc20/assembly/storage";
 import * as banktypes from "wasmx-bank/assembly/types";
@@ -144,11 +144,11 @@ function getCoin(value: BigInt): Coin {
 }
 
 function bankSendCoin (from: Bech32String, to: Bech32String, value: BigInt, denom: string): void {
-    const valuestr = JSON.stringify<banktypes.MsgSend>(new banktypes.MsgSend(from, to, [new banktypes.Coin(denom, value)]))
+    const valuestr = JSON.stringify<banktypes.MsgSend>(new banktypes.MsgSend(from, to, [new Coin(denom, value)]))
     const calldata = `{"Send":${valuestr}}`
     const resp = callBank(calldata, false);
     if (resp.success > 0) {
-        revert("could not transfer coins by bank");
+        revert(`could not transfer coins by bank: ${resp.data}`);
     }
 }
 

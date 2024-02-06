@@ -34,6 +34,17 @@ export class PageResponse {
 
 // @ts-ignore
 @serializable
+export class Fraction {
+    num: u64
+    denom: u64
+    constructor(num: u64, denom: u64) {
+        this.num = num
+        this.denom = denom
+    }
+}
+
+// @ts-ignore
+@serializable
 export type VoteOption = i32
 // VOTE_OPTION_UNSPECIFIED defines a no-op vote option.
 export const VOTE_OPTION_UNSPECIFIED = 0;
@@ -268,8 +279,8 @@ export class MsgVoteResponse {}
 export class MsgVoteWeighted {
     proposal_id: u64
     voter: Bech32String
-    option: WeightedVoteOption
-    constructor(proposal_id: u64, voter: Bech32String, option: WeightedVoteOption) {
+    option: WeightedVoteOption[]
+    constructor(proposal_id: u64, voter: Bech32String, option: WeightedVoteOption[]) {
         this.proposal_id = proposal_id
         this.voter = voter
         this.option = option
@@ -296,6 +307,19 @@ export class MsgDeposit {
 // @ts-ignore
 @serializable
 export class MsgDepositResponse {}
+
+// @ts-ignore
+@serializable
+export class Params {
+    voting_params: VotingParams
+    deposit_params: DepositParams
+    tally_params: TallyParams
+    constructor(voting_params: VotingParams, deposit_params: DepositParams, tally_params: TallyParams) {
+        this.voting_params = voting_params
+        this.deposit_params = deposit_params
+        this.tally_params = tally_params
+    }
+}
 
 // @ts-ignore
 @serializable
@@ -394,16 +418,7 @@ export class QueryParamsRequest {
 
 // @ts-ignore
 @serializable
-export class QueryParamsResponse {
-    voting_params: VotingParams
-    deposit_params: DepositParams
-    tally_params: TallyParams
-    constructor(voting_params: VotingParams, deposit_params: DepositParams, tally_params: TallyParams) {
-        this.voting_params = voting_params
-        this.deposit_params = deposit_params
-        this.tally_params = tally_params
-    }
-}
+export class QueryParamsResponse extends Params {}
 
 // @ts-ignore
 @serializable

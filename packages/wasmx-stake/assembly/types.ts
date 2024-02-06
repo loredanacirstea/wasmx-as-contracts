@@ -1,5 +1,5 @@
 import { JSON } from "json-as/assembly";
-import { Base64String, Bech32String, HexString } from 'wasmx-env/assembly/types';
+import { Base64String, Bech32String, HexString, Coin } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn"
 
 export const MODULE_NAME = "staking"
@@ -27,17 +27,6 @@ export const UnbondedS = "BOND_STATUS_UNBONDED"; // Unbonded
 export const UnbondingS = "BOND_STATUS_UNBONDING"; // Unbonding
 // BONDED defines a validator that is bonded.
 export const BondedS = "BOND_STATUS_BONDED"; // Bonded
-
-// @ts-ignore
-@serializable
-export class Coin {
-    denom: string
-    amount: BigInt
-    constructor(denom: string, amount: BigInt) {
-        this.denom = denom
-        this.amount = amount
-    }
-}
 
 // @ts-ignore
 @serializable

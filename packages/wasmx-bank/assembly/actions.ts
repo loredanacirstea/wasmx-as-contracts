@@ -3,10 +3,10 @@ import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assemb
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import { isAuthorized } from "wasmx-env/assembly/utils";
 import { Bech32String, parseInt64 } from "wasmx-utils/assembly/utils";
-import { CallRequest, CallResponse, CreateAccountRequest } from 'wasmx-env/assembly/types';
+import { CallRequest, CallResponse, CreateAccountRequest, Coin } from 'wasmx-env/assembly/types';
 import * as erc20 from "wasmx-erc20/assembly/types";
 import {
-    MsgInitGenesis, MsgSend, MsgMultiSend, MsgSetSendEnabled, MsgUpdateParams, MsgRegisterDenom, Coin, Metadata, Balance, CoinMap,
+    MsgInitGenesis, MsgSend, MsgMultiSend, MsgSetSendEnabled, MsgUpdateParams, MsgRegisterDenom, Metadata, Balance, CoinMap,
     PageResponse, QueryAllBalancesRequest, QueryAllBalancesResponse, QueryBalanceRequest, QueryBalanceResponse, QueryDenomMetadataByQueryStringRequest, QueryDenomMetadataRequest, QueryDenomOwnersRequest, QueryDenomsMetadataRequest, QueryParamsRequest, QuerySendEnabledRequest, QuerySpendableBalanceByDenomRequest, QuerySpendableBalancesRequest, QuerySupplyOfRequest, QueryTotalSupplyRequest, QueryTotalSupplyResponse,
     QueryAddressByDenom,
     QueryAddressByDenomResponse,

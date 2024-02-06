@@ -4,9 +4,13 @@ import { Bech32String } from 'wasmx-env/assembly/types';
 import { parseInt32, parseInt64 } from "wasmx-utils/assembly/utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 
+// delegator => validators[]
 export const DELEGATOR_TO_VALIDATORS_KEY = "delegator_to_validators."
+// delegator => validator => amount
 export const DELEGATOR_TO_DELEGATION_KEY = "delegator_to_delegation."
+// validator => delegator[]
 export const VALIDATOR_TO_DELEGATORS_KEY = "validator_to_delegators."
+// validator => total delegation
 export const VALIDATOR_DELEGATION_KEY = "validator_delegation."
 
 // delegator => validators[]
