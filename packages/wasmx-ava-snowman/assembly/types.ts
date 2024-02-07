@@ -1,6 +1,8 @@
 import { JSON } from "json-as/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
-import { Base64String } from "wasmx-env/assembly/types";
+import { Base64String, Bech32String } from "wasmx-env/assembly/types";
+
+export const MODULE_NAME = "avasnow"
 
 // @ts-ignore
 @serializable
@@ -145,5 +147,16 @@ export class QueryResponse {
     constructor(block: Base64String, header: Base64String) {
         this.block = block
         this.header = header
+    }
+}
+
+// @ts-ignore
+@serializable
+export class ValidatorIp {
+    address: Bech32String
+    ip: string
+    constructor(address: Bech32String, ip: string) {
+        this.address = address
+        this.ip = ip
     }
 }

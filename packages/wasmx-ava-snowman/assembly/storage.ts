@@ -5,7 +5,7 @@ import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import { CurrentState, Mempool } from "./types_blockchain";
 import * as fsm from 'xstate-fsm-as/assembly/storage';
 import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, parseUint8ArrayToU32BigEndian } from "wasmx-utils/assembly/utils";
-import { LogEntry, LogEntryAggregate, AppendEntry, NodeUpdate, UpdateNodeResponse, AppendEntryResponse, TransactionResponse, Precommit, TempBlock } from "./types";
+import { LogEntry, LogEntryAggregate, AppendEntry, NodeUpdate, UpdateNodeResponse, AppendEntryResponse, TransactionResponse, Precommit, TempBlock, ValidatorIp } from "./types";
 import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
 import {
     NODE_IPS,
@@ -79,23 +79,23 @@ export function getNodeCount(): i32 {
     return getNodeCountInternal(ips);
 }
 
-export function getNodeIPs(): Array<string> {
+export function getNodeIPs(): Array<ValidatorIp> {
     const valuestr = fsm.getContextValue(NODE_IPS);
-    let value: Array<string> = [];
+    let value: Array<ValidatorIp> = [];
     if (valuestr === "") return value;
-    value = JSON.parse<Array<string>>(valuestr);
+    value = JSON.parse<Array<ValidatorIp>>(valuestr);
     return value;
 }
 
-export function setNodeIPs(ips: Array<string>): void {
-    const valuestr = JSON.stringify<Array<string>>(ips);
+export function setNodeIPs(ips: Array<ValidatorIp>): void {
+    const valuestr = JSON.stringify<Array<ValidatorIp>>(ips);
     fsm.setContextValue(NODE_IPS, valuestr);
 }
 
-export function getNodeCountInternal(ips: string[]): i32 {
+function getNodeCountInternal(ips: ValidatorIp[]): i32 {
     let count = 0;
     for (let i = 0; i < ips.length; i++) {
-        if (ips[i].length > 0) {
+        if (ips[i].ip.length > 0) {
             count += 1;
         }
     }
@@ -233,34 +233,6 @@ export function getMaxTxBytes(): i64 {
 
 export function setMaxTxBytes(value: i64): void {
     fsm.setContextValue(MAX_TX_BYTES, value.toString());
-}
-
-export function getValidators(): typestnd.ValidatorInfo[] {
-    const value = fsm.getContextValue(VALIDATORS_KEY);
-    if (value === "") return [];
-    return JSON.parse<typestnd.ValidatorInfo[]>(value);
-}
-
-export function setValidators(value: typestnd.ValidatorInfo[]): void {
-    fsm.setContextValue(VALIDATORS_KEY, JSON.stringify<typestnd.ValidatorInfo[]>(value));
-}
-
-export function updateValidators(updates: typestnd.ValidatorUpdate[]): void {
-    const validators = getValidators();
-    for (let i = 0; i < updates.length; i++) {
-        for (let j = 0; j < validators.length; j++) {
-            if (validators[j].pub_key == updates[i].pub_key) {
-                validators[j].voting_power = updates[i].power;
-            }
-        }
-    }
-    setValidators(validators);
-}
-
-export function getStorageAddress(): string {
-    const state = getCurrentState();
-    return state.wasmx_blocks_contract;
-
 }
 
 export function getCurrentState(): CurrentState {
