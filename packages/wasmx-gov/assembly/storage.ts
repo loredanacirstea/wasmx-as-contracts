@@ -12,13 +12,111 @@ export const PROPOSAL_VOTE_COUNT_KEY = "proposal_vote_count."
 export const PROPOSAL_VOTE_KEY = "proposal_vote."
 export const PROPOSAL_DEPOSIT_COUNT_KEY = "proposal_deposit_count."
 export const PROPOSAL_DEPOSIT_KEY = "proposal_deposit."
+export const PROPOSAL_ACTIVE_DEPOSIT_KEY = "proposal_active_deposit"
+export const PROPOSAL_ACTIVE_VOTING_KEY = "proposal_active_voting"
 
 export function getProposalVoteKey(proposal_id: u64, vote_id: u64): string {
     return PROPOSAL_VOTE_KEY + proposal_id.toString() + SPLIT + vote_id.toString()
 }
 
 export function getProposalDepositKey(proposal_id: u64, deposit_id: u64): string {
-    return PROPOSAL_VOTE_KEY + proposal_id.toString() + SPLIT + deposit_id.toString()
+    return PROPOSAL_DEPOSIT_KEY + proposal_id.toString() + SPLIT + deposit_id.toString()
+}
+
+export function nextEndingDepositProposals(endDate: Date): Proposal[] {
+    const proposalIds = getActiveDepositProposals()
+    if (proposalIds.length == 0) return [];
+    let i = 0;
+    const proposals: Proposal[] = [];
+    for (i = 0; i < proposalIds.length; i++) {
+        const id = proposalIds[i]
+        const proposal = getProposal(id)
+        if (proposal == null) continue;
+        if (proposal.deposit_end_time.getTime() <= endDate.getTime()) {
+            proposals.push(proposal);
+            continue
+        };
+        break;
+    }
+    proposalIds.splice(0, i);
+    setActiveDepositProposals(proposalIds)
+    return proposals
+}
+
+// we rely on the proposals to be ordered by voting_end_time
+// TODO if voting period is changed, then this needs to be redone
+export function nextEndingVotingProposals(endDate: Date): Proposal[] {
+    const proposalIds = getActiveVotingProposals()
+    if (proposalIds.length == 0) return [];
+    let i = 0;
+    const proposals: Proposal[] = [];
+    for (i = 0; i < proposalIds.length; i++) {
+        const id = proposalIds[i]
+        const proposal = getProposal(id)
+        if (proposal == null) continue;
+        if (proposal.voting_end_time.getTime() <= endDate.getTime()) {
+            proposals.push(proposal);
+            continue
+        };
+        break;
+    }
+    proposalIds.splice(0, i);
+    setActiveVotingProposals(proposalIds)
+    return proposals
+}
+
+export function getActiveDepositProposals(): u64[] {
+    const value = wasmxw.sload(PROPOSAL_ACTIVE_DEPOSIT_KEY)
+    if (value === "") return [];
+    return JSON.parse<u64[]>(value);
+}
+
+export function addActiveDepositProposal(proposal_id: u64): void {
+    const ids = getActiveDepositProposals()
+    ids.push(proposal_id)
+    setActiveDepositProposals(ids)
+}
+
+export function removeActiveDepositProposal(proposal_id: u64): void {
+    const ids = getActiveDepositProposals()
+    for (let i = 0; i < ids.length; i++) {
+        if (ids[i] == proposal_id) {
+            ids.splice(i, 1)
+            break;
+        }
+    }
+    setActiveDepositProposals(ids)
+}
+
+export function setActiveDepositProposals(proposalIds: u64[]): void {
+    wasmxw.sstore(PROPOSAL_ACTIVE_DEPOSIT_KEY, JSON.stringify<u64[]>(proposalIds))
+}
+
+export function getActiveVotingProposals(): u64[] {
+    const value = wasmxw.sload(PROPOSAL_ACTIVE_VOTING_KEY)
+    if (value === "") return [];
+    return JSON.parse<u64[]>(value);
+}
+
+export function addActiveVotingProposal(proposal: u64): void {
+    const ids = getActiveVotingProposals()
+    ids.push(proposal)
+    setActiveVotingProposals(ids)
+}
+
+export function removeActiveVotingProposal(proposal_id: u64): void {
+    const ids = getActiveVotingProposals()
+    for (let i = 0; i < ids.length; i++) {
+        if (ids[i] == proposal_id) {
+            ids.splice(i, 1)
+            break;
+        }
+    }
+    setActiveVotingProposals(ids)
+}
+
+export function setActiveVotingProposals(proposals: u64[]): void {
+    wasmxw.sstore(PROPOSAL_ACTIVE_VOTING_KEY, JSON.stringify<u64[]>(proposals))
 }
 
 // proposal_id => deposit_id => deposit GET
@@ -39,6 +137,15 @@ export function addProposalDeposit(proposal_id: u64, value: Deposit): u64 {
     const deposit_id = getProposalDepositCount(proposal_id)
     setProposalDeposit(proposal_id, deposit_id, value)
     return deposit_id;
+}
+
+// proposal_id => deposit_id => deposit : DELETE all deposits
+export function removeProposalDeposits(proposal_id: u64): void {
+    const deposit_id = getProposalDepositCount(proposal_id)
+    for (let i = u64(0); i < deposit_id; i++) {
+        wasmxw.sstore(getProposalDepositKey(proposal_id, deposit_id), "");
+    }
+    wasmxw.sstore(PROPOSAL_DEPOSIT_COUNT_KEY + proposal_id.toString(), "")
 }
 
 // proposal_id => deposit_counter GET
@@ -92,6 +199,11 @@ export function getProposal(id: u64): Proposal | null {
     return JSON.parse<Proposal>(value);
 }
 
+// proposal_id => Proposal DELETE
+export function removeProposal(id: u64): void {
+    wasmxw.sstore(PROPOSAL_KEY + id.toString(), "");
+}
+
 // proposal_id => Proposal SET
 export function setProposal(id: u64, value: Proposal): void {
     const data = JSON.stringify<Proposal>(value);
@@ -101,7 +213,7 @@ export function setProposal(id: u64, value: Proposal): void {
 // proposal_id => Proposal ADD
 export function addProposal(value: Proposal): u64 {
     const id = getProposalIdCount()
-    value.proposal_id = id;
+    value.id = id;
     setProposal(id, value)
     setProposalIdCount(id + 1);
     return id;

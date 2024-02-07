@@ -1,4 +1,5 @@
 import { JSON } from "json-as/assembly";
+import { Base64String } from "wasmx-env/assembly/types";
 
 export const MODULE_NAME = "hooks"
 
@@ -39,8 +40,10 @@ export class MsgSetHook {
 @serializable
 export class MsgRunHook {
     hook: string
-    constructor(hook: string) {
+    data: Base64String
+    constructor(hook: string, data: Base64String) {
         this.hook = hook
+        this.data = data
     }
 }
 

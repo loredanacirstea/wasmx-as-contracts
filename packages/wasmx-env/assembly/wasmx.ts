@@ -38,3 +38,5 @@ export declare function addr_humanize(value: ArrayBuffer): ArrayBuffer
 export declare function addr_canonicalize(value: ArrayBuffer): ArrayBuffer
 
 export declare function getAddressByRole(value: ArrayBuffer): ArrayBuffer
+
+export declare function executeCosmosMsg(value: ArrayBuffer): ArrayBuffer

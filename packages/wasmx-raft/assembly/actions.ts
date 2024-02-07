@@ -7,6 +7,7 @@ import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
 import {
   Base64String,
+  Bech32String,
   CallRequest,
   CallResponse,
 } from 'wasmx-env/assembly/types';
@@ -1193,11 +1194,16 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         const hash = wasmxw.sha256(finalizeReq.txs[i]);
         txhashes.push(hash);
     }
+
+    const blockData = JSON.stringify<wblocks.BlockEntry>(entryobj.data)
     // also indexes transactions
-    setFinalizedBlock(entryobj, finalizeReq.hash, txhashes);
+    setFinalizedBlock(blockData, finalizeReq.hash, txhashes);
 
     // remove temporary block data
     removeLogEntry(entryobj.index);
+
+    // execute hooks
+    callHookContract("EndBlock", blockData);
 
     // before commiting, we check if consensus contract was changed
     let newContract = "";
@@ -1818,8 +1824,7 @@ export function verifyMessage(nodeIndex: i32, signatureStr: Base64String, msg: s
     return wasmxw.ed25519Verify(pubKey.key, signatureStr, msg);
 }
 
-function setFinalizedBlock(entry: LogEntryAggregate, hash: string, txhashes: string[]): void {
-    const blockData = JSON.stringify<wblocks.BlockEntry>(entry.data)
+function setFinalizedBlock(blockData: string, hash: string, txhashes: string[]): void {
     const calldata = new wblockscalld.CallDataSetBlock(blockData, hash, txhashes);
     const calldatastr = `{"setBlock":${JSON.stringify<wblockscalld.CallDataSetBlock>(calldata)}}`;
     const resp = callStorage(calldatastr, false);
@@ -1873,7 +1878,7 @@ function getConsensusParams(): typestnd.ConsensusParams {
     return JSON.parse<typestnd.ConsensusParams>(resp.data);
 }
 
-// setFinalizedBlock already indexes transactions
+// TODO remove - setFinalizedBlock already indexes transactions
 function setIndexedTransaction(value: wblocks.IndexedTransaction, hash: string): void {
     const calldata = new wblockscalld.CallDataSetIndexedTransactionByHash(hash, value);
     const calldatastr = `{"setIndexedTransactionByHash":${JSON.stringify<wblockscalld.CallDataSetIndexedTransactionByHash>(calldata)}}`;
@@ -1919,3 +1924,20 @@ function callStaking(calldata: string, isQuery: boolean): CallResponse {
     return resp;
 }
 
+function callHookContract(hookName: string, data: string): void {
+    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(data)))
+    const calldatastr = `{"RunHook":{"hook":"${hookName}","data":"${dataBase64}"}}`;
+    const resp = callContract("hooks", calldatastr, false)
+    if (resp.success > 0) {
+        // we do not fail, we want the chain to continue
+        LoggerError(`hooks failed`, ["error", resp.data])
+    }
+}
+
+export function callContract(addr: Bech32String, calldata: string, isQuery: boolean): CallResponse {
+    const req = new CallRequest(addr, calldata, BigInt.zero(), 100000000, isQuery);
+    const resp = wasmxw.call(req, MODULE_NAME);
+    // result or error
+    resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    return resp;
+}
