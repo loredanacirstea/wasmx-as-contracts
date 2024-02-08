@@ -15,13 +15,14 @@ import {
     QueryDenomOwnersRequest,
     QuerySendEnabledRequest,
     QueryAddressByDenom,
+    MsgMintCoins,
 } from './types';
 
 // @ts-ignore
 @serializable
 export class CallData {
     InitGenesis: MsgInitGenesis | null = null;
-    Send: MsgSend | null = null;
+    SendCoins: MsgSend | null = null;
     MultiSend: MsgMultiSend | null = null;
     UpdateParams: MsgUpdateParams | null = null;
     SetSendEnabled: MsgSetSendEnabled | null = null;
@@ -29,6 +30,7 @@ export class CallData {
     SendCoinsFromModuleToAccount: MsgSend | null = null;
     SendCoinsFromModuleToModule: MsgSend | null = null;
     SendCoinsFromAccountToModule: MsgSend | null = null;
+    MintCoins: MsgMintCoins | null = null;
 
     // queries
     GetBalance: QueryBalanceRequest | null = null;

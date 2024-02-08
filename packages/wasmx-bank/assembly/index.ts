@@ -15,6 +15,7 @@ import {
   DenomOwners,
   SendEnabled,
   GetAddressByDenom,
+  MintCoins,
 } from "./actions";
 import { CallDataInstantiate } from "./types"
 import { setAuthorities } from "./storage";
@@ -30,8 +31,8 @@ export function instantiate(): void {
 export function main(): void {
   let result: ArrayBuffer;
   const calld = getCallDataWrap();
-  if (calld.Send !== null) {
-    Send(calld.Send!);
+  if (calld.SendCoins !== null) {
+    Send(calld.SendCoins!);
     result = new ArrayBuffer(0)
   } else if (calld.SendCoinsFromModuleToAccount !== null) {
     result = SendCoinsFromModuleToAccount(calld.SendCoinsFromModuleToAccount!);
@@ -71,6 +72,8 @@ export function main(): void {
     result = SendEnabled(calld.GetSendEnabled!);
   } else if (calld.InitGenesis !== null) {
     result = InitGenesis(calld.InitGenesis!);
+  } else if (calld.MintCoins !== null) {
+    result = MintCoins(calld.MintCoins!);
   } else {
     wasmx.revert(String.UTF8.encode("invalid function call data"));
     throw new Error("invalid function call data");

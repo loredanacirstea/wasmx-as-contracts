@@ -4,6 +4,8 @@ import { BigInt } from "wasmx-env/assembly/bn"
 
 export const MODULE_NAME = "gov"
 
+export const MaxMetadataLen = 255
+
 // @ts-ignore
 @serializable
 export class PageRequest {

@@ -1,5 +1,5 @@
 import { JSON } from "json-as/assembly";
-import { Base64String, Bech32String, HexString } from 'wasmx-env/assembly/types';
+import { Base64String, Bech32String, Coin, HexString } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn";
 
 export const MODULE_NAME = "erc20"
@@ -67,9 +67,9 @@ export class MsgTotalSupply {}
 // @ts-ignore
 @serializable
 export class MsgTotalSupplyResponse {
-    totalSupply: BigInt
-    constructor(totalSupply: BigInt) {
-        this.totalSupply = totalSupply
+    supply: Coin
+    constructor(supply: Coin) {
+        this.supply = supply
     }
 }
 
@@ -85,8 +85,8 @@ export class MsgBalanceOf {
 // @ts-ignore
 @serializable
 export class MsgBalanceOfResponse {
-    balance: BigInt
-    constructor(balance: BigInt) {
+    balance: Coin
+    constructor(balance: Coin) {
         this.balance = balance
     }
 }

@@ -237,6 +237,17 @@ export class MsgRegisterDenom {
 
 // @ts-ignore
 @serializable
+export class MsgMintCoins {
+    address: Bech32String
+    coins: Coin[]
+    constructor(address: Bech32String, coins: Coin[]) {
+        this.address = address
+        this.coins = coins
+    }
+}
+
+// @ts-ignore
+@serializable
 export class CallDataInstantiate {
     authorities: string[]
     constructor(authorities: string[]) {

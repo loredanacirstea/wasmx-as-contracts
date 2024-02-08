@@ -10,7 +10,8 @@ import {
     PageResponse, QueryAllBalancesRequest, QueryAllBalancesResponse, QueryBalanceRequest, QueryBalanceResponse, QueryDenomMetadataByQueryStringRequest, QueryDenomMetadataRequest, QueryDenomOwnersRequest, QueryDenomsMetadataRequest, QueryParamsRequest, QuerySendEnabledRequest, QuerySpendableBalanceByDenomRequest, QuerySpendableBalancesRequest, QuerySupplyOfRequest, QueryTotalSupplyRequest, QueryTotalSupplyResponse,
     QueryAddressByDenom,
     QueryAddressByDenomResponse,
-    MODULE_NAME
+    MODULE_NAME,
+    MsgMintCoins
 } from './types';
 import { LoggerDebug, LoggerInfo, revert } from './utils';
 import { getParamsInternal, setParams, getParams, getDenomInfoByAnyDenom, getAuthorities, getBaseDenoms, setBaseDenoms, registerDenomContract, getAddressByDenom, getDenomByAddress } from './storage';
@@ -22,7 +23,7 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
     }
     const genesis = req;
     setParams(genesis.params)
-    LoggerDebug(`init genesis`, ["balances", req.balances.length.toString(), "denom_info", req.denom_info.length.toString()])
+    LoggerInfo(`init genesis`, ["balances_count", req.balances.length.toString(), "denom_info_count", req.denom_info.length.toString()])
     for (let i = 0; i < genesis.denom_info.length; i++) {
         const info = genesis.denom_info[i]
         LoggerDebug(`init denom`, ["base_denom", info.metadata.base, "code_id", info.code_id.toString(), "contract", info.contract])
@@ -48,6 +49,12 @@ export function RegisterDenom(msg: MsgRegisterDenom): ArrayBuffer {
     return new ArrayBuffer(0)
 }
 
+export function MintCoins(req: MsgMintCoins): ArrayBuffer {
+    LoggerDebug(`mint coins`, ["address", req.address, "coins", JSON.stringify<Coin[]>(req.coins)])
+    mint(new Balance(req.address, req.coins))
+    return new ArrayBuffer(0)
+}
+
 export function Send(req: MsgSend): ArrayBuffer {
     requireOwnerOrAuthorization(req.from_address, "SendCoins")
     LoggerDebug(`send coins`, ["from_address", req.from_address, "to_address", req.to_address, "amount", JSON.stringify<Coin[]>(req.amount)])
@@ -56,17 +63,20 @@ export function Send(req: MsgSend): ArrayBuffer {
 }
 
 export function SendCoinsFromModuleToAccount(req: MsgSend): ArrayBuffer {
+    LoggerDebug(`send coins from module to account`, ["from_address", req.from_address, "to_address", req.to_address])
     req.from_address = wasmxw.getAddressByRole(req.from_address)
     return Send(req);
 }
 
 export function SendCoinsFromModuleToModule(req: MsgSend): ArrayBuffer {
+    LoggerDebug(`send coins from module to module`, ["from_address", req.from_address, "to_address", req.to_address])
     req.from_address = wasmxw.getAddressByRole(req.from_address)
     req.to_address = wasmxw.getAddressByRole(req.to_address)
     return Send(req);
 }
 
 export function SendCoinsFromAccountToModule(req: MsgSend): ArrayBuffer {
+    LoggerDebug(`send coins from account to module`, ["from_address", req.from_address, "to_address", req.to_address])
     req.to_address = wasmxw.getAddressByRole(req.to_address)
     return Send(req);
 }
@@ -209,7 +219,7 @@ export function balanceInternal(address: Bech32String, denom: string): Coin {
         return new Coin(denom, BigInt.zero())
     }
     const data = JSON.parse<erc20.MsgBalanceOfResponse>(resp.data)
-    return new Coin(denomInfo.denom, data.balance)
+    return data.balance
 }
 
 export function totalSupplyInternal(denom: string): Coin {
@@ -226,7 +236,7 @@ export function totalSupplyInternal(denom: string): Coin {
         return new Coin(denom, BigInt.zero())
     }
     const data = JSON.parse<erc20.MsgTotalSupplyResponse>(resp.data)
-    return new Coin(denomInfo.denom, data.totalSupply)
+    return data.supply
 }
 
 export function deployDenom(codeId: u64, metadata: Metadata, admins: string[], minters: string[]): Bech32String {
@@ -314,7 +324,7 @@ export function checkOwnerOrAuthorization(owner: Bech32String): boolean {
 
 export function requireOwnerOrAuthorization(owner: Bech32String, msg: string): void {
     if (!checkOwnerOrAuthorization(owner)) {
-        revert(`unauthorized bank action: ${msg}`)
+        revert(`unauthorized bank action: ${owner}: ${msg}`)
     }
 }
 

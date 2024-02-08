@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { isAuthorized } from "wasmx-env/assembly/utils";
-import { Bech32String } from "wasmx-env/assembly/types";
+import { Bech32String, Coin } from "wasmx-env/assembly/types";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { hexToUint8Array } from "wasmx-utils/assembly/utils";
 import { setInfo, getInfo, getBalance, setBalance, getAllowance, setAllowance, getTotalSupply, setTotalSupply, getAdmins, getMinters, setMinters, setAdmins } from "./storage";
@@ -41,12 +41,14 @@ export function getDecimals(): ArrayBuffer {
 
 export function totalSupply(): ArrayBuffer {
     const value = getTotalSupply()
-    return String.UTF8.encode(JSON.stringify<MsgTotalSupplyResponse>(new MsgTotalSupplyResponse(value)))
+    const info = getInfo()
+    return String.UTF8.encode(JSON.stringify<MsgTotalSupplyResponse>(new MsgTotalSupplyResponse(new Coin(info.symbol, value))))
 }
 
 export function balanceOf(req: MsgBalanceOf): ArrayBuffer {
     const value = getBalance(req.owner)
-    return String.UTF8.encode(JSON.stringify<MsgBalanceOfResponse>(new MsgBalanceOfResponse(value)))
+    const info = getInfo()
+    return String.UTF8.encode(JSON.stringify<MsgBalanceOfResponse>(new MsgBalanceOfResponse(new Coin(info.symbol, value))))
 }
 
 export function transfer(req: MsgTransfer): ArrayBuffer {

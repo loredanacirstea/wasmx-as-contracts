@@ -145,7 +145,7 @@ function getCoin(value: BigInt): Coin {
 
 function bankSendCoin (from: Bech32String, to: Bech32String, value: BigInt, denom: string): void {
     const valuestr = JSON.stringify<banktypes.MsgSend>(new banktypes.MsgSend(from, to, [new Coin(denom, value)]))
-    const calldata = `{"Send":${valuestr}}`
+    const calldata = `{"SendCoins":${valuestr}}`
     const resp = callBank(calldata, false);
     if (resp.success > 0) {
         revert(`could not transfer coins by bank: ${resp.data}`);

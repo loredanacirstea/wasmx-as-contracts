@@ -6,7 +6,7 @@ import * as banktypes from "wasmx-bank/assembly/types"
 import * as erc20types from "wasmx-erc20/assembly/types"
 import * as blocktypes from "wasmx-blocks/assembly/types"
 import * as consensustypes from "wasmx-consensus/assembly/types_tendermint"
-import { Deposit, Fraction, MODULE_NAME, MsgDeposit, MsgEndBlock, MsgInitGenesis, MsgSubmitProposal, MsgVote, MsgVoteWeighted, PROPOSAL_STATUS_DEPOSIT_PERIOD, PROPOSAL_STATUS_FAILED, PROPOSAL_STATUS_PASSED, PROPOSAL_STATUS_REJECTED, PROPOSAL_STATUS_VOTING_PERIOD, Params, Proposal, QueryDepositRequest, QueryDepositsRequest, QueryParamsRequest, QueryProposalRequest, QueryProposalResponse, QueryProposalsRequest, QueryTallyResultRequest, QueryVoteRequest, QueryVotesRequest, Response, TallyResult, VOTE_OPTION_ABSTAIN, VOTE_OPTION_NO, VOTE_OPTION_NO_WITH_VETO, VOTE_OPTION_UNSPECIFIED, VOTE_OPTION_YES, Vote } from "./types";
+import { Deposit, Fraction, MODULE_NAME, MaxMetadataLen, MsgDeposit, MsgEndBlock, MsgInitGenesis, MsgSubmitProposal, MsgVote, MsgVoteWeighted, PROPOSAL_STATUS_DEPOSIT_PERIOD, PROPOSAL_STATUS_FAILED, PROPOSAL_STATUS_PASSED, PROPOSAL_STATUS_REJECTED, PROPOSAL_STATUS_VOTING_PERIOD, Params, Proposal, QueryDepositRequest, QueryDepositsRequest, QueryParamsRequest, QueryProposalRequest, QueryProposalResponse, QueryProposalsRequest, QueryTallyResultRequest, QueryVoteRequest, QueryVotesRequest, Response, TallyResult, VOTE_OPTION_ABSTAIN, VOTE_OPTION_NO, VOTE_OPTION_NO_WITH_VETO, VOTE_OPTION_UNSPECIFIED, VOTE_OPTION_YES, Vote } from "./types";
 import { addActiveDepositProposal, addActiveVotingProposal, addProposal, addProposalDeposit, addProposalVote, getActiveDepositProposals, getActiveVotingProposals, getParams, getProposal, getProposalIdCount, nextEndingDepositProposals, nextEndingVotingProposals, removeActiveDepositProposal, removeActiveVotingProposal, removeProposal, removeProposalDeposits, setParams, setProposal, setProposalDeposit, setProposalDepositCount, setProposalIdCount } from "./storage";
 import { Bech32String, CallRequest, CallResponse, Coin } from "wasmx-env/assembly/types";
 import { LoggerInfo, revert } from "./utils";
@@ -139,6 +139,7 @@ export function SubmitProposal(req: MsgSubmitProposal): ArrayBuffer {
     if (req.initial_deposit.length == 0) {
         deposit = [new Coin(DENOM_BASE, BigInt.zero())]
     }
+    const metadata = req.metadata.slice(0, i32(Math.min(MaxMetadataLen, req.metadata.length)))
     const proposal = new Proposal(
         0,
         req.messages,
@@ -149,7 +150,7 @@ export function SubmitProposal(req: MsgSubmitProposal): ArrayBuffer {
         deposit,
         new Date(0),
         new Date(0),
-        req.metadata,
+        metadata,
         req.title,
         req.summary,
         req.proposer,
@@ -214,8 +215,9 @@ export function VoteWeighted(req: MsgVoteWeighted): ArrayBuffer {
     if (proposal!.status != PROPOSAL_STATUS_VOTING_PERIOD) {
         revert(`cannot vote, proposal is in status: ${proposal!.status}`)
     }
+    const metadata = req.metadata.slice(0, i32(Math.min(MaxMetadataLen, req.metadata.length)))
     // add vote
-    addProposalVote(req.proposal_id, new Vote(req.proposal_id, req.voter, req.option, req.metadata))
+    addProposalVote(req.proposal_id, new Vote(req.proposal_id, req.voter, req.option, metadata))
 
     // voter stake
     const stake = getStake(req.voter)
@@ -383,7 +385,7 @@ export function callGetStake(tokenAddress: Bech32String, delegator: Bech32String
         revert(`delegation not found`)
     }
     const balance = JSON.parse<erc20types.MsgBalanceOfResponse>(resp.data)
-    return balance.balance
+    return balance.balance.amount
 }
 
 export function callGetTotalStake(): BigInt {
@@ -394,7 +396,7 @@ export function callGetTotalStake(): BigInt {
         revert(`delegation not found`)
     }
     const balance = JSON.parse<erc20types.MsgTotalSupplyResponse>(resp.data)
-    return balance.totalSupply
+    return balance.supply.amount
 }
 
 export function callContract(addr: Bech32String, calldata: string, isQuery: boolean): CallResponse {
