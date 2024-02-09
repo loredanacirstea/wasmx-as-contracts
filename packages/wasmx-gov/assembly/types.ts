@@ -1,5 +1,5 @@
 import { JSON } from "json-as/assembly";
-import { Base64String, Bech32String, Coin, HexString } from 'wasmx-env/assembly/types';
+import { Base64String, Bech32String, Coin } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn"
 
 export const MODULE_NAME = "gov"
@@ -253,9 +253,9 @@ export class Params {
     // Minimum deposit for a proposal to enter voting period.
     min_deposit: Coin[]
     // Maximum period for Atom holders to deposit on a proposal. Initial value: 2 months.
-    max_deposit_period: i64
+    max_deposit_period_ms: i64 // time.Duration in milliseconds
     // Duration of the voting period.
-    voting_period: i64
+    voting_period_ms: i64 // time.Duration in milliseconds
     //  Minimum percentage of total stake needed to vote for a result to be considered valid.
     quorum: string // f64
     //  Minimum proportion of Yes votes for proposal to pass. Default value: 0.5.
@@ -276,7 +276,7 @@ export class Params {
 
     // Duration of the voting period of an expedited proposal.
     // Since: cosmos-sdk 0.50
-    expedited_voting_period: i64
+    expedited_voting_period_ms: i64 // time.Duration in milliseconds
 
     // Minimum proportion of Yes votes for proposal to pass. Default value: 0.67.
     // Since: cosmos-sdk 0.50
@@ -295,11 +295,11 @@ export class Params {
     // Since: cosmos-sdk 0.50
     min_deposit_ratio: string // f64
     constructor(
-        min_deposit: Coin[], max_deposit_period: i64, voting_period: i64, quorum: string, threshold: string, veto_threshold: string,
+        min_deposit: Coin[], max_deposit_period_ms: i64, voting_period_ms: i64, quorum: string, threshold: string, veto_threshold: string,
         min_initial_deposit_ratio: string,
         proposal_cancel_ratio: string,
         proposal_cancel_dest: Bech32String,
-        expedited_voting_period: i64,
+        expedited_voting_period_ms: i64,
         expedited_threshold: string,
         expedited_min_deposit: Coin[],
         burn_vote_quorum: bool,
@@ -308,15 +308,15 @@ export class Params {
         min_deposit_ratio: string // f64,
     ) {
         this.min_deposit = min_deposit
-        this.max_deposit_period = max_deposit_period
-        this.voting_period = voting_period
+        this.max_deposit_period_ms = max_deposit_period_ms
+        this.voting_period_ms = voting_period_ms
         this.quorum = quorum
         this.threshold = threshold
         this.veto_threshold = veto_threshold
         this.min_initial_deposit_ratio = min_initial_deposit_ratio
         this.proposal_cancel_ratio = proposal_cancel_ratio
         this.proposal_cancel_dest = proposal_cancel_dest
-        this.expedited_voting_period = expedited_voting_period
+        this.expedited_voting_period_ms = expedited_voting_period_ms
         this.expedited_threshold = expedited_threshold
         this.expedited_min_deposit = expedited_min_deposit
         this.burn_vote_quorum = burn_vote_quorum
@@ -596,7 +596,12 @@ export class QueryParamsRequest {
 
 // @ts-ignore
 @serializable
-export class QueryParamsResponse extends Params {}
+export class QueryParamsResponse {
+    params: Params
+    constructor(params: Params) {
+        this.params = params
+    }
+}
 
 // @ts-ignore
 @serializable

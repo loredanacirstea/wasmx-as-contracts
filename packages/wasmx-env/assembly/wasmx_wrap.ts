@@ -17,6 +17,7 @@ import {
     CreateAccountResponse,
     Create2AccountRequest,
     Create2AccountResponse,
+    Event,
 } from './types';
 
 export function revert(message: string): void {
@@ -67,6 +68,10 @@ export function logWithMsgTopic(
         newtopics[i + 1] = topics[i];
     }
     log(data, newtopics)
+}
+
+export function emitCosmosEvents(events: Event[]): void {
+    wasmx.emitCosmosEvents(String.UTF8.encode(JSON.stringify<Event[]>(events)))
 }
 
 export function grpcRequest(ip: string, contract: Uint8Array, data: string): GrpcResponse {

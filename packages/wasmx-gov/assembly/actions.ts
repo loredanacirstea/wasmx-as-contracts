@@ -6,10 +6,11 @@ import * as banktypes from "wasmx-bank/assembly/types"
 import * as erc20types from "wasmx-erc20/assembly/types"
 import * as blocktypes from "wasmx-blocks/assembly/types"
 import * as consensustypes from "wasmx-consensus/assembly/types_tendermint"
-import { Deposit, Fraction, MODULE_NAME, MaxMetadataLen, MsgDeposit, MsgEndBlock, MsgInitGenesis, MsgSubmitProposal, MsgVote, MsgVoteWeighted, PROPOSAL_STATUS_DEPOSIT_PERIOD, PROPOSAL_STATUS_FAILED, PROPOSAL_STATUS_PASSED, PROPOSAL_STATUS_REJECTED, PROPOSAL_STATUS_VOTING_PERIOD, Params, Proposal, QueryDepositRequest, QueryDepositsRequest, QueryParamsRequest, QueryProposalRequest, QueryProposalResponse, QueryProposalsRequest, QueryTallyResultRequest, QueryVoteRequest, QueryVotesRequest, Response, TallyResult, VOTE_OPTION_ABSTAIN, VOTE_OPTION_NO, VOTE_OPTION_NO_WITH_VETO, VOTE_OPTION_UNSPECIFIED, VOTE_OPTION_YES, Vote } from "./types";
+import { Deposit, Fraction, MODULE_NAME, MaxMetadataLen, MsgDeposit, MsgEndBlock, MsgInitGenesis, MsgSubmitProposal, MsgSubmitProposalResponse, MsgVote, MsgVoteWeighted, PROPOSAL_STATUS_DEPOSIT_PERIOD, PROPOSAL_STATUS_FAILED, PROPOSAL_STATUS_PASSED, PROPOSAL_STATUS_REJECTED, PROPOSAL_STATUS_VOTING_PERIOD, Params, Proposal, QueryDepositRequest, QueryDepositsRequest, QueryParamsRequest, QueryParamsResponse, QueryProposalRequest, QueryProposalResponse, QueryProposalsRequest, QueryTallyResultRequest, QueryVoteRequest, QueryVotesRequest, Response, TallyResult, VOTE_OPTION_ABSTAIN, VOTE_OPTION_NO, VOTE_OPTION_NO_WITH_VETO, VOTE_OPTION_UNSPECIFIED, VOTE_OPTION_YES, Vote } from "./types";
 import { addActiveDepositProposal, addActiveVotingProposal, addProposal, addProposalDeposit, addProposalVote, getActiveDepositProposals, getActiveVotingProposals, getParams, getProposal, getProposalIdCount, nextEndingDepositProposals, nextEndingVotingProposals, removeActiveDepositProposal, removeActiveVotingProposal, removeProposal, removeProposalDeposits, setParams, setProposal, setProposalDeposit, setProposalDepositCount, setProposalIdCount } from "./storage";
-import { Bech32String, CallRequest, CallResponse, Coin } from "wasmx-env/assembly/types";
+import { Bech32String, CallRequest, CallResponse, Coin, Event, EventAttribute } from "wasmx-env/assembly/types";
 import { LoggerInfo, revert } from "./utils";
+import { AttributeKeyProposalID, AttributeKeyProposalMessages, EventTypeSubmitProposal } from "./events";
 
 // TODO this must be in initialization
 const DENOM_BASE = "amyt"
@@ -134,7 +135,7 @@ export function EndBlock(req: MsgEndBlock): ArrayBuffer {
 export function SubmitProposal(req: MsgSubmitProposal): ArrayBuffer {
     const params = getParams()
     const submitTime = new Date(Date.now());
-    const depositEndTime = new Date(submitTime.getTime() + params.max_deposit_period)
+    const depositEndTime = new Date(submitTime.getTime() + params.max_deposit_period_ms)
     let deposit = req.initial_deposit;
     if (req.initial_deposit.length == 0) {
         deposit = [new Coin(DENOM_BASE, BigInt.zero())]
@@ -161,7 +162,7 @@ export function SubmitProposal(req: MsgSubmitProposal): ArrayBuffer {
     if (deposit[0].amount > params.min_deposit[0].amount) {
         proposal.status = PROPOSAL_STATUS_VOTING_PERIOD
         proposal.voting_start_time = new Date(Date.now());
-        proposal.voting_end_time = new Date(proposal.voting_start_time.getTime() + params.voting_period)
+        proposal.voting_end_time = new Date(proposal.voting_start_time.getTime() + params.voting_period_ms)
     }
     const proposal_id = addProposal(proposal);
     if (proposal.status == PROPOSAL_STATUS_DEPOSIT_PERIOD) {
@@ -175,7 +176,16 @@ export function SubmitProposal(req: MsgSubmitProposal): ArrayBuffer {
 
     addProposalDeposit(proposal_id, new Deposit(proposal_id, req.proposer, req.initial_deposit))
 
-    return new ArrayBuffer(0)
+    const ev = new Event(
+        EventTypeSubmitProposal,
+        [
+            new EventAttribute(AttributeKeyProposalID, proposal_id.toString(), true),
+            new EventAttribute(AttributeKeyProposalMessages, req.messages.join(","), true),
+        ],
+    )
+    wasmxw.emitCosmosEvents([ev]);
+
+    return String.UTF8.encode(JSON.stringify<MsgSubmitProposalResponse>(new MsgSubmitProposalResponse(proposal_id)))
 }
 
 // export function DoVote(req: MsgVote): ArrayBuffer {
@@ -287,7 +297,7 @@ export function DoDeposit(req: MsgDeposit): ArrayBuffer {
     if (proposal!.total_deposit[0].amount > params.min_deposit[0].amount) {
         proposal!.status = PROPOSAL_STATUS_VOTING_PERIOD
         proposal!.voting_start_time = new Date(Date.now());
-        proposal!.voting_end_time = new Date(proposal!.voting_start_time.getTime() + params.voting_period)
+        proposal!.voting_end_time = new Date(proposal!.voting_start_time.getTime() + params.voting_period_ms)
         addActiveVotingProposal(proposal!.id)
         removeActiveDepositProposal(proposal!.id)
     }
@@ -299,7 +309,7 @@ export function DoDeposit(req: MsgDeposit): ArrayBuffer {
 
 export function GetProposal(req: QueryProposalRequest): ArrayBuffer {
     const proposal = getProposal(req.proposal_id)
-    let response = `{}`
+    let response = `{"proposal":null}`
     if (proposal != null) {
         response = JSON.stringify<QueryProposalResponse>(new QueryProposalResponse(proposal))
     }
@@ -319,7 +329,9 @@ export function GetVotes(req: QueryVotesRequest): ArrayBuffer {
 }
 
 export function GetParams(req: QueryParamsRequest): ArrayBuffer {
-    return new ArrayBuffer(0)
+    const params = getParams()
+    const response = new QueryParamsResponse(params)
+    return String.UTF8.encode(JSON.stringify<QueryParamsResponse>(response))
 }
 
 export function GetDeposit(req: QueryDepositRequest): ArrayBuffer {

@@ -55,7 +55,7 @@ export function transfer(req: MsgTransfer): ArrayBuffer {
     const from = wasmxw.getCaller();
     LoggerDebug("transfer", ["from", from, "to", req.to, "value", req.value.toString()])
     const success = move(from, req.to, req.value);
-    return String.UTF8.encode(JSON.stringify<MsgTransferResponse>(new MsgTransferResponse(success)))
+    return String.UTF8.encode(JSON.stringify<MsgTransferResponse>(new MsgTransferResponse()))
 }
 
 export function transferFrom(req: MsgTransferFrom): ArrayBuffer {
@@ -63,19 +63,18 @@ export function transferFrom(req: MsgTransferFrom): ArrayBuffer {
     const admins = getAdmins();
     const authorized = isAuthorized(spender, admins);
     LoggerDebug("transferFrom", ["from", req.from, "to", req.to, "value", req.value.toString(), "caller", spender, "authorized", authorized.toString()])
-    let success = false;
     if (authorized) {
-        success = move(req.from, req.to, req.value)
+        move(req.from, req.to, req.value)
     } else {
         let allow = getAllowance(req.from, spender)
         if (allow >= req.value) {
-            success = move(req.from, req.to, req.value)
+            move(req.from, req.to, req.value)
             // @ts-ignore
             allow -= req.value;
             setAllowance(req.from, spender, allow);
         }
     }
-    return String.UTF8.encode(JSON.stringify<MsgTransferFromResponse>(new MsgTransferFromResponse(success)))
+    return String.UTF8.encode(JSON.stringify<MsgTransferFromResponse>(new MsgTransferFromResponse()))
 }
 
 export function approve(req: MsgApprove): ArrayBuffer {
@@ -112,11 +111,10 @@ export function mint(req: MsgMint): ArrayBuffer {
     return new ArrayBuffer(0);
 }
 
-export function move(from: Bech32String, to: Bech32String, amount: BigInt): boolean {
+export function move(from: Bech32String, to: Bech32String, amount: BigInt): void {
     let balanceFrom = getBalance(from);
     if (balanceFrom < amount) {
-        LoggerDebug("cannot move coins", ["from", from, "to", to, "balanceFrom", balanceFrom.toString(), "value", amount.toString()])
-        return false;
+        revert(`cannot move coins from ${from} to ${to}; amount: ${amount.toString()}; balance: ${balanceFrom.toString()} `)
     }
     let balanceTo = getBalance(to);
     // @ts-ignore
@@ -126,7 +124,6 @@ export function move(from: Bech32String, to: Bech32String, amount: BigInt): bool
     setBalance(from, balanceFrom);
     logTransfer(from, to, amount);
     setBalance(to, balanceTo);
-    return true;
 }
 
 export function logTransfer(from: Bech32String, to: Bech32String, amount: BigInt): void {

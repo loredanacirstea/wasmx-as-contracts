@@ -1,5 +1,5 @@
 import { JSON } from "json-as/assembly";
-import {HexString, Base64String, Bech32String} from 'wasmx-env/assembly/types';
+import {HexString, Base64String, Bech32String, Event} from 'wasmx-env/assembly/types';
 
 // @ts-ignore
 @serializable
@@ -332,30 +332,6 @@ export class RequestFinalizeBlock {
         this.time = time;
         this.next_validators_hash = nextValidatorsHash;
         this.proposer_address = proposerAddress;
-    }
-}
-
-// @ts-ignore
-@serializable
-export class EventAttribute {
-    key: string
-	value: string
-	index: bool
-    constructor(key: string, value: string, index: bool) {
-        this.key = key;
-        this.value = value;
-        this.index = index;
-    }
-}
-
-// @ts-ignore
-@serializable
-export class Event {
-    type: string
-	attributes: EventAttribute[]
-    constructor(type: string, attributes: EventAttribute[]) {
-        this.type = type;
-        this.attributes = attributes;
     }
 }
 

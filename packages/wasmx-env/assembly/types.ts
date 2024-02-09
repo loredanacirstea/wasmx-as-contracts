@@ -3,8 +3,14 @@ import { BigInt } from "./bn";
 
 export const MAX_LOGGED = 2000
 
+// @ts-ignore
+@serializable
 export type HexString = string;
+// @ts-ignore
+@serializable
 export type Base64String = string;
+// @ts-ignore
+@serializable
 export type Bech32String = string;
 
 // @ts-ignore
@@ -166,5 +172,29 @@ export class LoggerLog {
     constructor(msg: string, parts: string[]) {
         this.msg = msg;
         this.parts = parts;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class EventAttribute {
+    key: string
+	value: Base64String
+	index: bool
+    constructor(key: string, value: Base64String, index: bool) {
+        this.key = key;
+        this.value = value;
+        this.index = index;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class Event {
+    type: string
+	attributes: EventAttribute[]
+    constructor(type: string, attributes: EventAttribute[]) {
+        this.type = type;
+        this.attributes = attributes;
     }
 }

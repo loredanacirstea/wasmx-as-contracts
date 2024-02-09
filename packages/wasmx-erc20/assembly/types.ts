@@ -104,12 +104,7 @@ export class MsgTransfer {
 
 // @ts-ignore
 @serializable
-export class MsgTransferResponse {
-    success: bool
-    constructor(success: bool) {
-        this.success = success
-    }
-}
+export class MsgTransferResponse {}
 
 // @ts-ignore
 @serializable
@@ -126,12 +121,7 @@ export class MsgTransferFrom {
 
 // @ts-ignore
 @serializable
-export class MsgTransferFromResponse {
-    success: bool
-    constructor(success: bool) {
-        this.success = success
-    }
-}
+export class MsgTransferFromResponse {}
 
 // @ts-ignore
 @serializable
