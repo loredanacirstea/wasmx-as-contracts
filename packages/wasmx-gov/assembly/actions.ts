@@ -6,11 +6,11 @@ import * as banktypes from "wasmx-bank/assembly/types"
 import * as erc20types from "wasmx-erc20/assembly/types"
 import * as blocktypes from "wasmx-blocks/assembly/types"
 import * as consensustypes from "wasmx-consensus/assembly/types_tendermint"
-import { Deposit, Fraction, MODULE_NAME, MaxMetadataLen, MsgDeposit, MsgEndBlock, MsgInitGenesis, MsgSubmitProposal, MsgSubmitProposalResponse, MsgVote, MsgVoteWeighted, PROPOSAL_STATUS_DEPOSIT_PERIOD, PROPOSAL_STATUS_FAILED, PROPOSAL_STATUS_PASSED, PROPOSAL_STATUS_REJECTED, PROPOSAL_STATUS_VOTING_PERIOD, Params, Proposal, QueryDepositRequest, QueryDepositsRequest, QueryParamsRequest, QueryParamsResponse, QueryProposalRequest, QueryProposalResponse, QueryProposalsRequest, QueryTallyResultRequest, QueryVoteRequest, QueryVotesRequest, Response, TallyResult, VOTE_OPTION_ABSTAIN, VOTE_OPTION_NO, VOTE_OPTION_NO_WITH_VETO, VOTE_OPTION_UNSPECIFIED, VOTE_OPTION_YES, Vote } from "./types";
+import { Deposit, Fraction, MODULE_NAME, MaxMetadataLen, MsgDeposit, MsgEndBlock, MsgInitGenesis, MsgSubmitProposal, MsgSubmitProposalResponse, MsgVote, MsgVoteResponse, MsgVoteWeighted, PROPOSAL_STATUS_DEPOSIT_PERIOD, PROPOSAL_STATUS_FAILED, PROPOSAL_STATUS_PASSED, PROPOSAL_STATUS_REJECTED, PROPOSAL_STATUS_VOTING_PERIOD, Params, Proposal, QueryDepositRequest, QueryDepositsRequest, QueryParamsRequest, QueryParamsResponse, QueryProposalRequest, QueryProposalResponse, QueryProposalsRequest, QueryTallyResultRequest, QueryVoteRequest, QueryVotesRequest, Response, TallyResult, VOTE_OPTION_ABSTAIN, VOTE_OPTION_NO, VOTE_OPTION_NO_WITH_VETO, VOTE_OPTION_UNSPECIFIED, VOTE_OPTION_YES, Vote, VoteOptionMap, WeightedVoteOption } from "./types";
 import { addActiveDepositProposal, addActiveVotingProposal, addProposal, addProposalDeposit, addProposalVote, getActiveDepositProposals, getActiveVotingProposals, getParams, getProposal, getProposalIdCount, nextEndingDepositProposals, nextEndingVotingProposals, removeActiveDepositProposal, removeActiveVotingProposal, removeProposal, removeProposalDeposits, setParams, setProposal, setProposalDeposit, setProposalDepositCount, setProposalIdCount } from "./storage";
 import { Bech32String, CallRequest, CallResponse, Coin, Event, EventAttribute } from "wasmx-env/assembly/types";
-import { LoggerInfo, revert } from "./utils";
-import { AttributeKeyProposalID, AttributeKeyProposalMessages, EventTypeSubmitProposal } from "./events";
+import { LoggerDebug, LoggerInfo, revert } from "./utils";
+import { AttributeKeyOption, AttributeKeyProposalID, AttributeKeyProposalMessages, AttributeKeyVoter, AttributeKeyVotingPeriodStart, EventTypeProposalDeposit, EventTypeProposalVote, EventTypeSubmitProposal } from "./events";
 
 // TODO this must be in initialization
 const DENOM_BASE = "amyt"
@@ -43,8 +43,8 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
 }
 
 export function EndBlock(req: MsgEndBlock): ArrayBuffer {
-    const block = JSON.parse<blocktypes.BlockEntry>(req.data)
-    const header = JSON.parse<consensustypes.Header>(block.header)
+    const block = JSON.parse<blocktypes.BlockEntry>(String.UTF8.decode(decodeBase64(req.data).buffer))
+    const header = JSON.parse<consensustypes.Header>(String.UTF8.decode(decodeBase64(block.header).buffer))
     const headerTime = Date.fromString(header.time)
 
     // check deposit period passed and remove inactive proposals, burn deposit
@@ -52,6 +52,7 @@ export function EndBlock(req: MsgEndBlock): ArrayBuffer {
     // if there are proposals here not promoted, the deposit was not enough
     // so we remove them and burn the deposit
     const activeDeposit = nextEndingDepositProposals(headerTime)
+    LoggerDebug(`gov proposals expired deposit`, ["count", activeDeposit.length.toString(), "block_time", headerTime.toISOString()])
     for (let i = 0; i < activeDeposit.length; i++) {
         const proposal = activeDeposit[i]
         // TODO burn the deposit; now the deposit remains in the gov module
@@ -63,6 +64,7 @@ export function EndBlock(req: MsgEndBlock): ArrayBuffer {
     const params = getParams()
     // check voting period passed and finalize proposal
     const activeVoting = nextEndingVotingProposals(headerTime)
+    LoggerDebug(`gov proposals ending voting period`, ["count", activeVoting.length.toString()])
     for (let i = 0; i < activeVoting.length; i++) {
         const proposal = activeVoting[i]
         removeActiveVotingProposal(proposal.id)
@@ -74,6 +76,7 @@ export function EndBlock(req: MsgEndBlock): ArrayBuffer {
         const quorumAmount = totalStake.mul(BigInt.fromU64(quorum)).div(BigInt.fromU32(10).pown(decimals))
         // @ts-ignore
         const votedStake = proposal.final_tally_result.yes_count + proposal.final_tally_result.no_count + proposal.final_tally_result.abstain_count + proposal.final_tally_result.no_with_veto_count
+        LoggerDebug(`proposal quorum`, ["id", proposal.id.toString(), "total_stake", totalStake.toString(), "quorum", quorumAmount.toString(), "voted_state", votedStake.toString()])
 
         // check quorum
         if (votedStake < quorumAmount) {
@@ -82,6 +85,7 @@ export function EndBlock(req: MsgEndBlock): ArrayBuffer {
             proposal.status = PROPOSAL_STATUS_REJECTED
             // TODO give back deposits
             setProposal(proposal.id, proposal);
+            LoggerDebug(`proposal failed quorum`, ["id", proposal.id.toString()])
             break;
         }
         // TODO proposal.expedited
@@ -90,11 +94,14 @@ export function EndBlock(req: MsgEndBlock): ArrayBuffer {
         const decimalsVeto = decimalCount(params.veto_threshold)
         const thresholdVeto = u64(Math.floor(parseFloat(params.veto_threshold) * Math.pow(10, decimalsVeto)))
         const thresholdVetoAmount = votedStake.mul(BigInt.fromU64(thresholdVeto)).div(BigInt.fromU32(10).pown(decimalsVeto))
+        LoggerDebug(`proposal veto threshold`, ["id", proposal.id.toString(), "veto_count", proposal.final_tally_result.no_with_veto_count.toString(), "threshold", thresholdVetoAmount.toString()])
+
         if (proposal.final_tally_result.no_with_veto_count >= thresholdVetoAmount) {
             // we burn the deposits or (now:) leave it in gov contract
             proposal.failed_reason = "vetoed"
             proposal.status = PROPOSAL_STATUS_REJECTED
             setProposal(proposal.id, proposal);
+            LoggerDebug(`proposal failed with veto`, ["id", proposal.id.toString()])
             break;
         }
 
@@ -102,15 +109,19 @@ export function EndBlock(req: MsgEndBlock): ArrayBuffer {
         const decimalsThreshold = decimalCount(params.threshold)
         const threshold = u64(Math.floor(parseFloat(params.threshold) * Math.pow(10, decimalsThreshold)))
         const thresholdAmount = votedStake.mul(BigInt.fromU64(threshold)).div(BigInt.fromU32(10).pown(decimalsThreshold))
+        LoggerDebug(`proposal yes threshold`, ["id", proposal.id.toString(), "yes_count", proposal.final_tally_result.yes_count.toString(), "threshold", thresholdAmount.toString()])
+
         if (proposal.final_tally_result.yes_count < thresholdAmount) {
             proposal.failed_reason = "not enough yes votes"
             proposal.status = PROPOSAL_STATUS_REJECTED
             // TODO we return the deposits; (now:) leave them in gov contract
             setProposal(proposal.id, proposal);
+            LoggerDebug(`proposal rejected`, ["id", proposal.id.toString()])
             break;
         }
 
         // proposal passed, we execut messages
+        LoggerDebug(`proposal passed`, ["id", proposal.id.toString()])
 
         // Messages may mutate state thus we use a cached context. If one of
         // the handlers fails, no state mutation is written and the error
@@ -120,9 +131,11 @@ export function EndBlock(req: MsgEndBlock): ArrayBuffer {
         const result = executeProposal(proposal)
         if (result.success) {
             proposal.status = PROPOSAL_STATUS_PASSED
+            LoggerDebug(`proposal passed and execution succeeded`, ["id", proposal.id.toString()])
         } else {
             proposal.status = PROPOSAL_STATUS_FAILED
             proposal.failed_reason = result.data
+            LoggerDebug(`proposal passed and execution failed`, ["id", proposal.id.toString(), "error", result.data])
         }
         setProposal(proposal.id, proposal);
     }
@@ -135,7 +148,7 @@ export function EndBlock(req: MsgEndBlock): ArrayBuffer {
 export function SubmitProposal(req: MsgSubmitProposal): ArrayBuffer {
     const params = getParams()
     const submitTime = new Date(Date.now());
-    const depositEndTime = new Date(submitTime.getTime() + params.max_deposit_period_ms)
+    const depositEndTime = new Date(submitTime.getTime() + params.max_deposit_period)
     let deposit = req.initial_deposit;
     if (req.initial_deposit.length == 0) {
         deposit = [new Coin(DENOM_BASE, BigInt.zero())]
@@ -162,7 +175,7 @@ export function SubmitProposal(req: MsgSubmitProposal): ArrayBuffer {
     if (deposit[0].amount > params.min_deposit[0].amount) {
         proposal.status = PROPOSAL_STATUS_VOTING_PERIOD
         proposal.voting_start_time = new Date(Date.now());
-        proposal.voting_end_time = new Date(proposal.voting_start_time.getTime() + params.voting_period_ms)
+        proposal.voting_end_time = new Date(proposal.voting_start_time.getTime() + params.voting_period)
     }
     const proposal_id = addProposal(proposal);
     if (proposal.status == PROPOSAL_STATUS_DEPOSIT_PERIOD) {
@@ -188,34 +201,51 @@ export function SubmitProposal(req: MsgSubmitProposal): ArrayBuffer {
     return String.UTF8.encode(JSON.stringify<MsgSubmitProposalResponse>(new MsgSubmitProposalResponse(proposal_id)))
 }
 
-// export function DoVote(req: MsgVote): ArrayBuffer {
-//     const proposal = getProposal(req.proposal_id)
-//     if (proposal == null) {
-//         revert(`invalid proposal id: ${req.proposal_id.toString()}`)
-//     }
-//     // add vote
-//     addProposalVote(req.proposal_id, new Vote(req.proposal_id, req.voter, req.option, []))
+export function DoVote(req: MsgVote): ArrayBuffer {
+    LoggerDebug("vote", ["proposal_id", req.proposal_id.toString(), "option", req.option])
+    const proposal = getProposal(req.proposal_id)
+    if (proposal == null) {
+        revert(`invalid proposal id: ${req.proposal_id.toString()}`)
+    }
+    if (!VoteOptionMap.has(req.option)) {
+        revert(`invalid vote option: ${req.option}`)
+    }
+    const optionId = VoteOptionMap.get(req.option)
+    const option = new WeightedVoteOption(optionId, "1.0");
+    const metadata = req.metadata.slice(0, i32(Math.min(MaxMetadataLen, req.metadata.length)))
+    addProposalVote(req.proposal_id, new Vote(req.proposal_id, req.voter, [option], metadata))
 
-//     // voter stake
-//     const stake = getStake(req.voter)
+    // voter stake
+    const stake = getStake(req.voter)
 
-//     // update proposal tally
-//     if (req.option == VOTE_OPTION_YES) {
-//         // @ts-ignore
-//         proposal!.final_tally_result.yes += stake
-//     } else if (req.option == VOTE_OPTION_ABSTAIN) {
-//         // @ts-ignore
-//         proposal!.final_tally_result.abstain += stake
-//     } else if (req.option == VOTE_OPTION_NO) {
-//         // @ts-ignore
-//         proposal!.final_tally_result.no += stake
-//     } else if (req.option == VOTE_OPTION_NO_WITH_VETO) {
-//         // @ts-ignore
-//         proposal!.final_tally_result.no_with_veto += stake
-//     }
-//     setProposal(proposal!.id, proposal!)
-//     return new ArrayBuffer(0)
-// }
+    // update proposal tally
+    if (optionId == VOTE_OPTION_YES) {
+        // @ts-ignore
+        proposal!.final_tally_result.yes_count += stake
+    } else if (optionId == VOTE_OPTION_ABSTAIN) {
+        // @ts-ignore
+        proposal!.final_tally_result.abstain_count += stake
+    } else if (optionId == VOTE_OPTION_NO) {
+        // @ts-ignore
+        proposal!.final_tally_result.no_count += stake
+    } else if (optionId == VOTE_OPTION_NO_WITH_VETO) {
+        // @ts-ignore
+        proposal!.final_tally_result.no_with_veto_count += stake
+    }
+    setProposal(proposal!.id, proposal!)
+
+    const ev = new Event(
+        EventTypeProposalVote,
+        [
+            new EventAttribute(AttributeKeyVoter, req.voter, true),
+            new EventAttribute(AttributeKeyOption, JSON.stringify<WeightedVoteOption[]>([option]), true),
+            new EventAttribute(AttributeKeyProposalID, proposal!.id.toString(), true),
+        ],
+    )
+    wasmxw.emitCosmosEvents([ev]);
+
+    return String.UTF8.encode(JSON.stringify<MsgVoteResponse>(new MsgVoteResponse()))
+}
 
 export function VoteWeighted(req: MsgVoteWeighted): ArrayBuffer {
     const proposal = getProposal(req.proposal_id)
@@ -257,7 +287,18 @@ export function VoteWeighted(req: MsgVoteWeighted): ArrayBuffer {
     // TODO check
 
     setProposal(proposal!.id, proposal!)
-    return new ArrayBuffer(0)
+
+    const ev = new Event(
+        EventTypeProposalVote,
+        [
+            new EventAttribute(AttributeKeyVoter, req.voter, true),
+            new EventAttribute(AttributeKeyOption, JSON.stringify<WeightedVoteOption[]>(req.option), true),
+            new EventAttribute(AttributeKeyProposalID, proposal!.id.toString(), true),
+        ],
+    )
+    wasmxw.emitCosmosEvents([ev]);
+
+    return String.UTF8.encode(JSON.stringify<MsgVoteResponse>(new MsgVoteResponse()))
 }
 
 export function DoDeposit(req: MsgDeposit): ArrayBuffer {
@@ -297,9 +338,17 @@ export function DoDeposit(req: MsgDeposit): ArrayBuffer {
     if (proposal!.total_deposit[0].amount > params.min_deposit[0].amount) {
         proposal!.status = PROPOSAL_STATUS_VOTING_PERIOD
         proposal!.voting_start_time = new Date(Date.now());
-        proposal!.voting_end_time = new Date(proposal!.voting_start_time.getTime() + params.voting_period_ms)
+        proposal!.voting_end_time = new Date(proposal!.voting_start_time.getTime() + params.voting_period)
         addActiveVotingProposal(proposal!.id)
         removeActiveDepositProposal(proposal!.id)
+
+        const ev = new Event(
+            EventTypeProposalDeposit,
+            [
+                new EventAttribute(AttributeKeyVotingPeriodStart, proposal!.id.toString(), true),
+            ],
+        )
+        wasmxw.emitCosmosEvents([ev]);
     }
     setProposal(proposal!.id, proposal!)
     return new ArrayBuffer(0)
@@ -348,7 +397,8 @@ export function GetTallyResult(req: QueryTallyResultRequest): ArrayBuffer {
 
 function executeProposal(proposal: Proposal): Response {
     for (let i = 0; i < proposal.messages.length; i++) {
-        const response = wasmxw.executeCosmosMsg(proposal.messages[i])
+        const response = wasmxw.executeCosmosMsg(proposal.messages[i], MODULE_NAME)
+
         if (response.success > 0) {
             return new Response(false, response.data)
         }

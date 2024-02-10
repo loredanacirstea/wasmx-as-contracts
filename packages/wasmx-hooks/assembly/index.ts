@@ -1,11 +1,14 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { CallData, getCallDataWrap } from './calldata';
-import { GetHookModules, GetHooks, InitGenesis, RunHook, SetHook } from "./actions";
+import { CallData, getCallDataInitialize, getCallDataWrap } from './calldata';
+import { GetHookModules, GetHooks, Initialize, RunHook, SetHook } from "./actions";
 
 export function wasmx_env_2(): void {}
 
-export function instantiate(): void {}
+export function instantiate(): void {
+  const calld = getCallDataInitialize()
+  Initialize(calld);
+}
 
 export function main(): void {
   // TODO check allowed caller!! is an authority
@@ -13,9 +16,7 @@ export function main(): void {
 
   let result: ArrayBuffer;
   const calld = getCallDataWrap();
-  if (calld.InitGenesis !== null) {
-    result = InitGenesis(calld.InitGenesis!);
-  } else if (calld.SetHook !== null) {
+  if (calld.SetHook !== null) {
     result = SetHook(calld.SetHook!);
   } else if (calld.RunHook !== null) {
     result = RunHook(calld.RunHook!);

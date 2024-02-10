@@ -68,6 +68,13 @@ export const OptionAbstain = "VOTE_OPTION_ABSTAIN";
 export const OptionNo = "VOTE_OPTION_NO";
 export const OptionNoVeto = "VOTE_OPTION_NO_WITH_VETO";
 
+export const VoteOptionMap = new Map<string,i32>()
+VoteOptionMap.set(OptionUnspecified, VOTE_OPTION_UNSPECIFIED)
+VoteOptionMap.set(OptionYes, VOTE_OPTION_YES)
+VoteOptionMap.set(OptionAbstain, VOTE_OPTION_ABSTAIN)
+VoteOptionMap.set(OptionNo, VOTE_OPTION_NO)
+VoteOptionMap.set(OptionNoVeto, VOTE_OPTION_NO_WITH_VETO)
+
 // ProposalStatus enumerates the valid statuses of a proposal.
 // @ts-ignore
 @serializable
@@ -253,9 +260,9 @@ export class Params {
     // Minimum deposit for a proposal to enter voting period.
     min_deposit: Coin[]
     // Maximum period for Atom holders to deposit on a proposal. Initial value: 2 months.
-    max_deposit_period_ms: i64 // time.Duration in milliseconds
+    max_deposit_period: i64 // time.Duration in milliseconds
     // Duration of the voting period.
-    voting_period_ms: i64 // time.Duration in milliseconds
+    voting_period: i64 // time.Duration in milliseconds
     //  Minimum percentage of total stake needed to vote for a result to be considered valid.
     quorum: string // f64
     //  Minimum proportion of Yes votes for proposal to pass. Default value: 0.5.
@@ -276,7 +283,7 @@ export class Params {
 
     // Duration of the voting period of an expedited proposal.
     // Since: cosmos-sdk 0.50
-    expedited_voting_period_ms: i64 // time.Duration in milliseconds
+    expedited_voting_period: i64 // time.Duration in milliseconds
 
     // Minimum proportion of Yes votes for proposal to pass. Default value: 0.67.
     // Since: cosmos-sdk 0.50
@@ -295,11 +302,11 @@ export class Params {
     // Since: cosmos-sdk 0.50
     min_deposit_ratio: string // f64
     constructor(
-        min_deposit: Coin[], max_deposit_period_ms: i64, voting_period_ms: i64, quorum: string, threshold: string, veto_threshold: string,
+        min_deposit: Coin[], max_deposit_period: i64, voting_period: i64, quorum: string, threshold: string, veto_threshold: string,
         min_initial_deposit_ratio: string,
         proposal_cancel_ratio: string,
         proposal_cancel_dest: Bech32String,
-        expedited_voting_period_ms: i64,
+        expedited_voting_period: i64,
         expedited_threshold: string,
         expedited_min_deposit: Coin[],
         burn_vote_quorum: bool,
@@ -308,15 +315,15 @@ export class Params {
         min_deposit_ratio: string // f64,
     ) {
         this.min_deposit = min_deposit
-        this.max_deposit_period_ms = max_deposit_period_ms
-        this.voting_period_ms = voting_period_ms
+        this.max_deposit_period = max_deposit_period
+        this.voting_period = voting_period
         this.quorum = quorum
         this.threshold = threshold
         this.veto_threshold = veto_threshold
         this.min_initial_deposit_ratio = min_initial_deposit_ratio
         this.proposal_cancel_ratio = proposal_cancel_ratio
         this.proposal_cancel_dest = proposal_cancel_dest
-        this.expedited_voting_period_ms = expedited_voting_period_ms
+        this.expedited_voting_period = expedited_voting_period
         this.expedited_threshold = expedited_threshold
         this.expedited_min_deposit = expedited_min_deposit
         this.burn_vote_quorum = burn_vote_quorum
@@ -409,10 +416,10 @@ export class MsgExecLegacyContentResponse {}
 export class MsgVote {
     proposal_id: u64
     voter: Bech32String
-    option: VoteOption
+    option: VoteOptionString
     // metadata is any arbitrary metadata attached to the Vote.
     metadata: string
-    constructor(proposal_id: u64, voter: Bech32String, option: VoteOption, metadata: string) {
+    constructor(proposal_id: u64, voter: Bech32String, option: VoteOptionString, metadata: string) {
         this.proposal_id = proposal_id
         this.voter = voter
         this.option = option

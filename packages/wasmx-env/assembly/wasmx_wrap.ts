@@ -197,8 +197,9 @@ export function getAddressByRole(value: string): Bech32String {
 }
 
 export function executeCosmosMsg(msg: string, moduleName: string = ""): CallResponse {
-    LoggerDebug(`${moduleName}:wasmx_env`, "executeCosmosMsg", [])
+    LoggerDebug(`${moduleName}:wasmx_env`, "executeCosmosMsg", ["msg", msg])
     const msgdata = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msg)))
     const responsebz = wasmx.executeCosmosMsg(String.UTF8.encode(msgdata));
+    LoggerDebug(`${moduleName}:wasmx_env`, "executeCosmosMsg", ["response", String.UTF8.decode(responsebz)])
     return JSON.parse<CallResponse>(String.UTF8.decode(responsebz));
 }

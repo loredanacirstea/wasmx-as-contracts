@@ -5,13 +5,11 @@ export const MODULE_NAME = "hooks"
 
 // @ts-ignore
 @serializable
-export class MsgInitGenesis {
+export class MsgInitialize {
     authorities: string[]
-    hooks: string[]
     registrations: MsgSetHook[]
-    constructor(authorities: string[], hooks: string[], registrations: MsgSetHook[]) {
+    constructor(authorities: string[], registrations: MsgSetHook[]) {
         this.authorities = authorities
-        this.hooks = hooks
         this.registrations = registrations
     }
 }

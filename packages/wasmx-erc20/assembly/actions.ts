@@ -54,7 +54,7 @@ export function balanceOf(req: MsgBalanceOf): ArrayBuffer {
 export function transfer(req: MsgTransfer): ArrayBuffer {
     const from = wasmxw.getCaller();
     LoggerDebug("transfer", ["from", from, "to", req.to, "value", req.value.toString()])
-    const success = move(from, req.to, req.value);
+    move(from, req.to, req.value);
     return String.UTF8.encode(JSON.stringify<MsgTransferResponse>(new MsgTransferResponse()))
 }
 
