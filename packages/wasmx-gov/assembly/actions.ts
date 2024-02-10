@@ -397,7 +397,8 @@ export function GetTallyResult(req: QueryTallyResultRequest): ArrayBuffer {
 
 function executeProposal(proposal: Proposal): Response {
     for (let i = 0; i < proposal.messages.length; i++) {
-        const response = wasmxw.executeCosmosMsg(proposal.messages[i], MODULE_NAME)
+        const msg = String.UTF8.decode(decodeBase64(proposal.messages[i]).buffer)
+        const response = wasmxw.executeCosmosMsg(msg, MODULE_NAME)
 
         if (response.success > 0) {
             return new Response(false, response.data)
