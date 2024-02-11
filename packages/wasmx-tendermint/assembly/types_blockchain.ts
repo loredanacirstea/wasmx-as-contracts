@@ -17,9 +17,8 @@ export class CurrentState {
     validator_address: HexString
     validator_privkey: Base64String
     validator_pubkey: Base64String
-    wasmx_blocks_contract: Base64String
 
-    constructor(chain_id: string, version: Version, app_hash: string, last_block_id: BlockID, last_commit_hash: string, last_results_hash: string, validator_address: HexString, validator_privkey: Base64String, validator_pubkey: Base64String, wasmx_blocks_contract: Base64String) {
+    constructor(chain_id: string, version: Version, app_hash: string, last_block_id: BlockID, last_commit_hash: string, last_results_hash: string, validator_address: HexString, validator_privkey: Base64String, validator_pubkey: Base64String) {
         this.chain_id = chain_id
         this.version = version
         this.app_hash = app_hash
@@ -29,7 +28,6 @@ export class CurrentState {
         this.validator_address = validator_address
         this.validator_privkey = validator_privkey
         this.validator_pubkey = validator_pubkey
-        this.wasmx_blocks_contract = wasmx_blocks_contract
     }
 }
 

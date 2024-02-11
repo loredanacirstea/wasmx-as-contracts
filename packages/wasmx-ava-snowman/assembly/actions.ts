@@ -498,10 +498,16 @@ export function setupNode(
     LoggerDebug("setupNode", ["currentNodeId", currentNodeId, "nodeIPs", nodeIPs, "initChainSetup", datajson])
     const data = JSON.parse<typestnd.InitChainSetup>(datajson);
     // const ips = JSON.parse<string[]>(nodeIPs);
-    // TODO better way; we may have the leader's node ip here
-    // if (ips.length < data.validators.length) {
-    //     revert(`Node IPS count ${ips.length.toString()} mismatch validator count ${data.validators.length}`);
-    // }
+
+    const peers = new Array<ValidatorIp>(data.peers.length);
+    for (let i = 0; i < data.peers.length; i++) {
+        const peer = data.peers[i].split("@");
+        if (peer.length != 2) {
+            revert(`invalid node format; found: ${data.peers[i]}`)
+        }
+        peers[i] = new ValidatorIp(peer[0], peer[1]);
+    }
+    setNodeIPs(peers);
 
     initChain(data);
 }
@@ -884,11 +890,16 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         const hash = wasmxw.sha256(finalizeReq.txs[i]);
         txhashes.push(hash);
     }
+
+    const blockData = JSON.stringify<wblocks.BlockEntry>(entryobj.data)
     // also indexes transactions
-    setFinalizedBlock(entryobj, finalizeReq.hash, txhashes);
+    setFinalizedBlock(blockData, finalizeReq.hash, txhashes);
 
     // remove temporary block data
     removeLogEntry(entryobj.index);
+
+    // execute hooks
+    callHookContract("EndBlock", blockData);
 
     // before commiting, we check if consensus contract was changed
     let newContract = "";
@@ -991,8 +1002,7 @@ function getFinalBlock(index: i64): string {
     return resp.data;
 }
 
-function setFinalizedBlock(entry: LogEntryAggregate, hash: string, txhashes: string[]): void {
-    const blockData = JSON.stringify<wblocks.BlockEntry>(entry.data)
+function setFinalizedBlock(blockData: string, hash: string, txhashes: string[]): void {
     const calldata = new wblockscalld.CallDataSetBlock(blockData, hash, txhashes);
     const calldatastr = `{"setBlock":${JSON.stringify<wblockscalld.CallDataSetBlock>(calldata)}}`;
     const resp = callStorage(calldatastr, false);

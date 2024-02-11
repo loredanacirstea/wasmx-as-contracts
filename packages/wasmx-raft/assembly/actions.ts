@@ -138,8 +138,7 @@ export function registeredCheck(
     const nodeIp = ips[nodeId];
     // TODO signature on protobuf encoding, not JSON
     const validatorInfo = getCurrentValidator();
-    const validatorInfoStr = encodeBase64(Uint8Array.wrap(String.UTF8.encode(JSON.stringify<typestnd.ValidatorInfo>(validatorInfo))))
-    const updateMsg = new NodeUpdate(nodeIp, nodeId, NODE_UPDATE_ADD, validatorInfoStr);
+    const updateMsg = new NodeUpdate(nodeIp, nodeId, NODE_UPDATE_ADD);
     const updateMsgStr = JSON.stringify<NodeUpdate>(updateMsg);
     const signature = signMessage(updateMsgStr);
 
@@ -213,7 +212,14 @@ export function updateNodeAndReturn(
             return;
         }
         // make it idempotent & don't add same ip multiple times
-        if (ips.includes(entry.node)) {
+        let ndx = -1
+        for (let i = 0; i < ips.length; i++) {
+            if (ips[i].ip == entry.node.ip) {
+                ndx = i;
+                break;
+            }
+        }
+        if (ndx > -1) {
             LoggerDebug("ip already included", ["ip", entry.node.ip])
             return;
         }

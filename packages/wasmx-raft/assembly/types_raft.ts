@@ -131,7 +131,7 @@ export class NodeUpdate {
     node: ValidatorIp;
     index: i32;
     type: i32; // removed = 0; added = 1; updated = 2;
-    constructor(node: ValidatorIp, index: i32, type: i32, validator_info: Base64String) {
+    constructor(node: ValidatorIp, index: i32, type: i32) {
         this.node = node;
         this.index = index;
         this.type = type;

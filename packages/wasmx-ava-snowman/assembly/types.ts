@@ -45,9 +45,9 @@ export class AppendEntry {
     proposerId: i32;
     // block
     entries: LogEntryAggregate[]
-    nodeIps: Array<string>;
+    nodeIps: Array<ValidatorIp>;
     validators: Base64String;
-    constructor(termId: i32, proposerId: i32, entries: LogEntryAggregate[], nodeIps: Array<string>, validators: Base64String) {
+    constructor(termId: i32, proposerId: i32, entries: LogEntryAggregate[], nodeIps: Array<ValidatorIp>, validators: Base64String) {
         this.termId = termId;
         this.proposerId = proposerId;
         this.entries = entries;
@@ -72,25 +72,23 @@ export class AppendEntryResponse {
 // @ts-ignore
 @serializable
 export class NodeUpdate {
-    ip: string;
+    node: ValidatorIp;
     index: i32;
     type: i32; // removed = 0; added = 1; updated = 2;
-    validator_info: Base64String; // "" if a remove or update; ValidatorInfo if added
-    constructor(ip: string, index: i32, type: i32, validator_info: Base64String) {
-        this.ip = ip;
+    constructor(node: ValidatorIp, index: i32, type: i32) {
+        this.node = node;
         this.index = index;
         this.type = type;
-        this.validator_info = validator_info;
     }
 }
 
 // @ts-ignore
 @serializable
 export class UpdateNodeResponse {
-  nodeIPs: string[]
+  nodeIPs: ValidatorIp[]
   nodeId: i32
   validators: Base64String
-  constructor(nodeIPs: string[], nodeId: i32, validators: Base64String) {
+  constructor(nodeIPs: ValidatorIp[], nodeId: i32, validators: Base64String) {
     this.nodeIPs = nodeIPs
     this.nodeId = nodeId
     this.validators = validators
