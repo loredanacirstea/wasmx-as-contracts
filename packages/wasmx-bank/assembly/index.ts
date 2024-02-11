@@ -19,6 +19,7 @@ import {
 } from "./actions";
 import { CallDataInstantiate } from "./types"
 import { setAuthorities } from "./storage";
+import { revert } from "./utils";
 
 export function wasmx_env_2(): void {}
 
@@ -29,7 +30,7 @@ export function instantiate(): void {
 }
 
 export function main(): void {
-  let result: ArrayBuffer;
+  let result: ArrayBuffer = new ArrayBuffer(0);
   const calld = getCallDataWrap();
   if (calld.SendCoins !== null) {
     Send(calld.SendCoins!);
@@ -75,8 +76,9 @@ export function main(): void {
   } else if (calld.MintCoins !== null) {
     result = MintCoins(calld.MintCoins!);
   } else {
-    wasmx.revert(String.UTF8.encode("invalid function call data"));
-    throw new Error("invalid function call data");
+    const calldraw = wasmx.getCallData();
+    let calldstr = String.UTF8.decode(calldraw)
+    revert(`invalid function call data: ${calldstr}`);
   }
   wasmx.finish(result);
 }

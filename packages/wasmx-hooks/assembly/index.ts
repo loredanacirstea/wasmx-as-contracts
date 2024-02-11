@@ -2,6 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, getCallDataInitialize, getCallDataWrap } from './calldata';
 import { GetHookModules, GetHooks, Initialize, RunHook, SetHook } from "./actions";
+import { revert } from "./utils";
 
 export function wasmx_env_2(): void {}
 
@@ -14,7 +15,7 @@ export function main(): void {
   // TODO check allowed caller!! is an authority
   // extract this in a common module package
 
-  let result: ArrayBuffer;
+  let result: ArrayBuffer = new ArrayBuffer(0)
   const calld = getCallDataWrap();
   if (calld.SetHook !== null) {
     result = SetHook(calld.SetHook!);
@@ -25,8 +26,9 @@ export function main(): void {
   } else if (calld.GetHookModules !== null) {
     result = GetHookModules(calld.GetHookModules!);
   } else {
-    wasmx.revert(String.UTF8.encode("invalid function call data"));
-    throw new Error("invalid function call data");
+    const calldraw = wasmx.getCallData();
+    let calldstr = String.UTF8.decode(calldraw)
+    revert(`invalid function call data: ${calldstr}`);
   }
   wasmx.finish(result);
 }

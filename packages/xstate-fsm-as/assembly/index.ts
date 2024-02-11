@@ -48,8 +48,9 @@ export function main(): u8[] {
       setup(config, calldata.setup!);
       result = new ArrayBuffer(0);
     } else {
-      revert("invalid function call data");
-      return arrayBufferToU8Array(new ArrayBuffer(0));
+      const calldraw = wasmx.getCallData();
+      let calldstr = String.UTF8.decode(calldraw)
+      revert(`invalid function call data: ${calldstr}`);
     }
     wasmx.finish(result);
     return arrayBufferToU8Array(result);

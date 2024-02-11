@@ -6,6 +6,7 @@ import { uint8ArrayToHex, hexToUint8Array } from 'wasmx-utils/assembly/utils';
 import {
     EventObject,
     ActionParam,
+    MODULE_NAME,
 } from './types';
 
 export function base64ToHex(value: Base64String): HexString {
@@ -29,7 +30,7 @@ export function LoggerDebug(msg: string, parts: string[]): void {
 }
 
 export function revert(message: string): void {
-    LoggerError("revert", ["message", message])
+    LoggerError("revert", ["err", message, "module", MODULE_NAME])
     wasmx.revert(String.UTF8.encode(message));
     throw new Error(message);
 }

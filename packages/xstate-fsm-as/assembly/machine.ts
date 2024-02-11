@@ -36,7 +36,7 @@ import {
   isRegisteredIntervalActive,
   removeInterval,
 } from './timer';
-import { LoggerDebug, revert, ctxToActionParams } from "./utils";
+import { LoggerDebug, revert, ctxToActionParams, LoggerError } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 
 export function instantiate(
@@ -569,7 +569,8 @@ export class Machine implements StateMachine.Machine {
             wasmx.revert(String.UTF8.encode(message));
             throw new Error(message);
           } else {
-            LoggerDebug(message, []);
+            // TODO log error only for consensus machines, otherwise log debug
+            LoggerError(message, []);
             return null;
           }
 

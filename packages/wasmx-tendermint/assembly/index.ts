@@ -2,6 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap } from './calldata';
 import * as actions from "./actions";
+import { revert } from "./utils";
 
 export function wasmx_env_2(): void {}
 
@@ -62,8 +63,7 @@ export function main(): void {
     actions.setup(calld.params, calld.event);
   }
   else {
-    wasmx.revert(String.UTF8.encode("invalid function call data"));
-    throw new Error("invalid function call data");
+    revert(`invalid function call data: ${calld.method}`);
   }
   // we may have set the return data during execution
   result = wasmx.getFinishData();
