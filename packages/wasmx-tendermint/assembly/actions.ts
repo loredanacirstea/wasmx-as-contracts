@@ -504,7 +504,7 @@ export function addTransactionToMempool(
     // we only check the code type; CheckTx should be stateless, just form checking
     if (checkResp.code !== typestnd.CodeType.Ok) {
         // transaction is not valid, we should finish; we use this error to check forwarded txs to leader
-        return revert(`${ERROR_INVALID_TX}; code ${checkResp.code}`);
+        return revert(`${ERROR_INVALID_TX}; code ${checkResp.code}; ${checkResp.log}`);
     }
 
     // add to mempool
