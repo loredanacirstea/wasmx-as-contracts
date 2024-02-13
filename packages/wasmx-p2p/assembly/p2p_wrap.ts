@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64, decode } from "as-base64/assembly";
 import * as p2p from './p2p';
 import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
-import {WasmxResponse, StartNodeWithIdentityRequest, SendMessageRequest, ConnectPeersRequest, ConnectPeersResponse } from "./types";
+import {WasmxResponse, StartNodeWithIdentityRequest, SendMessageRequest, ConnectPeerRequest, ConnectPeerResponse, SendMessageToPeersRequest } from "./types";
 
 export function StartNodeWithIdentity(req: StartNodeWithIdentityRequest): WasmxResponse {
     const data = JSON.stringify<StartNodeWithIdentityRequest>(req);
@@ -15,15 +15,22 @@ export function CloseNode(): WasmxResponse {
     return JSON.parse<WasmxResponse>(String.UTF8.decode(resp));
 }
 
-export function ConnectPeers(req: ConnectPeersRequest): ConnectPeersResponse {
-    const data = JSON.stringify<ConnectPeersRequest>(req);
-    const resp = p2p.ConnectPeers(String.UTF8.encode(data));
-    return JSON.parse<ConnectPeersResponse>(String.UTF8.decode(resp));
+export function ConnectPeer(req: ConnectPeerRequest): ConnectPeerResponse {
+    const data = JSON.stringify<ConnectPeerRequest>(req);
+    const resp = p2p.ConnectPeer(String.UTF8.encode(data));
+    return JSON.parse<ConnectPeerResponse>(String.UTF8.decode(resp));
 }
 
 export function SendMessage(req: SendMessageRequest): void {
+    req.msg = encodeBase64(Uint8Array.wrap(String.UTF8.encode(req.msg)))
     const data = JSON.stringify<SendMessageRequest>(req);
     p2p.SendMessage(String.UTF8.encode(data));
+}
+
+export function SendMessageToPeers(req: SendMessageToPeersRequest): void {
+    req.msg = encodeBase64(Uint8Array.wrap(String.UTF8.encode(req.msg)))
+    const data = JSON.stringify<SendMessageToPeersRequest>(req);
+    p2p.SendMessageToPeers(String.UTF8.encode(data));
 }
 
 // export function Subscribe(req: SubscribeRequest): void {

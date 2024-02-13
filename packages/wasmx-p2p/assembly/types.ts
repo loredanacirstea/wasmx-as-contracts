@@ -1,5 +1,8 @@
 import { JSON } from "json-as/assembly";
 import { Base64String } from 'wasmx-env/assembly/types';
+import { Peer } from ".";
+
+export const MODULE_NAME = "p2p"
 
 // @ts-ignore
 @serializable
@@ -28,9 +31,9 @@ export class WasmxResponse {
 export class StartNodeWithIdentityRequest {
     port: string
     protocolId: string
-    privateKey: Base64String
+    pk: Base64String
     constructor(port: string, protocolId: string, privateKey: Base64String) {
-        this.privateKey = privateKey
+        this.pk = privateKey
         this.port = port
         this.protocolId = protocolId
     }
@@ -47,16 +50,31 @@ export class SendMessageRequest {
 
 // @ts-ignore
 @serializable
-export class ConnectPeersRequest {
+export class SendMessageToPeersRequest {
+    msg: Base64String
+    protocolId: string
     peers: string[]
-    constructor(peers: string[]) {
+    constructor(msg: Base64String, protocolId: string, peers: string[]) {
+        this.msg = msg
+        this.protocolId = protocolId
         this.peers = peers
     }
 }
 
 // @ts-ignore
 @serializable
-export class ConnectPeersResponse {}
+export class ConnectPeerRequest {
+    protocolId: string
+    peer: string
+    constructor( protocolId: string, peer: string) {
+        this.protocolId = protocolId
+        this.peer = peer
+    }
+}
+
+// @ts-ignore
+@serializable
+export class ConnectPeerResponse {}
 
 // @ts-ignore
 @serializable
