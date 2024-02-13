@@ -383,9 +383,7 @@ function processExternalCall(
   const calldatastr = JSON.stringify<ExternalActionCallData>(calldata);
   const req = new CallRequest(contractAddress, calldatastr, BigInt.zero(), 10000000, false);
   const resp = wasmxw.call(req, MODULE_NAME);
-  if (resp.success == 0) {
-    resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
-  }
+  resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
   return resp;
 }
 
