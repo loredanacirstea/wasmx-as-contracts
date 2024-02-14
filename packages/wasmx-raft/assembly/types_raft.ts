@@ -141,10 +141,12 @@ export class NodeUpdate {
 // @ts-ignore
 @serializable
 export class UpdateNodeResponse {
+  index: i32;
   nodeIPs: ValidatorIp[]
   nodeId: i32
   validators: Base64String
-  constructor(nodeIPs: ValidatorIp[], nodeId: i32, validators: Base64String) {
+  constructor(index: i32, nodeIPs: ValidatorIp[], nodeId: i32, validators: Base64String) {
+    this.index = index
     this.nodeIPs = nodeIPs
     this.nodeId = nodeId
     this.validators = validators

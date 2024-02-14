@@ -24,90 +24,11 @@ import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8Arr
 import { base64ToHex, hex64ToBase64 } from './utils';
 import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, AppendEntryResponse, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse, ValidatorIp, MODULE_NAME } from "./types_raft";
 import { BigInt } from "wasmx-env/assembly/bn";
+import { appendLogEntry, getCommitIndex, getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getMatchIndexArray, getMempool, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, getVoteIndexArray, hasVotedFor, removeLogEntry, setCommitIndex, setCurrentNodeId, setCurrentState, setElectionTimeout, setLastApplied, setLastLogIndex, setMatchIndexArray, setMempool, setNextIndexArray, setNodeIPs, setTermId, setVoteIndexArray, setVotedFor } from "./storage";
+import * as cfg from "./config";
+import { callHookContract, getAllValidators, getCommitHash, getConsensusParams, getConsensusParamsHash, getEvidenceHash, getFinalBlock, getHeaderHash, getLastBlockIndex, getMajority, getRandomInRange, getResultsHash, getTxsHash, getValidatorsHash, setConsensusParams, setFinalizedBlock, signMessage, updateConsensusParams, updateValidators, verifyMessage } from "./action_utils";
 
 // Docs: https://raft.github.io/raft.pdf
-
-// start at 0 TODO?
-const LOG_START = 1;
-
-const STATE_SYNC_BATCH = 200;
-
-const ERROR_INVALID_TX = "transaction is invalid";
-
-const MAX_LOGGED = 2000;
-
-// LEADER:
-// new tx -> check tx -> add to mempool
-// proposeBlock -> mempool batch -> startBlockProposal -> propose block -> process block -> save to logs
-// commitBlocks -> startBlockFinalization -> finalize block -> commit -> save to logs + index transactions
-// commitBlocks ->
-
-
-// ABCISemVer is the semantic version of the ABCI protocol
-const ABCISemVer  = "2.0.0"
-const ABCIVersion = ABCISemVer
-// P2PProtocol versions all p2p behavior and msgs.
-// This includes proposer selection.
-const P2PProtocol: u64 = 8
-// BlockProtocol versions all block data structures and processing.
-// This includes validity of blocks and state updates.
-const BlockProtocol: u64 = 12;
-
-
-//// blockchain constants
-// MaxBlockSizeBytes is the maximum permitted size of the blocks.
-export const MaxBlockSizeBytes = 104857600 // 100MB
-
-// BlockPartSizeBytes is the size of one block part.
-export const BlockPartSizeBytes: u32 = 65536 // 64kB
-
-// MaxBlockPartsCount is the maximum number of block parts.
-export const MaxBlockPartsCount = (MaxBlockSizeBytes / BlockPartSizeBytes) + 1
-
-const NODE_UPDATE_REMOVE = 0
-const NODE_UPDATE_ADD = 1
-const NODE_UPDATE_UPDATE = 2
-
-//// storage
-
-
-/// Context values
-const NODE_IPS = "nodeIPs";
-const CURRENT_NODE_ID = "currentNodeId";
-const HEARTBEAT_TIMEOUT = "heartbeatTimeout";
-const ELECTION_TIMEOUT_KEY = "electionTimeout";
-
-//// Persistent state on all servers:
-const TERM_ID = "currentTerm";
-const VOTED_FOR_KEY = "votedFor"
-// log[]
-
-//// Volatile state on all servers:
-// index of highest log entry applied to state machine (initialized to 0, increases monotonically)
-const LAST_APPLIED = "lastApplied";
-// index of highest log entry known to be committed (initialized to 0, increases monotonically)
-const COMMIT_INDEX = "commitIndex";
-
-//// Volatile state on leaders
-// for each server, index of highest log entry known to be replicated on server (initialized to 0, increases monotonically)
-const MATCH_INDEX_ARRAY = "matchIndex";
-// for each server, index of the next log entry to send to that server (initialized to leader last log index + 1)
-const NEXT_INDEX_ARRAY = "nextIndex";
-
-const VOTE_INDEX_ARRAY = "voteIndex";
-
-//// Cosmos-specific
-const MEMPOOL_KEY = "mempool";
-
-const MAX_TX_BYTES = "max_tx_bytes";
-
-// index of log entry immediately preceding new ones
-// const PREV_LOG_INDEX = "prevLogIndex";
-
-//// blockchain
-
-const VALIDATORS_KEY = "validators";
-const STATE_KEY = "state";
 
 export function registeredCheck(
     params: ActionParam[],
@@ -118,7 +39,7 @@ export function registeredCheck(
 
     // if blocks, return
     const lastIndex = getLastLogIndex();
-    if (lastIndex > LOG_START) {
+    if (lastIndex > cfg.LOG_START) {
         return;
     }
     // if we are alone, return
@@ -138,7 +59,7 @@ export function registeredCheck(
     const nodeIp = ips[nodeId];
     // TODO signature on protobuf encoding, not JSON
     const validatorInfo = getCurrentValidator();
-    const updateMsg = new NodeUpdate(nodeIp, nodeId, NODE_UPDATE_ADD);
+    const updateMsg = new NodeUpdate(nodeIp, nodeId, cfg.NODE_UPDATE_ADD);
     const updateMsgStr = JSON.stringify<NodeUpdate>(updateMsg);
     const signature = signMessage(updateMsgStr);
 
@@ -206,7 +127,7 @@ export function updateNodeAndReturn(
     const ips = getNodeIPs();
     let entryIndex = entry.index;
 
-    if (entry.type == NODE_UPDATE_ADD) {
+    if (entry.type == cfg.NODE_UPDATE_ADD) {
         if (!entry.node || entry.node.ip == "" || entry.node.address == "") {
             LoggerError("validator info missing from node update", ["ip", entry.node.ip, "address", entry.node.address])
             return;
@@ -254,19 +175,20 @@ export function updateNodeAndReturn(
     }
 
     // removed
-    if (entry.type == NODE_UPDATE_REMOVE) {
+    if (entry.type == cfg.NODE_UPDATE_REMOVE) {
         // idempotent
         ips[entryIndex].ip = "";
-    } else if (entry.type == NODE_UPDATE_ADD) {
+    } else if (entry.type == cfg.NODE_UPDATE_ADD) {
         ips.push(entry.node);
         const nextIndexes = getNextIndexArray();
         const matchIndexes = getMatchIndexArray();
-        nextIndexes.push(LOG_START + 1);
-        matchIndexes.push(LOG_START);
+        nextIndexes.push(cfg.LOG_START + 1);
+        matchIndexes.push(cfg.LOG_START);
         setNextIndexArray(nextIndexes);
         setMatchIndexArray(matchIndexes);
-        const validators = encodeBase64(Uint8Array.wrap(String.UTF8.encode(fsm.getContextValue(VALIDATORS_KEY))))
-        const response = new UpdateNodeResponse(ips, entryIndex, validators);
+        const validators = encodeBase64(Uint8Array.wrap(String.UTF8.encode(fsm.getContextValue(cfg.VALIDATORS_KEY))))
+        const lastBlockIndex = getLastBlockIndex()
+        const response = new UpdateNodeResponse(lastBlockIndex, ips, entryIndex, validators);
         wasmx.setFinishData(String.UTF8.encode(JSON.stringify<UpdateNodeResponse>(response)));
     } else {
         // NODE_UPDATE_UPDATE
@@ -318,7 +240,7 @@ export function forwardTxsToLeader(
             continue;
         }
         // should never happen, because we check when we receive the tx
-        if (response.error.includes(ERROR_INVALID_TX)) {
+        if (response.error.includes(cfg.ERROR_INVALID_TX)) {
             mempool.txs.splice(i, 1);
             LoggerDebug("forwarded invalid transaction", ["tx", tx]);
         } else {
@@ -355,7 +277,7 @@ function initializeIndexArrays(len: i32): void {
         // for each server, index of the next log entry to send to that server (initialized to leader's last log index + 1)
         nextIndex[i] = lastLogIndex + 1;
         // for each server, index of highest log entry known to be replicated on server (initialized to 0, increases monotonically)
-        matchIndex[i] = LOG_START; // TODO ?
+        matchIndex[i] = cfg.LOG_START; // TODO ?
     }
     setNextIndexArray(nextIndex);
     setMatchIndexArray(matchIndex);
@@ -570,11 +492,11 @@ export function setupNode(
     let nodeIPs: string = "";
     let initChainSetup: string = "";
     for (let i = 0; i < event.params.length; i++) {
-        if (event.params[i].key === CURRENT_NODE_ID) {
+        if (event.params[i].key === cfg.CURRENT_NODE_ID) {
             currentNodeId = event.params[i].value;
             continue;
         }
-        if (event.params[i].key === NODE_IPS) {
+        if (event.params[i].key === cfg.NODE_IPS) {
             nodeIPs = event.params[i].value;
             continue;
         }
@@ -592,16 +514,16 @@ export function setupNode(
     if (initChainSetup === "") {
         revert("no initChainSetup found");
     }
-    fsm.setContextValue(CURRENT_NODE_ID, currentNodeId);
+    fsm.setContextValue(cfg.CURRENT_NODE_ID, currentNodeId);
 
     // !! nodeIps must be the same for all nodes
 
     // TODO ID@host:ip
     // 6efc12ab37fc0e096d8618872f6930df53972879@0.0.0.0:26757
-    fsm.setContextValue(NODE_IPS, nodeIPs);
+    fsm.setContextValue(cfg.NODE_IPS, nodeIPs);
 
-    setCommitIndex(LOG_START);
-    setLastApplied(LOG_START);
+    setCommitIndex(cfg.LOG_START);
+    setLastApplied(cfg.LOG_START);
 
     const datajson = String.UTF8.decode(decodeBase64(initChainSetup).buffer);
     // TODO remove validator private key from logs in initChainSetup
@@ -674,7 +596,7 @@ export function processAppendEntries(
         revert("update node: empty signature");
     }
     const entryStr = String.UTF8.decode(decodeBase64(entryBase64).buffer);
-    LoggerDebug("received new entries", ["AppendEntry", entryStr.slice(0, MAX_LOGGED) + " [...]"]);
+    LoggerDebug("received new entries", ["AppendEntry", entryStr.slice(0, cfg.MAX_LOGGED) + " [...]"]);
 
     let entry: AppendEntry = JSON.parse<AppendEntry>(entryStr);
     LoggerInfo("received new entries", [
@@ -861,8 +783,8 @@ export function sendAppendEntry(
     let lastIndex = getLastLogIndex();
     // TODO state sync & snapshotting
     // right now, don't send more than STATE_SYNC_BATCH blocks at a time
-    if ((lastIndex - nextIndex) > STATE_SYNC_BATCH) {
-        lastIndex = nextIndex + STATE_SYNC_BATCH;
+    if ((lastIndex - nextIndex) > cfg.STATE_SYNC_BATCH) {
+        lastIndex = nextIndex + cfg.STATE_SYNC_BATCH;
     }
 
     const entries: Array<LogEntryAggregate> = [];
@@ -872,7 +794,7 @@ export function sendAppendEntry(
     }
     const previousEntry = getLogEntryObj(nextIndex-1);
     const lastCommitIndex = getCommitIndex();
-    const validators = encodeBase64(Uint8Array.wrap(String.UTF8.encode(fsm.getContextValue(VALIDATORS_KEY))))
+    const validators = encodeBase64(Uint8Array.wrap(String.UTF8.encode(fsm.getContextValue(cfg.VALIDATORS_KEY))))
     const data = new AppendEntry(
         getTermId(),
         getCurrentNodeId(),
@@ -953,7 +875,7 @@ export function proposeBlock(
     const cparams = getConsensusParams();
     let maxbytes = cparams.block.max_bytes;
     if (maxbytes == -1) {
-        maxbytes = MaxBlockSizeBytes;
+        maxbytes = cfg.MaxBlockSizeBytes;
     }
     const batch = mempool.batch(cparams.block.max_gas, maxbytes);
     LoggerDebug("batch transactions", ["count", batch.txs.length.toString()])
@@ -971,12 +893,6 @@ export function proposeBlock(
 function getLastLog(): LogEntry {
     const index = getLastLogIndex();
     return getLogEntryObj(index);
-}
-
-export function getLogEntryObj(index: i64): LogEntry {
-    const value = getLogEntry(index);
-    if (value == "") return new LogEntry(0, 0, 0, "");
-    return JSON.parse<LogEntry>(value);
 }
 
 export function getLogEntryAggregate(index: i64): LogEntryAggregate {
@@ -997,13 +913,6 @@ export function getLogEntryAggregate(index: i64): LogEntryAggregate {
     return entry;
 }
 
-export function getLogEntry(
-    index: i64,
-): string {
-    const key = getLogEntryKey(index);
-    return fsm.getContextValue(key);
-}
-
 export function addTransactionToMempool(
     transaction: string, // base64
 ): void {
@@ -1013,7 +922,7 @@ export function addTransactionToMempool(
     // we only check the code type; CheckTx should be stateless, just form checking
     if (checkResp.code !== typestnd.CodeType.Ok) {
         // transaction is not valid, we should finish; we use this error to check forwarded txs to leader
-        return revert(`${ERROR_INVALID_TX}; code ${checkResp.code}; ${checkResp.log}`);
+        return revert(`${cfg.ERROR_INVALID_TX}; code ${checkResp.code}; ${checkResp.log}`);
     }
 
     // add to mempool
@@ -1065,7 +974,7 @@ function startBlockProposal(txs: string[], cummulatedGas: i64, maxDataBytes: i64
     // TODO load app version from storage or Info()?
 
     const header = new typestnd.Header(
-        new typestnd.VersionConsensus(BlockProtocol, currentState.version.consensus.app),
+        new typestnd.VersionConsensus(cfg.BlockProtocol, currentState.version.consensus.app),
         currentState.chain_id,
         prepareReq.height,
         prepareReq.time,
@@ -1313,294 +1222,6 @@ export function wrapGuard(value: boolean): ArrayBuffer {
     return String.UTF8.encode("0");
 }
 
-function appendLogInternalVerified(processReq: typestnd.RequestProcessProposal, header: typestnd.Header, blockCommit: typestnd.BlockCommit): void {
-    const blockData = JSON.stringify<typestnd.RequestProcessProposal>(processReq);
-    const blockDataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(blockData)))
-    const blockHeader = JSON.stringify<typestnd.Header>(header);
-    const blockHeaderBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(blockHeader)))
-    const commit = JSON.stringify<typestnd.BlockCommit>(blockCommit);
-    const commitBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(commit)))
-    const termId = getTermId();
-    const leaderId = getCurrentNodeId();
-
-    const contractAddress = encodeBase64(Uint8Array.wrap(wasmx.getAddress()));
-
-    const blockEntry = new wblocks.BlockEntry(
-        processReq.height,
-        contractAddress,
-        contractAddress,
-        blockDataBase64,
-        blockHeaderBase64,
-        commitBase64,
-        "",
-    )
-    const entry = new LogEntryAggregate(processReq.height, termId, leaderId, blockEntry);
-    appendLogEntry(entry);
-}
-
-function getMajority(count: i32): i64 {
-    return i64(f64.floor(f64(count) / 2) + 1)
-}
-
-function getNodeCount(): i32 {
-    const ips = getNodeIPs();
-    return getNodeCountInternal(ips);
-}
-
-function getNodeCountInternal(ips: ValidatorIp[]): i32 {
-    let count = 0;
-    for (let i = 0; i < ips.length; i++) {
-        if (ips[i].ip.length > 0) {
-            count += 1;
-        }
-    }
-    return count;
-}
-
-// temporarily store the entries
-export function appendLogEntry(
-    entry: LogEntryAggregate,
-): void {
-    const index = getLastLogIndex() + 1;
-    // TODO rollback entries in case of a network split (e.g. entries with higher termId than we have have priority); they must be uncommited
-    // and just return if already saved
-    if (index > entry.index) {
-        LoggerDebug("already appended entry", ["height", entry.index.toString()])
-        return;
-    }
-    if (index !== entry.index) {
-        revert(`mismatched index while appending log entry: expected ${index}, found ${entry.index}`);
-    }
-    setLastLogIndex(index);
-    setLogEntryAggregate(entry);
-}
-
-export function setLogEntryAggregate(
-    entry: LogEntryAggregate,
-): void {
-    const blockData = encodeBase64(Uint8Array.wrap(String.UTF8.encode(JSON.stringify<wblocks.BlockEntry>(entry.data))))
-    const tempEntry = new LogEntry(
-        entry.index,
-        entry.termId,
-        entry.leaderId,
-        blockData,
-    )
-    const data = JSON.stringify<LogEntry>(tempEntry);
-    setLogEntry(entry.index, data);
-}
-
-export function setLogEntryObj(
-    entry: LogEntry,
-): void {
-    const data = JSON.stringify<LogEntry>(entry);
-    setLogEntry(entry.index, data);
-}
-
-export function setLogEntry(
-    index: i64,
-    entry: string,
-): void {
-    LoggerDebug("setting entry", ["height", index.toString(), "value", entry.slice(0, MAX_LOGGED) + " [...]"])
-    const key = getLogEntryKey(index);
-    fsm.setContextValue(key, entry);
-}
-
-// remove the temporary block data
-export function removeLogEntry(
-    index: i64,
-): void {
-    const entry = getLogEntryObj(index);
-    entry.data = "";
-    const data = JSON.stringify<LogEntry>(entry);
-    setLogEntry(index, data)
-}
-
-export function getLastLogIndex(): i64 {
-    const key = getLastLogIndexKey();
-    const valuestr = fsm.getContextValue(key);
-    if (valuestr != "") {
-        const value = parseInt(valuestr);
-        return i64(value);
-    }
-    return i64(LOG_START);
-}
-
-export function setLastLogIndex(
-    value: i64,
-): void {
-    const key = getLastLogIndexKey();
-    LoggerDebug("setting entry count", ["height", value.toString()])
-    fsm.setContextValue(key, value.toString());
-}
-
-export function getLogEntryKey(index: i64): string {
-    return "logs_" + index.toString();
-}
-
-export function getLastLogIndexKey(): string {
-    return "logs_last_index";
-}
-
-function getTermId(): i32 {
-    const value = fsm.getContextValue(TERM_ID);
-    if (value === "") return i32(0);
-    return parseInt32(value);
-}
-
-function setTermId(value: i32): void {
-    fsm.setContextValue(TERM_ID, value.toString());
-}
-
-// function getVotedFor(): i32 {
-//     const value = getVotedForInternal();
-//     if (value > 0) {
-//         return value - 1;
-//     }
-//     return value;
-// }
-
-function hasVotedFor(): boolean {
-    return getVotedForInternal() > 0;
-}
-
-function getVotedForInternal(): i32 {
-    const value = fsm.getContextValue(VOTED_FOR_KEY);
-    if (value === "") return i32(0);
-    return parseInt32(value);
-}
-
-function setVotedFor(value: i32): void {
-    setVotedForInternal(value + 1);
-}
-
-function setVotedForInternal(value: i32): void {
-    fsm.setContextValue(VOTED_FOR_KEY, value.toString());
-}
-
-function getCurrentNodeId(): i32 {
-    const value = fsm.getContextValue(CURRENT_NODE_ID);
-    if (value === "") return i32(0);
-    return parseInt32(value);
-}
-
-function setCurrentNodeId(index: i32): void {
-    fsm.setContextValue(CURRENT_NODE_ID, index.toString());
-}
-
-function getLastApplied(): i64 {
-    const value = fsm.getContextValue(LAST_APPLIED);
-    if (value === "") return i64(LOG_START);
-    return parseInt64(value);
-}
-
-function setLastApplied(value: i64): void {
-    fsm.setContextValue(LAST_APPLIED, value.toString());
-}
-
-function getCommitIndex(): i64 {
-    const value = fsm.getContextValue(COMMIT_INDEX);
-    if (value === "") return i64(LOG_START);
-    return parseInt64(value);
-}
-
-function setCommitIndex(index: i64): void {
-    fsm.setContextValue(COMMIT_INDEX, index.toString());
-}
-
-function getMatchIndexArray(): Array<i64> {
-    const valuestr = fsm.getContextValue(MATCH_INDEX_ARRAY);
-    let value: Array<i64> = [];
-    if (valuestr === "") return value;
-    value = JSON.parse<Array<i64>>(valuestr);
-    return value;
-}
-
-function setMatchIndexArray(value: Array<i64>): void {
-    fsm.setContextValue(MATCH_INDEX_ARRAY, JSON.stringify<Array<i64>>(value));
-}
-
-function getNodeIPs(): Array<ValidatorIp> {
-    const valuestr = fsm.getContextValue(NODE_IPS);
-    let value: Array<ValidatorIp> = [];
-    if (valuestr === "") return value;
-    value = JSON.parse<Array<ValidatorIp>>(valuestr);
-    return value;
-}
-
-function setNodeIPs(ips: Array<ValidatorIp>): void {
-    const valuestr = JSON.stringify<Array<ValidatorIp>>(ips);
-    fsm.setContextValue(NODE_IPS, valuestr);
-}
-
-function getNextIndexArray(): Array<i64> {
-    const valuestr = fsm.getContextValue(NEXT_INDEX_ARRAY);
-    let value: Array<i64> = [];
-    if (valuestr === "") return value;
-    value = JSON.parse<Array<i64>>(valuestr);
-    return value;
-}
-
-function setNextIndexArray(arr: Array<i64>): void {
-    fsm.setContextValue(NEXT_INDEX_ARRAY, JSON.stringify<Array<i64>>(arr));
-}
-
-function getVoteIndexArray(): Array<i32> {
-    const valuestr = fsm.getContextValue(VOTE_INDEX_ARRAY);
-    let value: Array<i32> = [];
-    if (valuestr === "") return value;
-    value = JSON.parse<Array<i32>>(valuestr);
-    return value;
-}
-
-function setVoteIndexArray(arr: Array<i32>): void {
-    fsm.setContextValue(VOTE_INDEX_ARRAY, JSON.stringify<Array<i32>>(arr));
-}
-
-export function getMempool(): Mempool {
-    const mempool = fsm.getContextValue(MEMPOOL_KEY);
-    if (mempool === "") return  new Mempool(new Array<string>(0), new Array<i32>(0));
-    return JSON.parse<Mempool>(mempool);
-}
-
-export function setMempool(mempool: Mempool): void {
-    fsm.setContextValue(MEMPOOL_KEY, JSON.stringify<Mempool>(mempool));
-}
-
-export function getMaxTxBytes(): i64 {
-    const value = fsm.getContextValue(MAX_TX_BYTES);
-    if (value === "") return i64(0);
-    return parseInt64(value);
-}
-
-export function setMaxTxBytes(value: i64): void {
-    fsm.setContextValue(MAX_TX_BYTES, value.toString());
-}
-
-export function updateConsensusParams(updates: typestnd.ConsensusParams): void {
-    const params = getConsensusParams();
-    if (updates.abci) {
-        if (updates.abci.vote_extensions_enable_height) {
-            params.abci.vote_extensions_enable_height = updates.abci.vote_extensions_enable_height;
-        }
-    }
-    if (updates.block) {
-        if (updates.block.max_bytes) params.block.max_bytes = updates.block.max_bytes;
-        if (updates.block.max_gas) params.block.max_gas = updates.block.max_gas;
-    }
-    if (updates.evidence) {
-        if (updates.evidence.max_age_duration) params.evidence.max_age_duration = updates.evidence.max_age_duration;
-        if (updates.evidence.max_age_num_blocks) params.evidence.max_age_num_blocks = updates.evidence.max_age_num_blocks;
-        if (updates.evidence.max_bytes) params.evidence.max_bytes = updates.evidence.max_bytes;
-    }
-    if (updates.validator) {
-        if (updates.validator.pub_key_types) params.validator.pub_key_types = updates.validator.pub_key_types;
-    }
-    if (updates.version) {
-        if (updates.version.app) params.version.app = updates.version.app;
-    }
-    setConsensusParams(params);
-}
-
 export function setup(
     params: ActionParam[],
     event: EventObject,
@@ -1684,266 +1305,28 @@ export function setup(
     initializeIndexArrays(nodeIps.length);
 }
 
-export function getCurrentState(): CurrentState {
-    const value = fsm.getContextValue(STATE_KEY);
-    // this must be set before we try to read it
-    if (value === "") {
-        revert("chain init setup was not ran")
-    }
-    return JSON.parse<CurrentState>(value);
-}
 
-export function setCurrentState(value: CurrentState): void {
-    fsm.setContextValue(STATE_KEY, JSON.stringify<CurrentState>(value));
-}
+function appendLogInternalVerified(processReq: typestnd.RequestProcessProposal, header: typestnd.Header, blockCommit: typestnd.BlockCommit): void {
+    const blockData = JSON.stringify<typestnd.RequestProcessProposal>(processReq);
+    const blockDataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(blockData)))
+    const blockHeader = JSON.stringify<typestnd.Header>(header);
+    const blockHeaderBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(blockHeader)))
+    const commit = JSON.stringify<typestnd.BlockCommit>(blockCommit);
+    const commitBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(commit)))
+    const termId = getTermId();
+    const leaderId = getCurrentNodeId();
 
-export function getElectionTimeout(): i64 {
-    const value = fsm.getContextValue(ELECTION_TIMEOUT_KEY);
-    if (value === "") return i64(0);
-    return parseInt64(value);
-}
+    const contractAddress = encodeBase64(Uint8Array.wrap(wasmx.getAddress()));
 
-export function setElectionTimeout(value: i64): void {
-    fsm.setContextValue(ELECTION_TIMEOUT_KEY, value.toString());
-}
-
-// ValidatorSet.Validators hash (ValidatorInfo[] hash)
-// TODO cometbft protobuf encodes cmtproto.SimpleValidator
-function getValidatorsHash1(validators: typestnd.ValidatorInfo[]): string {
-    let data = new Array<string>(validators.length);
-    for (let i = 0; i < validators.length; i++) {
-        // hex
-        const pub_key = hexToUint8Array(validators[i].pub_key);
-        const power = i64ToUint8ArrayBE(validators[i].voting_power);
-        const newdata = new Uint8Array(pub_key.length + power.length);
-        newdata.set(pub_key, 0);
-        newdata.set(power, pub_key.length);
-        data[i] = uint8ArrayToHex(newdata);
-    }
-    return wasmxw.MerkleHash(data);
-}
-
-function getValidatorsHash(validators: staking.Validator[]): string {
-    let data = new Array<string>(validators.length);
-    for (let i = 0; i < validators.length; i++) {
-        // hex
-        const pub_key = hexToUint8Array(validators[i].consensus_pubkey.key);
-        const tokens = validators[i].tokens.toU8ArrayBe()
-        const newdata = new Uint8Array(pub_key.length + tokens.length);
-        newdata.set(pub_key, 0);
-        newdata.set(tokens, pub_key.length);
-        data[i] = uint8ArrayToHex(newdata);
-    }
-    return wasmxw.MerkleHash(data);
-}
-
-// Txs.Hash() -> [][]byte merkle.HashFromByteSlices
-// base64
-export function getTxsHash(txs: string[]): string {
-    return wasmxw.MerkleHash(txs);
-}
-
-// Hash returns a hash of a subset of the parameters to store in the block header.
-// Only the Block.MaxBytes and Block.MaxGas are included in the hash.
-// This allows the ConsensusParams to evolve more without breaking the block
-// protocol. No need for a Merkle tree here, just a small struct to hash.
-// cometbft: cmtproto.HashedParams
-export function getConsensusParamsHash(params: typestnd.ConsensusParams): string {
-    const value = JSON.stringify<typestnd.BlockParams>(params.block);
-    const hash = wasmx.sha256(String.UTF8.encode(value));
-    return encodeBase64(Uint8Array.wrap(hash));
-}
-
-// []Evidence hash
-// TODO
-export function getEvidenceHash(params: typestnd.Evidence): string {
-    return wasmxw.MerkleHash([]);
-}
-
-export function getCommitHash(lastCommit: typestnd.BlockCommit): string {
-    // TODO MerkleHash(lastCommit.signatures)
-    return wasmxw.MerkleHash([]);
-}
-
-export function getResultsHash(results: typestnd.ExecTxResult[]): string {
-    const data = new Array<string>(results.length);
-    for (let i = 0; i < results.length; i++) {
-        data[i] = encodeBase64(Uint8Array.wrap(String.UTF8.encode(JSON.stringify<typestnd.ExecTxResult>(results[i]))));
-    }
-    return wasmxw.MerkleHash(data);
-}
-
-// Hash returns the hash of the header.
-// It computes a Merkle tree from the header fields
-// ordered as they appear in the Header.
-// Returns nil if ValidatorHash is missing,
-// since a Header is not valid unless there is
-// a ValidatorsHash (corresponding to the validator set).
-function getHeaderHash(header: typestnd.Header): string {
-    const versionbz = String.UTF8.encode(JSON.stringify<typestnd.VersionConsensus>(header.version));
-    const blockidbz = String.UTF8.encode(JSON.stringify<typestnd.BlockID>(header.last_block_id));
-    const data = [
-        encodeBase64(Uint8Array.wrap(versionbz)),
-        encodeBase64(Uint8Array.wrap(String.UTF8.encode(header.chain_id))),
-        encodeBase64(i64ToUint8ArrayBE(header.height)),
-        encodeBase64(Uint8Array.wrap(String.UTF8.encode(header.time))),
-        encodeBase64(Uint8Array.wrap(blockidbz)),
-        hex64ToBase64(header.last_commit_hash),
-        hex64ToBase64(header.data_hash),
-        hex64ToBase64(header.validators_hash),
-        hex64ToBase64(header.next_validators_hash),
-        hex64ToBase64(header.consensus_hash),
-        hex64ToBase64(header.app_hash),
-        hex64ToBase64(header.last_results_hash),
-        hex64ToBase64(header.evidence_hash),
-        hex64ToBase64(header.proposer_address), // TODO transform hex to base64
-    ]
-    return wasmxw.MerkleHash(data);
-}
-
-function getRandomInRange(min: i64, max: i64): i64 {
-    const rand = Math.random()
-    const numb = Math.floor(rand * f64((max - min + 1)))
-    return i64(numb) + min;
-}
-
-export function signMessage(msgstr: string): Base64String {
-    const currentState = getCurrentState();
-    return wasmxw.ed25519Sign(currentState.validator_privkey, msgstr);
-}
-
-export function verifyMessage(nodeIndex: i32, signatureStr: Base64String, msg: string): boolean {
-    const nodes = getNodeIPs();
-    const addr = nodes[nodeIndex].address;
-    const validators = getAllValidators();
-    let validator: staking.Validator | null = null;
-    for (let i = 0; i < validators.length; i++) {
-        if (validators[i].operator_address == addr) {
-            validator = validators[i]
-        }
-    }
-    if (validator == null) {
-        LoggerDebug("could not verify mesage: validator not found", ["address", addr, "node_index", nodeIndex.toString()])
-        return false;
-    }
-    const pubKey = validator.consensus_pubkey!;
-    return wasmxw.ed25519Verify(pubKey.key, signatureStr, msg);
-}
-
-function setFinalizedBlock(blockData: string, hash: string, txhashes: string[]): void {
-    const calldata = new wblockscalld.CallDataSetBlock(blockData, hash, txhashes);
-    const calldatastr = `{"setBlock":${JSON.stringify<wblockscalld.CallDataSetBlock>(calldata)}}`;
-    const resp = callStorage(calldatastr, false);
-    if (resp.success > 0) {
-        revert(`could not set finalized block: ${resp.data}`);
-    }
-}
-
-function getLastBlockIndex(): i64 {
-    const calldatastr = `{"getLastBlockIndex":{}}`;
-    const resp = callStorage(calldatastr, false);
-    if (resp.success > 0) {
-        revert(`could not get last block index`);
-    }
-    const res = JSON.parse<wblockscalld.LastBlockIndexResult>(resp.data);
-    return res.index;
-}
-
-function getFinalBlock(index: i64): string {
-    const calldata = new wblockscalld.CallDataGetBlockByIndex(index);
-    const calldatastr = `{"getBlockByIndex":${JSON.stringify<wblockscalld.CallDataGetBlockByIndex>(calldata)}}`;
-    const resp = callStorage(calldatastr, false);
-    if (resp.success > 0) {
-        revert(`could not get finalized block: ${index.toString()}`);
-    }
-    return resp.data;
-}
-
-function setConsensusParams(value: typestnd.ConsensusParams): void {
-    const valuestr = JSON.stringify<typestnd.ConsensusParams>(value)
-    const calldata = `{"setConsensusParams":{"params":"${encodeBase64(Uint8Array.wrap(String.UTF8.encode(valuestr)))}"}}`
-    const resp = callStorage(calldata, false);
-    if (resp.success > 0) {
-        revert("could not set consensus params");
-    }
-}
-
-function getConsensusParams(): typestnd.ConsensusParams {
-    const calldata = `{"getConsensusParams":{}}`
-    const resp = callStorage(calldata, true);
-    if (resp.success > 0) {
-        revert("could not get consensus params");
-    }
-    if (resp.data === "") return new typestnd.ConsensusParams(
-        new typestnd.BlockParams(0, 0),
-        new typestnd.EvidenceParams(0, 0, 0),
-        new typestnd.ValidatorParams([]),
-        new typestnd.VersionParams(0),
-        new typestnd.ABCIParams(0),
-    );
-    return JSON.parse<typestnd.ConsensusParams>(resp.data);
-}
-
-// TODO remove - setFinalizedBlock already indexes transactions
-function setIndexedTransaction(value: wblocks.IndexedTransaction, hash: string): void {
-    const calldata = new wblockscalld.CallDataSetIndexedTransactionByHash(hash, value);
-    const calldatastr = `{"setIndexedTransactionByHash":${JSON.stringify<wblockscalld.CallDataSetIndexedTransactionByHash>(calldata)}}`;
-    const resp = callStorage(calldatastr, false);
-    if (resp.success > 0) {
-        revert("could not set indexed transaction");
-    }
-}
-
-function updateValidators(updates: typestnd.ValidatorUpdate[]): void {
-    const calldata = `{"UpdateValidators":{"updates":${JSON.stringify<typestnd.ValidatorUpdate[]>(updates)}}}`
-    const resp = callStaking(calldata, true);
-    if (resp.success > 0) {
-        revert("could not update validators");
-    }
-}
-
-function getAllValidators(): staking.Validator[] {
-    const calldata = `{"GetAllValidators":{}}`
-    const resp = callStaking(calldata, true);
-    if (resp.success > 0) {
-        revert("could not get validators");
-    }
-    if (resp.data === "") return [];
-    LoggerDebug("GetAllValidators", ["data", resp.data])
-    const result = JSON.parse<staking.QueryValidatorsResponse>(resp.data);
-    return result.validators;
-}
-
-function callStorage(calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest("storage", calldata, BigInt.zero(), 100000000, isQuery);
-    const resp = wasmxw.call(req, MODULE_NAME);
-    // result or error
-    resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
-    return resp;
-}
-
-function callStaking(calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest("staking", calldata, BigInt.zero(), 100000000, isQuery);
-    const resp = wasmxw.call(req, MODULE_NAME);
-    // result or error
-    resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
-    return resp;
-}
-
-function callHookContract(hookName: string, data: string): void {
-    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(data)))
-    const calldatastr = `{"RunHook":{"hook":"${hookName}","data":"${dataBase64}"}}`;
-    const resp = callContract("hooks", calldatastr, false)
-    if (resp.success > 0) {
-        // we do not fail, we want the chain to continue
-        LoggerError(`hooks failed`, ["error", resp.data])
-    }
-}
-
-export function callContract(addr: Bech32String, calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest(addr, calldata, BigInt.zero(), 100000000, isQuery);
-    const resp = wasmxw.call(req, MODULE_NAME);
-    // result or error
-    resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
-    return resp;
+    const blockEntry = new wblocks.BlockEntry(
+        processReq.height,
+        contractAddress,
+        contractAddress,
+        blockDataBase64,
+        blockHeaderBase64,
+        commitBase64,
+        "",
+    )
+    const entry = new LogEntryAggregate(processReq.height, termId, leaderId, blockEntry);
+    appendLogEntry(entry);
 }

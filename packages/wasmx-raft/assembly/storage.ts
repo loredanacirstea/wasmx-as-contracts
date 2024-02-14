@@ -1,0 +1,271 @@
+import { JSON } from "json-as/assembly";
+import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
+import * as wblocks from "wasmx-blocks/assembly/types";
+import { LoggerDebug, revert } from "./utils";
+import { CurrentState, Mempool } from "./types_blockchain";
+import * as fsm from 'xstate-fsm-as/assembly/storage';
+import { parseInt32, parseInt64 } from "wasmx-utils/assembly/utils";
+import { LogEntry, LogEntryAggregate, ValidatorIp } from "./types_raft";
+import * as cfg from "./config";
+
+export function getCurrentState(): CurrentState {
+    const value = fsm.getContextValue(cfg.STATE_KEY);
+    // this must be set before we try to read it
+    if (value === "") {
+        revert("chain init setup was not ran")
+    }
+    return JSON.parse<CurrentState>(value);
+}
+
+export function setCurrentState(value: CurrentState): void {
+    fsm.setContextValue(cfg.STATE_KEY, JSON.stringify<CurrentState>(value));
+}
+
+export function getElectionTimeout(): i64 {
+    const value = fsm.getContextValue(cfg.ELECTION_TIMEOUT_KEY);
+    if (value === "") return i64(0);
+    return parseInt64(value);
+}
+
+export function setElectionTimeout(value: i64): void {
+    fsm.setContextValue(cfg.ELECTION_TIMEOUT_KEY, value.toString());
+}
+
+export function getNodeCount(): i32 {
+    const ips = getNodeIPs();
+    return getNodeCountInternal(ips);
+}
+
+export function getNodeCountInternal(ips: ValidatorIp[]): i32 {
+    let count = 0;
+    for (let i = 0; i < ips.length; i++) {
+        if (ips[i].ip.length > 0) {
+            count += 1;
+        }
+    }
+    return count;
+}
+
+// temporarily store the entries
+export function appendLogEntry(
+    entry: LogEntryAggregate,
+): void {
+    const index = getLastLogIndex() + 1;
+    // TODO rollback entries in case of a network split (e.g. entries with higher termId than we have have priority); they must be uncommited
+    // and just return if already saved
+    if (index > entry.index) {
+        LoggerDebug("already appended entry", ["height", entry.index.toString()])
+        return;
+    }
+    if (index !== entry.index) {
+        revert(`mismatched index while appending log entry: expected ${index}, found ${entry.index}`);
+    }
+    setLastLogIndex(index);
+    setLogEntryAggregate(entry);
+}
+
+export function setLogEntryAggregate(
+    entry: LogEntryAggregate,
+): void {
+    const blockData = encodeBase64(Uint8Array.wrap(String.UTF8.encode(JSON.stringify<wblocks.BlockEntry>(entry.data))))
+    const tempEntry = new LogEntry(
+        entry.index,
+        entry.termId,
+        entry.leaderId,
+        blockData,
+    )
+    const data = JSON.stringify<LogEntry>(tempEntry);
+    setLogEntry(entry.index, data);
+}
+
+export function setLogEntryObj(
+    entry: LogEntry,
+): void {
+    const data = JSON.stringify<LogEntry>(entry);
+    setLogEntry(entry.index, data);
+}
+
+export function setLogEntry(
+    index: i64,
+    entry: string,
+): void {
+    LoggerDebug("setting entry", ["height", index.toString(), "value", entry.slice(0, cfg.MAX_LOGGED) + " [...]"])
+    const key = getLogEntryKey(index);
+    fsm.setContextValue(key, entry);
+}
+
+export function getLogEntry(
+    index: i64,
+): string {
+    const key = getLogEntryKey(index);
+    return fsm.getContextValue(key);
+}
+
+export function getLogEntryObj(index: i64): LogEntry {
+    const value = getLogEntry(index);
+    if (value == "") return new LogEntry(0, 0, 0, "");
+    return JSON.parse<LogEntry>(value);
+}
+
+// remove the temporary block data
+export function removeLogEntry(
+    index: i64,
+): void {
+    const entry = getLogEntryObj(index);
+    entry.data = "";
+    const data = JSON.stringify<LogEntry>(entry);
+    setLogEntry(index, data)
+}
+
+export function getLastLogIndex(): i64 {
+    const key = getLastLogIndexKey();
+    const valuestr = fsm.getContextValue(key);
+    if (valuestr != "") {
+        const value = parseInt(valuestr);
+        return i64(value);
+    }
+    return i64(cfg.LOG_START);
+}
+
+export function setLastLogIndex(
+    value: i64,
+): void {
+    const key = getLastLogIndexKey();
+    LoggerDebug("setting entry count", ["height", value.toString()])
+    fsm.setContextValue(key, value.toString());
+}
+
+export function getLogEntryKey(index: i64): string {
+    return "logs_" + index.toString();
+}
+
+export function getLastLogIndexKey(): string {
+    return "logs_last_index";
+}
+
+export function getTermId(): i32 {
+    const value = fsm.getContextValue(cfg.TERM_ID);
+    if (value === "") return i32(0);
+    return parseInt32(value);
+}
+
+export function setTermId(value: i32): void {
+    fsm.setContextValue(cfg.TERM_ID, value.toString());
+}
+
+export function hasVotedFor(): boolean {
+    return getVotedForInternal() > 0;
+}
+
+export function getVotedForInternal(): i32 {
+    const value = fsm.getContextValue(cfg.VOTED_FOR_KEY);
+    if (value === "") return i32(0);
+    return parseInt32(value);
+}
+
+export function setVotedFor(value: i32): void {
+    setVotedForInternal(value + 1);
+}
+
+export function setVotedForInternal(value: i32): void {
+    fsm.setContextValue(cfg.VOTED_FOR_KEY, value.toString());
+}
+
+export function getCurrentNodeId(): i32 {
+    const value = fsm.getContextValue(cfg.CURRENT_NODE_ID);
+    if (value === "") return i32(0);
+    return parseInt32(value);
+}
+
+export function setCurrentNodeId(index: i32): void {
+    fsm.setContextValue(cfg.CURRENT_NODE_ID, index.toString());
+}
+
+export function getLastApplied(): i64 {
+    const value = fsm.getContextValue(cfg.LAST_APPLIED);
+    if (value === "") return i64(cfg.LOG_START);
+    return parseInt64(value);
+}
+
+export function setLastApplied(value: i64): void {
+    fsm.setContextValue(cfg.LAST_APPLIED, value.toString());
+}
+
+export function getCommitIndex(): i64 {
+    const value = fsm.getContextValue(cfg.COMMIT_INDEX);
+    if (value === "") return i64(cfg.LOG_START);
+    return parseInt64(value);
+}
+
+export function setCommitIndex(index: i64): void {
+    fsm.setContextValue(cfg.COMMIT_INDEX, index.toString());
+}
+
+export function getMatchIndexArray(): Array<i64> {
+    const valuestr = fsm.getContextValue(cfg.MATCH_INDEX_ARRAY);
+    let value: Array<i64> = [];
+    if (valuestr === "") return value;
+    value = JSON.parse<Array<i64>>(valuestr);
+    return value;
+}
+
+export function setMatchIndexArray(value: Array<i64>): void {
+    fsm.setContextValue(cfg.MATCH_INDEX_ARRAY, JSON.stringify<Array<i64>>(value));
+}
+
+export function getNodeIPs(): Array<ValidatorIp> {
+    const valuestr = fsm.getContextValue(cfg.NODE_IPS);
+    let value: Array<ValidatorIp> = [];
+    if (valuestr === "") return value;
+    value = JSON.parse<Array<ValidatorIp>>(valuestr);
+    return value;
+}
+
+export function setNodeIPs(ips: Array<ValidatorIp>): void {
+    const valuestr = JSON.stringify<Array<ValidatorIp>>(ips);
+    fsm.setContextValue(cfg.NODE_IPS, valuestr);
+}
+
+export function getNextIndexArray(): Array<i64> {
+    const valuestr = fsm.getContextValue(cfg.NEXT_INDEX_ARRAY);
+    let value: Array<i64> = [];
+    if (valuestr === "") return value;
+    value = JSON.parse<Array<i64>>(valuestr);
+    return value;
+}
+
+export function setNextIndexArray(arr: Array<i64>): void {
+    fsm.setContextValue(cfg.NEXT_INDEX_ARRAY, JSON.stringify<Array<i64>>(arr));
+}
+
+export function getVoteIndexArray(): Array<i32> {
+    const valuestr = fsm.getContextValue(cfg.VOTE_INDEX_ARRAY);
+    let value: Array<i32> = [];
+    if (valuestr === "") return value;
+    value = JSON.parse<Array<i32>>(valuestr);
+    return value;
+}
+
+export function setVoteIndexArray(arr: Array<i32>): void {
+    fsm.setContextValue(cfg.VOTE_INDEX_ARRAY, JSON.stringify<Array<i32>>(arr));
+}
+
+export function getMempool(): Mempool {
+    const mempool = fsm.getContextValue(cfg.MEMPOOL_KEY);
+    if (mempool === "") return  new Mempool(new Array<string>(0), new Array<i32>(0));
+    return JSON.parse<Mempool>(mempool);
+}
+
+export function setMempool(mempool: Mempool): void {
+    fsm.setContextValue(cfg.MEMPOOL_KEY, JSON.stringify<Mempool>(mempool));
+}
+
+export function getMaxTxBytes(): i64 {
+    const value = fsm.getContextValue(cfg.MAX_TX_BYTES);
+    if (value === "") return i64(0);
+    return parseInt64(value);
+}
+
+export function setMaxTxBytes(value: i64): void {
+    fsm.setContextValue(cfg.MAX_TX_BYTES, value.toString());
+}

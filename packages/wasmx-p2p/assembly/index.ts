@@ -1,3 +1,4 @@
+// this is used for testing
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { Base64String } from "wasmx-env/assembly/types";
