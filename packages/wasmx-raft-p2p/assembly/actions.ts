@@ -1,1 +1,325 @@
 import { JSON } from "json-as/assembly";
+import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
+import { getParamsOrEventParams, actionParamsToMap } from 'xstate-fsm-as/assembly/utils';
+import * as wblocks from "wasmx-blocks/assembly/types";
+import * as wblockscalld from "wasmx-blocks/assembly/calldata";
+import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
+import * as wasmx from 'wasmx-env/assembly/wasmx';
+import * as p2pw from "wasmx-p2p/assembly/p2p_wrap";
+import * as p2ptypes from "wasmx-p2p/assembly/types";
+import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
+import {
+  Base64String,
+  Bech32String,
+  CallRequest,
+  CallResponse,
+} from 'wasmx-env/assembly/types';
+import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
+import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
+import * as staking from "wasmx-stake/assembly/types";
+import { CurrentState, Mempool } from "wasmx-raft/assembly/types_blockchain";
+import * as fsm from 'xstate-fsm-as/assembly/storage';
+import {
+    EventObject,
+    ActionParam,
+} from 'xstate-fsm-as/assembly/types';
+import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE } from "wasmx-utils/assembly/utils";
+import { base64ToHex, hex64ToBase64 } from './utils';
+import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse, NodeInfo, MODULE_NAME, Node, AppendEntryResponse } from "wasmx-raft/assembly/types_raft";
+import { BigInt } from "wasmx-env/assembly/bn";
+import { appendLogEntry, getCommitIndex, getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getMatchIndexArray, getMempool, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, getVoteIndexArray, hasVotedFor, removeLogEntry, setCommitIndex, setCurrentNodeId, setCurrentState, setElectionTimeout, setLastApplied, setLastLogIndex, setMatchIndexArray, setMempool, setNextIndexArray, setNodeIPs, setTermId, setVoteIndexArray, setVotedFor } from "wasmx-raft/assembly/storage";
+import * as cfg from "wasmx-raft/assembly/config";
+import { callHookContract, checkValidatorsUpdate, getAllValidators, getCommitHash, getConsensusParams, getConsensusParamsHash, getCurrentValidator, getEvidenceHash, getFinalBlock, getHeaderHash, getLastBlockIndex, getLastLog, getMajority, getRandomInRange, getResultsHash, getTxsHash, getValidatorsHash, initChain, initializeIndexArrays, setConsensusParams, setFinalizedBlock, signMessage, updateConsensusParams, updateValidators, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
+import { PROTOCOL_ID } from "./types";
+import { checkCommits, prepareAppendEntry, prepareAppendEntryMessage } from "wasmx-raft/assembly/actions";
+
+
+export function setupNode(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    let currentNodeId: string = "";
+    let nodeIPs: string = "";
+    let initChainSetup: string = "";
+    for (let i = 0; i < event.params.length; i++) {
+        if (event.params[i].key === cfg.CURRENT_NODE_ID) {
+            currentNodeId = event.params[i].value;
+            continue;
+        }
+        if (event.params[i].key === cfg.NODE_IPS) {
+            nodeIPs = event.params[i].value;
+            continue;
+        }
+        if (event.params[i].key === "initChainSetup") {
+            initChainSetup = event.params[i].value;
+            continue;
+        }
+    }
+    if (currentNodeId === "") {
+        revert("no currentNodeId found");
+    }
+    if (nodeIPs === "") {
+        revert("no nodeIPs found");
+    }
+    if (initChainSetup === "") {
+        revert("no initChainSetup found");
+    }
+    fsm.setContextValue(cfg.CURRENT_NODE_ID, currentNodeId);
+
+    // !! nodeIps must be the same for all nodes
+
+    // TODO ID@host:ip
+    // 6efc12ab37fc0e096d8618872f6930df53972879@0.0.0.0:26757
+    fsm.setContextValue(cfg.NODE_IPS, nodeIPs);
+
+    setCommitIndex(cfg.LOG_START);
+    setLastApplied(cfg.LOG_START);
+
+    const datajson = String.UTF8.decode(decodeBase64(initChainSetup).buffer);
+    // TODO remove validator private key from logs in initChainSetup
+    LoggerDebug("setupNode", ["currentNodeId", currentNodeId, "nodeIPs", nodeIPs, "initChainSetup", datajson])
+    const data = JSON.parse<typestnd.InitChainSetup>(datajson);
+    // const ips = JSON.parse<string[]>(nodeIPs);
+
+    const peers = new Array<NodeInfo>(data.peers.length);
+    for (let i = 0; i < data.peers.length; i++) {
+        const parts1 = data.peers[i].split("@");
+        if (parts1.length != 2) {
+            revert(`invalid node format; found: ${data.peers[i]}`)
+        }
+        // <address>@/ip4/127.0.0.1/tcp/5001/p2p/12D3KooWMWpac4Qp74N2SNkcYfbZf2AWHz7cjv69EM5kejbXwBZF
+        const addr = parts1[0]
+        const parts2 = parts1[1].split("/")
+        if (parts2.length != 7) {
+            revert(`invalid node format; found: ${data.peers[i]}`)
+        }
+        const host = parts2[2]
+        const port = parts2[4]
+        const p2pid = parts2[6]
+        peers[i] = new NodeInfo(addr, new Node(p2pid, host, port, parts1[1]));
+    }
+    setNodeIPs(peers);
+    initChain(data);
+    initializeIndexArrays(peers.length);
+}
+
+
+// forward transactions to leader
+export function forwardTxsToLeader(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    // look in the mempool to see if we have user transactions left
+    // and send to leader
+    const mempool = getMempool();
+    if (mempool.txs.length == 0) {
+        return;
+    }
+
+    // get leader from last log
+    const entry = getLastLog();
+    if (entry.index == 0) {
+        return;
+    }
+    const nodeId = entry.leaderId;
+    const nodeIps = getNodeIPs();
+    const nodeInfo = nodeIps[nodeId];
+
+    let limit = mempool.txs.length;
+    if (limit > 5) {
+        limit = 5;
+    }
+    const txs = mempool.txs.slice(0, limit);
+    LoggerDebug("forwarding txs to leader", ["nodeId", nodeId.toString(), "nodeIp", nodeInfo.node.ip, "count", limit.toString()])
+
+    for (let i = 0; i < limit; i++) {
+        const tx = txs[0];
+        const msgstr = `{"run":{"event":{"type":"newTransaction","params":[{"key": "transaction","value":"${tx}"}]}}}`
+        const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
+        const peers = [getP2PAddress(nodeInfo)]
+        LoggerDebug("forwarding tx to leader", ["nodeId", nodeId.toString(), "nodeIp", nodeInfo.node.ip, "tx_batch_index", i.toString()])
+        p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(msgBase64, PROTOCOL_ID, peers))
+    }
+}
+
+export function sendVoteRequests(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const termId = getTermId();
+    const candidateId = getCurrentNodeId();
+    const lastLogIndex = getLastLogIndex();
+    const lastEntry = getLastLog();
+    const lastLogTerm = lastEntry.termId;
+
+    // iterate through the other nodes and send a VoteRequest
+    const request = new VoteRequest(termId, candidateId, lastLogIndex, lastLogTerm);
+    const ips = getNodeIPs();
+    LoggerInfo("sending vote requests...", ["candidateId", candidateId.toString(), "termId", termId.toString(), "lastLogIndex", lastLogIndex.toString(), "lastLogTerm", lastLogTerm.toString(), "ips", JSON.stringify<Array<NodeInfo>>(ips)])
+    for (let i = 0; i < ips.length; i++) {
+        // don't send to ourselves or to removed nodes
+        if (candidateId === i || ips[i].node.ip.length == 0) continue;
+        sendVoteRequest(i, ips[i], request, termId);
+    }
+}
+
+function sendVoteRequest(nodeId: i32, node: NodeInfo, request: VoteRequest, termId: i32): void {
+    const datastr = JSON.stringify<VoteRequest>(request);
+    const signature = signMessage(datastr);
+
+    // const msgstr = `{"run":{"event":{"type":"receiveVoteRequest","params":[{"key":"termId","value":"${request.termId.toString()}"},{"key":"candidateId","value":"${request.candidateId.toString()}"},{"key":"lastLogIndex","value":"${request.lastLogIndex.toString()}"},{"key":"lastLogTerm","value":"${request.lastLogTerm.toString()}"}]}}}`
+    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
+    const msgstr = `{"run":{"event":{"type":"receiveVoteRequest","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
+    const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
+
+    LoggerDebug("sending vote request", ["nodeId", nodeId.toString(), "nodeIp", node.node.ip, "termId", termId.toString(), "data", datastr])
+
+    const peers = [getP2PAddress(node)]
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(msgBase64, PROTOCOL_ID, peers))
+
+}
+
+export function receiveVoteResponse(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("data")) {
+        revert("no data found");
+    }
+    if (!ctx.has("signature")) {
+        revert("no signature found");
+    }
+    if (!ctx.has("sender")) { // node/validator address
+        revert("no sender found");
+    }
+    const signature = ctx.get("signature")
+    const sender = ctx.get("sender")
+    const data = ctx.get("data")
+    const resp = JSON.parse<VoteResponse>(data)
+    LoggerDebug("received vote response", ["sender", sender, "data", data])
+
+    // verify signature
+    const isSender = verifyMessageByAddr(sender, signature, data);
+    if (!isSender) {
+        LoggerError("signature verification failed for receiveVoteResponse", ["sender", sender]);
+        return;
+    }
+    const nodeId = getNodeId(sender);
+    const termId = getTermId();
+
+    // if vote granted, add to the votes and check that we have majority
+    if (resp.voteGranted) {
+        const voteArray = getVoteIndexArray();
+        voteArray[nodeId] = 1;
+        setVoteIndexArray(voteArray);
+    } else {
+        // update our termId if we are behind
+        if (resp.termId > termId) {
+            setTermId(resp.termId);
+        }
+        // TODO do we need to rollback entries?
+    }
+}
+
+// this actually commits one block at a time
+export function commitBlocks(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const consensusChanged = checkCommits();
+    if(consensusChanged) {
+        // we need to also propagate the commit of this entry to the rest of the nodes
+        // so they can enter the new consensus
+        sendAppendEntries([], new EventObject("", []))
+    }
+}
+
+export function sendAppendEntries(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    // go through each node
+    const nodeId = getCurrentNodeId();
+    const ips = getNodeIPs();
+    LoggerDebug("diseminate entries...", ["nodeId", nodeId.toString(), "ips", JSON.stringify<Array<NodeInfo>>(ips)])
+    for (let i = 0; i < ips.length; i++) {
+        // don't send to Leader or removed nodes
+        if (nodeId === i || ips[i].node.ip.length == 0) continue;
+        sendAppendEntry(i, ips[i], ips);
+    }
+}
+
+// TODO continue sending the entries until all nodes receive them
+// TODO make this an eventual and retry until responses are received or leader is changed
+export function sendAppendEntry(
+    nodeId: i32,
+    node: NodeInfo,
+    nodeIps: NodeInfo[],
+): void {
+    const nextIndexPerNode = getNextIndexArray();
+    const nextIndex = nextIndexPerNode.at(nodeId);
+    let lastIndex = getLastLogIndex();
+    const data = prepareAppendEntry(nodeIps, nextIndex, lastIndex);
+    const msgBase64 = prepareAppendEntryMessage(nodeId, nextIndex, lastIndex, node, data);
+
+    // we send the request to the same contract
+    // const contract = wasmx.getAddress();
+    const peers = [getP2PAddress(node)]
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(msgBase64, PROTOCOL_ID, peers))
+    // Uint8Array.wrap(contract)
+}
+
+export function receiveAppendEntryResponse(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("data")) {
+        revert("no data found");
+    }
+    if (!ctx.has("signature")) {
+        revert("no signature found");
+    }
+    if (!ctx.has("sender")) { // node/validator address
+        revert("no sender found");
+    }
+    const signature = ctx.get("signature")
+    const sender = ctx.get("sender")
+    const data = ctx.get("data")
+    const resp = JSON.parse<AppendEntryResponse>(data)
+    LoggerDebug("received append entry response", ["sender", sender, "data", data])
+
+    // verify signature
+    const isSender = verifyMessageByAddr(sender, signature, data);
+    if (!isSender) {
+        LoggerError("signature verification failed for receiveVoteResponse", ["sender", sender]);
+        return;
+    }
+    const nodeId = getNodeId(sender);
+
+    // TODO something with resp.term
+    // const termId = getTermId();
+    if (resp.success) {
+        const nextIndexPerNode = getNextIndexArray();
+        const nextIndex = nextIndexPerNode.at(nodeId);
+        nextIndexPerNode[nodeId] = resp.lastIndex;
+        setNextIndexArray(nextIndexPerNode);
+    }
+}
+
+function getP2PAddress(nodeInfo: NodeInfo): string {
+    return `/ip4/${nodeInfo.node.host}/tcp/${nodeInfo.node.port}/ipfs/${nodeInfo.node.id}`
+}
+
+function getNodeId(addr: Bech32String): i32 {
+    const nodeInfos = getNodeIPs()
+    for (let i = 0; i < nodeInfos.length; i++) {
+        if (nodeInfos[i].address == addr) {
+            return i;
+        }
+    }
+    return -1;
+}

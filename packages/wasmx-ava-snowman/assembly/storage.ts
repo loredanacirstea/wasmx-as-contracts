@@ -5,7 +5,7 @@ import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import { CurrentState, Mempool } from "./types_blockchain";
 import * as fsm from 'xstate-fsm-as/assembly/storage';
 import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, parseUint8ArrayToU32BigEndian } from "wasmx-utils/assembly/utils";
-import { LogEntry, LogEntryAggregate, AppendEntry, NodeUpdate, UpdateNodeResponse, AppendEntryResponse, TransactionResponse, Precommit, TempBlock, ValidatorIp } from "./types";
+import { LogEntry, LogEntryAggregate, AppendEntry, NodeUpdate, UpdateNodeResponse, AppendEntryResponse, TransactionResponse, Precommit, TempBlock, NodeInfo } from "./types";
 import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
 import {
     NODE_IPS,
@@ -79,20 +79,20 @@ export function getNodeCount(): i32 {
     return getNodeCountInternal(ips);
 }
 
-export function getNodeIPs(): Array<ValidatorIp> {
+export function getNodeIPs(): Array<NodeInfo> {
     const valuestr = fsm.getContextValue(NODE_IPS);
-    let value: Array<ValidatorIp> = [];
+    let value: Array<NodeInfo> = [];
     if (valuestr === "") return value;
-    value = JSON.parse<Array<ValidatorIp>>(valuestr);
+    value = JSON.parse<Array<NodeInfo>>(valuestr);
     return value;
 }
 
-export function setNodeIPs(ips: Array<ValidatorIp>): void {
-    const valuestr = JSON.stringify<Array<ValidatorIp>>(ips);
+export function setNodeIPs(ips: Array<NodeInfo>): void {
+    const valuestr = JSON.stringify<Array<NodeInfo>>(ips);
     fsm.setContextValue(NODE_IPS, valuestr);
 }
 
-function getNodeCountInternal(ips: ValidatorIp[]): i32 {
+function getNodeCountInternal(ips: NodeInfo[]): i32 {
     let count = 0;
     for (let i = 0; i < ips.length; i++) {
         if (ips[i].ip.length > 0) {

@@ -20,7 +20,7 @@ import {
 } from 'xstate-fsm-as/assembly/types';
 import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, parseUint8ArrayToU32BigEndian } from "wasmx-utils/assembly/utils";
 import { base64ToHex, hex64ToBase64 } from './utils';
-import { LogEntry, LogEntryAggregate, AppendEntry, NodeUpdate, UpdateNodeResponse, AppendEntryResponse, TransactionResponse, Precommit, MODULE_NAME, ValidatorIp } from "./types";
+import { LogEntry, LogEntryAggregate, AppendEntry, NodeUpdate, UpdateNodeResponse, AppendEntryResponse, TransactionResponse, Precommit, MODULE_NAME, NodeInfo } from "./types";
 import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 
@@ -206,13 +206,13 @@ export function setupNode(
     const data = JSON.parse<typestnd.InitChainSetup>(datajson);
     // const ips = JSON.parse<string[]>(nodeIPs);
 
-    const peers = new Array<ValidatorIp>(data.peers.length);
+    const peers = new Array<NodeInfo>(data.peers.length);
     for (let i = 0; i < data.peers.length; i++) {
         const peer = data.peers[i].split("@");
         if (peer.length != 2) {
             revert(`invalid node format; found: ${data.peers[i]}`)
         }
-        peers[i] = new ValidatorIp(peer[0], peer[1]);
+        peers[i] = new NodeInfo(peer[0], peer[1]);
     }
     setNodeIPs(peers);
     initChain(data);
@@ -397,7 +397,7 @@ export function sendAppendEntries(
     // go through each node
     const nodeId = getCurrentNodeId();
     const ips = getNodeIPs();
-    LoggerDebug("diseminate blocks...", ["nodeId", nodeId.toString(), "ips", JSON.stringify<Array<ValidatorIp>>(ips)])
+    LoggerDebug("diseminate blocks...", ["nodeId", nodeId.toString(), "ips", JSON.stringify<Array<NodeInfo>>(ips)])
     for (let i = 0; i < ips.length; i++) {
         // don't send to Leader or removed nodes
         if (nodeId === i || ips[i].ip.length == 0) continue;
@@ -407,8 +407,8 @@ export function sendAppendEntries(
 
 export function sendAppendEntry(
     nodeId: i32,
-    node: ValidatorIp,
-    nodeIps: ValidatorIp[],
+    node: NodeInfo,
+    nodeIps: NodeInfo[],
 ): void {
     const nextIndexPerNode = getNextIndexArray();
     const nextIndex = nextIndexPerNode.at(nodeId);
@@ -463,7 +463,7 @@ export function sendPrecommits(
     // go through each node
     const nodeId = getCurrentNodeId();
     const ips = getNodeIPs();
-    LoggerDebug("sending precommits...", ["nodeId", nodeId.toString(), "ips", JSON.stringify<Array<ValidatorIp>>(ips)])
+    LoggerDebug("sending precommits...", ["nodeId", nodeId.toString(), "ips", JSON.stringify<Array<NodeInfo>>(ips)])
     for (let i = 0; i < ips.length; i++) {
         // don't send to Leader or removed nodes
         if (nodeId === i || ips[i].ip.length == 0) continue;
@@ -473,7 +473,7 @@ export function sendPrecommits(
 
 export function sendPrecommit(
     nodeId: i32,
-    node: ValidatorIp,
+    node: NodeInfo,
 ): void {
     const termId = getTermId();
     const lastIndex = getLastLogIndex();
@@ -652,7 +652,7 @@ export function updateNodeAndReturn(
         ips[entryIndex].ip = entry.node.ip;
     }
 
-    LoggerInfo("node updates", ["ips", JSON.stringify<ValidatorIp[]>(ips)])
+    LoggerInfo("node updates", ["ips", JSON.stringify<NodeInfo[]>(ips)])
     setNodeIPs(ips);
 }
 
@@ -757,7 +757,7 @@ export function setup(
     }
     let data = String.UTF8.decode(decodeBase64(resp.data).buffer);
     LoggerInfo("setting up nodeIPs", ["ips", data])
-    const nodeIps = JSON.parse<Array<ValidatorIp>>(data)
+    const nodeIps = JSON.parse<Array<NodeInfo>>(data)
     setNodeIPs(nodeIps);
 
     calldata = `{"getContextValue":{"key":"state"}}`
@@ -942,20 +942,20 @@ function getNodeCount(): i32 {
     return getNodeCountInternal(ips);
 }
 
-export function getNodeIPs(): Array<ValidatorIp> {
+export function getNodeIPs(): Array<NodeInfo> {
     const valuestr = fsm.getContextValue(NODE_IPS);
-    let value: Array<ValidatorIp> = [];
+    let value: Array<NodeInfo> = [];
     if (valuestr === "") return value;
-    value = JSON.parse<Array<ValidatorIp>>(valuestr);
+    value = JSON.parse<Array<NodeInfo>>(valuestr);
     return value;
 }
 
-export function setNodeIPs(ips: Array<ValidatorIp>): void {
-    const valuestr = JSON.stringify<Array<ValidatorIp>>(ips);
+export function setNodeIPs(ips: Array<NodeInfo>): void {
+    const valuestr = JSON.stringify<Array<NodeInfo>>(ips);
     fsm.setContextValue(NODE_IPS, valuestr);
 }
 
-function getNodeCountInternal(ips: ValidatorIp[]): i32 {
+function getNodeCountInternal(ips: NodeInfo[]): i32 {
     let count = 0;
     for (let i = 0; i < ips.length; i++) {
         if (ips[i].ip.length > 0) {

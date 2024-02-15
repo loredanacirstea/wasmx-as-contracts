@@ -5,6 +5,7 @@ import { Base64String } from "wasmx-env/assembly/types";
 import { revert } from "./utils";
 import * as p2pw from "./p2p_wrap";
 import { ConnectPeerRequest, SendMessageRequest, SendMessageToPeersRequest, StartNodeWithIdentityRequest } from "./types";
+import { MessageReceivedFromPeer, MsgStart, Peer } from "./types_p2p";
 
 export function wasmx_env_2(): void {}
 
@@ -47,47 +48,8 @@ function start(req: MsgStart): void {
 
 // @ts-ignore
 @serializable
-export class Peer {
-  id: string // base64
-  host: string
-  port: string
-  constructor(id: string, host: string, port: string) {
-    this.id = id
-    this.host = host
-    this.port = port
-  }
-}
-
-// @ts-ignore
-@serializable
-export class MsgStart {
-  protocolId: string
-  pk: Base64String
-  node: Peer
-  peers: Peer[]
-  constructor(privateKey: Base64String, protocolId: string, node: Peer, peers: Peer[]) {
-    this.pk = privateKey
-    this.protocolId = protocolId
-    this.node = node
-    this.peers = peers
-  }
-}
-
-// @ts-ignore
-@serializable
 export class CallData {
     start: MsgStart | null = null;
-}
-
-// @ts-ignore
-@serializable
-export class MessageReceivedFromPeer {
-    data: Base64String
-    peer: Peer
-    constructor(data: Base64String, peer: Peer) {
-      this.data = data
-      this.peer = peer
-    }
 }
 
 function getCallDataWrap(): CallData {

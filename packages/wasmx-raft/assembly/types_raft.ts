@@ -83,9 +83,9 @@ export class AppendEntry {
     entries: Array<LogEntryAggregate>
     // leader’s commitIndex
     leaderCommit: i64;
-    nodeIps: Array<ValidatorIp>;
+    nodeIps: Array<NodeInfo>;
     validators: Base64String;
-    constructor(termId: i32, leaderId: i32, prevLogIndex: i64, prevLogTerm: i32, entries: Array<LogEntryAggregate>, leaderCommit: i64, nodeIps: Array<ValidatorIp>, validators: Base64String) {
+    constructor(termId: i32, leaderId: i32, prevLogIndex: i64, prevLogTerm: i32, entries: Array<LogEntryAggregate>, leaderCommit: i64, nodeIps: Array<NodeInfo>, validators: Base64String) {
         this.termId = termId;
         this.leaderId = leaderId;
         this.prevLogIndex = prevLogIndex;
@@ -104,9 +104,11 @@ export class AppendEntryResponse {
     termId: i32;
     // true if follower contained entry matching prevLogIndex and prevLogTerm
     success: bool;
-    constructor(termId: i32, success: bool) {
+    lastIndex: i64;
+    constructor(termId: i32, success: bool, lastIndex: i64) {
         this.termId = termId;
         this.success = success;
+        this.lastIndex = lastIndex;
     }
 }
 
@@ -128,10 +130,10 @@ export class VoteRequest {
 // @ts-ignore
 @serializable
 export class NodeUpdate {
-    node: ValidatorIp;
+    node: NodeInfo;
     index: i32;
     type: i32; // removed = 0; added = 1; updated = 2;
-    constructor(node: ValidatorIp, index: i32, type: i32) {
+    constructor(node: NodeInfo, index: i32, type: i32) {
         this.node = node;
         this.index = index;
         this.type = type;
@@ -141,13 +143,11 @@ export class NodeUpdate {
 // @ts-ignore
 @serializable
 export class UpdateNodeResponse {
-  index: i32;
-  nodeIPs: ValidatorIp[]
+  nodes: NodeInfo[]
   nodeId: i32
   validators: Base64String
-  constructor(index: i32, nodeIPs: ValidatorIp[], nodeId: i32, validators: Base64String) {
-    this.index = index
-    this.nodeIPs = nodeIPs
+  constructor(nodes: NodeInfo[], nodeId: i32, validators: Base64String) {
+    this.nodes = nodes
     this.nodeId = nodeId
     this.validators = validators
   }
@@ -166,11 +166,27 @@ export class VoteResponse {
 
 // @ts-ignore
 @serializable
-export class ValidatorIp {
+export class Node {
+  id: Base64String
+  host: string
+  port: string
+  ip: string // can be empty if host & port are used
+  constructor(id: Base64String, host: string, port: string, ip: string) {
+    this.id = id
+    this.host = host
+    this.port = port
+    this.ip = ip
+  }
+}
+
+// @ts-ignore
+@serializable
+export class NodeInfo {
     address: Bech32String
-    ip: string
-    constructor(address: Bech32String, ip: string) {
+    node: Node
+    constructor(address: Bech32String, node: Node) {
         this.address = address
-        this.ip = ip
+        this.node = node
     }
 }
+

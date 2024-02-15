@@ -15,9 +15,11 @@ import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as staking from "wasmx-stake/assembly/types";
 import { hexToUint8Array, uint8ArrayToHex, i64ToUint8ArrayBE } from "wasmx-utils/assembly/utils";
 import { hex64ToBase64 } from './utils';
-import { MODULE_NAME } from "./types_raft";
+import { LogEntry, MODULE_NAME } from "./types_raft";
 import { BigInt } from "wasmx-env/assembly/bn";
-import { getCurrentState, getNodeIPs } from "./storage";
+import { getCurrentState, getLastLogIndex, getLogEntryObj, getNodeIPs, setCurrentState, setMatchIndexArray, setNextIndexArray } from "./storage";
+import * as cfg from "./config";
+import { CurrentState } from "./types_blockchain";
 
 export function getMajority(count: i32): i64 {
     return i64(f64.floor(f64(count) / 2) + 1)
@@ -156,6 +158,10 @@ export function signMessage(msgstr: string): Base64String {
 export function verifyMessage(nodeIndex: i32, signatureStr: Base64String, msg: string): boolean {
     const nodes = getNodeIPs();
     const addr = nodes[nodeIndex].address;
+    return verifyMessageByAddr(addr, signatureStr, msg);
+}
+
+export function verifyMessageByAddr(addr: Bech32String, signatureStr: Base64String, msg: string): boolean {
     const validators = getAllValidators();
     let validator: staking.Validator | null = null;
     for (let i = 0; i < validators.length; i++) {
@@ -164,7 +170,7 @@ export function verifyMessage(nodeIndex: i32, signatureStr: Base64String, msg: s
         }
     }
     if (validator == null) {
-        LoggerDebug("could not verify mesage: validator not found", ["address", addr, "node_index", nodeIndex.toString()])
+        LoggerDebug("could not verify mesage: validator not found", ["address", addr])
         return false;
     }
     const pubKey = validator.consensus_pubkey!;
@@ -287,4 +293,67 @@ export function callContract(addr: Bech32String, calldata: string, isQuery: bool
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
     return resp;
+}
+
+export function getCurrentValidator(): typestnd.ValidatorInfo {
+    const currentState = getCurrentState();
+    // TODO voting_power & proposer_priority
+    return new typestnd.ValidatorInfo(currentState.validator_address, currentState.validator_pubkey, 0, 0);
+}
+
+export function checkValidatorsUpdate(validators: typestnd.ValidatorInfo[], validatorInfo: typestnd.ValidatorInfo, nodeId: i32): void {
+    if (validators[nodeId].address != validatorInfo.address) {
+        LoggerError("register node response has wrong validator address", ["expected", validatorInfo.address]);
+        revert(`register node response has wrong validator address`)
+    }
+    if (validators[nodeId].pub_key != validatorInfo.pub_key) {
+        LoggerError("register node response has wrong validator pub_key", ["expected", validatorInfo.pub_key]);
+        revert(`register node response has wrong validator pub_key`)
+    }
+}
+
+export function initializeIndexArrays(len: i32): void {
+    const lastLogIndex = getLastLogIndex()
+    const nextIndex: Array<i64> = [];
+    const matchIndex: Array<i64> = [];
+    for (let i = 0; i < len; i++) {
+        // for each server, index of the next log entry to send to that server (initialized to leader's last log index + 1)
+        nextIndex[i] = lastLogIndex + 1;
+        // for each server, index of highest log entry known to be replicated on server (initialized to 0, increases monotonically)
+        matchIndex[i] = cfg.LOG_START; // TODO ?
+    }
+    setNextIndexArray(nextIndex);
+    setMatchIndexArray(matchIndex);
+}
+
+
+export function initChain(req: typestnd.InitChainSetup): void {
+    LoggerDebug("start chain init", [])
+
+    // TODO what are the correct empty value?
+    const emptyBlockId = new typestnd.BlockID("", new typestnd.PartSetHeader(0, ""))
+    const last_commit_hash = ""
+    const currentState = new CurrentState(
+        req.chain_id,
+        req.version,
+        req.app_hash,
+        emptyBlockId,
+        last_commit_hash,
+        req.last_results_hash,
+        req.validator_address,
+        req.validator_privkey,
+        req.validator_pubkey,
+    );
+
+    const valuestr = JSON.stringify<CurrentState>(currentState);
+    LoggerDebug("set current state", ["state", valuestr])
+    setCurrentState(currentState);
+    setConsensusParams(req.consensus_params);
+    LoggerDebug("current state set", [])
+}
+
+// last log may be an uncommited one or a final one
+export function getLastLog(): LogEntry {
+    const index = getLastLogIndex();
+    return getLogEntryObj(index);
 }

@@ -5,7 +5,7 @@ import { LoggerDebug, revert } from "./utils";
 import { CurrentState, Mempool } from "./types_blockchain";
 import * as fsm from 'xstate-fsm-as/assembly/storage';
 import { parseInt32, parseInt64 } from "wasmx-utils/assembly/utils";
-import { LogEntry, LogEntryAggregate, ValidatorIp } from "./types_raft";
+import { LogEntry, LogEntryAggregate, NodeInfo } from "./types_raft";
 import * as cfg from "./config";
 
 export function getCurrentState(): CurrentState {
@@ -36,10 +36,10 @@ export function getNodeCount(): i32 {
     return getNodeCountInternal(ips);
 }
 
-export function getNodeCountInternal(ips: ValidatorIp[]): i32 {
+export function getNodeCountInternal(ips: NodeInfo[]): i32 {
     let count = 0;
     for (let i = 0; i < ips.length; i++) {
-        if (ips[i].ip.length > 0) {
+        if (ips[i].node.ip.length > 0) {
             count += 1;
         }
     }
@@ -213,16 +213,16 @@ export function setMatchIndexArray(value: Array<i64>): void {
     fsm.setContextValue(cfg.MATCH_INDEX_ARRAY, JSON.stringify<Array<i64>>(value));
 }
 
-export function getNodeIPs(): Array<ValidatorIp> {
+export function getNodeIPs(): Array<NodeInfo> {
     const valuestr = fsm.getContextValue(cfg.NODE_IPS);
-    let value: Array<ValidatorIp> = [];
+    let value: Array<NodeInfo> = [];
     if (valuestr === "") return value;
-    value = JSON.parse<Array<ValidatorIp>>(valuestr);
+    value = JSON.parse<Array<NodeInfo>>(valuestr);
     return value;
 }
 
-export function setNodeIPs(ips: Array<ValidatorIp>): void {
-    const valuestr = JSON.stringify<Array<ValidatorIp>>(ips);
+export function setNodeIPs(ips: Array<NodeInfo>): void {
+    const valuestr = JSON.stringify<Array<NodeInfo>>(ips);
     fsm.setContextValue(cfg.NODE_IPS, valuestr);
 }
 

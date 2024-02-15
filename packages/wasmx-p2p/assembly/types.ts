@@ -1,6 +1,5 @@
 import { JSON } from "json-as/assembly";
-import { Base64String, Bech32String } from 'wasmx-env/assembly/types';
-import { Peer } from ".";
+import { Base64String } from 'wasmx-env/assembly/types';
 
 export const MODULE_NAME = "p2p"
 

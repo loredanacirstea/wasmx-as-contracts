@@ -22,11 +22,11 @@ import {
 } from 'xstate-fsm-as/assembly/types';
 import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE } from "wasmx-utils/assembly/utils";
 import { base64ToHex, hex64ToBase64 } from './utils';
-import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, AppendEntryResponse, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse, ValidatorIp, MODULE_NAME } from "./types_raft";
+import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, AppendEntryResponse, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse, NodeInfo, MODULE_NAME, Node } from "./types_raft";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { appendLogEntry, getCommitIndex, getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getMatchIndexArray, getMempool, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, getVoteIndexArray, hasVotedFor, removeLogEntry, setCommitIndex, setCurrentNodeId, setCurrentState, setElectionTimeout, setLastApplied, setLastLogIndex, setMatchIndexArray, setMempool, setNextIndexArray, setNodeIPs, setTermId, setVoteIndexArray, setVotedFor } from "./storage";
 import * as cfg from "./config";
-import { callHookContract, getAllValidators, getCommitHash, getConsensusParams, getConsensusParamsHash, getEvidenceHash, getFinalBlock, getHeaderHash, getLastBlockIndex, getMajority, getRandomInRange, getResultsHash, getTxsHash, getValidatorsHash, setConsensusParams, setFinalizedBlock, signMessage, updateConsensusParams, updateValidators, verifyMessage } from "./action_utils";
+import { callHookContract, checkValidatorsUpdate, getAllValidators, getCommitHash, getConsensusParams, getConsensusParamsHash, getCurrentValidator, getEvidenceHash, getFinalBlock, getHeaderHash, getLastBlockIndex, getLastLog, getMajority, getRandomInRange, getResultsHash, getTxsHash, getValidatorsHash, initChain, initializeIndexArrays, setConsensusParams, setFinalizedBlock, signMessage, updateConsensusParams, updateValidators, verifyMessage } from "./action_utils";
 
 // Docs: https://raft.github.io/raft.pdf
 
@@ -74,16 +74,16 @@ export function registeredCheck(
 
     for (let i = 0; i < ips.length; i++) {
         // don't send to ourselves or to removed nodes
-        if (i == nodeId || ips[i].ip == "") continue;
-        LoggerInfo("register request", ["IP", ips[i].ip, "address", ips[i].address])
-        const response = wasmxw.grpcRequest(ips[i].ip, Uint8Array.wrap(contract), msgBase64);
+        if (i == nodeId || ips[i].node.ip == "") continue;
+        LoggerInfo("register request", ["IP", ips[i].node.ip, "address", ips[i].address])
+        const response = wasmxw.grpcRequest(ips[i].node.ip, Uint8Array.wrap(contract), msgBase64);
         LoggerInfo("register response", ["error", response.error, "data", response.data])
         if (response.error.length > 0 || response.data.length == 0) {
             return
         }
         const resp = JSON.parse<UpdateNodeResponse>(response.data);
-        if (resp.nodeIPs[resp.nodeId].ip != nodeIp.ip) {
-            LoggerError("register node response has wrong ip", ["expected", nodeIp.ip]);
+        if (resp.nodes[resp.nodeId].node.ip != nodeIp.node.ip) {
+            LoggerError("register node response has wrong ip", ["expected", nodeIp.node.ip]);
             revert(`register node response has wrong ip`)
         }
         const allvalidStr = String.UTF8.decode(decodeBase64(resp.validators).buffer);
@@ -91,7 +91,7 @@ export function registeredCheck(
         const allvalidators = JSON.parse<typestnd.ValidatorInfo[]>(allvalidStr);
         checkValidatorsUpdate(allvalidators, validatorInfo, resp.nodeId);
         setCurrentNodeId(resp.nodeId);
-        setNodeIPs(resp.nodeIPs);
+        setNodeIPs(resp.nodes);
     }
 }
 
@@ -122,62 +122,41 @@ export function updateNodeAndReturn(
     LoggerDebug("updateNodeAndReturn", ["entry", entryStr, "signature", signature])
     let entry: NodeUpdate = JSON.parse<NodeUpdate>(entryStr);
 
-    LoggerInfo("update node", ["ip", entry.node.ip, "type", entry.type.toString(), "index", entry.index.toString(), "address", entry.node.address])
+    LoggerInfo("update node", ["ip", entry.node.node.ip, "type", entry.type.toString(), "index", entry.index.toString(), "address", entry.node.address])
 
     const ips = getNodeIPs();
     let entryIndex = entry.index;
 
     if (entry.type == cfg.NODE_UPDATE_ADD) {
-        if (!entry.node || entry.node.ip == "" || entry.node.address == "") {
-            LoggerError("validator info missing from node update", ["ip", entry.node.ip, "address", entry.node.address])
+        if (!entry.node || entry.node.node.ip == "" || entry.node.address == "") {
+            LoggerError("validator info missing from node update", ["ip", entry.node.node.ip, "address", entry.node.address])
             return;
         }
         // make it idempotent & don't add same ip multiple times
         let ndx = -1
         for (let i = 0; i < ips.length; i++) {
-            if (ips[i].ip == entry.node.ip) {
+            if (ips[i].node.ip == entry.node.node.ip) {
                 ndx = i;
                 break;
             }
         }
         if (ndx > -1) {
-            LoggerDebug("ip already included", ["ip", entry.node.ip])
+            LoggerDebug("ip already included", ["ip", entry.node.node.ip])
             return;
         }
         entryIndex = ips.length;
-
-        // verify signature and store the new validator
-        // we expect that the validator was added by transaction to the staking module
-        const allvalidators = getAllValidators()
-        let validatorInfo: staking.Validator | null = null;
-        for (let i = 0; i < allvalidators.length; i++) {
-            if (allvalidators[i].operator_address == entry.node.address) {
-                validatorInfo = allvalidators[i];
-            }
-        }
-        if (validatorInfo == null) {
-            return revert("validator must be registered first on-chain");
-        }
-
-        const isSender = wasmxw.ed25519Verify(validatorInfo.consensus_pubkey.key, signature, entryStr);
-        if (!isSender) {
-            LoggerError("signature verification failed", ["nodeIndex", entryIndex.toString(), "nodeIp", entry.node.ip, "address", entry.node.address]);
-            return;
-        }
-
-    } else {
-        // verify signature
-        const isSender = verifyMessage(entryIndex, signature, entryStr);
-        if (!isSender) {
-            LoggerError("signature verification failed", ["nodeIndex", entryIndex.toString(), "nodeIp", entry.node.ip, "address", entry.node.address]);
-            return;
-        }
+    }
+    // verify signature
+    const isSender = verifyMessage(entryIndex, signature, entryStr);
+    if (!isSender) {
+        LoggerError("signature verification failed", ["nodeIndex", entryIndex.toString(), "nodeIp", entry.node.node.ip, "address", entry.node.address]);
+        return;
     }
 
     // removed
     if (entry.type == cfg.NODE_UPDATE_REMOVE) {
         // idempotent
-        ips[entryIndex].ip = "";
+        ips[entryIndex].node.ip = "";
     } else if (entry.type == cfg.NODE_UPDATE_ADD) {
         ips.push(entry.node);
         const nextIndexes = getNextIndexArray();
@@ -187,15 +166,14 @@ export function updateNodeAndReturn(
         setNextIndexArray(nextIndexes);
         setMatchIndexArray(matchIndexes);
         const validators = encodeBase64(Uint8Array.wrap(String.UTF8.encode(fsm.getContextValue(cfg.VALIDATORS_KEY))))
-        const lastBlockIndex = getLastBlockIndex()
-        const response = new UpdateNodeResponse(lastBlockIndex, ips, entryIndex, validators);
+        const response = new UpdateNodeResponse(ips, entryIndex, validators);
         wasmx.setFinishData(String.UTF8.encode(JSON.stringify<UpdateNodeResponse>(response)));
     } else {
         // NODE_UPDATE_UPDATE
         // just update the ip
-        ips[entryIndex].ip = entry.node.ip;
+        ips[entryIndex].node.ip = entry.node.node.ip;
     }
-    LoggerInfo("node updates", ["ips", JSON.stringify<ValidatorIp[]>(ips)])
+    LoggerInfo("node updates", ["ips", JSON.stringify<NodeInfo[]>(ips)])
     setNodeIPs(ips);
 }
 
@@ -226,14 +204,14 @@ export function forwardTxsToLeader(
         limit = 5;
     }
     const txs = mempool.txs.slice(0, limit);
-    LoggerDebug("forwarding txs to leader", ["nodeId", nodeId.toString(), "nodeIp", nodeIp.ip, "count", limit.toString()])
+    LoggerDebug("forwarding txs to leader", ["nodeId", nodeId.toString(), "nodeIp", nodeIp.node.ip, "count", limit.toString()])
 
     for (let i = 0; i < limit; i++) {
         const tx = txs[0];
         const msgstr = `{"run":{"event":{"type":"newTransaction","params":[{"key": "transaction","value":"${tx}"}]}}}`
         const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
-        const response = wasmxw.grpcRequest(nodeIp.ip, Uint8Array.wrap(contract), msgBase64);
-        LoggerDebug("forwarding tx to leader", ["nodeId", nodeId.toString(), "nodeIp", nodeIp.ip, "batch", i.toString(), "error", response.error])
+        const response = wasmxw.grpcRequest(nodeIp.node.ip, Uint8Array.wrap(contract), msgBase64);
+        LoggerDebug("forwarding tx to leader", ["nodeId", nodeId.toString(), "nodeIp", nodeIp.node.ip, "batch", i.toString(), "error", response.error])
 
         if (response.error.length == 0) {
             mempool.txs.splice(i, 1);
@@ -250,37 +228,6 @@ export function forwardTxsToLeader(
     }
 
     setMempool(mempool);
-}
-
-function getCurrentValidator(): typestnd.ValidatorInfo {
-    const currentState = getCurrentState();
-    // TODO voting_power & proposer_priority
-    return new typestnd.ValidatorInfo(currentState.validator_address, currentState.validator_pubkey, 0, 0);
-}
-
-function checkValidatorsUpdate(validators: typestnd.ValidatorInfo[], validatorInfo: typestnd.ValidatorInfo, nodeId: i32): void {
-    if (validators[nodeId].address != validatorInfo.address) {
-        LoggerError("register node response has wrong validator address", ["expected", validatorInfo.address]);
-        revert(`register node response has wrong validator address`)
-    }
-    if (validators[nodeId].pub_key != validatorInfo.pub_key) {
-        LoggerError("register node response has wrong validator pub_key", ["expected", validatorInfo.pub_key]);
-        revert(`register node response has wrong validator pub_key`)
-    }
-}
-
-function initializeIndexArrays(len: i32): void {
-    const lastLogIndex = getLastLogIndex()
-    const nextIndex: Array<i64> = [];
-    const matchIndex: Array<i64> = [];
-    for (let i = 0; i < len; i++) {
-        // for each server, index of the next log entry to send to that server (initialized to leader's last log index + 1)
-        nextIndex[i] = lastLogIndex + 1;
-        // for each server, index of highest log entry known to be replicated on server (initialized to 0, increases monotonically)
-        matchIndex[i] = cfg.LOG_START; // TODO ?
-    }
-    setNextIndexArray(nextIndex);
-    setMatchIndexArray(matchIndex);
 }
 
 export function initializeNextIndex(
@@ -410,15 +357,15 @@ export function sendVoteRequests(
     // iterate through the other nodes and send a VoteRequest
     const request = new VoteRequest(termId, candidateId, lastLogIndex, lastLogTerm);
     const ips = getNodeIPs();
-    LoggerInfo("sending vote requests...", ["candidateId", candidateId.toString(), "termId", termId.toString(), "lastLogIndex", lastLogIndex.toString(), "lastLogTerm", lastLogTerm.toString(), "ips", JSON.stringify<Array<ValidatorIp>>(ips)])
+    LoggerInfo("sending vote requests...", ["candidateId", candidateId.toString(), "termId", termId.toString(), "lastLogIndex", lastLogIndex.toString(), "lastLogTerm", lastLogTerm.toString(), "ips", JSON.stringify<Array<NodeInfo>>(ips)])
     for (let i = 0; i < ips.length; i++) {
         // don't send to ourselves or to removed nodes
-        if (candidateId === i || ips[i].ip.length == 0) continue;
+        if (candidateId === i || ips[i].node.ip.length == 0) continue;
         sendVoteRequest(i, ips[i], request, termId);
     }
 }
 
-function sendVoteRequest(nodeId: i32, node: ValidatorIp, request: VoteRequest, termId: i32): void {
+function sendVoteRequest(nodeId: i32, node: NodeInfo, request: VoteRequest, termId: i32): void {
     const datastr = JSON.stringify<VoteRequest>(request);
     const signature = signMessage(datastr);
 
@@ -428,9 +375,9 @@ function sendVoteRequest(nodeId: i32, node: ValidatorIp, request: VoteRequest, t
     const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
 
     const contract = wasmx.getAddress();
-    LoggerDebug("sending vote request", ["nodeId", nodeId.toString(), "nodeIp", node.ip, "termId", termId.toString(), "data", datastr])
-    const response = wasmxw.grpcRequest(node.ip, Uint8Array.wrap(contract), msgBase64);
-    LoggerDebug("vote request response", ["nodeId", nodeId.toString(), "nodeIp", node.ip, "termId", termId.toString(), "data", response.data, "error", response.error])
+    LoggerDebug("sending vote request", ["nodeId", nodeId.toString(), "nodeIp", node.node.ip, "termId", termId.toString(), "data", datastr])
+    const response = wasmxw.grpcRequest(node.node.ip, Uint8Array.wrap(contract), msgBase64);
+    LoggerDebug("vote request response", ["nodeId", nodeId.toString(), "nodeIp", node.node.ip, "termId", termId.toString(), "data", response.data, "error", response.error])
     if (response.error.length > 0 || response.data.length == 0) {
         return
     }
@@ -531,44 +478,18 @@ export function setupNode(
     const data = JSON.parse<typestnd.InitChainSetup>(datajson);
     // const ips = JSON.parse<string[]>(nodeIPs);
 
-    const peers = new Array<ValidatorIp>(data.peers.length);
+    const peers = new Array<NodeInfo>(data.peers.length);
     for (let i = 0; i < data.peers.length; i++) {
         const peer = data.peers[i].split("@");
         if (peer.length != 2) {
             revert(`invalid node format; found: ${data.peers[i]}`)
         }
-        peers[i] = new ValidatorIp(peer[0], peer[1]);
+        peers[i] = new NodeInfo(peer[0], new Node("","","",peer[1]));
     }
     setNodeIPs(peers);
     initChain(data);
     initializeIndexArrays(peers.length);
 }
-
-function initChain(req: typestnd.InitChainSetup): void {
-    LoggerDebug("start chain init", [])
-
-    // TODO what are the correct empty value?
-    const emptyBlockId = new typestnd.BlockID("", new typestnd.PartSetHeader(0, ""))
-    const last_commit_hash = ""
-    const currentState = new CurrentState(
-        req.chain_id,
-        req.version,
-        req.app_hash,
-        emptyBlockId,
-        last_commit_hash,
-        req.last_results_hash,
-        req.validator_address,
-        req.validator_privkey,
-        req.validator_pubkey,
-    );
-
-    const valuestr = JSON.stringify<CurrentState>(currentState);
-    LoggerDebug("set current state", ["state", valuestr])
-    setCurrentState(currentState);
-    setConsensusParams(req.consensus_params);
-    LoggerDebug("current state set", [])
-}
-
 export function processAppendEntries(
     params: ActionParam[],
     event: EventObject,
@@ -700,7 +621,7 @@ export function sendHeartbeatResponse(
         }
     }
 
-    const response = new AppendEntryResponse(termId, successful);
+    const response = new AppendEntryResponse(termId, successful, lastLogIndex);
     LoggerDebug("send heartbeat response", ["termId", termId.toString(), "success", "true"])
     wasmx.setFinishData(String.UTF8.encode(JSON.stringify<AppendEntryResponse>(response)));
 }
@@ -712,10 +633,10 @@ export function sendAppendEntries(
     // go through each node
     const nodeId = getCurrentNodeId();
     const ips = getNodeIPs();
-    LoggerDebug("diseminate entries...", ["nodeId", nodeId.toString(), "ips", JSON.stringify<Array<ValidatorIp>>(ips)])
+    LoggerDebug("diseminate entries...", ["nodeId", nodeId.toString(), "ips", JSON.stringify<Array<NodeInfo>>(ips)])
     for (let i = 0; i < ips.length; i++) {
         // don't send to Leader or removed nodes
-        if (nodeId === i || ips[i].ip.length == 0) continue;
+        if (nodeId === i || ips[i].node.ip.length == 0) continue;
         sendAppendEntry(i, ips[i], ips);
     }
 }
@@ -725,15 +646,19 @@ export function commitBlocks(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    checkCommits();
+    const consensusChanged = checkCommits();
+    if(consensusChanged) {
+        // we need to also propagate the commit of this entry to the rest of the nodes
+        // so they can enter the new consensus
+        sendAppendEntries([], new EventObject("", []))
+    }
 }
 
 // this gets called each reentry in Leader.active state
-function checkCommits(): void {
+export function checkCommits(): boolean {
     const lastCommitIndex = getCommitIndex();
     // all commited + uncommited logs
     const lastLogIndex = getLastLogIndex();
-    const currentNodeId = getCurrentNodeId();
     const nextIndexPerNode = getNextIndexArray();
     const len = getNodeCount();
     let nextCommit = lastCommitIndex + 1;
@@ -741,7 +666,7 @@ function checkCommits(): void {
     LoggerDebug("committing diseminated blocks...", ["lastCommitIndex", lastCommitIndex.toString(), "lastSaved", lastLogIndex.toString(), "blocksToCommit", (lastLogIndex >= nextCommit).toString()])
 
     if (lastLogIndex < nextCommit) {
-        return;
+        return false;
     }
     const majority = getMajority(len);
     let count = 1; // leader
@@ -763,24 +688,44 @@ function checkCommits(): void {
         // update last commited!
         setCommitIndex(nextCommit);
         setLastApplied(nextCommit);
-        if(consensusChanged) {
-            // we need to also propagate the commit of this entry to the rest of the nodes
-            // so they can enter the new consensus
-            sendAppendEntries([], new EventObject("", []))
-        }
+        return consensusChanged;
     }
+    return false;
 }
 
 // TODO continue sending the entries until all nodes receive them
 // TODO make this an eventual and retry until responses are received or leader is changed
 export function sendAppendEntry(
     nodeId: i32,
-    node: ValidatorIp,
-    nodeIps: ValidatorIp[],
+    node: NodeInfo,
+    nodeIps: NodeInfo[],
 ): void {
     const nextIndexPerNode = getNextIndexArray();
     const nextIndex = nextIndexPerNode.at(nodeId);
     let lastIndex = getLastLogIndex();
+    const data = prepareAppendEntry(nodeIps, nextIndex, lastIndex);
+    const msgBase64 = prepareAppendEntryMessage(nodeId, nextIndex, lastIndex, node, data);
+    // we send the request to the same contract
+    const contract = wasmx.getAddress();
+    const response = wasmxw.grpcRequest(node.node.ip, Uint8Array.wrap(contract), msgBase64);
+    if (response.error.length > 0) {
+        return
+    }
+    const resp = JSON.parse<AppendEntryResponse>(response.data);
+    // TODO something with resp.term
+    if (resp.success) {
+        const nextIndexPerNode = getNextIndexArray();
+        const nextIndex = nextIndexPerNode.at(nodeId);
+        nextIndexPerNode[nodeId] = nextIndex + data.entries.length;
+        setNextIndexArray(nextIndexPerNode);
+    }
+}
+
+export function prepareAppendEntry(
+    nodeIps: NodeInfo[],
+    nextIndex: i64,
+    lastIndex: i64,
+): AppendEntry {
     // TODO state sync & snapshotting
     // right now, don't send more than STATE_SYNC_BATCH blocks at a time
     if ((lastIndex - nextIndex) > cfg.STATE_SYNC_BATCH) {
@@ -805,26 +750,24 @@ export function sendAppendEntry(
         nodeIps,
         validators,
     )
+    return data;
+}
+
+export function prepareAppendEntryMessage(
+    nodeId: i32,
+    nextIndex: i64,
+    lastIndex: i64,
+    node: NodeInfo,
+    data: AppendEntry,
+): string {
     const datastr = JSON.stringify<AppendEntry>(data);
     const signature = signMessage(datastr);
-
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
     const msgstr = `{"run":{"event":{"type":"receiveHeartbeat","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
 
-    LoggerDebug("diseminate append entry...", ["nodeId", nodeId.toString(), "receiver", node.address, "count", entries.length.toString(), "from", nextIndex.toString(), "to", lastIndex.toString()])
+    LoggerDebug("diseminate append entry...", ["nodeId", nodeId.toString(), "receiver", node.address, "count", data.entries.length.toString(), "from", nextIndex.toString(), "to", lastIndex.toString()])
     const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
-    // we send the request to the same contract
-    const contract = wasmx.getAddress();
-    const response = wasmxw.grpcRequest(node.ip, Uint8Array.wrap(contract), msgBase64);
-    if (response.error.length > 0) {
-        return
-    }
-    const resp = JSON.parse<AppendEntryResponse>(response.data);
-    // TODO something with resp.term
-    if (resp.success) {
-        nextIndexPerNode[nodeId] = nextIndex + entries.length;
-        setNextIndexArray(nextIndexPerNode);
-    }
+    return msgBase64;
 }
 
 export function sendNewTransactionResponse(
@@ -887,12 +830,6 @@ export function proposeBlock(
     // start proposal protocol
     startBlockProposal(batch.txs, batch.cummulatedGas, maxDataBytes);
     setMempool(mempool);
-}
-
-// last log may be an uncommited one or a final one
-function getLastLog(): LogEntry {
-    const index = getLastLogIndex();
-    return getLogEntryObj(index);
 }
 
 export function getLogEntryAggregate(index: i64): LogEntryAggregate {
@@ -1248,7 +1185,7 @@ export function setup(
     }
     let data = String.UTF8.decode(decodeBase64(resp.data).buffer);
     LoggerInfo("setting up nodeIPs", ["ips", data])
-    const nodeIps = JSON.parse<Array<ValidatorIp>>(data)
+    const nodeIps = JSON.parse<Array<NodeInfo>>(data)
     setNodeIPs(nodeIps);
 
     calldata = `{"getContextValue":{"key":"state"}}`

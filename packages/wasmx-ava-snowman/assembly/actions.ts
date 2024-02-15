@@ -29,7 +29,7 @@ import {
     setConfidence,
 } from './storage';
 import { CurrentState, Mempool } from "./types_blockchain";
-import { LogEntry, LogEntryAggregate, AppendEntry, NodeUpdate, UpdateNodeResponse, AppendEntryResponse, TransactionResponse, Precommit, QueryResponse, TempBlock, MODULE_NAME, ValidatorIp } from "./types";
+import { LogEntry, LogEntryAggregate, AppendEntry, NodeUpdate, UpdateNodeResponse, AppendEntryResponse, TransactionResponse, Precommit, QueryResponse, TempBlock, MODULE_NAME, NodeInfo } from "./types";
 import {
     CURRENT_NODE_ID,
     NODE_IPS,
@@ -413,7 +413,7 @@ export function setup(
     }
     let data = String.UTF8.decode(decodeBase64(resp.data).buffer);
     LoggerInfo("setting up nodeIPs", ["ips", data])
-    const nodeIps = JSON.parse<Array<ValidatorIp>>(data)
+    const nodeIps = JSON.parse<Array<NodeInfo>>(data)
     setNodeIPs(nodeIps);
 
     calldata = `{"getContextValue":{"key":"state"}}`
@@ -499,13 +499,13 @@ export function setupNode(
     const data = JSON.parse<typestnd.InitChainSetup>(datajson);
     // const ips = JSON.parse<string[]>(nodeIPs);
 
-    const peers = new Array<ValidatorIp>(data.peers.length);
+    const peers = new Array<NodeInfo>(data.peers.length);
     for (let i = 0; i < data.peers.length; i++) {
         const peer = data.peers[i].split("@");
         if (peer.length != 2) {
             revert(`invalid node format; found: ${data.peers[i]}`)
         }
-        peers[i] = new ValidatorIp(peer[0], peer[1]);
+        peers[i] = new NodeInfo(peer[0], peer[1]);
     }
     setNodeIPs(peers);
 

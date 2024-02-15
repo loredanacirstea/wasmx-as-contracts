@@ -3,6 +3,7 @@ import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap } from "wasmx-raft/assembly/calldata";
 import * as actions from "wasmx-raft/assembly/actions";
 import { revert } from "./utils";
+import { commitBlocks, forwardTxsToLeader, receiveVoteResponse, sendAppendEntries, sendVoteRequests, setupNode } from "./actions";
 
 export function wasmx_env_2(): void {}
 
@@ -18,19 +19,19 @@ export function main(): void {
     wasmx.finish(result);
     return;
   } else if (calld.method === "setupNode") {
-    actions.setupNode(calld.params, calld.event);
+    setupNode(calld.params, calld.event);
   } else if (calld.method === "processAppendEntries") {
     actions.processAppendEntries(calld.params, calld.event);
   } else if (calld.method === "sendHeartbeatResponse") {
     actions.sendHeartbeatResponse(calld.params, calld.event);
   } else if (calld.method === "sendAppendEntries") {
-    actions.sendAppendEntries(calld.params, calld.event);
+    sendAppendEntries(calld.params, calld.event);
   } else if (calld.method === "sendNewTransactionResponse") {
     actions.sendNewTransactionResponse(calld.params, calld.event);
   } else if (calld.method === "addToMempool") {
     actions.addToMempool(calld.params, calld.event);
   } else if (calld.method === "commitBlocks") {
-    actions.commitBlocks(calld.params, calld.event);
+    commitBlocks(calld.params, calld.event);
   } else if (calld.method === "setRandomElectionTimeout") {
     actions.setRandomElectionTimeout(calld.params, calld.event);
   } else if (calld.method === "initializeNextIndex") {
@@ -44,17 +45,19 @@ export function main(): void {
   } else if (calld.method === "selfVote") {
     actions.selfVote(calld.params, calld.event);
   } else if (calld.method === "forwardTxsToLeader") {
-    actions.forwardTxsToLeader(calld.params, calld.event);
+    forwardTxsToLeader(calld.params, calld.event);
   } else if (calld.method === "updateNodeAndReturn") {
     actions.updateNodeAndReturn(calld.params, calld.event);
   } else if (calld.method === "registeredCheck") {
     actions.registeredCheck(calld.params, calld.event);
   } else if (calld.method === "sendVoteRequests") {
-    actions.sendVoteRequests(calld.params, calld.event);
+    sendVoteRequests(calld.params, calld.event);
   } else if (calld.method === "proposeBlock") {
     actions.proposeBlock(calld.params, calld.event);
   } else if (calld.method === "setup") {
     actions.setup(calld.params, calld.event);
+  } else if (calld.method === "receiveVoteResponse") {
+    receiveVoteResponse(calld.params, calld.event);
   }
   else {
     revert(`invalid function call data: ${calld.method}`);

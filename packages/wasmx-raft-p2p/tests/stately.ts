@@ -264,10 +264,10 @@ export const machine = createMachine(
                       type: "updateNodeAndReturn",
                     },
                   },
-                  receiveAppendEntriesResponse: {
+                  receiveAppendEntryResponse: {
                     actions: [
                       {
-                        type: "receiveAppendEntriesResponse",
+                        type: "receiveAppendEntryResponse",
                       },
                       {
                         type: "commitBlocks",
@@ -353,7 +353,7 @@ export const machine = createMachine(
             validators: string;
           }
         | { type: "receiveVoteResponse"; termId: string; voteGranted: string }
-        | { type: "receiveAppendEntriesResponse" },
+        | { type: "receiveAppendEntryResponse" },
       context: {} as {
         log: string;
         nodeIPs: string;
@@ -404,7 +404,7 @@ export const machine = createMachine(
       sendNewTransactionResponse: ({ context, event }) => {},
       receiveUpdateNodeResponse: ({ context, event }) => {},
       receiveVoteResponse: ({ context, event }) => {},
-      receiveAppendEntriesResponse: ({ context, event }) => {},
+      receiveAppendEntryResponse: ({ context, event }) => {},
     },
     actors: {},
     guards: {
