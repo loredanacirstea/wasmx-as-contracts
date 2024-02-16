@@ -24,7 +24,7 @@ export const machine = createMachine(
       minElectionTime: "10000",
       heartbeatTimeout: "5000",
     },
-    id: "RAFT-FULL-3",
+    id: "RAFT-P2P-1",
     initial: "uninitialized",
     states: {
       uninitialized: {
@@ -83,7 +83,7 @@ export const machine = createMachine(
             ],
             after: {
               electionTimeout: {
-                target: "#RAFT-FULL-3.initialized.Candidate",
+                target: "#RAFT-P2P-1.initialized.Candidate",
                 actions: [],
                 meta: {},
               },
@@ -125,7 +125,7 @@ export const machine = createMachine(
                 ],
               },
               stop: {
-                target: "#RAFT-FULL-3.stopped",
+                target: "#RAFT-P2P-1.stopped",
               },
               start: {
                 target: "Follower",
@@ -143,7 +143,7 @@ export const machine = createMachine(
           prestart: {
             after: {
               "500": {
-                target: "#RAFT-FULL-3.initialized.Follower",
+                target: "#RAFT-P2P-1.initialized.Follower",
                 actions: [],
                 meta: {},
               },
@@ -200,7 +200,7 @@ export const machine = createMachine(
                 ],
               },
               stop: {
-                target: "#RAFT-FULL-3.stopped",
+                target: "#RAFT-P2P-1.stopped",
               },
               start: {
                 target: "Candidate",
@@ -237,7 +237,7 @@ export const machine = createMachine(
                 ],
                 after: {
                   heartbeatTimeout: {
-                    target: "#RAFT-FULL-3.initialized.Leader.active",
+                    target: "#RAFT-P2P-1.initialized.Leader.active",
                     actions: [],
                     meta: {},
                   },
@@ -282,7 +282,7 @@ export const machine = createMachine(
                 target: "Follower",
               },
               stop: {
-                target: "#RAFT-FULL-3.stopped",
+                target: "#RAFT-P2P-1.stopped",
               },
             },
           },
@@ -294,7 +294,7 @@ export const machine = createMachine(
       stopped: {
         on: {
           restart: {
-            target: "#RAFT-FULL-3.initialized.unstarted",
+            target: "#RAFT-P2P-1.initialized.unstarted",
           },
         },
       },
