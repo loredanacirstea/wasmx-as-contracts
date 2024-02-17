@@ -12,10 +12,6 @@ import { Bech32String, CallRequest, CallResponse, Coin, Event, EventAttribute } 
 import { LoggerDebug, LoggerInfo, revert } from "./utils";
 import { AttributeKeyOption, AttributeKeyProposalID, AttributeKeyProposalMessages, AttributeKeyVoter, AttributeKeyVotingPeriodStart, EventTypeProposalDeposit, EventTypeProposalVote, EventTypeSubmitProposal } from "./events";
 
-// TODO this must be in initialization
-const DENOM_BASE = "amyt"
-const DENOM_STAKE = "asmyt"
-
 export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
     setProposalIdCount(req.starting_proposal_id)
     setParams(req.params)
@@ -151,8 +147,12 @@ export function SubmitProposal(req: MsgSubmitProposal): ArrayBuffer {
     const depositEndTime = new Date(submitTime.getTime() + params.max_deposit_period)
     let deposit = req.initial_deposit;
     if (req.initial_deposit.length == 0) {
-        deposit = [new Coin(DENOM_BASE, BigInt.zero())]
+        deposit = [new Coin(params.getMinDepositDenom(), BigInt.zero())]
     }
+    if (deposit[0].denom != params.getMinDepositDenom()) {
+        revert(`invalid denom; expected ${params.getMinDepositDenom()}, got ${deposit[0].denom}`)
+    }
+
     const metadata = req.metadata.slice(0, i32(Math.min(MaxMetadataLen, req.metadata.length)))
     const proposal = new Proposal(
         0,
@@ -172,7 +172,7 @@ export function SubmitProposal(req: MsgSubmitProposal): ArrayBuffer {
         "",
     )
     // we only use one type of coin
-    if (deposit[0].amount > params.min_deposit[0].amount) {
+    if (deposit[0].amount > params.getMinDepositAmount()) {
         proposal.status = PROPOSAL_STATUS_VOTING_PERIOD
         proposal.voting_start_time = new Date(Date.now());
         proposal.voting_end_time = new Date(proposal.voting_start_time.getTime() + params.voting_period)
@@ -335,7 +335,7 @@ export function DoDeposit(req: MsgDeposit): ArrayBuffer {
     }
     const params = getParams()
     // we only use one type of coin
-    if (proposal!.total_deposit[0].amount > params.min_deposit[0].amount) {
+    if (proposal!.getDepositAmount() > params.getMinDepositAmount()) {
         proposal!.status = PROPOSAL_STATUS_VOTING_PERIOD
         proposal!.voting_start_time = new Date(Date.now());
         proposal!.voting_end_time = new Date(proposal!.voting_start_time.getTime() + params.voting_period)
@@ -407,7 +407,7 @@ function executeProposal(proposal: Proposal): Response {
     return new Response(true, "")
 }
 
-function bankSendCoinFromAccountToModule (from: Bech32String, to: Bech32String, coins: Coin[]): void {
+export function bankSendCoinFromAccountToModule (from: Bech32String, to: Bech32String, coins: Coin[]): void {
     const valuestr = JSON.stringify<banktypes.MsgSend>(new banktypes.MsgSend(from, to, coins))
     const calldata = `{"SendCoinsFromAccountToModule":${valuestr}}`
     const resp = callBank(calldata, false);
@@ -417,7 +417,8 @@ function bankSendCoinFromAccountToModule (from: Bech32String, to: Bech32String, 
 }
 
 export function getStake(voter: Bech32String): BigInt {
-    const addr = getTokenAddress(DENOM_STAKE)
+    const params = getParams()
+    const addr = getTokenAddress(params.getMinDepositDenom())
     return callGetStake(addr, voter)
 }
 
@@ -452,7 +453,8 @@ export function callGetStake(tokenAddress: Bech32String, delegator: Bech32String
 }
 
 export function callGetTotalStake(): BigInt {
-    const tokenAddress = getTokenAddress(DENOM_STAKE)
+    const params = getParams()
+    const tokenAddress = getTokenAddress(params.getMinDepositDenom())
     const calldatastr = `{"totalSupply":{}}`;
     const resp = callContract(tokenAddress, calldatastr, false)
     if (resp.success > 0) {

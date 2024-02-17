@@ -1,12 +1,18 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { CallData, getCallDataWrap } from './calldata';
-import { EndBlock, DoDeposit, InitGenesis, SubmitProposal, VoteWeighted, GetProposal, GetParams, DoVote } from "./actions";
+import { GetParams } from "wasmx-gov/assembly/actions";
+import { CallData, getCallDataInitialize, getCallDataWrap } from './calldata';
+import { EndBlock, DoDeposit, InitGenesis, SubmitProposal, VoteWeighted, GetProposal, DoVote, SubmitProposalExtended, AddProposalOption } from "./actions";
 import { revert } from "./utils";
+import { Params } from "./types";
+import { setParams } from "./storage";
 
 export function wasmx_env_2(): void {}
 
-export function instantiate(): void {}
+export function instantiate(): void {
+  const params = getCallDataInitialize();
+  setParams(params)
+}
 
 export function main(): void {
   // TODO check allowed caller!! is an authority
@@ -18,6 +24,10 @@ export function main(): void {
     result = EndBlock(calld.EndBlock!);
   } else if (calld.SubmitProposal !== null) {
     result = SubmitProposal(calld.SubmitProposal!);
+  } else if (calld.SubmitProposalExtended !== null) {
+    result = SubmitProposalExtended(calld.SubmitProposalExtended!);
+  } else if (calld.AddProposalOption !== null) {
+    result = AddProposalOption(calld.AddProposalOption!);
   } else if (calld.VoteWeighted !== null) {
     result = VoteWeighted(calld.VoteWeighted!);
   } else if (calld.Vote !== null) {

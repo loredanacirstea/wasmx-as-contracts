@@ -129,7 +129,6 @@ export class Vote {
 @serializable
 export class Proposal {
     id: u64
-    // TODO have multiple messages in a Proposal
     messages: Base64String[]
     status: ProposalStatus
     final_tally_result: TallyResult
@@ -141,7 +140,7 @@ export class Proposal {
     // metadata is any arbitrary metadata attached to the proposal.
     // the recommended format of the metadata is to be found here:
     // https://docs.cosmos.network/v0.47/modules/gov#proposal-3
-    metadata: string
+    metadata: string // URL | IPFS CID etc
     // title is the title of the proposal
     // Since: cosmos-sdk 0.47
     title: string
@@ -181,6 +180,17 @@ export class Proposal {
         this.proposer = proposer
         this.expedited = expedited
         this.failed_reason = failed_reason
+    }
+
+    getDepositDenom(): string {
+        return this.total_deposit[0].denom
+    }
+
+    getDeposit(): Coin {
+        return this.total_deposit[0]
+    }
+    getDepositAmount(): BigInt {
+        return this.total_deposit[0].amount
     }
 }
 
@@ -330,6 +340,17 @@ export class Params {
         this.burn_proposal_deposit_prevote = burn_proposal_deposit_prevote
         this.burn_vote_veto = burn_vote_veto
         this.min_deposit_ratio = min_deposit_ratio
+    }
+
+    getMinDepositDenom(): string {
+        return this.min_deposit[0].denom
+    }
+
+    getMinDeposit(): Coin {
+        return this.min_deposit[0]
+    }
+    getMinDepositAmount(): BigInt {
+        return this.min_deposit[0].amount
     }
 }
 
