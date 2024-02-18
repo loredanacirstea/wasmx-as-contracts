@@ -14,15 +14,15 @@ export function hex64ToBase64(value: HexString): Base64String {
 }
 
 export function LoggerInfo(msg: string, parts: string[]): void {
-    wasmxwrap.LoggerInfo("tendermint", msg, parts)
+    wasmxwrap.LoggerInfo(MODULE_NAME, msg, parts)
 }
 
 export function LoggerError(msg: string, parts: string[]): void {
-    wasmxwrap.LoggerError("tendermint", msg, parts)
+    wasmxwrap.LoggerError(MODULE_NAME, msg, parts)
 }
 
 export function LoggerDebug(msg: string, parts: string[]): void {
-    wasmxwrap.LoggerDebug("tendermint", msg, parts)
+    wasmxwrap.LoggerDebug(MODULE_NAME, msg, parts)
 }
 
 export function revert(message: string): void {
