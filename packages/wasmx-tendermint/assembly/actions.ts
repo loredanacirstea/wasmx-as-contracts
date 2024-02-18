@@ -6,6 +6,7 @@ import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import {
   Base64String,
+  Bech32String,
   CallRequest,
   CallResponse,
 } from 'wasmx-env/assembly/types';
@@ -811,6 +812,10 @@ export function setup(
 
     // after we set last log index
     initializeIndexArrays(nodeIps.length);
+
+    // TODO we run the hooks that must be ran after block end
+    const blockData = getFinalBlock(getLastBlockIndex())
+    callHookContract("EndBlock", blockData);
 }
 
 function getCurrentValidator(): typestnd.ValidatorInfo {
@@ -1676,6 +1681,24 @@ function callStorage(calldata: string, isQuery: boolean): CallResponse {
 
 function callStaking(calldata: string, isQuery: boolean): CallResponse {
     const req = new CallRequest("staking", calldata, BigInt.zero(), 100000000, isQuery);
+    const resp = wasmxw.call(req, MODULE_NAME);
+    // result or error
+    resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    return resp;
+}
+
+export function callHookContract(hookName: string, data: string): void {
+    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(data)))
+    const calldatastr = `{"RunHook":{"hook":"${hookName}","data":"${dataBase64}"}}`;
+    const resp = callContract("hooks", calldatastr, false)
+    if (resp.success > 0) {
+        // we do not fail, we want the chain to continue
+        LoggerError(`hooks failed`, ["error", resp.data])
+    }
+}
+
+export function callContract(addr: Bech32String, calldata: string, isQuery: boolean): CallResponse {
+    const req = new CallRequest(addr, calldata, BigInt.zero(), 100000000, isQuery);
     const resp = wasmxw.call(req, MODULE_NAME);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);

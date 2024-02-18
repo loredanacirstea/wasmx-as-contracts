@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { GetParams } from "wasmx-gov/assembly/actions";
 import { CallData, getCallDataInitialize, getCallDataWrap } from './calldata';
-import { EndBlock, DoDeposit, InitGenesis, SubmitProposal, VoteWeighted, GetProposal, DoVote, SubmitProposalExtended, AddProposalOption } from "./actions";
+import { EndBlock, DoDeposit, InitGenesis, SubmitProposal, VoteWeighted, GetProposal, DoVote, SubmitProposalExtended, AddProposalOption, DoDepositVote } from "./actions";
 import { revert } from "./utils";
 import { Params } from "./types";
 import { setParams } from "./storage";
@@ -34,6 +34,8 @@ export function main(): void {
     result = DoVote(calld.Vote!);
   } else if (calld.Deposit !== null) {
     result = DoDeposit(calld.Deposit!);
+  } else if (calld.DepositVote !== null) {
+    result = DoDepositVote(calld.DepositVote!);
   } else if (calld.GetProposal !== null) {
     result = GetProposal(calld.GetProposal!);
   } else if (calld.GetParams !== null) {

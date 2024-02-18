@@ -3,7 +3,8 @@ import { Base64String, Bech32String, Coin } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn"
 import * as gov from "wasmx-gov/assembly/types"
 
-export const MODULE_NAME = "gov-continuous"
+// export const MODULE_NAME = "gov-continuous"
+export const MODULE_NAME = "gov"
 export const VERSION = "0.0.1"
 
 export enum Coefs {
@@ -203,10 +204,11 @@ export class MsgInitGenesis {
 @serializable
 export class Params {
     arbitrationDenom: string
-    coefs: BigInt[]
+    // coefs: BigInt[]
+    coefs: u64[]
     defaultX: u64
     defaultY: u64
-    constructor(arbitrationDenom: string, coefs: BigInt[], defaultX: u64, defaultY: u64) {
+    constructor(arbitrationDenom: string, coefs: u64[], defaultX: u64, defaultY: u64) {
         this.arbitrationDenom = arbitrationDenom
         this.coefs = coefs
         this.defaultX = defaultX

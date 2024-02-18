@@ -5,6 +5,7 @@ import { BigInt } from "wasmx-env/assembly/bn"
 import * as banktypes from "wasmx-bank/assembly/types"
 import * as erc20types from "wasmx-erc20/assembly/types"
 import * as blocktypes from "wasmx-blocks/assembly/types"
+import * as consensustypes from "wasmx-consensus/assembly/types_tendermint"
 import * as govstorage from "wasmx-gov/assembly/storage"
 import * as gov from "wasmx-gov/assembly/types"
 import { MsgDeposit, MsgEndBlock, MsgSubmitProposal, MsgVote, MsgVoteWeighted, QueryDepositRequest, QueryDepositsRequest, QueryParamsRequest, QueryProposalRequest, QueryProposalsRequest, QueryTallyResultRequest, QueryVoteRequest, QueryVotesRequest } from "wasmx-gov/assembly/types";
@@ -17,6 +18,8 @@ import { AttributeKeyOption, AttributeKeyProposalID, AttributeKeyProposalMessage
 import { EventTypeAddProposalOption, EventTypeExecuteProposal } from "./events";
 
 // TODO this must be in initialization
+
+const OPTION_ID_START = 1
 
 export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
     // TODO deploy arbitration denom, controlled by this contract
@@ -41,6 +44,13 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
 }
 
 export function EndBlock(req: MsgEndBlock): ArrayBuffer {
+    // const block = JSON.parse<blocktypes.BlockEntry>(String.UTF8.decode(decodeBase64(req.data).buffer))
+    // const header = JSON.parse<consensustypes.Header>(String.UTF8.decode(decodeBase64(block.header).buffer))
+    // const headerTime = Date.fromString(header.time)
+
+    // TODO check if there are proposals to be executed and execute them here instead of after a vote
+    // gas cost should be paid by the proposal's deposits
+
     return new ArrayBuffer(0)
 }
 
@@ -72,7 +82,7 @@ export function SubmitProposalInternal(req: MsgSubmitProposalExtended, localpara
     if (req.initial_deposit.length == 0) {
         revert(`proposal must contain a deposit`)
     }
-    if (req.initial_deposit.length <= 2) {
+    if (req.initial_deposit.length >= 2) {
         revert(`proposal contains too many denoms`)
     }
 
@@ -96,6 +106,7 @@ export function SubmitProposalInternal(req: MsgSubmitProposalExtended, localpara
     }
 
     const proposalOption = new ProposalOption(req.proposer, req.messages, proposalCoin.amount, arbitrationAmount, req.optionTitle, req.optionSummary, req.optionMetadata);
+    const emptyOption = new ProposalOption("", [], BigInt.zero(), BigInt.zero(), "", "", "")
 
     const metadata = req.metadata.slice(0, i32(Math.min(gov.MaxMetadataLen, req.metadata.length)))
 
@@ -118,7 +129,7 @@ export function SubmitProposalInternal(req: MsgSubmitProposalExtended, localpara
         req.x,
         req.y,
         proposalCoin.denom,
-        [proposalOption],
+        [emptyOption, proposalOption],
         new ProposalVoteStatus(0, 0, 0, false),
         0, // winner
     )
@@ -126,16 +137,25 @@ export function SubmitProposalInternal(req: MsgSubmitProposalExtended, localpara
     proposal = setProposalVoteStatus(proposal, localparams);
     const proposal_id = addProposal(proposal);
 
-    addProposalVote(proposal_id, new DepositVote(proposal_id, 0, req.proposer, proposalCoin.amount, arbitrationAmount, proposalOption.metadata))
+    addProposalVote(proposal_id, new DepositVote(proposal_id, OPTION_ID_START, req.proposer, proposalCoin.amount, arbitrationAmount, proposalOption.metadata))
 
-    const ev = new Event(
-        EventTypeSubmitProposal,
-        [
-            new EventAttribute(AttributeKeyProposalID, proposal_id.toString(), true),
-            new EventAttribute(AttributeKeyProposalMessages, req.messages.join(","), true),
-        ],
-    )
-    wasmxw.emitCosmosEvents([ev]);
+    wasmxw.emitCosmosEvents([
+        new Event(
+            EventTypeSubmitProposal,
+            [
+                new EventAttribute(AttributeKeyProposalID, proposal_id.toString(), true),
+                new EventAttribute(AttributeKeyProposalMessages, req.messages.join(","), true),
+            ],
+
+        ),
+        new Event(
+            EventTypeAddProposalOption,
+            [
+                new EventAttribute(AttributeKeyProposalID, proposal_id.toString(), true),
+                new EventAttribute(AttributeKeyOption, JSON.stringify<ProposalOption>(proposalOption), true),
+            ],
+        ),
+    ]);
 
     return String.UTF8.encode(JSON.stringify<gov.MsgSubmitProposalResponse>(new gov.MsgSubmitProposalResponse(proposal_id)))
 }
@@ -186,17 +206,17 @@ export function AddProposalOption(req: MsgAddProposalOption): ArrayBuffer {
 }
 
 export function DoVote(req: MsgVote): ArrayBuffer {
-    revert(`not available; use "depositVote"`)
+    revert(`Vote not available; use "depositVote"`)
     return new ArrayBuffer(0)
 }
 
 export function VoteWeighted(req: MsgVoteWeighted): ArrayBuffer {
-    revert(`not available; use "depositVote"`)
+    revert(`VoteWeighted not available; use "depositVote"`)
     return new ArrayBuffer(0)
 }
 
 export function DoDeposit(req: MsgDeposit): ArrayBuffer {
-    revert(`not available; use "depositVote"`)
+    revert(`Deposit not available; use "depositVote"`)
     return new ArrayBuffer(0)
 }
 
@@ -244,7 +264,45 @@ export function DoDepositVote(req: DepositVote): ArrayBuffer {
 /// queries
 
 export function GetProposal(req: QueryProposalRequest): ArrayBuffer {
-    return new ArrayBuffer(0)
+    const proposal = getProposal(req.proposal_id)
+    let response = `{"proposal":null}`
+
+    if (proposal != null) {
+        const localparams = getParams()
+        let deposit: Coin = new Coin(proposal.denom, BigInt.zero())
+        let arbCoin = new Coin(localparams.arbitrationDenom, BigInt.zero())
+        for (let i = 1; i < proposal.options.length; i++) {
+            const opt = proposal.options[i]
+            // @ts-ignore
+            deposit.amount = deposit.amount + opt.amount
+            // @ts-ignore
+            arbCoin.amount = arbCoin.amount + opt.arbitrationAmount
+        }
+        const govprop = new gov.Proposal(
+            proposal.id,
+            proposal.options[proposal.winner].messages,
+            proposal.status,
+            new gov.TallyResult(
+                normalizeOptionTally(proposal.options[proposal.vote_status.xi], localparams),
+                BigInt.zero(),
+                normalizeOptionTally(proposal.options[proposal.vote_status.yi], localparams),
+                BigInt.zero(),
+            ),
+            proposal.submit_time,
+            proposal.deposit_end_time,
+            [deposit, arbCoin],
+            proposal.voting_start_time,
+            proposal.voting_end_time,
+            proposal.metadata,
+            proposal.title,
+            proposal.summary,
+            proposal.proposer,
+            false,
+            proposal.failed_reason,
+        )
+        response = JSON.stringify<gov.QueryProposalResponse>(new gov.QueryProposalResponse(govprop))
+    }
+    return String.UTF8.encode(response)
 }
 
 export function GetProposals(req: QueryProposalsRequest): ArrayBuffer {
@@ -364,7 +422,7 @@ function normalizeOptionTally(option: ProposalOption, params: Params): BigInt {
     // TODO
     // _WL + _AL * tasks[taskid].amount * coefs[uint256(Coefs.cAL)] / (10 ** decimals);
     // @ts-ignore
-    return option.amount + option.arbitrationAmount * params.coefs[Coefs.cAL]
+    return option.amount + option.arbitrationAmount * BigInt.fromU64(params.coefs[Coefs.cAL])
 }
 
 // 0: nobody won
@@ -381,7 +439,7 @@ export function getVoteStatus (x: BigInt, y: BigInt, p: Proposal, params: Params
     if (x == BigInt.zero() && y == BigInt.zero()) return 0;
     if (y == BigInt.zero()) return 1;
     if (x == BigInt.zero()) return 2;
-    const PRECISION = params.coefs[Coefs.precision];
+    const PRECISION = BigInt.fromU64(params.coefs[Coefs.precision]);
     // @ts-ignore
     const r1: BigInt = BigInt.fromU64(p.x) * PRECISION / BigInt.fromU64(p.y);
     // @ts-ignore
