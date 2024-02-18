@@ -6,6 +6,8 @@ import { Bech32String } from "wasmx-env/assembly/types";
 
 export const SPLIT = "."
 export const PARAM_KEY = "params"
+export const PROPOSAL_ID_LAST_KEY = "proposal_id_last"
+export const PROPOSAL_ID_FIRST_KEY = "proposal_id_first"
 export const PROPOSAL_ID_COUNT_KEY = "proposal_count"
 export const PROPOSAL_KEY = "proposal."
 export const PROPOSAL_VOTE_COUNT_KEY = "proposal_vote_count."
@@ -212,10 +214,11 @@ export function setProposal(id: u64, value: Proposal): void {
 
 // proposal_id => Proposal ADD
 export function addProposal(value: Proposal): u64 {
-    const id = getProposalIdCount()
+    const id = getProposalIdLast() + 1;
     value.id = id;
     setProposal(id, value)
-    setProposalIdCount(id + 1);
+    setProposalIdLast(id);
+    setProposalIdCount(getProposalIdCount() + 1);
     return id;
 }
 
@@ -229,6 +232,30 @@ export function getProposalIdCount(): i64 {
 // proposal count SET
 export function setProposalIdCount(value: i64): void {
     wasmxw.sstore(PROPOSAL_ID_COUNT_KEY, value.toString())
+}
+
+// proposal first id GET
+export function getProposalIdFirst(): i64 {
+    const value = wasmxw.sload(PROPOSAL_ID_FIRST_KEY)
+    if (value == "") return 0;
+    return parseInt64(value);
+}
+
+// proposal first id SET
+export function setProposalIdFirst(value: i64): void {
+    wasmxw.sstore(PROPOSAL_ID_FIRST_KEY, value.toString())
+}
+
+// proposal last id GET
+export function getProposalIdLast(): i64 {
+    const value = wasmxw.sload(PROPOSAL_ID_LAST_KEY)
+    if (value == "") return 0;
+    return parseInt64(value);
+}
+
+// proposal last id SET
+export function setProposalIdLast(value: i64): void {
+    wasmxw.sstore(PROPOSAL_ID_LAST_KEY, value.toString())
 }
 
 export function getParams(): Params {

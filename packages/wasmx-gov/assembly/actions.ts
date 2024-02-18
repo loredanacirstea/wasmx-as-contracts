@@ -6,14 +6,16 @@ import * as banktypes from "wasmx-bank/assembly/types"
 import * as erc20types from "wasmx-erc20/assembly/types"
 import * as blocktypes from "wasmx-blocks/assembly/types"
 import * as consensustypes from "wasmx-consensus/assembly/types_tendermint"
-import { Deposit, Fraction, MODULE_NAME, MaxMetadataLen, MsgDeposit, MsgEndBlock, MsgInitGenesis, MsgSubmitProposal, MsgSubmitProposalResponse, MsgVote, MsgVoteResponse, MsgVoteWeighted, PROPOSAL_STATUS_DEPOSIT_PERIOD, PROPOSAL_STATUS_FAILED, PROPOSAL_STATUS_PASSED, PROPOSAL_STATUS_REJECTED, PROPOSAL_STATUS_VOTING_PERIOD, Params, Proposal, QueryDepositRequest, QueryDepositsRequest, QueryParamsRequest, QueryParamsResponse, QueryProposalRequest, QueryProposalResponse, QueryProposalsRequest, QueryTallyResultRequest, QueryVoteRequest, QueryVotesRequest, Response, TallyResult, VOTE_OPTION_ABSTAIN, VOTE_OPTION_NO, VOTE_OPTION_NO_WITH_VETO, VOTE_OPTION_UNSPECIFIED, VOTE_OPTION_YES, Vote, VoteOptionMap, WeightedVoteOption } from "./types";
-import { addActiveDepositProposal, addActiveVotingProposal, addProposal, addProposalDeposit, addProposalVote, getActiveDepositProposals, getActiveVotingProposals, getParams, getProposal, getProposalIdCount, nextEndingDepositProposals, nextEndingVotingProposals, removeActiveDepositProposal, removeActiveVotingProposal, removeProposal, removeProposalDeposits, setParams, setProposal, setProposalDeposit, setProposalDepositCount, setProposalIdCount } from "./storage";
+import { Deposit, Fraction, MODULE_NAME, MaxMetadataLen, MsgDeposit, MsgEndBlock, MsgInitGenesis, MsgSubmitProposal, MsgSubmitProposalResponse, MsgVote, MsgVoteResponse, MsgVoteWeighted, PROPOSAL_STATUS_DEPOSIT_PERIOD, PROPOSAL_STATUS_FAILED, PROPOSAL_STATUS_PASSED, PROPOSAL_STATUS_REJECTED, PROPOSAL_STATUS_VOTING_PERIOD, PageRequest, PageResponse, Params, Proposal, ProposalStatusMap, QueryDepositRequest, QueryDepositsRequest, QueryParamsRequest, QueryParamsResponse, QueryProposalRequest, QueryProposalResponse, QueryProposalsRequest, QueryProposalsResponse, QueryTallyResultRequest, QueryTallyResultResponse, QueryVoteRequest, QueryVotesRequest, Response, TallyResult, VOTE_OPTION_ABSTAIN, VOTE_OPTION_NO, VOTE_OPTION_NO_WITH_VETO, VOTE_OPTION_UNSPECIFIED, VOTE_OPTION_YES, Vote, VoteOptionMap, WeightedVoteOption } from "./types";
+import { addActiveDepositProposal, addActiveVotingProposal, addProposal, addProposalDeposit, addProposalVote, getActiveDepositProposals, getActiveVotingProposals, getParams, getProposal, getProposalIdCount, getProposalIdFirst, getProposalIdLast, nextEndingDepositProposals, nextEndingVotingProposals, removeActiveDepositProposal, removeActiveVotingProposal, removeProposal, removeProposalDeposits, setParams, setProposal, setProposalDeposit, setProposalDepositCount, setProposalIdCount, setProposalIdFirst, setProposalIdLast } from "./storage";
 import { Bech32String, CallRequest, CallResponse, Coin, Event, EventAttribute } from "wasmx-env/assembly/types";
 import { LoggerDebug, LoggerInfo, revert } from "./utils";
 import { AttributeKeyOption, AttributeKeyProposalID, AttributeKeyProposalMessages, AttributeKeyVoter, AttributeKeyVotingPeriodStart, EventTypeProposalDeposit, EventTypeProposalVote, EventTypeSubmitProposal } from "./events";
 
 export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
-    setProposalIdCount(req.starting_proposal_id)
+    setProposalIdFirst(req.starting_proposal_id)
+    setProposalIdLast(req.starting_proposal_id + i64(req.proposals.length))
+    setProposalIdCount(i64(req.proposals.length)-1)
     setParams(req.params)
 
     for (let i = 0; i < req.proposals.length; i++) {
@@ -365,8 +367,24 @@ export function GetProposal(req: QueryProposalRequest): ArrayBuffer {
     return String.UTF8.encode(response)
 }
 
+// TODO pagination, voter, depositor
+// {"proposal_status":"PROPOSAL_STATUS_VOTING_PERIOD","voter":"","depositor":"","pagination":{"key":null,"offset":"0","limit":"100","count_total":false,"reverse":false}}}
+const PAGE_LIMIT = 100
 export function GetProposals(req: QueryProposalsRequest): ArrayBuffer {
-    return new ArrayBuffer(0)
+    const lasId = getProposalIdLast()
+    const firstId = getProposalIdFirst()
+    const count = getProposalIdCount()
+    const proposals: Proposal[] = new Array<Proposal>(0)
+    for (let i = firstId; i <= lasId; i++) {
+        const prop = getProposal(i);
+        if(prop != null) {
+            // if (req.proposal_status != "" && ProposalStatusMap.has(req.proposal_status) && prop.status == ProposalStatusMap.get(req.proposal_status)) {
+                proposals.push(prop);
+            // }
+        }
+    }
+    const response = JSON.stringify<QueryProposalsResponse>(new QueryProposalsResponse(proposals, new PageResponse(count)))
+    return String.UTF8.encode(response)
 }
 
 export function GetVote(req: QueryVoteRequest): ArrayBuffer {
@@ -392,7 +410,12 @@ export function GetDeposits(req: QueryDepositsRequest): ArrayBuffer {
 }
 
 export function GetTallyResult(req: QueryTallyResultRequest): ArrayBuffer {
-    return new ArrayBuffer(0)
+    const proposal = getProposal(req.proposal_id)
+    let response = `{"tally":null}`
+    if (proposal != null) {
+        response = JSON.stringify<QueryTallyResultResponse>(new QueryTallyResultResponse(proposal.final_tally_result))
+    }
+    return String.UTF8.encode(response)
 }
 
 function executeProposal(proposal: Proposal): Response {

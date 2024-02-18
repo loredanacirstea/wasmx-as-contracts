@@ -24,7 +24,9 @@ const OPTION_ID_START = 1
 export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
     // TODO deploy arbitration denom, controlled by this contract
     // TODO deply initiated laurel ids or they must be already registered with the bank
-    govstorage.setProposalIdCount(req.starting_proposal_id)
+    govstorage.setProposalIdFirst(req.starting_proposal_id)
+    govstorage.setProposalIdLast(req.starting_proposal_id + i64(req.proposals.length)-1)
+    govstorage.setProposalIdCount(i64(req.proposals.length))
     govstorage.setParams(req.params)
 
     for (let i = 0; i < req.proposals.length; i++) {
@@ -119,7 +121,7 @@ export function SubmitProposalInternal(req: MsgSubmitProposalExtended, localpara
         depositEndTime,
         // first coin is the proposal denom
         // second coin is arbitration
-        new Date(0),
+        new Date(Date.now()),
         new Date(0),
         metadata,
         req.title,
@@ -268,45 +270,30 @@ export function GetProposal(req: QueryProposalRequest): ArrayBuffer {
     let response = `{"proposal":null}`
 
     if (proposal != null) {
-        const localparams = getParams()
-        let deposit: Coin = new Coin(proposal.denom, BigInt.zero())
-        let arbCoin = new Coin(localparams.arbitrationDenom, BigInt.zero())
-        for (let i = 1; i < proposal.options.length; i++) {
-            const opt = proposal.options[i]
-            // @ts-ignore
-            deposit.amount = deposit.amount + opt.amount
-            // @ts-ignore
-            arbCoin.amount = arbCoin.amount + opt.arbitrationAmount
-        }
-        const govprop = new gov.Proposal(
-            proposal.id,
-            proposal.options[proposal.winner].messages,
-            proposal.status,
-            new gov.TallyResult(
-                normalizeOptionTally(proposal.options[proposal.vote_status.xi], localparams),
-                BigInt.zero(),
-                normalizeOptionTally(proposal.options[proposal.vote_status.yi], localparams),
-                BigInt.zero(),
-            ),
-            proposal.submit_time,
-            proposal.deposit_end_time,
-            [deposit, arbCoin],
-            proposal.voting_start_time,
-            proposal.voting_end_time,
-            proposal.metadata,
-            proposal.title,
-            proposal.summary,
-            proposal.proposer,
-            false,
-            proposal.failed_reason,
-        )
+        const govprop = proposalToExternal(proposal)
         response = JSON.stringify<gov.QueryProposalResponse>(new gov.QueryProposalResponse(govprop))
     }
     return String.UTF8.encode(response)
 }
 
+// TODO pagination
+const PAGE_LIMIT = 100
 export function GetProposals(req: QueryProposalsRequest): ArrayBuffer {
-    return new ArrayBuffer(0)
+    const lasId = govstorage.getProposalIdLast()
+    const firstId = govstorage.getProposalIdFirst()
+    const count = govstorage.getProposalIdCount()
+    const proposals: gov.Proposal[] = new Array<gov.Proposal>(0)
+    for (let i = firstId; i <= lasId; i++) {
+        const prop = getProposal(i);
+        if(prop != null) {
+            // if (req.proposal_status != "" && gov.ProposalStatusMap.has(req.proposal_status) && prop.status == gov.ProposalStatusMap.get(req.proposal_status)) {
+                console.debug("-GetProposals yes-" + i.toString())
+                proposals.push(proposalToExternal(prop));
+            // }
+        }
+    }
+    const response = JSON.stringify<gov.QueryProposalsResponse>(new gov.QueryProposalsResponse(proposals, new gov.PageResponse(count)))
+    return String.UTF8.encode(response)
 }
 
 export function GetVote(req: QueryVoteRequest): ArrayBuffer {
@@ -326,7 +313,13 @@ export function GetDeposits(req: QueryDepositsRequest): ArrayBuffer {
 }
 
 export function GetTallyResult(req: QueryTallyResultRequest): ArrayBuffer {
-    return new ArrayBuffer(0)
+    const proposal = getProposal(req.proposal_id)
+    let response = `{"tally":null}`
+    if (proposal != null) {
+        const params = getParams()
+        response = JSON.stringify<gov.QueryTallyResultResponse>(new gov.QueryTallyResultResponse(tallyToExternal(proposal, params)))
+    }
+    return String.UTF8.encode(response)
 }
 
 function tryExecuteProposal(proposal: Proposal): void {
@@ -451,4 +444,44 @@ export function getVoteStatus (x: BigInt, y: BigInt, p: Proposal, params: Params
     // @ts-ignore
     if (x * PRECISION / y >= midline) return 3;
     return 4;
+}
+
+function proposalToExternal(proposal: Proposal): gov.Proposal {
+    const localparams = getParams()
+    let deposit: Coin = new Coin(proposal.denom, BigInt.zero())
+    let arbCoin = new Coin(localparams.arbitrationDenom, BigInt.zero())
+    for (let i = 1; i < proposal.options.length; i++) {
+        const opt = proposal.options[i]
+        // @ts-ignore
+        deposit.amount = deposit.amount + opt.amount
+        // @ts-ignore
+        arbCoin.amount = arbCoin.amount + opt.arbitrationAmount
+    }
+    const govprop = new gov.Proposal(
+        proposal.id,
+        proposal.options[proposal.winner].messages,
+        proposal.status,
+        tallyToExternal(proposal, localparams),
+        proposal.submit_time,
+        proposal.deposit_end_time,
+        [deposit, arbCoin],
+        proposal.voting_start_time,
+        proposal.voting_end_time,
+        proposal.metadata,
+        proposal.title,
+        proposal.summary,
+        proposal.proposer,
+        false,
+        proposal.failed_reason,
+    )
+    return govprop
+}
+
+function tallyToExternal(proposal: Proposal, localparams: Params): gov.TallyResult {
+    return new gov.TallyResult(
+        normalizeOptionTally(proposal.options[proposal.vote_status.xi], localparams),
+        BigInt.zero(),
+        normalizeOptionTally(proposal.options[proposal.vote_status.yi], localparams),
+        BigInt.zero(),
+    )
 }

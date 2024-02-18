@@ -97,6 +97,21 @@ export const PROPOSAL_STATUS_REJECTED = 4 // StatusRejected
 // failed.
 export const PROPOSAL_STATUS_FAILED = 5 // StatusFailed
 
+export const ProposalStatusUnspecified = "PROPOSAL_STATUS_UNSPECIFIED";
+export const ProposalStatusDepositPeriod = "PROPOSAL_STATUS_DEPOSIT_PERIOD";
+export const ProposalStatusVotingPeriod = "PROPOSAL_STATUS_VOTING_PERIOD";
+export const ProposalStatusPassed = "PROPOSAL_STATUS_PASSED";
+export const ProposalStatusRejected = "PROPOSAL_STATUS_REJECTED";
+export const ProposalStatusFailed = "PROPOSAL_STATUS_FAILED";
+
+export const ProposalStatusMap = new Map<string,i32>()
+ProposalStatusMap.set(ProposalStatusUnspecified, PROPOSAL_STATUS_UNSPECIFIED)
+ProposalStatusMap.set(ProposalStatusDepositPeriod, PROPOSAL_STATUS_DEPOSIT_PERIOD)
+ProposalStatusMap.set(ProposalStatusVotingPeriod, PROPOSAL_STATUS_VOTING_PERIOD)
+ProposalStatusMap.set(ProposalStatusPassed, PROPOSAL_STATUS_PASSED)
+ProposalStatusMap.set(ProposalStatusRejected, PROPOSAL_STATUS_REJECTED)
+ProposalStatusMap.set(ProposalStatusFailed, PROPOSAL_STATUS_FAILED)
+
 // @ts-ignore
 @serializable
 export class WeightedVoteOption {
@@ -548,11 +563,11 @@ export class QueryProposalResponse {
 // @ts-ignore
 @serializable
 export class QueryProposalsRequest {
-    proposal_status: ProposalStatus
+    proposal_status: string
     voter: Bech32String
     depositor: Bech32String
     pagination: PageRequest
-    constructor(proposal_status: ProposalStatus, voter: Bech32String, depositor: Bech32String, pagination: PageRequest) {
+    constructor(proposal_status: string, voter: Bech32String, depositor: Bech32String, pagination: PageRequest) {
         this.proposal_status = proposal_status
         this.voter = voter
         this.depositor = depositor
@@ -564,8 +579,8 @@ export class QueryProposalsRequest {
 @serializable
 export class QueryProposalsResponse {
     proposals: Proposal[]
-    pagination: PageRequest
-    constructor(proposals: Proposal[], pagination: PageRequest) {
+    pagination: PageResponse
+    constructor(proposals: Proposal[], pagination: PageResponse) {
         this.proposals = proposals
         this.pagination = pagination
     }

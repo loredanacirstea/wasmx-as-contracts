@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { DepositVote, Params, Proposal } from "./types";
-import { PARAM_KEY, PROPOSAL_KEY, getProposalIdCount, getProposalVoteCount, getProposalVoteKey, setProposalIdCount } from "wasmx-gov/assembly/storage";
+import { PARAM_KEY, PROPOSAL_KEY, getProposalIdCount, getProposalIdLast, getProposalVoteCount, getProposalVoteKey, setProposalIdCount, setProposalIdLast } from "wasmx-gov/assembly/storage";
 
 export const PARAM_LOCAL_KEY = "local_params"
 
@@ -45,10 +45,11 @@ export function setProposal(id: u64, value: Proposal): void {
 
 // proposal_id => Proposal ADD
 export function addProposal(value: Proposal): u64 {
-    const id = getProposalIdCount()
+    const id = getProposalIdLast() + 1;
     value.id = id;
     setProposal(id, value)
-    setProposalIdCount(id + 1);
+    setProposalIdLast(id);
+    setProposalIdCount(getProposalIdCount() + 1);
     return id;
 }
 

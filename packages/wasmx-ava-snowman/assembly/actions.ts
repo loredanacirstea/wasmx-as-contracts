@@ -929,7 +929,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         let req = new CallRequest(newContract, calldata, BigInt.zero(), 100000000, false);
         let resp = wasmxw.call(req);
         if (resp.success > 0) {
-            LoggerError("cannot setup next consensus contract", ["new contract", newContract, "err", resp.data]);
+            LoggerError("cannot setup next consensus contract", ["new contract", newContract, "err", String.UTF8.decode(decodeBase64(resp.data).buffer)]);
         } else {
             LoggerInfo("next consensus contract is set", ["new contract", newContract])
             newContractSetup = true;
