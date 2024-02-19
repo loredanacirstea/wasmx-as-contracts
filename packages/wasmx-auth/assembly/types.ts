@@ -8,8 +8,8 @@ export const MODULE_NAME = "auth"
 @serializable
 export class MsgInitGenesis {
     params: Params
-    accounts: AnyType[]
-    constructor(params: Params, accounts: AnyType[]) {
+    accounts: AnyAccount[]
+    constructor(params: Params, accounts: AnyAccount[]) {
         this.params = params
         this.accounts = accounts
     }
@@ -17,7 +17,7 @@ export class MsgInitGenesis {
 
 // @ts-ignore
 @serializable
-export class AnyType {
+export class AnyPubKey {
     anytype: string
     key: Base64String
     constructor(type: string, key: Base64String) {
@@ -30,14 +30,28 @@ export class AnyType {
 @serializable
 export class BaseAccount {
     address: Bech32String
-    pub_key: AnyType
+    pub_key: AnyPubKey
     account_number: u64
     sequence: u64
-    constructor(address: Bech32String, pub_key: AnyType, account_number: u64, sequence: u64) {
+    constructor(address: Bech32String, pub_key: AnyPubKey, account_number: u64, sequence: u64) {
         this.address = address
         this.pub_key = pub_key
         this.account_number = account_number
         this.sequence = sequence
+    }
+}
+
+// @ts-ignore
+@serializable
+export class StoredAccount extends BaseAccount {}
+
+// @ts-ignore
+@serializable
+export class AnyAccount extends BaseAccount {
+    anytype: string
+    constructor(anytype: string, address: Bech32String, pub_key: AnyPubKey, account_number: u64, sequence: u64) {
+        super(address, pub_key, account_number, sequence);
+        this.anytype = anytype
     }
 }
 
@@ -99,6 +113,19 @@ export class MsgUpdateParamsResponse {}
 
 // @ts-ignore
 @serializable
+export class MsgSetAccount {
+    address: Bech32String
+    pub_key: AnyPubKey
+    sequence: u64
+    constructor(address: Bech32String, pub_key: AnyPubKey, sequence: u64) {
+        this.address = address
+        this.pub_key = pub_key
+        this.sequence = sequence
+    }
+}
+
+// @ts-ignore
+@serializable
 export class PageRequest {
     key: u8
     offset: u64
@@ -137,9 +164,9 @@ export class QueryAccountsRequest {
 // @ts-ignore
 @serializable
 export class QueryAccountsResponse {
-    accounts: AnyType[]
+    accounts: AnyAccount[]
     pagination: PageResponse
-    constructor(accounts: AnyType[], pagination: PageResponse) {
+    constructor(accounts: AnyAccount[], pagination: PageResponse) {
         this.accounts = accounts
         this.pagination = pagination
     }
@@ -157,8 +184,8 @@ export class QueryAccountRequest {
 // @ts-ignore
 @serializable
 export class QueryAccountResponse {
-    account: AnyType
-    constructor(account: AnyType) {
+    account: StoredAccount
+    constructor(account: StoredAccount) {
         this.account = account
     }
 }
@@ -203,8 +230,8 @@ export class QueryModuleAccountsRequest {}
 // @ts-ignore
 @serializable
 export class QueryModuleAccountsResponse {
-    accounts: AnyType[]
-    constructor(accounts: AnyType[]) {
+    accounts: AnyAccount[]
+    constructor(accounts: AnyAccount[]) {
         this.accounts = accounts
     }
 }
@@ -221,8 +248,8 @@ export class QueryModuleAccountByNameRequest {
 // @ts-ignore
 @serializable
 export class QueryModuleAccountByNameResponse {
-    account: AnyType
-    constructor(account: AnyType) {
+    account: AnyAccount
+    constructor(account: AnyAccount) {
         this.account = account
     }
 }
