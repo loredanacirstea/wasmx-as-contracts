@@ -4,6 +4,9 @@ import { BigInt } from "wasmx-env/assembly/bn"
 
 export const MODULE_NAME = "auth"
 
+export const ModuleAccountTypeName = "ModuleAccount"
+export const BaseAccountTypeName = "BaseAccount"
+
 // @ts-ignore
 @serializable
 export class MsgInitGenesis {
@@ -43,15 +46,12 @@ export class BaseAccount {
 
 // @ts-ignore
 @serializable
-export class StoredAccount extends BaseAccount {}
-
-// @ts-ignore
-@serializable
-export class AnyAccount extends BaseAccount {
-    anytype: string
-    constructor(anytype: string, address: Bech32String, pub_key: AnyPubKey, account_number: u64, sequence: u64) {
-        super(address, pub_key, account_number, sequence);
-        this.anytype = anytype
+export class AnyAccount {
+    type_url: string
+    value: Base64String
+    constructor(type_url: string, value: Base64String) {
+        this.type_url = type_url
+        this.value = value
     }
 }
 
@@ -114,13 +114,9 @@ export class MsgUpdateParamsResponse {}
 // @ts-ignore
 @serializable
 export class MsgSetAccount {
-    address: Bech32String
-    pub_key: AnyPubKey
-    sequence: u64
-    constructor(address: Bech32String, pub_key: AnyPubKey, sequence: u64) {
-        this.address = address
-        this.pub_key = pub_key
-        this.sequence = sequence
+    account: AnyAccount
+    constructor(account: AnyAccount) {
+        this.account = account
     }
 }
 
@@ -184,9 +180,18 @@ export class QueryAccountRequest {
 // @ts-ignore
 @serializable
 export class QueryAccountResponse {
-    account: StoredAccount
-    constructor(account: StoredAccount) {
+    account: AnyAccount
+    constructor(account: AnyAccount) {
         this.account = account
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryHasAccountResponse {
+    value: bool
+    constructor(value: bool) {
+        this.value = value
     }
 }
 

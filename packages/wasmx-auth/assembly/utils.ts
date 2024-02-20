@@ -5,6 +5,14 @@ import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assemb
 import { uint8ArrayToHex, hexToUint8Array } from 'wasmx-utils/assembly/utils';
 import { MODULE_NAME } from './types';
 
+export function base64ToString(value: Base64String): string {
+    return String.UTF8.decode(decodeBase64(value).buffer)
+}
+
+export function stringToBase64(value: string): Base64String {
+    return encodeBase64(Uint8Array.wrap(String.UTF8.encode(value)))
+}
+
 export function base64ToHex(value: Base64String): HexString {
     return uint8ArrayToHex(decodeBase64(value))
 }

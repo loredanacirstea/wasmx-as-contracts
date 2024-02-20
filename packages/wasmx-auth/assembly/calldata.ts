@@ -14,6 +14,7 @@ export class CallData {
     // query
     GetAccounts: QueryAccountsRequest | null = null;
     GetAccount: QueryAccountRequest | null = null;
+    HasAccount:  QueryAccountRequest | null = null;
     GetAccountAddressByID: QueryAccountAddressByIDRequest | null = null;
     GetParams: QueryParamsRequest | null = null;
     GetModuleAccounts: QueryModuleAccountsRequest | null = null;

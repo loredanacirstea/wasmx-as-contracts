@@ -1,17 +1,22 @@
 import { JSON } from "json-as/assembly";
-import { AddressBytesToStringRequest, AddressStringToBytesRequest, Bech32PrefixRequest, MsgInitGenesis, MsgSetAccount, MsgUpdateParams, QueryAccountAddressByIDRequest, QueryAccountInfoRequest, QueryAccountRequest, QueryAccountResponse, QueryAccountsRequest, QueryModuleAccountByNameRequest, QueryModuleAccountsRequest, QueryParamsRequest, StoredAccount } from "./types";
-import { addNewAccount, getAccountAddrById, getAccountByAddr } from "./storage";
+import { AddressBytesToStringRequest, AddressStringToBytesRequest, Bech32PrefixRequest, MsgInitGenesis, MsgSetAccount, MsgUpdateParams, QueryAccountAddressByIDRequest, QueryAccountInfoRequest, QueryAccountRequest, QueryAccountResponse, QueryAccountsRequest, QueryHasAccountResponse, QueryModuleAccountByNameRequest, QueryModuleAccountsRequest, QueryParamsRequest, QueryParamsResponse } from "./types";
+import { accountToExternal, getAccountAddrById, getAccountByAddr, getParams, setAccount, setParams } from "./storage";
 
 export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
+    for (let i = 0; i < req.accounts.length; i++) {
+        setAccount(req.accounts[i])
+    }
+    setParams(req.params)
     return new ArrayBuffer(0)
 }
 
 export function SetAccount(req: MsgSetAccount): ArrayBuffer {
-    addNewAccount(new StoredAccount(req.address, req.pub_key, 0, req.sequence));
+    setAccount(req.account)
     return new ArrayBuffer(0)
 }
 
 export function UpdateParams(req: MsgUpdateParams): ArrayBuffer {
+    // TODO authority
     return new ArrayBuffer(0)
 }
 
@@ -24,9 +29,14 @@ export function GetAccount(req: QueryAccountRequest): ArrayBuffer {
     const acc = getAccountByAddr(req.address);
     let response = `{"account":null}`
     if (acc != null) {
-        response = JSON.stringify<QueryAccountResponse>(new QueryAccountResponse(acc))
-        response = response.replaceAll(`"anytype"`, `"@type"`)
+        response = JSON.stringify<QueryAccountResponse>(new QueryAccountResponse(accountToExternal(acc)))
     }
+    return String.UTF8.encode(response)
+}
+
+export function HasAccount(req: QueryAccountRequest): ArrayBuffer {
+    const acc = getAccountByAddr(req.address);
+    const response = JSON.stringify<QueryHasAccountResponse>(new QueryHasAccountResponse(acc != null))
     return String.UTF8.encode(response)
 }
 
@@ -36,15 +46,15 @@ export function GetAccountAddressByID(req: QueryAccountAddressByIDRequest): Arra
     if (addr != null) {
         const acc = getAccountByAddr(addr);
         if (acc != null) {
-            response = JSON.stringify<QueryAccountResponse>(new QueryAccountResponse(acc))
-            response = response.replaceAll(`"anytype"`, `"@type"`)
+            response = JSON.stringify<QueryAccountResponse>(new QueryAccountResponse(accountToExternal(acc)))
         }
     }
     return String.UTF8.encode(response)
 }
 
 export function GetParams(req: QueryParamsRequest): ArrayBuffer {
-    return new ArrayBuffer(0)
+    const resp = new QueryParamsResponse(getParams())
+    return String.UTF8.encode(JSON.stringify<QueryParamsResponse>(resp))
 }
 
 export function GetModuleAccounts(req: QueryModuleAccountsRequest): ArrayBuffer {
