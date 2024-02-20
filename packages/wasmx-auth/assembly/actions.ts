@@ -1,6 +1,7 @@
 import { JSON } from "json-as/assembly";
 import { AddressBytesToStringRequest, AddressStringToBytesRequest, Bech32PrefixRequest, MsgInitGenesis, MsgSetAccount, MsgUpdateParams, QueryAccountAddressByIDRequest, QueryAccountInfoRequest, QueryAccountRequest, QueryAccountResponse, QueryAccountsRequest, QueryHasAccountResponse, QueryModuleAccountByNameRequest, QueryModuleAccountsRequest, QueryParamsRequest, QueryParamsResponse } from "./types";
 import { accountToExternal, getAccountAddrById, getAccountByAddr, getParams, setAccount, setParams } from "./storage";
+import { LoggerDebug } from "./utils";
 
 export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
     for (let i = 0; i < req.accounts.length; i++) {

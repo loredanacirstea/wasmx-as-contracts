@@ -3,7 +3,7 @@ import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { BaseAccount, BaseAccountTypeName, ModuleAccount, ModuleAccountTypeName, Params, AnyAccount } from "./types";
 import { parseInt64 } from "wasmx-utils/assembly/utils";
 import { Bech32String } from "wasmx-env/assembly/types";
-import { base64ToString, stringToBase64 } from "./utils";
+import { LoggerDebug, base64ToString, stringToBase64 } from "./utils";
 
 export const SPLIT = "."
 export const PARAM_KEY = "params"
@@ -23,6 +23,7 @@ export function setAccount(value: AnyAccount): void {
         value.value = stringToBase64(JSON.stringify<BaseAccount>(decoded))
         setAccountAddrById(id, decoded.address);
         setAccountByAddr(decoded.address, value);
+        LoggerDebug("set BaseAccount", ["address", decoded.address, "account_number", id.toString(), "sequence", decoded.sequence.toString()])
     } else if (value.type_url.includes(ModuleAccountTypeName)) {
         const decoded = JSON.parse<ModuleAccount>(data)
         let id = decoded.base_account.account_number
@@ -33,6 +34,7 @@ export function setAccount(value: AnyAccount): void {
         value.value = stringToBase64(JSON.stringify<ModuleAccount>(decoded))
         setAccountAddrById(id, decoded.base_account.address);
         setAccountByAddr(decoded.base_account.address, value);
+        LoggerDebug("set ModuleAccount", ["address", decoded.base_account.address, "account_number", id.toString(), "sequence", decoded.base_account.sequence.toString()])
     }
 }
 

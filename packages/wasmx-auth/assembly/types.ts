@@ -1,11 +1,15 @@
 import { JSON } from "json-as/assembly";
 import { Base64String, Bech32String, Coin } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn"
+import { stringToBase64 } from "./utils";
 
 export const MODULE_NAME = "auth"
 
 export const ModuleAccountTypeName = "ModuleAccount"
 export const BaseAccountTypeName = "BaseAccount"
+
+export const BaseAccountTypeURL = "/cosmos.auth.v1beta1.BaseAccount"
+export const ModuleAccountTypeURL = "/cosmos.auth.v1beta1.ModuleAccount"
 
 // @ts-ignore
 @serializable
@@ -42,6 +46,10 @@ export class BaseAccount {
         this.account_number = account_number
         this.sequence = sequence
     }
+
+    static New(addr: Bech32String): BaseAccount {
+        return new BaseAccount(addr, new AnyPubKey("", ""), 0, 0)
+    }
 }
 
 // @ts-ignore
@@ -52,6 +60,12 @@ export class AnyAccount {
     constructor(type_url: string, value: Base64String) {
         this.type_url = type_url
         this.value = value
+    }
+
+    static New(addr: Bech32String): AnyAccount {
+        const data = new BaseAccount(addr, new AnyPubKey("", ""), 0, 0)
+        const encoded = stringToBase64(JSON.stringify<BaseAccount>(data))
+        return new AnyAccount(BaseAccountTypeURL, encoded);
     }
 }
 
@@ -189,9 +203,9 @@ export class QueryAccountResponse {
 // @ts-ignore
 @serializable
 export class QueryHasAccountResponse {
-    value: bool
-    constructor(value: bool) {
-        this.value = value
+    found: bool
+    constructor(found: bool) {
+        this.found = found
     }
 }
 

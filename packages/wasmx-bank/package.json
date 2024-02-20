@@ -26,6 +26,7 @@
     "as-base64": "^0.2.0",
     "json-as": "file:../../../as-json",
     "visitor-as": "^0.11.4",
+    "wasmx-auth": "file:../wasmx-auth",
     "wasmx-env": "file:../wasmx-env",
     "wasmx-erc20": "file:../wasmx-erc20",
     "wasmx-utils": "file:../wasmx-utils"

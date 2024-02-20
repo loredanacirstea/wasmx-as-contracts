@@ -5,6 +5,7 @@ import { isAuthorized } from "wasmx-env/assembly/utils";
 import { Bech32String, parseInt64 } from "wasmx-utils/assembly/utils";
 import { CallRequest, CallResponse, CreateAccountRequest, Coin } from 'wasmx-env/assembly/types';
 import * as erc20 from "wasmx-erc20/assembly/types";
+import * as authtypes from "wasmx-auth/assembly/types";
 import {
     MsgInitGenesis, MsgSend, MsgMultiSend, MsgSetSendEnabled, MsgUpdateParams, MsgRegisterDenom, Metadata, Balance, CoinMap,
     PageResponse, QueryAllBalancesRequest, QueryAllBalancesResponse, QueryBalanceRequest, QueryBalanceResponse, QueryDenomMetadataByQueryStringRequest, QueryDenomMetadataRequest, QueryDenomOwnersRequest, QueryDenomsMetadataRequest, QueryParamsRequest, QuerySendEnabledRequest, QuerySpendableBalanceByDenomRequest, QuerySpendableBalancesRequest, QuerySupplyOfRequest, QueryTotalSupplyRequest, QueryTotalSupplyResponse,
@@ -301,7 +302,33 @@ export function sendCoins(from: Bech32String, to: Bech32String, coins: Coin[]): 
             revert(`could not transferFrom ${denomInfo.denom}; err: ${resp.data}`)
         }
     }
+
+    // Create account if recipient does not exist.
+    let calldata = new authtypes.QueryAccountRequest(to);
+    let calldatastr = `{"HasAccount":${JSON.stringify<authtypes.QueryAccountRequest>(calldata)}}`;
+    let resp = callAuth(calldatastr, true);
+    if (resp.success > 0) {
+        revert(`auth.HasAccount call failed`)
+    }
+    const r = JSON.parse<authtypes.QueryHasAccountResponse>(resp.data)
+    if(!r.found) {
+        const calldata = new authtypes.MsgSetAccount(authtypes.AnyAccount.New(to));
+        const calldatastr = `{"SetAccount":${JSON.stringify<authtypes.MsgSetAccount>(calldata)}}`;
+        LoggerDebug("creating recipient account", ["address", to])
+        let resp = callAuth(calldatastr, false);
+        if (resp.success > 0) {
+            revert(`auth.SetAccount call failed`)
+        }
+    }
     return coinMap
+}
+
+export function callAuth(calldata: string, isQuery: boolean): CallResponse {
+    const req = new CallRequest(authtypes.MODULE_NAME, calldata, BigInt.zero(), 100000000, isQuery);
+    const resp = wasmxw.call(req, MODULE_NAME);
+    // result or error
+    resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    return resp;
 }
 
 export function callToken(address: Bech32String, calldata: string, isQuery: boolean): CallResponse {
