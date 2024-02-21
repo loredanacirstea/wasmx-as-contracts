@@ -12,7 +12,8 @@ import {
     QueryAddressByDenom,
     QueryAddressByDenomResponse,
     MODULE_NAME,
-    MsgMintCoins
+    MsgMintCoins,
+    QuerySupplyOfResponse
 } from './types';
 import { LoggerDebug, LoggerInfo, revert } from './utils';
 import { getParamsInternal, setParams, getParams, getDenomInfoByAnyDenom, getAuthorities, getBaseDenoms, setBaseDenoms, registerDenomContract, getAddressByDenom, getDenomByAddress } from './storage';
@@ -174,7 +175,9 @@ export function TotalSupply(req: QueryTotalSupplyRequest): ArrayBuffer {
 }
 
 export function SupplyOf(req: QuerySupplyOfRequest): ArrayBuffer {
-    return new ArrayBuffer(0)
+    const value = totalSupplyInternal(req.denom)
+    const response = new QuerySupplyOfResponse(value)
+    return String.UTF8.encode(JSON.stringify<QuerySupplyOfResponse>(response))
 }
 
 export function Params(req: QueryParamsRequest): ArrayBuffer {

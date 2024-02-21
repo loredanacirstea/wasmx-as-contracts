@@ -13,6 +13,7 @@ import { LoggerDebug, LoggerInfo, revert } from "./utils";
 import { AttributeKeyOption, AttributeKeyProposalID, AttributeKeyProposalMessages, AttributeKeyVoter, AttributeKeyVotingPeriodStart, EventTypeProposalDeposit, EventTypeProposalVote, EventTypeSubmitProposal } from "./events";
 
 export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
+    LoggerInfo("initiating genesis", [])
     setProposalIdFirst(req.starting_proposal_id)
     setProposalIdLast(req.starting_proposal_id + i64(req.proposals.length))
     setProposalIdCount(i64(req.proposals.length)-1)
@@ -37,6 +38,7 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
         const vote = req.votes[i]
         addProposalVote(vote.proposal_id, vote)
     }
+    LoggerInfo("initiated genesis", ["proposals", req.proposals.length.toString(), "deposits", req.deposits.length.toString(), "votes", req.votes.length.toString()])
     return new ArrayBuffer(0)
 }
 
@@ -144,6 +146,7 @@ export function EndBlock(req: MsgEndBlock): ArrayBuffer {
 /// tx
 
 export function SubmitProposal(req: MsgSubmitProposal): ArrayBuffer {
+    LoggerDebug("submit proposal", ["title", req.title])
     const params = getParams()
     const submitTime = new Date(Date.now());
     const depositEndTime = new Date(submitTime.getTime() + params.max_deposit_period)

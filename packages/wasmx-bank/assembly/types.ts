@@ -365,11 +365,21 @@ export class QueryTotalSupplyResponse {
 
 // @ts-ignore
 @serializable
-export class QuerySupplyOfRequest {}
+export class QuerySupplyOfRequest {
+    denom: string
+    constructor(denom: string) {
+        this.denom = denom
+    }
+}
 
 // @ts-ignore
 @serializable
-export class QuerySupplyOfResponse {}
+export class QuerySupplyOfResponse {
+    amount: Coin
+    constructor(amount: Coin) {
+        this.amount = amount
+    }
+}
 
 // @ts-ignore
 @serializable

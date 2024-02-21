@@ -2,26 +2,23 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap"
 import { BigInt } from "wasmx-env/assembly/bn"
-import * as banktypes from "wasmx-bank/assembly/types"
-import * as erc20types from "wasmx-erc20/assembly/types"
-import * as blocktypes from "wasmx-blocks/assembly/types"
-import * as consensustypes from "wasmx-consensus/assembly/types_tendermint"
 import * as govstorage from "wasmx-gov/assembly/storage"
 import * as gov from "wasmx-gov/assembly/types"
 import { MsgDeposit, MsgEndBlock, MsgSubmitProposal, MsgVote, MsgVoteWeighted, QueryDepositRequest, QueryDepositsRequest, QueryParamsRequest, QueryProposalRequest, QueryProposalsRequest, QueryTallyResultRequest, QueryVoteRequest, QueryVotesRequest } from "wasmx-gov/assembly/types";
-import { Coefs, DepositVote, MODULE_NAME, MsgAddProposalOption, MsgInitGenesis, MsgSubmitProposalExtended, Params, Proposal, ProposalOption, ProposalVoteStatus, VoteStatus } from "./types";
+import { Coefs, DepositVote, MODULE_NAME, MsgAddProposalOption, MsgInitGenesis, MsgSubmitProposalExtended, Params, Proposal, ProposalOption, ProposalVoteStatus, QueryProposalExtendedResponse, VoteStatus } from "./types";
 import { LoggerDebug, LoggerInfo, revert } from "./utils";
 import { addProposal, addProposalVote, getParams, getProposal, setParams, setProposal } from "./storage";
 import { bankSendCoinFromAccountToModule } from "wasmx-gov/assembly/actions";
 import { Coin, Event, EventAttribute } from "wasmx-env/assembly/types";
 import { AttributeKeyOption, AttributeKeyProposalID, AttributeKeyProposalMessages, AttributeKeyVoter, EventTypeProposalVote, EventTypeSubmitProposal } from "wasmx-gov/assembly/events";
-import { EventTypeAddProposalOption, EventTypeExecuteProposal } from "./events";
+import { AttributeKeyOptionID, EventTypeAddProposalOption, EventTypeExecuteProposal } from "./events";
 
 // TODO this must be in initialization
 
 const OPTION_ID_START = 1
 
 export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
+    LoggerInfo("initiating genesis", [])
     // TODO deploy arbitration denom, controlled by this contract
     // TODO deply initiated laurel ids or they must be already registered with the bank
     govstorage.setProposalIdFirst(req.starting_proposal_id)
@@ -42,6 +39,7 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
         const vote = req.votes[i]
         addProposalVote(vote.proposal_id, vote)
     }
+    LoggerInfo("initiated genesis", ["proposals", req.proposals.length.toString(), "deposits", req.deposits.length.toString(), "votes", req.votes.length.toString()])
     return new ArrayBuffer(0)
 }
 
@@ -60,10 +58,12 @@ export function EndBlock(req: MsgEndBlock): ArrayBuffer {
 
 export function SubmitProposal(req: MsgSubmitProposal): ArrayBuffer {
     const localparams = getParams()
+    LoggerDebug("submit proposal", ["title", req.title])
     return SubmitProposalInternal(new MsgSubmitProposalExtended(req, localparams.defaultX, localparams.defaultY, req.title, req.summary, req.metadata), localparams);
 }
 
 export function SubmitProposalExtended(req: MsgSubmitProposalExtended): ArrayBuffer {
+    LoggerDebug("submit proposal extended", ["title", req.title])
     const localparams = getParams()
     // only arbiters can propose custom coefficients
     let hasArbitration = false
@@ -80,7 +80,7 @@ export function SubmitProposalExtended(req: MsgSubmitProposalExtended): ArrayBuf
 
 export function SubmitProposalInternal(req: MsgSubmitProposalExtended, localparams: Params): ArrayBuffer {
     const submitTime = new Date(Date.now());
-    const depositEndTime = new Date(0);
+    const depositEndTime = submitTime;
     if (req.initial_deposit.length == 0) {
         revert(`proposal must contain a deposit`)
     }
@@ -119,8 +119,6 @@ export function SubmitProposalInternal(req: MsgSubmitProposalExtended, localpara
         // [], // former tally
         submitTime,
         depositEndTime,
-        // first coin is the proposal denom
-        // second coin is arbitration
         new Date(Date.now()),
         new Date(0),
         metadata,
@@ -169,6 +167,9 @@ export function AddProposalOption(req: MsgAddProposalOption): ArrayBuffer {
         revert(`proposal not found`)
         return new ArrayBuffer(0)
     }
+    const option_id = proposal.options.length
+    LoggerDebug("submit proposal option", ["proposal_id", req.proposal_id.toString(), "option_id", option_id.toString(), "title", req.option.title])
+
     proposal.options.push(req.option);
 
     // lock funds
@@ -181,7 +182,7 @@ export function AddProposalOption(req: MsgAddProposalOption): ArrayBuffer {
     // save proposal with new option
     setProposal(req.proposal_id, proposal);
     // save vote data; TODO redundant? should we index by voter address?
-    const vote = new DepositVote(req.proposal_id, proposal.options.length - 1, req.option.proposer, req.option.amount, req.option.arbitrationAmount, req.option.metadata)
+    const vote = new DepositVote(req.proposal_id, option_id, req.option.proposer, req.option.amount, req.option.arbitrationAmount, req.option.metadata)
     addProposalVote(req.proposal_id, vote)
 
     wasmxw.emitCosmosEvents([
@@ -189,6 +190,7 @@ export function AddProposalOption(req: MsgAddProposalOption): ArrayBuffer {
             EventTypeAddProposalOption,
             [
                 new EventAttribute(AttributeKeyProposalID, req.proposal_id.toString(), true),
+                new EventAttribute(AttributeKeyOptionID, option_id.toString(), true),
                 new EventAttribute(AttributeKeyOption, JSON.stringify<ProposalOption>(req.option), true),
             ],
         ),
@@ -203,7 +205,6 @@ export function AddProposalOption(req: MsgAddProposalOption): ArrayBuffer {
     ]);
 
     tryExecuteProposal(proposal);
-
     return new ArrayBuffer(0)
 }
 
@@ -239,7 +240,9 @@ export function DoDepositVote(req: DepositVote): ArrayBuffer {
 
     // add deposit to proposal option
     proposal.options[req.option_id].amount = proposal.options[req.option_id].amount.add(req.amount)
-    proposal.options[req.option_id].arbitrationAmount = proposal.options[req.option_id].amount.add(req.arbitrationAmount)
+    proposal.options[req.option_id].arbitrationAmount = proposal.options[req.option_id].arbitrationAmount.add(req.arbitrationAmount)
+
+    LoggerDebug("deposit vote", ["proposal_id", req.proposal_id.toString(), "option_id", req.option_id.toString(), "option_deposit",  proposal.options[req.option_id].amount.toString(), "option_arbitration", proposal.options[req.option_id].arbitrationAmount.toString()])
 
     // calculate new proposal voting status
     proposal = setProposalVoteStatus(proposal, localparams);
@@ -252,7 +255,7 @@ export function DoDepositVote(req: DepositVote): ArrayBuffer {
             EventTypeProposalVote,
             [
                 new EventAttribute(AttributeKeyVoter, req.voter, true),
-                new EventAttribute(AttributeKeyOption, JSON.stringify<DepositVote>(req), true),
+                new EventAttribute(AttributeKeyOptionID, req.option_id.toString(), true),
                 new EventAttribute(AttributeKeyProposalID, proposal!.id.toString(), true),
             ],
         )
@@ -272,6 +275,16 @@ export function GetProposal(req: QueryProposalRequest): ArrayBuffer {
     if (proposal != null) {
         const govprop = proposalToExternal(proposal)
         response = JSON.stringify<gov.QueryProposalResponse>(new gov.QueryProposalResponse(govprop))
+    }
+    return String.UTF8.encode(response)
+}
+
+export function GetProposalExtended(req: QueryProposalRequest): ArrayBuffer {
+    const proposal = getProposal(req.proposal_id)
+    let response = `{"proposal":null}`
+
+    if (proposal != null) {
+        response = JSON.stringify<QueryProposalExtendedResponse>(new QueryProposalExtendedResponse(proposal))
     }
     return String.UTF8.encode(response)
 }
@@ -359,6 +372,7 @@ function executeProposal(proposal: Proposal): gov.Response {
 
 function setProposalVoteStatus(proposal: Proposal, params: Params): Proposal {
     const nextStatus = getProposalVoteStatus(proposal, params)
+    proposal.vote_status = nextStatus;
     const winner = getWinner(proposal.winner, nextStatus);
     if (proposal.winner != winner) {
         proposal.vote_status.changed = true;
@@ -368,7 +382,7 @@ function setProposalVoteStatus(proposal: Proposal, params: Params): Proposal {
 }
 
 // winner is the option index
-function getWinner (prevWinner: i32, nextStatus: ProposalVoteStatus): i32 {
+function getWinner (prevWinner: u32, nextStatus: ProposalVoteStatus): u32 {
     if (nextStatus.status == 1) return nextStatus.xi;
     if (nextStatus.status == 2) return nextStatus.yi;
     return prevWinner;

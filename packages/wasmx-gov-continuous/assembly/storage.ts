@@ -5,6 +5,8 @@ import { PARAM_KEY, PROPOSAL_KEY, getProposalIdCount, getProposalIdLast, getProp
 
 export const PARAM_LOCAL_KEY = "local_params"
 
+// proposal_id => voterAddress => vote_id => vote GET
+
 // proposal_id => vote_id => vote GET
 export function getProposalVote(proposal_id: u64, vote_id: u64): DepositVote | null {
     const value = wasmxw.sload(getProposalVoteKey(proposal_id, vote_id));

@@ -58,7 +58,7 @@ export class Proposal {
     options: ProposalOption[]
     vote_status: ProposalVoteStatus
     // current winner - may be different from current vote_status
-    winner: i32
+    winner: u32
 
     constructor(
         id: u64,
@@ -75,7 +75,7 @@ export class Proposal {
         denom: string,
         options: ProposalOption[],
         vote_status: ProposalVoteStatus,
-        winner: i32,
+        winner: u32,
     ) {
         this.id = id
         // this.messages = messages
@@ -280,5 +280,14 @@ export class DepositVote {
         this.amount = amount
         this.arbitrationAmount = arbitrationAmount
         this.metadata = metadata
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryProposalExtendedResponse {
+    proposal: Proposal
+    constructor(proposal: Proposal) {
+        this.proposal = proposal
     }
 }

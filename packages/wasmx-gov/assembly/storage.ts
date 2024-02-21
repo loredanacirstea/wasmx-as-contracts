@@ -12,10 +12,20 @@ export const PROPOSAL_ID_COUNT_KEY = "proposal_count"
 export const PROPOSAL_KEY = "proposal."
 export const PROPOSAL_VOTE_COUNT_KEY = "proposal_vote_count."
 export const PROPOSAL_VOTE_KEY = "proposal_vote."
+export const PROPOSAL_VOTER_KEY = "proposal_voter."
 export const PROPOSAL_DEPOSIT_COUNT_KEY = "proposal_deposit_count."
 export const PROPOSAL_DEPOSIT_KEY = "proposal_deposit."
+export const PROPOSAL_DEPOSITOR_KEY = "proposal_depositer."
 export const PROPOSAL_ACTIVE_DEPOSIT_KEY = "proposal_active_deposit"
 export const PROPOSAL_ACTIVE_VOTING_KEY = "proposal_active_voting"
+
+export function getProposalVoterKey(proposal_id: u64, voter: Bech32String): string {
+    return PROPOSAL_VOTER_KEY + proposal_id.toString() + SPLIT + voter
+}
+
+export function getProposalDepositorKey(proposal_id: u64, proposer: Bech32String): string {
+    return PROPOSAL_DEPOSITOR_KEY + proposal_id.toString() + SPLIT + proposer
+}
 
 export function getProposalVoteKey(proposal_id: u64, vote_id: u64): string {
     return PROPOSAL_VOTE_KEY + proposal_id.toString() + SPLIT + vote_id.toString()

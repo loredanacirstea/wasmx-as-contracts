@@ -13,11 +13,13 @@ export class MsgEmpty {}
 export class CallData {
     InitGenesis: MsgInitGenesis | null = null;
     SubmitProposal: MsgSubmitProposal | null = null;
-    SubmitProposalExtended: MsgSubmitProposalExtended | null = null;
-    AddProposalOption: MsgAddProposalOption | null = null;
     Vote: MsgVote | null = null;
     VoteWeighted: MsgVoteWeighted | null = null;
     Deposit: MsgDeposit | null = null;
+
+    // extra
+    SubmitProposalExtended: MsgSubmitProposalExtended | null = null;
+    AddProposalOption: MsgAddProposalOption | null = null;
     DepositVote: DepositVote | null = null;
 
     // hooks
@@ -33,6 +35,9 @@ export class CallData {
     GetDeposit: QueryDepositRequest | null = null;
     GetDeposits: QueryDepositsRequest | null = null;
     GetTallyResult: QueryTallyResultRequest | null = null;
+
+    // extra
+    GetProposalExtended: QueryProposalRequest | null = null;
 
 }
 
