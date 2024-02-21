@@ -1066,24 +1066,25 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         const ev = evs[i];
         if (ev.type == "register_role") {
             for (let j = 0; j < ev.attributes.length; j++) {
+                if (ev.attributes[j].key == "role") {
+                    roleConsensus = ev.attributes[j].value == "consensus"
+                }
                 if (ev.attributes[j].key == "contract_address") {
                     newContract = ev.attributes[j].value;
                 }
                 if (ev.attributes[j].key == "role_label") {
                     newLabel = ev.attributes[j].value;
                 }
-                if (ev.attributes[j].key == "role") {
-                    roleConsensus = ev.attributes[j].value == "consensus"
-                }
             }
-            break;
+            if (roleConsensus) {
+                LoggerInfo("found new consensus contract", ["address", newContract, "label", newLabel])
+                break;
+            } else {
+                newContract = ""
+                newLabel = ""
+            }
         }
     }
-    if (!roleConsensus) {
-        newContract = ""
-        newLabel = ""
-    }
-    LoggerInfo("found new consensus contract", ["address", newContract, "label", newLabel])
 
     // execute hooks if there is no consensus change
     // this must be ran from the new contract

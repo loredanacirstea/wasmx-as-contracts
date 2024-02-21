@@ -898,16 +898,21 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     // remove temporary block data
     removeLogEntry(entryobj.index);
 
-    // execute hooks
-    callHookContract("EndBlock", blockData);
-
     // before commiting, we check if consensus contract was changed
     let newContract = "";
     let newLabel = "";
-    for (let i = 0; i < finalizeResp.events.length; i++) {
-        const ev = finalizeResp.events[i];
+    let roleConsensus = false;
+    let evs = finalizeResp.events
+    for (let i = 0; i < finalizeResp.tx_results.length; i++) {
+        evs = evs.concat(finalizeResp.tx_results[i].events)
+    }
+    for (let i = 0; i < evs.length; i++) {
+        const ev = evs[i];
         if (ev.type == "register_role") {
             for (let j = 0; j < ev.attributes.length; j++) {
+                if (ev.attributes[j].key == "role") {
+                    roleConsensus = ev.attributes[j].value == "consensus"
+                }
                 if (ev.attributes[j].key == "contract_address") {
                     newContract = ev.attributes[j].value;
                 }
@@ -915,9 +920,22 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
                     newLabel = ev.attributes[j].value;
                 }
             }
-            break;
+            if (roleConsensus) {
+                LoggerInfo("found new consensus contract", ["address", newContract, "label", newLabel])
+                break;
+            } else {
+                newContract = ""
+                newLabel = ""
+            }
         }
     }
+
+    // execute hooks if there is no consensus change
+    // this must be ran from the new contract
+    if (newContract == "") {
+        callHookContract("EndBlock", blockData);
+    }
+
     // we have finalized and saved the new block
     // so we can execute setup on the new contract
     // this way, the delay of the timed action that starts the new consensus fsm is minimal.
