@@ -5,7 +5,7 @@ import { BigInt } from "wasmx-env/assembly/bn"
 import * as banktypes from "wasmx-bank/assembly/types"
 import * as derc20types from "wasmx-derc20/assembly/types"
 import { getParamsInternal, setParams, setNewValidator, getParams, getValidator, getValidatorsAddresses } from './storage';
-import { MsgInitGenesis, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME } from './types';
+import { MsgInitGenesis, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool } from './types';
 import { LoggerDebug, revert } from './utils';
 import { parseInt64 } from "wasmx-utils/assembly/utils";
 import { Bech32String, CallRequest, CallResponse } from "wasmx-env/assembly/types";
@@ -138,6 +138,30 @@ export function GetDelegation(req: QueryDelegationRequest): ArrayBuffer {
     const tokenAddr = getTokenAddress()
     const data = callGetDelegation(tokenAddr, req.delegator_addr, req.validator_addr)
     return String.UTF8.encode(data)
+}
+
+export function GetPool(req: QueryPoolRequest): ArrayBuffer {
+    // bonded
+    const denom = getParams().bond_denom;
+    let calldata = new banktypes.QuerySupplyOfRequest(denom);
+    let calldatastr = `{"GetSupplyOf":${JSON.stringify<banktypes.QuerySupplyOfRequest>(calldata)}}`;
+    let resp = callBank(calldatastr, true)
+    if (resp.success > 0) {
+        revert(`could not get bonded tokens: ${resp.data}`)
+    }
+    const bonded = JSON.parse<banktypes.QuerySupplyOfResponse>(resp.data)
+
+    // unbonded
+    calldata = new banktypes.QuerySupplyOfRequest(DENOM_BASE);
+    calldatastr = `{"GetSupplyOf":${JSON.stringify<banktypes.QuerySupplyOfRequest>(calldata)}}`;
+    resp = callBank(calldatastr, true)
+    if (resp.success > 0) {
+        revert(`could not get unbonded tokens: ${resp.data}`)
+    }
+    const unbonded = JSON.parse<banktypes.QuerySupplyOfResponse>(resp.data)
+
+    const res = new QueryPoolResponse(new Pool(unbonded.amount.amount, bonded.amount.amount))
+    return String.UTF8.encode(JSON.stringify<QueryPoolResponse>(res))
 }
 
 export function callGetDelegation(tokenAddress: Bech32String, delegator: Bech32String, validator: Bech32String): string {

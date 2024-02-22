@@ -57,6 +57,7 @@ export function EndBlock(req: MsgEndBlock): ArrayBuffer {
 /// tx
 
 export function SubmitProposal(req: MsgSubmitProposal): ArrayBuffer {
+    // TODO security!! check caller is proposer for every tx
     const localparams = getParams()
     LoggerDebug("submit proposal", ["title", req.title])
     return SubmitProposalInternal(new MsgSubmitProposalExtended(req, localparams.defaultX, localparams.defaultY, req.title, req.summary, req.metadata), localparams);
@@ -120,7 +121,7 @@ export function SubmitProposalInternal(req: MsgSubmitProposalExtended, localpara
         submitTime,
         depositEndTime,
         new Date(Date.now()),
-        new Date(0),
+        new Date(31536000000000), // milliseconds
         metadata,
         req.title,
         req.summary,
@@ -157,6 +158,8 @@ export function SubmitProposalInternal(req: MsgSubmitProposalExtended, localpara
         ),
     ]);
 
+    tryExecuteProposal(proposal);
+
     return String.UTF8.encode(JSON.stringify<gov.MsgSubmitProposalResponse>(new gov.MsgSubmitProposalResponse(proposal_id)))
 }
 
@@ -173,7 +176,7 @@ export function AddProposalOption(req: MsgAddProposalOption): ArrayBuffer {
     proposal.options.push(req.option);
 
     // lock funds
-    const deposit = [new Coin(proposal.denom, req.option.amount), new Coin(localparams.arbitrationDenom, req.option.arbitrationAmount)]
+    const deposit = [new Coin(proposal.denom, req.option.amount), new Coin(localparams.arbitrationDenom, req.option.arbitration_amount)]
     bankSendCoinFromAccountToModule(req.option.proposer, MODULE_NAME, deposit)
 
     // calculate new proposal voting status
@@ -182,7 +185,7 @@ export function AddProposalOption(req: MsgAddProposalOption): ArrayBuffer {
     // save proposal with new option
     setProposal(req.proposal_id, proposal);
     // save vote data; TODO redundant? should we index by voter address?
-    const vote = new DepositVote(req.proposal_id, option_id, req.option.proposer, req.option.amount, req.option.arbitrationAmount, req.option.metadata)
+    const vote = new DepositVote(req.proposal_id, option_id, req.option.proposer, req.option.amount, req.option.arbitration_amount, req.option.metadata)
     addProposalVote(req.proposal_id, vote)
 
     wasmxw.emitCosmosEvents([
@@ -235,14 +238,14 @@ export function DoDepositVote(req: DepositVote): ArrayBuffer {
         return new ArrayBuffer(0)
     }
 
-    const deposit = [new Coin(proposal.denom, req.amount), new Coin(localparams.arbitrationDenom, req.arbitrationAmount)]
+    const deposit = [new Coin(proposal.denom, req.amount), new Coin(localparams.arbitrationDenom, req.arbitration_amount)]
     bankSendCoinFromAccountToModule(req.voter, MODULE_NAME, deposit)
 
     // add deposit to proposal option
     proposal.options[req.option_id].amount = proposal.options[req.option_id].amount.add(req.amount)
-    proposal.options[req.option_id].arbitrationAmount = proposal.options[req.option_id].arbitrationAmount.add(req.arbitrationAmount)
+    proposal.options[req.option_id].arbitration_amount = proposal.options[req.option_id].arbitration_amount.add(req.arbitration_amount)
 
-    LoggerDebug("deposit vote", ["proposal_id", req.proposal_id.toString(), "option_id", req.option_id.toString(), "option_deposit",  proposal.options[req.option_id].amount.toString(), "option_arbitration", proposal.options[req.option_id].arbitrationAmount.toString()])
+    LoggerDebug("deposit vote", ["proposal_id", req.proposal_id.toString(), "option_id", req.option_id.toString(), "option_deposit",  proposal.options[req.option_id].amount.toString(), "option_arbitration", proposal.options[req.option_id].arbitration_amount.toString()])
 
     // calculate new proposal voting status
     proposal = setProposalVoteStatus(proposal, localparams);
@@ -336,10 +339,12 @@ export function GetTallyResult(req: QueryTallyResultRequest): ArrayBuffer {
 }
 
 function tryExecuteProposal(proposal: Proposal): void {
+    LoggerDebug("try execute proposal", ["proposal_id", proposal.id.toString(), "changed", proposal.vote_status.changed.toString()])
     if (!proposal.vote_status.changed) return;
 
     const result = executeProposal(proposal);
     if (result != null) {
+        LoggerInfo("execute proposal", ["success", result.success.toString(), "proposal_id", proposal.id.toString(), "winner", proposal.winner.toString()])
         if (!result.success) {
             proposal.failed_reason = result.data;
         } else {
@@ -371,6 +376,7 @@ function executeProposal(proposal: Proposal): gov.Response {
 }
 
 function setProposalVoteStatus(proposal: Proposal, params: Params): Proposal {
+    proposal.vote_status.changed = false;
     const nextStatus = getProposalVoteStatus(proposal, params)
     proposal.vote_status = nextStatus;
     const winner = getWinner(proposal.winner, nextStatus);
@@ -393,9 +399,9 @@ function getProposalVoteStatus(proposal: Proposal, params: Params): ProposalVote
     if (normalizedWeights.length == 0) return new ProposalVoteStatus(0, 0, 0, false);
 
     // max weight index
-    const xi: i32 = getMaxFromArray(normalizedWeights);
+    const xi = u32(getMaxFromArray(normalizedWeights));
     // gets the second max
-    const yi = getMaxFromArrayExcept(normalizedWeights, xi);
+    const yi = u32(getMaxFromArrayExcept(normalizedWeights, xi));
     const status = getVoteStatus(normalizedWeights[xi], normalizedWeights[yi], proposal, params);
     return new ProposalVoteStatus(status, xi, yi, false);
 }
@@ -429,7 +435,7 @@ function normalizeOptionTally(option: ProposalOption, params: Params): BigInt {
     // TODO
     // _WL + _AL * tasks[taskid].amount * coefs[uint256(Coefs.cAL)] / (10 ** decimals);
     // @ts-ignore
-    return option.amount + option.arbitrationAmount * BigInt.fromU64(params.coefs[Coefs.cAL])
+    return option.amount + option.arbitration_amount * BigInt.fromU64(params.coefs[Coefs.cAL])
 }
 
 // 0: nobody won
@@ -469,7 +475,7 @@ function proposalToExternal(proposal: Proposal): gov.Proposal {
         // @ts-ignore
         deposit.amount = deposit.amount + opt.amount
         // @ts-ignore
-        arbCoin.amount = arbCoin.amount + opt.arbitrationAmount
+        arbCoin.amount = arbCoin.amount + opt.arbitration_amount
     }
     const govprop = new gov.Proposal(
         proposal.id,

@@ -108,15 +108,15 @@ export class ProposalOption {
     proposer: Bech32String
     messages: Base64String[]
     amount: BigInt
-    arbitrationAmount: BigInt
+    arbitration_amount: BigInt
     title: string
     summary: string
     metadata: string
-    constructor(proposer: Bech32String, messages: Base64String[], amount: BigInt, arbitrationAmount: BigInt, title: string, summary: string, metadata: string) {
+    constructor(proposer: Bech32String, messages: Base64String[], amount: BigInt, arbitration_amount: BigInt, title: string, summary: string, metadata: string) {
         this.proposer = proposer
         this.messages = messages
         this.amount = amount
-        this.arbitrationAmount = arbitrationAmount
+        this.arbitration_amount = arbitration_amount
         this.title = title
         this.summary = summary
         this.metadata = metadata
@@ -136,12 +136,12 @@ export class ProposalVoteStatus {
     // vote status based on xi, yi
     status: VoteStatus
     // the option index with the highest weight at current time
-    xi: i32
+    xi: u32
     // the option index with the second highest weight
-    yi: i32
+    yi: u32
     // last change triggered option execution
     changed: bool
-    constructor(status: VoteStatus, xi: i32, yi: i32, changed: bool) {
+    constructor(status: VoteStatus, xi: u32, yi: u32, changed: bool) {
         this.status = status
         this.xi = xi
         this.yi = yi
@@ -154,14 +154,14 @@ export class ProposalVoteStatus {
 export class ProposalVoteStatusExtended {
     status: VoteStatus
     // the option index with the highest weight at current time
-    xi: i32
+    xi: u32
     // the option index with the second highest weight
-    yi: i32
+    yi: u32
     // the highest amount
     x: BigInt
     // the second highest amount
     y: BigInt
-    constructor(status: VoteStatus, xi: i32, yi: i32, x: BigInt, y: BigInt) {
+    constructor(status: VoteStatus, xi: u32, yi: u32, x: BigInt, y: BigInt) {
         this.status = status
         this.xi = xi
         this.yi = yi
@@ -271,14 +271,14 @@ export class DepositVote {
     option_id: i32
     voter: Bech32String
     amount: BigInt
-    arbitrationAmount: BigInt
+    arbitration_amount: BigInt
     metadata: string
-    constructor(proposal_id: i64, option_id: i32, voter: Bech32String, amount: BigInt, arbitrationAmount: BigInt, metadata: string) {
+    constructor(proposal_id: i64, option_id: i32, voter: Bech32String, amount: BigInt, arbitration_amount: BigInt, metadata: string) {
         this.proposal_id = proposal_id
         this.option_id = option_id
         this.voter = voter
         this.amount = amount
-        this.arbitrationAmount = arbitrationAmount
+        this.arbitration_amount = arbitration_amount
         this.metadata = metadata
     }
 }

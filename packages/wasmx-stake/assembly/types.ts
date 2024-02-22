@@ -446,3 +446,27 @@ export class QueryDelegationResponse {
         this.delegation_response = delegation_response
     }
 }
+
+// @ts-ignore
+@serializable
+export class QueryPoolRequest {}
+
+// @ts-ignore
+@serializable
+export class Pool {
+    not_bonded_tokens: BigInt
+    bonded_tokens: BigInt
+    constructor(not_bonded_tokens: BigInt, bonded_tokens: BigInt) {
+        this.not_bonded_tokens = not_bonded_tokens
+        this.bonded_tokens = bonded_tokens
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryPoolResponse {
+    pool: Pool
+    constructor(pool: Pool) {
+        this.pool = pool
+    }
+}
