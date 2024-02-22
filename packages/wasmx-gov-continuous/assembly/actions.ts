@@ -5,13 +5,13 @@ import { BigInt } from "wasmx-env/assembly/bn"
 import * as govstorage from "wasmx-gov/assembly/storage"
 import * as gov from "wasmx-gov/assembly/types"
 import { MsgDeposit, MsgEndBlock, MsgSubmitProposal, MsgVote, MsgVoteWeighted, QueryDepositRequest, QueryDepositsRequest, QueryParamsRequest, QueryProposalRequest, QueryProposalsRequest, QueryTallyResultRequest, QueryVoteRequest, QueryVotesRequest } from "wasmx-gov/assembly/types";
-import { Coefs, DepositVote, MODULE_NAME, MsgAddProposalOption, MsgInitGenesis, MsgSubmitProposalExtended, Params, Proposal, ProposalOption, ProposalVoteStatus, QueryProposalExtendedResponse, VoteStatus } from "./types";
+import { Coefs, DepositVote, MODULE_NAME, MsgAddProposalOption, MsgInitGenesis, MsgSubmitProposalExtended, Params, Proposal, ProposalOption, ProposalVoteStatus, QueryProposalExtendedResponse, QueryProposalsExtendedResponse, VoteStatus } from "./types";
 import { LoggerDebug, LoggerInfo, revert } from "./utils";
 import { addProposal, addProposalVote, getParams, getProposal, setParams, setProposal } from "./storage";
 import { bankSendCoinFromAccountToModule } from "wasmx-gov/assembly/actions";
 import { Coin, Event, EventAttribute } from "wasmx-env/assembly/types";
 import { AttributeKeyOption, AttributeKeyProposalID, AttributeKeyProposalMessages, AttributeKeyVoter, EventTypeProposalVote, EventTypeSubmitProposal } from "wasmx-gov/assembly/events";
-import { AttributeKeyOptionID, EventTypeAddProposalOption, EventTypeExecuteProposal } from "./events";
+import { AttributeKeyOptionID, AttributeKeyOptionWeights, EventTypeAddProposalOption, EventTypeExecuteProposal, EventTypeProposalOutcome } from "./events";
 
 // TODO this must be in initialization
 
@@ -312,6 +312,24 @@ export function GetProposals(req: QueryProposalsRequest): ArrayBuffer {
     return String.UTF8.encode(response)
 }
 
+// TODO pagination
+export function GetProposalsExtended(req: QueryProposalsRequest): ArrayBuffer {
+    const lasId = govstorage.getProposalIdLast()
+    const firstId = govstorage.getProposalIdFirst()
+    const count = govstorage.getProposalIdCount()
+    const proposals: Proposal[] = new Array<Proposal>(0)
+    for (let i = firstId; i <= lasId; i++) {
+        const prop = getProposal(i);
+        if(prop != null) {
+            // if (req.proposal_status != "" && gov.ProposalStatusMap.has(req.proposal_status) && prop.status == gov.ProposalStatusMap.get(req.proposal_status)) {
+                proposals.push(prop);
+            // }
+        }
+    }
+    const response = JSON.stringify<QueryProposalsExtendedResponse>(new QueryProposalsExtendedResponse(proposals, new gov.PageResponse(count)))
+    return String.UTF8.encode(response)
+}
+
 export function GetVote(req: QueryVoteRequest): ArrayBuffer {
     return new ArrayBuffer(0)
 }
@@ -341,6 +359,23 @@ export function GetTallyResult(req: QueryTallyResultRequest): ArrayBuffer {
 function tryExecuteProposal(proposal: Proposal): void {
     LoggerDebug("try execute proposal", ["proposal_id", proposal.id.toString(), "changed", proposal.vote_status.changed.toString()])
     if (!proposal.vote_status.changed) return;
+
+    const normalizedWeights = normalizeTally(proposal, getParams())
+    const weightsstr: string[] = new Array<string>(normalizedWeights.length)
+    for (let i = 0; i < normalizedWeights.length; i++) {
+        weightsstr[i] = normalizedWeights[i].toString();
+    }
+
+    wasmxw.emitCosmosEvents([
+        new Event(
+            EventTypeProposalOutcome,
+            [
+                new EventAttribute(AttributeKeyProposalID, proposal!.id.toString(), true),
+                new EventAttribute(AttributeKeyOptionID, proposal.winner.toString(), true),
+                new EventAttribute(AttributeKeyOptionWeights, JSON.stringify<string[]>(weightsstr), true),
+            ],
+        )
+    ]);
 
     const result = executeProposal(proposal);
     if (result != null) {

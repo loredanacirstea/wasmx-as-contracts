@@ -291,3 +291,14 @@ export class QueryProposalExtendedResponse {
         this.proposal = proposal
     }
 }
+
+// @ts-ignore
+@serializable
+export class QueryProposalsExtendedResponse {
+    proposals: Proposal[]
+    pagination: gov.PageResponse
+    constructor(proposals: Proposal[], pagination: gov.PageResponse) {
+        this.proposals = proposals
+        this.pagination = pagination
+    }
+}

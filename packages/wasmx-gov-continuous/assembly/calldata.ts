@@ -38,6 +38,7 @@ export class CallData {
 
     // extra
     GetProposalExtended: QueryProposalRequest | null = null;
+    GetProposalsExtended: QueryProposalsRequest | null = null;
 
 }
 
