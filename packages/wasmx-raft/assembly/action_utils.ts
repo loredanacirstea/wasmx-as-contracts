@@ -177,13 +177,53 @@ export function verifyMessageByAddr(addr: Bech32String, signatureStr: Base64Stri
     return wasmxw.ed25519Verify(pubKey.key, signatureStr, msg);
 }
 
-export function setFinalizedBlock(blockData: string, hash: string, txhashes: string[]): void {
-    const calldata = new wblockscalld.CallDataSetBlock(blockData, hash, txhashes);
+export function setFinalizedBlock(blockData: string, hash: string, txhashes: string[], indexedTopics: wblockscalld.IndexedTopic[]): void {
+    const calldata = new wblockscalld.CallDataSetBlock(blockData, hash, txhashes, indexedTopics);
     const calldatastr = `{"setBlock":${JSON.stringify<wblockscalld.CallDataSetBlock>(calldata)}}`;
     const resp = callStorage(calldatastr, false);
     if (resp.success > 0) {
         revert(`could not set finalized block: ${resp.data}`);
     }
+}
+
+export function getEventTopic(eventName: string, eventAttribute: string, eventValue: string): string {
+    return `${eventName}.${eventAttribute}='${eventValue}'`
+}
+
+export function extractIndexedTopics(finalizeResp: typestnd.ResponseFinalizeBlock, txhashes: string[]): wblockscalld.IndexedTopic[] {
+    const topicMap = new Map<string,string[]>()
+    const indexed: wblockscalld.IndexedTopic[] = []
+    for (let i = 0; i < finalizeResp.tx_results.length; i++) {
+        const res = finalizeResp.tx_results[i]
+        for (let j = 0; j < res.events.length; j++) {
+            const ev = res.events[j]
+            for (let n = 0; n < ev.attributes.length; n++) {
+                const attr = ev.attributes[n]
+                if (attr.index) {
+                    const topic = getEventTopic(ev.type, attr.key, attr.value)
+                    if (!topicMap.has(topic)) {
+                        topicMap.set(topic, [])
+                    }
+                    const values = topicMap.get(topic)
+                    values.push(txhashes[i]);
+                    topicMap.set(topic, values)
+                }
+            }
+            const topic = ev.type
+            if (!topicMap.has(topic)) {
+                topicMap.set(topic, [])
+            }
+            const values = topicMap.get(topic)
+            values.push(txhashes[i]);
+            topicMap.set(topic, values)
+        }
+
+    }
+    const keys = topicMap.keys()
+    for (let i = 0; i < keys.length; i++) {
+        indexed.push(new wblockscalld.IndexedTopic(keys[i], topicMap.get(keys[i])))
+    }
+    return indexed
 }
 
 export function getLastBlockIndex(): i64 {
@@ -229,16 +269,6 @@ export function getConsensusParams(): typestnd.ConsensusParams {
         new typestnd.ABCIParams(0),
     );
     return JSON.parse<typestnd.ConsensusParams>(resp.data);
-}
-
-// TODO remove - setFinalizedBlock already indexes transactions
-export function setIndexedTransaction(value: wblocks.IndexedTransaction, hash: string): void {
-    const calldata = new wblockscalld.CallDataSetIndexedTransactionByHash(hash, value);
-    const calldatastr = `{"setIndexedTransactionByHash":${JSON.stringify<wblockscalld.CallDataSetIndexedTransactionByHash>(calldata)}}`;
-    const resp = callStorage(calldatastr, false);
-    if (resp.success > 0) {
-        revert("could not set indexed transaction");
-    }
 }
 
 export function updateValidators(updates: typestnd.ValidatorUpdate[]): void {

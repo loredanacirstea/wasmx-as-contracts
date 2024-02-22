@@ -26,7 +26,7 @@ import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, AppendEn
 import { BigInt } from "wasmx-env/assembly/bn";
 import { appendLogEntry, getCommitIndex, getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getMatchIndexArray, getMempool, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, getVoteIndexArray, hasVotedFor, removeLogEntry, setCommitIndex, setCurrentNodeId, setCurrentState, setElectionTimeout, setLastApplied, setLastLogIndex, setMatchIndexArray, setMempool, setNextIndexArray, setNodeIPs, setTermId, setVoteIndexArray, setVotedFor } from "./storage";
 import * as cfg from "./config";
-import { callHookContract, checkValidatorsUpdate, getAllValidators, getCommitHash, getConsensusParams, getConsensusParamsHash, getCurrentValidator, getEvidenceHash, getFinalBlock, getHeaderHash, getLastBlockIndex, getLastLog, getMajority, getRandomInRange, getResultsHash, getTxsHash, getValidatorsHash, initChain, initializeIndexArrays, setConsensusParams, setFinalizedBlock, signMessage, updateConsensusParams, updateValidators, verifyMessage } from "./action_utils";
+import { callHookContract, checkValidatorsUpdate, extractIndexedTopics, getAllValidators, getCommitHash, getConsensusParams, getConsensusParamsHash, getCurrentValidator, getEvidenceHash, getFinalBlock, getHeaderHash, getLastBlockIndex, getLastLog, getMajority, getRandomInRange, getResultsHash, getTxsHash, getValidatorsHash, initChain, initializeIndexArrays, setConsensusParams, setFinalizedBlock, signMessage, updateConsensusParams, updateValidators, verifyMessage } from "./action_utils";
 
 // Docs: https://raft.github.io/raft.pdf
 
@@ -1049,7 +1049,9 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
 
     const blockData = JSON.stringify<wblocks.BlockEntry>(entryobj.data)
     // also indexes transactions
-    setFinalizedBlock(blockData, finalizeReq.hash, txhashes);
+    // index events: eventTopic => txhash[]
+    const indexedTopics = extractIndexedTopics(finalizeResp, txhashes)
+    setFinalizedBlock(blockData, finalizeReq.hash, txhashes, indexedTopics);
 
     // remove temporary block data
     removeLogEntry(entryobj.index);

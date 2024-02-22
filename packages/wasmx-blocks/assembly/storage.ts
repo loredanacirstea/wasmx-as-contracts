@@ -5,6 +5,7 @@ import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
 import {Base64String } from 'wasmx-env/assembly/types';
 import { parseInt64 } from "wasmx-utils/assembly/utils";
 import { LoggerInfo, LoggerDebug, revert } from './utils';
+import { IndexedTopic } from "./calldata";
 
 const BLOCK_LAST_INDEX = "block_last_index";
 const BLOCK_INDEX_KEY = "block_";
@@ -27,6 +28,18 @@ function keyIndexedTransaction(hash: string): string {
 
 function keyIndexedData(key: string): string {
     return DATA_INDEXER + key;
+}
+
+export function setTopic(indexedTopic: IndexedTopic): void {
+    const value = getIndexedData(indexedTopic.topic);
+    let values: string[] = [];
+    if (value != "") {
+        values = JSON.parse<string[]>(value);
+    }
+    for (let i = 0; i < indexedTopic.values.length; i++) {
+        values.push(indexedTopic.values[i])
+    }
+    setIndexedData(indexedTopic.topic, JSON.stringify<string[]>(values))
 }
 
 export function getIndexedData(key: string): string {

@@ -14,6 +14,7 @@ import {
     getBlockByHash,
     getIndexedTransactionByHash,
     getConsensusParams,
+    setTopic,
   } from './storage';
 
 // @ts-ignore
@@ -113,14 +114,27 @@ export class CallDataGetConsensusParams {
 
 // @ts-ignore
 @serializable
+export class IndexedTopic {
+    topic: string
+    values: string[]
+    constructor(topic: string,  values: string[]) {
+        this.topic = topic
+        this.values = values
+    }
+}
+
+// @ts-ignore
+@serializable
 export class CallDataSetBlock {
     value: Base64String
     hash: string
     txhashes: string[]
-    constructor(value: Base64String, hash: string, txhashes: string[]) {
+    indexed_topics: IndexedTopic[]
+    constructor(value: Base64String, hash: string, txhashes: string[], indexed_topics: IndexedTopic[]) {
         this.value = value;
         this.hash = hash
         this.txhashes = txhashes
+        this.indexed_topics = indexed_topics
     }
 }
 
@@ -174,8 +188,11 @@ export function getBlockByHashWrap(hash: string): ArrayBuffer {
     return String.UTF8.encode(value);
 }
 
-export function setBlockWrap(value: string, hash: string, txhashes: string[]): ArrayBuffer {
+export function setBlockWrap(value: string, hash: string, txhashes: string[], indexed_topics: IndexedTopic[]): ArrayBuffer {
     setBlock(value, hash, txhashes)
+    for (let i = 0; i < indexed_topics.length; i++) {
+        setTopic(indexed_topics[i])
+    }
     return new ArrayBuffer(0);
 }
 

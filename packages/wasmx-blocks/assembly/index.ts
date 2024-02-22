@@ -40,7 +40,7 @@ export function main(): void {
   } else if (calld.getIndexedData !== null) {
     result = getIndexedDataWrap(calld.getIndexedData!.key);
   } else if (calld.setBlock !== null) {
-    result = setBlockWrap(calld.setBlock!.value, calld.setBlock!.hash, calld.setBlock!.txhashes);
+    result = setBlockWrap(calld.setBlock!.value, calld.setBlock!.hash, calld.setBlock!.txhashes, calld.setBlock!.indexed_topics);
   } else if (calld.setConsensusParams !== null) {
     result = setConsensusParamsWrap(calld.setConsensusParams!.params);
   } else if (calld.setIndexedTransactionByHash !== null) {
