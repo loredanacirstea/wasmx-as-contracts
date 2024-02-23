@@ -1,5 +1,5 @@
 {
-  "name": "wasmx-ava-snowman",
+  "name": "wasmx-consensus-utils",
   "version": "0.0.1",
   "description": "",
   "main": "index.js",
@@ -13,7 +13,7 @@
   "author": "Loredana Cirstea",
   "license": "UNLICENSED",
   "devDependencies": {
-    "assemblyscript": "^0.27.23"
+    "assemblyscript": "^0.27.24"
   },
   "type": "module",
   "exports": {
@@ -24,14 +24,13 @@
   },
   "dependencies": {
     "as-base64": "^0.2.0",
+    "as-tally": "file:../as-tally",
     "json-as": "file:../../../as-json",
     "visitor-as": "^0.11.4",
     "wasmx-blocks": "file:../wasmx-blocks",
-    "wasmx-env": "file:../wasmx-env",
     "wasmx-consensus": "file:../wasmx-consensus",
-    "wasmx-consensus-utils": "file:../wasmx-consensus-utils",
-    "wasmx-utils": "file:../wasmx-utils",
+    "wasmx-env": "file:../wasmx-env",
     "wasmx-stake": "file:../wasmx-stake",
-    "xstate-fsm-as": "file:../xstate-fsm-as"
+    "wasmx-utils": "file:../wasmx-utils"
   }
 }

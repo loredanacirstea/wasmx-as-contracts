@@ -28,6 +28,7 @@
     "visitor-as": "^0.11.4",
     "wasmx-blocks": "file:../wasmx-blocks",
     "wasmx-consensus": "file:../wasmx-consensus",
+    "wasmx-consensus-utils": "file:../wasmx-consensus-utils",
     "wasmx-env": "file:../wasmx-env",
     "wasmx-p2p": "file:../wasmx-p2p",
     "wasmx-raft": "file:../wasmx-raft",

@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import { isAuthorized } from "wasmx-env/assembly/utils";
-import { Bech32String, parseInt64 } from "wasmx-utils/assembly/utils";
+import { Bech32String } from "wasmx-utils/assembly/types";
 import { CallRequest, CallResponse, CreateAccountRequest, Coin } from 'wasmx-env/assembly/types';
 import * as erc20 from "wasmx-erc20/assembly/types";
 import * as authtypes from "wasmx-auth/assembly/types";

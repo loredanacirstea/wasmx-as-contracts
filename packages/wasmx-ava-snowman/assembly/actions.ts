@@ -18,7 +18,7 @@ import {
   import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as fsm from 'xstate-fsm-as/assembly/storage';
-import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, parseUint8ArrayToU32BigEndian } from "wasmx-utils/assembly/utils";
+import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, parseUint8ArrayToU32BigEndian, base64ToHex, hex64ToBase64 } from "wasmx-utils/assembly/utils";
 import { getParamsOrEventParams, actionParamsToMap } from 'xstate-fsm-as/assembly/utils';
 import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
 import {
@@ -62,8 +62,8 @@ import {
     resetBlocks,
     resetConfidences as _resetConfidences,
 } from './storage';
-import { base64ToHex, hex64ToBase64 } from './utils';
 import { BigInt } from "wasmx-env/assembly/bn";
+import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
 
 /// guards
 
@@ -665,100 +665,6 @@ function appendLogInternalVerified(processReq: typestnd.RequestProcessProposal, 
     return entry
 }
 
-// ValidatorSet.Validators hash (ValidatorInfo[] hash)
-// TODO cometbft protobuf encodes cmtproto.SimpleValidator
-function getValidatorsHash1(validators: typestnd.ValidatorInfo[]): string {
-    let data = new Array<string>(validators.length);
-    for (let i = 0; i < validators.length; i++) {
-        // hex
-        const pub_key = hexToUint8Array(validators[i].pub_key);
-        const power = i64ToUint8ArrayBE(validators[i].voting_power);
-        const newdata = new Uint8Array(pub_key.length + power.length);
-        newdata.set(pub_key, 0);
-        newdata.set(power, pub_key.length);
-        data[i] = uint8ArrayToHex(newdata);
-    }
-    return wasmxw.MerkleHash(data);
-}
-
-function getValidatorsHash(validators: staking.Validator[]): string {
-    let data = new Array<string>(validators.length);
-    for (let i = 0; i < validators.length; i++) {
-        // hex
-        const pub_key = hexToUint8Array(validators[i].consensus_pubkey.key);
-        const tokens = validators[i].tokens.toU8ArrayBe()
-        const newdata = new Uint8Array(pub_key.length + tokens.length);
-        newdata.set(pub_key, 0);
-        newdata.set(tokens, pub_key.length);
-        data[i] = uint8ArrayToHex(newdata);
-    }
-    return wasmxw.MerkleHash(data);
-}
-
-// Txs.Hash() -> [][]byte merkle.HashFromByteSlices
-// base64
-export function getTxsHash(txs: string[]): string {
-    return wasmxw.MerkleHash(txs);
-}
-
-// Hash returns a hash of a subset of the parameters to store in the block header.
-// Only the Block.MaxBytes and Block.MaxGas are included in the hash.
-// This allows the ConsensusParams to evolve more without breaking the block
-// protocol. No need for a Merkle tree here, just a small struct to hash.
-// cometbft: cmtproto.HashedParams
-export function getConsensusParamsHash(params: typestnd.ConsensusParams): string {
-    const value = JSON.stringify<typestnd.BlockParams>(params.block);
-    const hash = wasmx.sha256(String.UTF8.encode(value));
-    return encodeBase64(Uint8Array.wrap(hash));
-}
-
-// []Evidence hash
-// TODO
-export function getEvidenceHash(params: typestnd.Evidence): string {
-    return wasmxw.MerkleHash([]);
-}
-
-export function getCommitHash(lastCommit: typestnd.BlockCommit): string {
-    // TODO MerkleHash(lastCommit.signatures)
-    return wasmxw.MerkleHash([]);
-}
-
-export function getResultsHash(results: typestnd.ExecTxResult[]): string {
-    const data = new Array<string>(results.length);
-    for (let i = 0; i < results.length; i++) {
-        data[i] = encodeBase64(Uint8Array.wrap(String.UTF8.encode(JSON.stringify<typestnd.ExecTxResult>(results[i]))));
-    }
-    return wasmxw.MerkleHash(data);
-}
-
-// Hash returns the hash of the header.
-// It computes a Merkle tree from the header fields
-// ordered as they appear in the Header.
-// Returns nil if ValidatorHash is missing,
-// since a Header is not valid unless there is
-// a ValidatorsHash (corresponding to the validator set).
-function getHeaderHash(header: typestnd.Header): string {
-    const versionbz = String.UTF8.encode(JSON.stringify<typestnd.VersionConsensus>(header.version));
-    const blockidbz = String.UTF8.encode(JSON.stringify<typestnd.BlockID>(header.last_block_id));
-    const data = [
-        encodeBase64(Uint8Array.wrap(versionbz)),
-        encodeBase64(Uint8Array.wrap(String.UTF8.encode(header.chain_id))),
-        encodeBase64(i64ToUint8ArrayBE(header.height)),
-        encodeBase64(Uint8Array.wrap(String.UTF8.encode(header.time))),
-        encodeBase64(Uint8Array.wrap(blockidbz)),
-        hex64ToBase64(header.last_commit_hash),
-        hex64ToBase64(header.data_hash),
-        hex64ToBase64(header.validators_hash),
-        hex64ToBase64(header.next_validators_hash),
-        hex64ToBase64(header.consensus_hash),
-        hex64ToBase64(header.app_hash),
-        hex64ToBase64(header.last_results_hash),
-        hex64ToBase64(header.evidence_hash),
-        hex64ToBase64(header.proposer_address), // TODO transform hex to base64
-    ]
-    return wasmxw.MerkleHash(data);
-}
-
 function getRandomInRangeI64(min: i64, max: i64): i64 {
     const rand = Math.random()
     const numb = Math.floor(rand * f64((max - min + 1)))
@@ -893,7 +799,9 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
 
     const blockData = JSON.stringify<wblocks.BlockEntry>(entryobj.data)
     // also indexes transactions
-    setFinalizedBlock(blockData, finalizeReq.hash, txhashes);
+    // index events: eventTopic => txhash[]
+    const indexedTopics = extractIndexedTopics(finalizeResp, txhashes)
+    setFinalizedBlock(blockData, finalizeReq.hash, txhashes, indexedTopics);
 
     // remove temporary block data
     removeLogEntry(entryobj.index);
@@ -1020,8 +928,8 @@ function getFinalBlock(index: i64): string {
     return resp.data;
 }
 
-function setFinalizedBlock(blockData: string, hash: string, txhashes: string[]): void {
-    const calldata = new wblockscalld.CallDataSetBlock(blockData, hash, txhashes);
+export function setFinalizedBlock(blockData: string, hash: string, txhashes: string[], indexedTopics: wblockscalld.IndexedTopic[]): void {
+    const calldata = new wblockscalld.CallDataSetBlock(blockData, hash, txhashes, indexedTopics);
     const calldatastr = `{"setBlock":${JSON.stringify<wblockscalld.CallDataSetBlock>(calldata)}}`;
     const resp = callStorage(calldatastr, false);
     if (resp.success > 0) {
