@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { MsgDeposit, MsgEndBlock, MsgSubmitProposal, MsgVote, MsgVoteWeighted, QueryDepositRequest, QueryDepositsRequest, QueryParamsRequest, QueryProposalRequest, QueryProposalsRequest, QueryTallyResultRequest, QueryVoteRequest, QueryVotesRequest } from 'wasmx-gov/assembly/types';
-import { MsgInitGenesis, Params, MsgSubmitProposalExtended, MsgAddProposalOption, DepositVote } from "./types"
+import { MsgInitGenesis, Params, MsgSubmitProposalExtended, MsgAddProposalOption, DepositVote, QueryNextWinnerThreshold } from "./types"
 import { BigInt } from "wasmx-env/assembly/bn";
 
 // @ts-ignore
@@ -39,7 +39,7 @@ export class CallData {
     // extra
     GetProposalExtended: QueryProposalRequest | null = null;
     GetProposalsExtended: QueryProposalsRequest | null = null;
-
+    GetNextWinnerThreshold: QueryNextWinnerThreshold | null = null;
 }
 
 export function getCallDataWrap(): CallData {

@@ -109,14 +109,16 @@ export class ProposalOption {
     messages: Base64String[]
     amount: BigInt
     arbitration_amount: BigInt
+    weight: BigInt
     title: string
     summary: string
     metadata: string
-    constructor(proposer: Bech32String, messages: Base64String[], amount: BigInt, arbitration_amount: BigInt, title: string, summary: string, metadata: string) {
+    constructor(proposer: Bech32String, messages: Base64String[], amount: BigInt, arbitration_amount: BigInt,  weight: BigInt, title: string, summary: string, metadata: string) {
         this.proposer = proposer
         this.messages = messages
         this.amount = amount
         this.arbitration_amount = arbitration_amount
+        this.weight = weight
         this.title = title
         this.summary = summary
         this.metadata = metadata
@@ -300,5 +302,23 @@ export class QueryProposalsExtendedResponse {
     constructor(proposals: Proposal[], pagination: gov.PageResponse) {
         this.proposals = proposals
         this.pagination = pagination
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryNextWinnerThreshold {
+    proposal_id: i64
+    constructor(proposal_id: i64) {
+        this.proposal_id = proposal_id
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryNextWinnerThresholdResponse {
+    weight: BigInt
+    constructor(weight: BigInt) {
+        this.weight = weight
     }
 }

@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { GetParams } from "wasmx-gov/assembly/actions";
 import { CallData, getCallDataInitialize, getCallDataWrap } from './calldata';
-import { EndBlock, DoDeposit, InitGenesis, SubmitProposal, VoteWeighted, GetProposal, DoVote, SubmitProposalExtended, AddProposalOption, DoDepositVote, GetProposals, GetTallyResult, GetProposalExtended, GetProposalsExtended } from "./actions";
+import { EndBlock, DoDeposit, InitGenesis, SubmitProposal, VoteWeighted, GetProposal, DoVote, SubmitProposalExtended, AddProposalOption, DoDepositVote, GetProposals, GetTallyResult, GetProposalExtended, GetProposalsExtended, GetNextWinnerThreshold } from "./actions";
 import { revert } from "./utils";
 import { Params } from "./types";
 import { setParams } from "./storage";
@@ -46,6 +46,8 @@ export function main(): void {
     result = GetProposalExtended(calld.GetProposalExtended!);
   } else if (calld.GetTallyResult !== null) {
     result = GetTallyResult(calld.GetTallyResult!);
+  } else if (calld.GetNextWinnerThreshold !== null) {
+    result = GetNextWinnerThreshold(calld.GetNextWinnerThreshold!);
   } else if (calld.GetParams !== null) {
     result = GetParams(calld.GetParams!);
   } else if (calld.InitGenesis !== null) {

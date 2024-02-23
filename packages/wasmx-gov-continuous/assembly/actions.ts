@@ -5,7 +5,7 @@ import { BigInt } from "wasmx-env/assembly/bn"
 import * as govstorage from "wasmx-gov/assembly/storage"
 import * as gov from "wasmx-gov/assembly/types"
 import { MsgDeposit, MsgEndBlock, MsgSubmitProposal, MsgVote, MsgVoteWeighted, QueryDepositRequest, QueryDepositsRequest, QueryParamsRequest, QueryProposalRequest, QueryProposalsRequest, QueryTallyResultRequest, QueryVoteRequest, QueryVotesRequest } from "wasmx-gov/assembly/types";
-import { Coefs, DepositVote, MODULE_NAME, MsgAddProposalOption, MsgInitGenesis, MsgSubmitProposalExtended, Params, Proposal, ProposalOption, ProposalVoteStatus, QueryProposalExtendedResponse, QueryProposalsExtendedResponse, VoteStatus } from "./types";
+import { Coefs, DepositVote, MODULE_NAME, MsgAddProposalOption, MsgInitGenesis, MsgSubmitProposalExtended, Params, Proposal, ProposalOption, ProposalVoteStatus, QueryNextWinnerThreshold, QueryNextWinnerThresholdResponse, QueryProposalExtendedResponse, QueryProposalsExtendedResponse, VoteStatus } from "./types";
 import { LoggerDebug, LoggerInfo, revert } from "./utils";
 import { addProposal, addProposalVote, getParams, getProposal, setParams, setProposal } from "./storage";
 import { bankSendCoinFromAccountToModule } from "wasmx-gov/assembly/actions";
@@ -15,7 +15,7 @@ import { AttributeKeyOptionID, AttributeKeyOptionWeights, EventTypeAddProposalOp
 
 // TODO this must be in initialization
 
-const OPTION_ID_START = 1
+const OPTION_ID_START = 2
 
 export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
     LoggerInfo("initiating genesis", [])
@@ -108,8 +108,10 @@ export function SubmitProposalInternal(req: MsgSubmitProposalExtended, localpara
         revert(`proposal must have a deposit`)
     }
 
-    const proposalOption = new ProposalOption(req.proposer, req.messages, proposalCoin.amount, arbitrationAmount, req.optionTitle, req.optionSummary, req.optionMetadata);
-    const emptyOption = new ProposalOption("", [], BigInt.zero(), BigInt.zero(), "", "", "")
+    const proposalOption = new ProposalOption(req.proposer, req.messages, proposalCoin.amount, arbitrationAmount, BigInt.zero(), req.optionTitle, req.optionSummary, req.optionMetadata);
+    const thisaddr = wasmxw.getAddress()
+    const statusQuoOption = new ProposalOption(thisaddr, [], BigInt.zero(), BigInt.zero(), BigInt.zero(), "status quo", "The outcome of this proposal is the current status quo", "")
+    const unenforceableOption = new ProposalOption(thisaddr, [], BigInt.zero(), BigInt.zero(), BigInt.zero(), "unenforceable", "This proposal is unenforceable for reasons including but not limited to: being unclear, too broad, already covered by previous proposals, illegal.", "")
 
     const metadata = req.metadata.slice(0, i32(Math.min(gov.MaxMetadataLen, req.metadata.length)))
 
@@ -130,7 +132,7 @@ export function SubmitProposalInternal(req: MsgSubmitProposalExtended, localpara
         req.x,
         req.y,
         proposalCoin.denom,
-        [emptyOption, proposalOption],
+        [statusQuoOption, unenforceableOption, proposalOption],
         new ProposalVoteStatus(0, 0, 0, false),
         0, // winner
     )
@@ -270,6 +272,23 @@ export function DoDepositVote(req: DepositVote): ArrayBuffer {
 }
 
 /// queries
+
+export function GetNextWinnerThreshold(req: QueryNextWinnerThreshold): ArrayBuffer {
+    let weight = BigInt.zero();
+    const proposal = getProposal(req.proposal_id)
+    if (proposal != null) {
+        const params = getParams()
+        const normalizedWeights = normalizeTally(proposal, params)
+        if (normalizedWeights.length > 0) {
+            // max weight index
+            const index = u32(getMaxFromArray(normalizedWeights));
+            const highestWeight = normalizedWeights[index];
+            weight = highestWeight.mul(BigInt.fromU64(proposal.x)).div(BigInt.fromU64(proposal.y));
+        }
+
+    }
+    return String.UTF8.encode(JSON.stringify<QueryNextWinnerThresholdResponse>(new QueryNextWinnerThresholdResponse(weight)))
+}
 
 export function GetProposal(req: QueryProposalRequest): ArrayBuffer {
     const proposal = getProposal(req.proposal_id)
@@ -412,7 +431,12 @@ function executeProposal(proposal: Proposal): gov.Response {
 
 function setProposalVoteStatus(proposal: Proposal, params: Params): Proposal {
     proposal.vote_status.changed = false;
-    const nextStatus = getProposalVoteStatus(proposal, params)
+
+    const normalizedWeights = normalizeTally(proposal, params)
+    for (let i = 0; i < normalizedWeights.length; i++) {
+        proposal.options[i].weight = normalizedWeights[i];
+    }
+    const nextStatus = getProposalVoteStatus(proposal, params, normalizedWeights)
     proposal.vote_status = nextStatus;
     const winner = getWinner(proposal.winner, nextStatus);
     if (proposal.winner != winner) {
@@ -429,10 +453,8 @@ function getWinner (prevWinner: u32, nextStatus: ProposalVoteStatus): u32 {
     return prevWinner;
 }
 
-function getProposalVoteStatus(proposal: Proposal, params: Params): ProposalVoteStatus {
-    const normalizedWeights = normalizeTally(proposal, params)
+function getProposalVoteStatus(proposal: Proposal, params: Params, normalizedWeights: BigInt[]): ProposalVoteStatus {
     if (normalizedWeights.length == 0) return new ProposalVoteStatus(0, 0, 0, false);
-
     // max weight index
     const xi = u32(getMaxFromArray(normalizedWeights));
     // gets the second max
