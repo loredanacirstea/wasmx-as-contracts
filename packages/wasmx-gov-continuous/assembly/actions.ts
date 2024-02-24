@@ -73,7 +73,7 @@ export function SubmitProposalExtended(req: MsgSubmitProposalExtended): ArrayBuf
             hasArbitration = true;
         }
     }
-    if (!hasArbitration) {
+    if (!hasArbitration && (req.x != localparams.defaultX || req.y != localparams.defaultY)) {
         revert(`only arbiters can propose custom curves for proposals`)
     }
     return SubmitProposalInternal(req, localparams);
@@ -109,9 +109,8 @@ export function SubmitProposalInternal(req: MsgSubmitProposalExtended, localpara
     }
 
     const proposalOption = new ProposalOption(req.proposer, req.messages, proposalCoin.amount, arbitrationAmount, BigInt.zero(), req.optionTitle, req.optionSummary, req.optionMetadata);
-    const thisaddr = wasmxw.getAddress()
-    const statusQuoOption = new ProposalOption(thisaddr, [], BigInt.zero(), BigInt.zero(), BigInt.zero(), "status quo", "The outcome of this proposal is the current status quo", "")
-    const unenforceableOption = new ProposalOption(thisaddr, [], BigInt.zero(), BigInt.zero(), BigInt.zero(), "unenforceable", "This proposal is unenforceable for reasons including but not limited to: being unclear, too broad, already covered by previous proposals, illegal.", "")
+    const options = defaultProposalOptions();
+    options.push(proposalOption);
 
     const metadata = req.metadata.slice(0, i32(Math.min(gov.MaxMetadataLen, req.metadata.length)))
 
@@ -132,7 +131,7 @@ export function SubmitProposalInternal(req: MsgSubmitProposalExtended, localpara
         req.x,
         req.y,
         proposalCoin.denom,
-        [statusQuoOption, unenforceableOption, proposalOption],
+        options,
         new ProposalVoteStatus(0, 0, 0, false),
         0, // winner
     )
@@ -415,6 +414,13 @@ function tryExecuteProposal(proposal: Proposal): void {
         }
         setProposal(proposal.id, proposal)
     }
+}
+
+function defaultProposalOptions(): ProposalOption[] {
+    const thisaddr = wasmxw.getAddress()
+    const statusQuoOption = new ProposalOption(thisaddr, [], BigInt.zero(), BigInt.zero(), BigInt.zero(), "status quo", "The outcome of this proposal is the current status quo", "")
+    const unenforceableOption = new ProposalOption(thisaddr, [], BigInt.zero(), BigInt.zero(), BigInt.zero(), "unenforceable", "This proposal is unenforceable for reasons including but not limited to: being unclear, too broad, already covered by previous proposals, illegal.", "")
+    return [statusQuoOption, unenforceableOption]
 }
 
 function executeProposal(proposal: Proposal): gov.Response {
