@@ -1,0 +1,38 @@
+{
+  "name": "wasmx-gov-continuous-cycle",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node tests",
+    "asbuild:debug": "asc assembly/index.ts --target debug",
+    "asbuild:release": "asc assembly/index.ts --target release",
+    "asbuild": "npm run asbuild:debug && npm run asbuild:release",
+    "start": "npx serve ."
+  },
+  "author": "Loredana Cirstea",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "assemblyscript": "^0.27.24"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./build/release.js",
+      "types": "./build/release.d.ts"
+    }
+  },
+  "dependencies": {
+    "as-base64": "^0.2.0",
+    "json-as": "file:../../../as-json",
+    "visitor-as": "^0.11.4",
+    "wasmx-bank": "file:../wasmx-bank",
+    "wasmx-consensus": "file:../wasmx-consensus",
+    "wasmx-blocks": "file:../wasmx-blocks",
+    "wasmx-erc20": "file:../wasmx-erc20",
+    "wasmx-gov": "file:../wasmx-gov",
+    "wasmx-gov-continuous": "file:../wasmx-gov-continuous",
+    "wasmx-env": "file:../wasmx-env",
+    "wasmx-utils": "file:../wasmx-utils"
+  }
+}
