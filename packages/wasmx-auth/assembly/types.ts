@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import { Base64String, Bech32String, Coin } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn"
-import { stringToBase64 } from "./utils";
+import { stringToBase64 } from "wasmx-utils/assembly/utils";
 
 export const MODULE_NAME = "auth"
 

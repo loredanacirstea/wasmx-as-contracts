@@ -87,3 +87,11 @@ export function base64ToHex(value: Base64String): HexString {
 export function hex64ToBase64(value: HexString): Base64String {
     return encodeBase64(hexToUint8Array(value))
 }
+
+export function base64ToString(value: Base64String): string {
+    return String.UTF8.decode(decodeBase64(value).buffer)
+}
+
+export function stringToBase64(value: string): Base64String {
+    return encodeBase64(Uint8Array.wrap(String.UTF8.encode(value)))
+}

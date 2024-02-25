@@ -1,9 +1,9 @@
 import { JSON } from "json-as/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { BaseAccount, BaseAccountTypeName, ModuleAccount, ModuleAccountTypeName, Params, AnyAccount } from "./types";
-import { parseInt64 } from "wasmx-utils/assembly/utils";
+import { parseInt64, base64ToString, stringToBase64 } from "wasmx-utils/assembly/utils";
 import { Bech32String } from "wasmx-env/assembly/types";
-import { LoggerDebug, base64ToString, stringToBase64 } from "./utils";
+import { LoggerDebug } from "./utils";
 
 export const SPLIT = "."
 export const PARAM_KEY = "params"
