@@ -14,6 +14,7 @@ import {
   RAFT_Full,
   TENDERMINT_1,
   AVA_SNOWMAN,
+  RAFT_P2P,
 } from './data.js';
 
 let currentState, value;
@@ -353,6 +354,11 @@ async function runTests() {
     await runFn("instantiate", machine, {initialState: machineConfig.initial, context: machineConfig.context})
     // await runFnOwner("run", machine, {event: {type: "query", params: [{key: "hash", value: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="}]}});
     // await runFnOwner("run", machine, {event: {type: "newTransaction", params: [{key: "transaction", value: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="}]}});
+
+    // RAFTP2P
+    machineConfig = parseMachine(RAFT_P2P);
+    console.log("==RAFTP2P==");
+    console.log(JSON.stringify(machineConfig));
 }
 
 runTests();

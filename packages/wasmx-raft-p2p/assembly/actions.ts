@@ -33,6 +33,32 @@ import { PROTOCOL_ID } from "./types";
 import { checkCommits, prepareAppendEntry, prepareAppendEntryMessage } from "wasmx-raft/assembly/actions";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
 
+export function connectPeers(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const state = getCurrentState()
+    const valid = getCurrentValidator()
+    const index = getCurrentNodeId();
+    const nodeInfos = getNodeIPs();
+    const node = nodeInfos[index];
+
+    const reqstart = new p2ptypes.StartNodeWithIdentityRequest(node.node.port, PROTOCOL_ID, state.validator_privkey);
+    const resp = p2pw.StartNodeWithIdentity(reqstart);
+    if (resp.error != "") {
+        revert(`start node with identity: ${resp.error}`)
+    }
+    for (let i = 0; i < nodeInfos.length; i++) {
+        if (i == index) {
+            // don't connect with ourselves
+            continue;
+        }
+        const p2paddr = getP2PAddress(nodeInfos[i])
+        const req = new p2ptypes.ConnectPeerRequest(PROTOCOL_ID, p2paddr)
+        LoggerDebug(`trying to connect to peer`, ["p2paddress", p2paddr, "address", nodeInfos[i].address]);
+        p2pw.ConnectPeer(req);
+    }
+}
 
 export function setupNode(
     params: ActionParam[],
@@ -102,7 +128,6 @@ export function setupNode(
     initChain(data);
     initializeIndexArrays(peers.length);
 }
-
 
 // forward transactions to leader
 export function forwardTxsToLeader(

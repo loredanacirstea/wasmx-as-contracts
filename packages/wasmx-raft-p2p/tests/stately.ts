@@ -171,7 +171,7 @@ export const machine = createMachine(
             always: [
               {
                 target: "Leader",
-                guard: "isVotedLeader",
+                cond: "isVotedLeader",
               },
               {
                 target: "Follower",
@@ -299,7 +299,7 @@ export const machine = createMachine(
         },
       },
     },
-    types: {
+    schema: {
       events: {} as
         | { type: "" }
         | { type: "stop" }
@@ -376,47 +376,49 @@ export const machine = createMachine(
         heartbeatTimeout: number;
       },
     },
+    predictableActionArguments: true,
+    preserveActionOrder: true,
   },
   {
     actions: {
-      vote: ({ context, event }) => {},
-      setup: ({ context, event }) => {},
-      selfVote: ({ context, event }) => {},
-      setupNode: ({ context, event }) => {},
-      addToMempool: ({ context, event }) => {},
-      commitBlocks: ({ context, event }) => {},
-      connectPeers: ({ context, event }) => {},
-      proposeBlock: ({ context, event }) => {},
-      registeredCheck: ({ context, event }) => {},
-      sendVoteRequests: ({ context, event }) => {},
-      sendAppendEntries: ({ context, event }) => {},
-      forwardTxsToLeader: ({ context, event }) => {},
-      initializeNextIndex: ({ context, event }) => {},
-      updateNodeAndReturn: ({ context, event }) => {},
-      incrementCurrentTerm: ({ context, event }) => {},
-      initializeMatchIndex: ({ context, event }) => {},
-      processAppendEntries: ({ context, event }) => {},
-      cancelActiveIntervals: ({ context, event }) => {},
-      sendHeartbeatResponse: ({ context, event }) => {},
+      vote: (context, event) => {},
+      setup: (context, event) => {},
+      selfVote: (context, event) => {},
+      setupNode: (context, event) => {},
+      addToMempool: (context, event) => {},
+      commitBlocks: (context, event) => {},
+      connectPeers: (context, event) => {},
+      proposeBlock: (context, event) => {},
+      registeredCheck: (context, event) => {},
+      sendVoteRequests: (context, event) => {},
+      sendAppendEntries: (context, event) => {},
+      forwardTxsToLeader: (context, event) => {},
+      initializeNextIndex: (context, event) => {},
+      updateNodeAndReturn: (context, event) => {},
+      incrementCurrentTerm: (context, event) => {},
+      initializeMatchIndex: (context, event) => {},
+      processAppendEntries: (context, event) => {},
+      cancelActiveIntervals: (context, event) => {},
+      sendHeartbeatResponse: (context, event) => {},
       setRandomElectionTimeout: function ({ context, event }, params) {
         // Add your action code here
       },
-      sendNewTransactionResponse: ({ context, event }) => {},
-      receiveUpdateNodeResponse: ({ context, event }) => {},
-      receiveVoteResponse: ({ context, event }) => {},
-      receiveAppendEntryResponse: ({ context, event }) => {},
+      sendNewTransactionResponse: (context, event) => {},
+      receiveUpdateNodeResponse: (context, event) => {},
+      receiveVoteResponse: (context, event) => {},
+      receiveAppendEntryResponse: (context, event) => {},
     },
-    actors: {},
+    services: {},
     guards: {
-      isVotedLeader: ({ context, event }, params) => {
+      isVotedLeader: (context, event) => {
         return false;
       },
     },
     delays: {
-      heartbeatTimeout: ({ context, event }) => {
+      heartbeatTimeout: (context, event) => {
         return 1000;
       },
-      electionTimeout: ({ context, event }) => {
+      electionTimeout: (context, event) => {
         return 1000;
       },
     },
