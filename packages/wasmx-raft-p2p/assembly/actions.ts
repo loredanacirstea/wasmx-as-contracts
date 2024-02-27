@@ -269,10 +269,15 @@ export function sendAppendEntries(
     const nodeId = getCurrentNodeId();
     const ips = getNodeIPs();
     LoggerDebug("diseminate entries...", ["nodeId", nodeId.toString(), "ips", JSON.stringify<Array<NodeInfo>>(ips)])
+    let otherNodesCount = 0;
     for (let i = 0; i < ips.length; i++) {
         // don't send to Leader or removed nodes
         if (nodeId === i || ips[i].node.ip.length == 0) continue;
         sendAppendEntry(i, ips[i], ips);
+        otherNodesCount += 1;
+    }
+    if (otherNodesCount == 0) {
+        checkCommits();
     }
 }
 
@@ -329,7 +334,7 @@ export function receiveAppendEntryResponse(
     // const termId = getTermId();
     if (resp.success) {
         const nextIndexPerNode = getNextIndexArray();
-        const nextIndex = nextIndexPerNode.at(nodeId);
+        // const nextIndex = nextIndexPerNode.at(nodeId);
         nextIndexPerNode[nodeId] = resp.lastIndex;
         setNextIndexArray(nextIndexPerNode);
     }
