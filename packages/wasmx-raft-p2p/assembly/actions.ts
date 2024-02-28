@@ -30,7 +30,7 @@ import { appendLogEntry, getCommitIndex, getCurrentNodeId, getCurrentState, getL
 import * as cfg from "wasmx-raft/assembly/config";
 import { callHookContract, checkValidatorsUpdate, getAllValidators, getConsensusParams, getCurrentValidator, getFinalBlock, getLastBlockIndex, getLastLog, getMajority, getRandomInRange, initChain, initializeIndexArrays, setConsensusParams, setFinalizedBlock, signMessage, updateConsensusParams, updateValidators, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
 import { PROTOCOL_ID } from "./types";
-import { checkCommits, prepareAppendEntry, prepareAppendEntryMessage } from "wasmx-raft/assembly/actions";
+import { checkCommits, prepareAppendEntry, prepareAppendEntryMessage, voteInternal } from "wasmx-raft/assembly/actions";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
 
 export function connectPeers(
@@ -160,10 +160,9 @@ export function forwardTxsToLeader(
     for (let i = 0; i < limit; i++) {
         const tx = txs[0];
         const msgstr = `{"run":{"event":{"type":"newTransaction","params":[{"key": "transaction","value":"${tx}"}]}}}`
-        const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
         const peers = [getP2PAddress(nodeInfo)]
         LoggerDebug("forwarding tx to leader", ["nodeId", nodeId.toString(), "nodeIp", nodeInfo.node.ip, "tx_batch_index", i.toString()])
-        p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(msgBase64, PROTOCOL_ID, peers))
+        p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(msgstr, PROTOCOL_ID, peers))
     }
 }
 
@@ -195,13 +194,11 @@ function sendVoteRequest(nodeId: i32, node: NodeInfo, request: VoteRequest, term
     // const msgstr = `{"run":{"event":{"type":"receiveVoteRequest","params":[{"key":"termId","value":"${request.termId.toString()}"},{"key":"candidateId","value":"${request.candidateId.toString()}"},{"key":"lastLogIndex","value":"${request.lastLogIndex.toString()}"},{"key":"lastLogTerm","value":"${request.lastLogTerm.toString()}"}]}}}`
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
     const msgstr = `{"run":{"event":{"type":"receiveVoteRequest","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
-    const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
 
     LoggerDebug("sending vote request", ["nodeId", nodeId.toString(), "nodeIp", node.node.ip, "termId", termId.toString(), "data", datastr])
 
     const peers = [getP2PAddress(node)]
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(msgBase64, PROTOCOL_ID, peers))
-
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(msgstr, PROTOCOL_ID, peers))
 }
 
 export function receiveVoteResponse(
@@ -210,7 +207,7 @@ export function receiveVoteResponse(
 ): void {
     const p = getParamsOrEventParams(params, event);
     const ctx = actionParamsToMap(p);
-    if (!ctx.has("data")) {
+    if (!ctx.has("entry")) {
         revert("no data found");
     }
     if (!ctx.has("signature")) {
@@ -221,7 +218,7 @@ export function receiveVoteResponse(
     }
     const signature = ctx.get("signature")
     const sender = ctx.get("sender")
-    const data = ctx.get("data")
+    const data = ctx.get("entry")
     const resp = JSON.parse<VoteResponse>(data)
     LoggerDebug("received vote response", ["sender", sender, "data", data])
 
@@ -292,12 +289,12 @@ export function sendAppendEntry(
     const nextIndex = nextIndexPerNode.at(nodeId);
     let lastIndex = getLastLogIndex();
     const data = prepareAppendEntry(nodeIps, nextIndex, lastIndex);
-    const msgBase64 = prepareAppendEntryMessage(nodeId, nextIndex, lastIndex, node, data);
+    const msgstr = prepareAppendEntryMessage(nodeId, nextIndex, lastIndex, node, data);
 
     // we send the request to the same contract
     // const contract = wasmx.getAddress();
     const peers = [getP2PAddress(node)]
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(msgBase64, PROTOCOL_ID, peers))
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(msgstr, PROTOCOL_ID, peers))
     // Uint8Array.wrap(contract)
 }
 
@@ -338,6 +335,60 @@ export function receiveAppendEntryResponse(
         nextIndexPerNode[nodeId] = resp.lastIndex;
         setNextIndexArray(nextIndexPerNode);
     }
+}
+
+// received vote request
+export function vote(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    let entryBase64: string = "";
+    let signature: string = "";
+    for (let i = 0; i < event.params.length; i++) {
+        if (event.params[i].key === "entry") {
+            entryBase64 = event.params[i].value;
+            continue;
+        }
+        if (event.params[i].key === "signature") {
+            signature = event.params[i].value;
+            continue;
+        }
+    }
+    if (entryBase64 === "") {
+        revert("vote: empty entry");
+    }
+    if (signature === "") {
+        revert("vote: empty signature");
+    }
+    const entryStr = String.UTF8.decode(decodeBase64(entryBase64).buffer);
+    let entry: VoteRequest = JSON.parse<VoteRequest>(entryStr);
+    // verify signature
+    const isSender = verifyMessage(entry.candidateId, signature, entryStr);
+    if (!isSender) {
+        LoggerError("signature verification failed for VoteRequest", ["candidateId", entry.candidateId.toString(), "termId", entry.termId.toString()]);
+        // TODO have an error for the grpc vote request
+        return;
+    }
+
+    const response = voteInternal(entry.termId, entry.candidateId, entry.lastLogIndex, entry.lastLogTerm);
+
+    // send response
+    const nodeId = entry.candidateId;
+    const nodeIps = getNodeIPs();
+    const nodeInfo = nodeIps[nodeId];
+    const peers = [getP2PAddress(nodeInfo)]
+
+    const datastr = JSON.stringify<VoteResponse>(response);
+    const signatureResp = signMessage(datastr);
+
+    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
+    const msgstr = `{"run":{"event":{"type":"receiveVoteResponse","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signatureResp}"}]}}}`
+
+    LoggerDebug("sending vote response", ["to", entry.candidateId.toString(), "data", datastr])
+
+    // receiveVoteResponse
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(msgstr, PROTOCOL_ID, peers))
+
 }
 
 function getP2PAddress(nodeInfo: NodeInfo): string {

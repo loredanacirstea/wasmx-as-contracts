@@ -3,7 +3,8 @@ import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap } from "wasmx-raft/assembly/calldata";
 import * as actions from "wasmx-raft/assembly/actions";
 import { revert } from "./utils";
-import { commitBlocks, connectPeers, forwardTxsToLeader, receiveVoteResponse, sendAppendEntries, sendVoteRequests, setupNode } from "./actions";
+import { commitBlocks, connectPeers, forwardTxsToLeader, receiveVoteResponse, sendAppendEntries, sendVoteRequests, setupNode, vote } from "./actions";
+import { ExternalActionCallData } from "xstate-fsm-as/assembly/types";
 
 export function wasmx_env_2(): void {}
 
@@ -43,7 +44,7 @@ export function main(): void {
   } else if (calld.method === "incrementCurrentTerm") {
     actions.incrementCurrentTerm(calld.params, calld.event);
   } else if (calld.method === "vote") {
-    actions.vote(calld.params, calld.event);
+    vote(calld.params, calld.event);
   } else if (calld.method === "selfVote") {
     actions.selfVote(calld.params, calld.event);
   } else if (calld.method === "forwardTxsToLeader") {

@@ -317,7 +317,8 @@ export function vote(
         return;
     }
 
-    voteInternal(entry.termId, entry.candidateId, entry.lastLogIndex, entry.lastLogTerm);
+    const response = voteInternal(entry.termId, entry.candidateId, entry.lastLogIndex, entry.lastLogTerm);
+    wasmx.setFinishData(String.UTF8.encode(JSON.stringify<VoteResponse>(response)));
 }
 
 export function incrementCurrentTerm(
@@ -398,7 +399,7 @@ function sendVoteRequest(nodeId: i32, node: NodeInfo, request: VoteRequest, term
 }
 
 // TODO lastLogTerm
-function voteInternal(termId: i32, candidateId: i32, lastLogIndex: i64, lastLogTerm: i32): void {
+export function voteInternal(termId: i32, candidateId: i32, lastLogIndex: i64, lastLogTerm: i32): VoteResponse {
     const mytermId = getTermId();
     let response = new VoteResponse(mytermId, true);
     if (termId < mytermId) {
@@ -428,7 +429,7 @@ function voteInternal(termId: i32, candidateId: i32, lastLogIndex: i64, lastLogT
             }
         }
     }
-    wasmx.setFinishData(String.UTF8.encode(JSON.stringify<VoteResponse>(response)));
+    return response
 }
 
 export function setupNode(
@@ -704,7 +705,9 @@ export function sendAppendEntry(
     const nextIndex = nextIndexPerNode.at(nodeId);
     let lastIndex = getLastLogIndex();
     const data = prepareAppendEntry(nodeIps, nextIndex, lastIndex);
-    const msgBase64 = prepareAppendEntryMessage(nodeId, nextIndex, lastIndex, node, data);
+    const msgstr = prepareAppendEntryMessage(nodeId, nextIndex, lastIndex, node, data);
+    const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
+
     // we send the request to the same contract
     const contract = wasmx.getAddress();
     const response = wasmxw.grpcRequest(node.node.ip, Uint8Array.wrap(contract), msgBase64);
@@ -766,8 +769,7 @@ export function prepareAppendEntryMessage(
     const msgstr = `{"run":{"event":{"type":"receiveHeartbeat","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
 
     LoggerDebug("diseminate append entry...", ["nodeId", nodeId.toString(), "receiver", node.address, "count", data.entries.length.toString(), "from", nextIndex.toString(), "to", lastIndex.toString()])
-    const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
-    return msgBase64;
+    return msgstr
 }
 
 export function sendNewTransactionResponse(
