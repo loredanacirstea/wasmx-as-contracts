@@ -12,7 +12,7 @@ export const machineConfigSemaphore = {
                 name: "initialize",
                 transitions: [{
                   target: "#Semaphore.red",
-                  guard: "",
+                  guard: null,
                   actions: [],
                 }]
               }
@@ -31,7 +31,7 @@ export const machineConfigSemaphore = {
                 name: "next",
                 transitions: [{
                     target: "#Semaphore.blue",
-                    guard: "",
+                    guard: null,
                     actions: [],
                 }],
               },
@@ -50,7 +50,7 @@ export const machineConfigSemaphore = {
                   name: "next",
                   transitions: [{
                     target: "#Semaphore.red",
-                    guard: "",
+                    guard: null,
                     actions: [],
                   }]
               },
@@ -75,7 +75,7 @@ export const machineConfig2 = {
             on: [{
                 name: "initialize",
                 target: "#Lock/unlock.unlocked",
-                guard: "",
+                guard: null,
                     actions: [],
             }],
             always: [],
@@ -91,13 +91,13 @@ export const machineConfig2 = {
                 {
                     name: "lock",
                     target: "#Lock/unlock.lock",
-                    guard: "",
+                    guard: null,
                     actions: [],
                 },
                 {
                     name: "set",
                     target: "",
-                    guard: "",
+                    guard: null,
                     actions: [
                         {
                             value: "counter",
@@ -108,7 +108,7 @@ export const machineConfig2 = {
                 {
                     name: "increment",
                     target: "",
-                    guard: "",
+                    guard: null,
                     actions: [
                         {
                             value: "counter",
@@ -130,7 +130,7 @@ export const machineConfig2 = {
                 {
                     name: "unlock",
                     target: "#Lock/unlock.unlock",
-                    guard: "",
+                    guard: null,
                     actions: [],
                 },
             ],
@@ -254,7 +254,7 @@ export const machineWithGuard = {
           },
           increment: {
             target: "unlocked",
-            guard: "isAdmin",
+            guard: {type: "isAdmin", params: []},
             actions: {
               type: "increment",
               params: {
@@ -359,7 +359,7 @@ export const erc20Machine1Orig = {
               },
               mint: {
                 target: "active",
-                guard: "isAdmin",
+                guard: {type: "isAdmin", params: []},
                 actions: {
                   type: "mint",
                 },
@@ -372,7 +372,7 @@ export const erc20Machine1Orig = {
               },
               transferFrom: {
                 target: "intransfer",
-                guard: "hasEnoughAllowance",
+                guard: {type: "hasEnoughAllowance", params: []},
                 actions: raise({ from: "from", to: "to", amount: "amount", type: "move" }),
               },
             },
@@ -384,7 +384,7 @@ export const erc20Machine1Orig = {
                 on: {
                   move: {
                     target: "moved",
-                    guard: "hasEnoughBalance",
+                    guard: {type: "hasEnoughBalance", params: []},
                     actions: [
                       {
                         type: "move",
@@ -410,7 +410,7 @@ export const erc20Machine1Orig = {
         on: {
           lock: {
             target: "locked",
-            guard: "isAdmin",
+            guard: {type: "isAdmin", params: []},
           },
         },
       },
@@ -418,7 +418,7 @@ export const erc20Machine1Orig = {
         on: {
           unlock: {
             target: "unlocked",
-            guard: "isAdmin",
+            guard: {type: "isAdmin", params: []},
           },
         },
       },
@@ -814,7 +814,7 @@ export const RAFT_Full =  {
           always: [
             {
               target: "Leader",
-              guard: "isVotedLeader",
+              guard: {type: "isVotedLeader", params: []},
             },
             {
               target: "Follower",
@@ -1010,7 +1010,7 @@ export var TENDERMINT_1 = {
           },
           always: {
             target: "Proposer",
-            guard: "isNextProposer",
+            guard: {type: "isNextProposer", params: []},
           },
           on: {
             receiveProposal: {
@@ -1203,7 +1203,7 @@ export const AVA_SNOWMAN = {
             query: [
               {
                 target: "preProposer",
-                guard: "ifBlockNotFinalized",
+                guard: {type: "ifBlockNotFinalized", params: []},
                 actions: [
                   {
                     type: "setProposedBlock",
@@ -1366,300 +1366,4 @@ export const AVA_SNOWMAN = {
   }
 }
 
-export const RAFT_P2P = {
-  context: {
-    log: "",
-    nodeIPs: "[]",
-    votedFor: "0",
-    nextIndex: "[]",
-    matchIndex: "[]",
-    commitIndex: "0",
-    currentTerm: "0",
-    lastApplied: "0",
-    blockTimeout: "heartbeatTimeout",
-    max_tx_bytes: "65536",
-    prevLogIndex: "0",
-    currentNodeId: "0",
-    electionReset: "0",
-    max_block_gas: "20000000",
-    electionTimeout: "0",
-    maxElectionTime: "20000",
-    minElectionTime: "10000",
-    heartbeatTimeout: "5000",
-  },
-  id: "RAFT-P2P-1",
-  initial: "uninitialized",
-  states: {
-    uninitialized: {
-      on: {
-        initialize: {
-          target: "initialized",
-        },
-      },
-    },
-    initialized: {
-      initial: "unstarted",
-      states: {
-        unstarted: {
-          on: {
-            setupNode: {
-              target: "unstarted",
-              actions: {
-                type: "setupNode",
-              },
-            },
-            start: {
-              target: "Follower",
-              actions: {
-                type: "connectPeers",
-              },
-            },
-            setup: {
-              target: "unstarted",
-              actions: {
-                type: "setup",
-              },
-            },
-            prestart: {
-              target: "prestart",
-            },
-          },
-        },
-        Follower: {
-          entry: [
-            {
-              type: "registeredCheck",
-            },
-            {
-              type: "setRandomElectionTimeout",
-              params: {
-                max: "$maxElectionTime",
-                min: "$minElectionTime",
-              },
-            },
-            {
-              type: "cancelActiveIntervals",
-              params: {
-                after: "electionTimeout",
-              },
-            },
-          ],
-          after: {
-            electionTimeout: {
-              target: "#RAFT-P2P-1.initialized.Candidate",
-              actions: [],
-              meta: {},
-            },
-            heartbeatTimeout: {
-              actions: [
-                {
-                  type: "forwardTxsToLeader",
-                },
-              ],
-              meta: {},
-            },
-          },
-          on: {
-            receiveHeartbeat: {
-              target: "Follower",
-              actions: [
-                {
-                  type: "processAppendEntries",
-                },
-                {
-                  type: "sendHeartbeatResponse",
-                },
-              ],
-            },
-            receiveVoteRequest: {
-              target: "Follower",
-              actions: {
-                type: "vote",
-              },
-            },
-            newTransaction: {
-              actions: [
-                {
-                  type: "addToMempool",
-                },
-                {
-                  type: "sendNewTransactionResponse",
-                },
-              ],
-            },
-            stop: {
-              target: "#RAFT-P2P-1.stopped",
-            },
-            start: {
-              target: "Follower",
-              actions: {
-                type: "connectPeers",
-              },
-            },
-            receiveUpdateNodeResponse: {
-              actions: {
-                type: "receiveUpdateNodeResponse",
-              },
-            },
-          },
-        },
-        prestart: {
-          after: {
-            "500": {
-              target: "#RAFT-P2P-1.initialized.Follower",
-              actions: [],
-              meta: {},
-            },
-          },
-        },
-        Candidate: {
-          entry: [
-            {
-              type: "incrementCurrentTerm",
-            },
-            {
-              type: "selfVote",
-            },
-            {
-              type: "setRandomElectionTimeout",
-              params: {
-                max: "$maxElectionTime",
-                min: "$minElectionTime",
-              },
-            },
-            {
-              type: "sendVoteRequests",
-            },
-          ],
-          always: [
-            {
-              target: "Leader",
-              cond: "isVotedLeader",
-            },
-            {
-              target: "Follower",
-            },
-          ],
-          on: {
-            receiveHeartbeat: {
-              target: "Follower",
-              actions: [
-                {
-                  type: "processAppendEntries",
-                },
-                {
-                  type: "sendHeartbeatResponse",
-                },
-              ],
-            },
-            newTransaction: {
-              actions: [
-                {
-                  type: "addToMempool",
-                },
-                {
-                  type: "sendNewTransactionResponse",
-                },
-              ],
-            },
-            stop: {
-              target: "#RAFT-P2P-1.stopped",
-            },
-            start: {
-              target: "Candidate",
-              actions: {
-                type: "connectPeers",
-              },
-            },
-            receiveVoteResponse: {
-              actions: {
-                type: "receiveVoteResponse",
-              },
-            },
-          },
-        },
-        Leader: {
-          entry: [
-            {
-              type: "initializeNextIndex",
-            },
-            {
-              type: "initializeMatchIndex",
-            },
-          ],
-          initial: "active",
-          states: {
-            active: {
-              entry: [
-                {
-                  type: "proposeBlock",
-                },
-                {
-                  type: "sendAppendEntries",
-                },
-              ],
-              after: {
-                heartbeatTimeout: {
-                  target: "#RAFT-P2P-1.initialized.Leader.active",
-                  actions: [],
-                  meta: {},
-                },
-              },
-              on: {
-                newTransaction: {
-                  actions: [
-                    {
-                      type: "addToMempool",
-                    },
-                    {
-                      type: "sendNewTransactionResponse",
-                    },
-                  ],
-                },
-                start: {
-                  target: "active",
-                  actions: {
-                    type: "connectPeers",
-                  },
-                },
-                nodeUpdate: {
-                  actions: {
-                    type: "updateNodeAndReturn",
-                  },
-                },
-                receiveAppendEntryResponse: {
-                  actions: [
-                    {
-                      type: "receiveAppendEntryResponse",
-                    },
-                    {
-                      type: "commitBlocks",
-                    },
-                  ],
-                },
-              },
-            },
-          },
-          on: {
-            reset: {
-              target: "Follower",
-            },
-            stop: {
-              target: "#RAFT-P2P-1.stopped",
-            },
-          },
-        },
-      },
-      on: {
-        start: {},
-      },
-    },
-    stopped: {
-      on: {
-        restart: {
-          target: "#RAFT-P2P-1.initialized.unstarted",
-        },
-      },
-    },
-  }
-}
+export const RAFT_P2P = {"context":{"log":"","nodeIPs":"[]","votedFor":"0","nextIndex":"[]","matchIndex":"[]","commitIndex":"0","currentTerm":"0","lastApplied":"0","blockTimeout":"heartbeatTimeout","max_tx_bytes":"65536","prevLogIndex":"0","currentNodeId":"0","electionReset":"0","max_block_gas":"20000000","electionTimeout":"0","maxElectionTime":"20000","minElectionTime":"10000","heartbeatTimeout":"5000"},"id":"RAFT-P2P-1","initial":"uninitialized","states":{"uninitialized":{"on":{"initialize":{"target":"initialized"}}},"initialized":{"initial":"unstarted","on":{"start":{}},"states":{"unstarted":{"on":{"setupNode":{"target":"unstarted","actions":{"type":"setupNode"}},"start":{"target":"Follower","actions":{"type":"connectPeers"}},"setup":{"target":"unstarted","actions":{"type":"setup"}},"prestart":{"target":"prestart"}}},"Follower":{"on":{"receiveHeartbeat":{"target":"Follower","actions":[{"type":"processAppendEntries"},{"type":"sendHeartbeatResponse"}]},"receiveVoteRequest":{"target":"Follower","actions":{"type":"vote"}},"newTransaction":{"actions":[{"type":"addToMempool"},{"type":"sendNewTransactionResponse"}]},"stop":{"target":"#RAFT-P2P-1.stopped"},"start":{"target":"Follower","actions":{"type":"connectPeers"}},"receiveUpdateNodeResponse":{"actions":{"type":"receiveUpdateNodeResponse"}}},"after":{"electionTimeout":{"target":"Candidate"},"heartbeatTimeout":{"actions":{"type":"forwardTxsToLeader"}}},"entry":[{"type":"registeredCheck"},{"type":"setRandomElectionTimeout","params":{"max":"$maxElectionTime","min":"$minElectionTime"}},{"type":"cancelActiveIntervals","params":{"after":"electionTimeout"}}]},"prestart":{"after":{"500":{"target":"Follower"}}},"Candidate":{"on":{"receiveHeartbeat":{"target":"Follower","actions":[{"type":"processAppendEntries"},{"type":"sendHeartbeatResponse"}]},"newTransaction":{"actions":[{"type":"addToMempool"},{"type":"sendNewTransactionResponse"}]},"stop":{"target":"#RAFT-P2P-1.stopped"},"start":{"target":"Candidate","actions":{"type":"connectPeers"}},"receiveVoteResponse":{"actions":{"type":"receiveVoteResponse"}}},"after":{"electionTimeout":[{"target":"Leader","guard":{"type":"isVotedLeader"}},{"target":"Follower"}]},"entry":[{"type":"incrementCurrentTerm"},{"type":"selfVote"},{"type":"setRandomElectionTimeout","params":{"max":"$maxElectionTime","min":"$minElectionTime"}},{"type":"sendVoteRequests"}]},"Leader":{"initial":"active","on":{"reset":{"target":"Follower"},"stop":{"target":"#RAFT-P2P-1.stopped"}},"entry":[{"type":"initializeNextIndex"},{"type":"initializeMatchIndex"}],"states":{"active":{"on":{"newTransaction":{"actions":[{"type":"addToMempool"},{"type":"sendNewTransactionResponse"}]},"start":{"target":"active","actions":{"type":"connectPeers"}},"nodeUpdate":{"actions":{"type":"updateNodeAndReturn"}},"receiveAppendEntryResponse":{"actions":[{"type":"receiveAppendEntryResponse"},{"type":"commitBlocks"}]}},"after":{"heartbeatTimeout":{"target":"active"}},"entry":[{"type":"proposeBlock"},{"type":"sendAppendEntries"}]}}}}},"stopped":{"on":{"restart":{"target":"#RAFT-P2P-1.initialized.unstarted"}}}}}

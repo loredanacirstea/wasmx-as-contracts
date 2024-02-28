@@ -94,7 +94,7 @@ function parseMachineStates(configStates = {}, statePath) {
                 const meta = parseMeta(ev.meta || {});
                 const tr = {
                     target: target,
-                    guard: ev.guard || ev.cond ||  "",
+                    guard: parseGuard(ev),
                     actions,
                     meta,
                 }
@@ -120,7 +120,7 @@ function parseMachineStates(configStates = {}, statePath) {
                 const meta = parseMeta(ev.meta || {});
                 const tr = {
                     target: parseStateName(ev.target || "", statePath),
-                    guard: ev.guard || ev.cond ||  "",
+                    guard: parseGuard(ev),
                     actions,
                     meta,
                 }
@@ -141,7 +141,7 @@ function parseMachineStates(configStates = {}, statePath) {
             for (let i = 0; i < state.always.length; i++) {
                 const tr = {
                     ...state.always[i],
-                    guard: state.always[i].guard || state.always[i].cond || "",
+                    guard: parseGuard( state.always[i]),
                     target: parseStateName(state.always[i].target || "", statePath),
                     actions: parseActions(state.always[i].actions || []),
                     meta: parseMeta(state.always[i].meta || {}),
@@ -228,6 +228,16 @@ function parseStateName(stateName, statePath) {
     if (stateName == "") return stateName;
     if (stateName[0] == "#") return stateName;
     return statePath + "." + stateName;
+}
+
+function parseGuard(obj) {
+    if (!obj.guard && !obj.cond) return null;
+    let guard = obj.guard || obj.cond;
+    if (typeof guard == "string") {
+        guard = {type: guard};
+    }
+    guard = {...guard, params: guard.params || [] }
+    return guard;
 }
 
 export function numToUint8Array(num) {

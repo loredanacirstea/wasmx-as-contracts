@@ -2,425 +2,399 @@
 /* eslint-disable */
 import { createMachine } from "xstate";
 
-export const machine = createMachine(
-  {
-    context: {
-      log: "",
-      nodeIPs: "[]",
-      votedFor: "0",
-      nextIndex: "[]",
-      matchIndex: "[]",
-      commitIndex: "0",
-      currentTerm: "0",
-      lastApplied: "0",
-      blockTimeout: "heartbeatTimeout",
-      max_tx_bytes: "65536",
-      prevLogIndex: "0",
-      currentNodeId: "0",
-      electionReset: "0",
-      max_block_gas: "20000000",
-      electionTimeout: "0",
-      maxElectionTime: "20000",
-      minElectionTime: "10000",
-      heartbeatTimeout: "5000",
-    },
-    id: "RAFT-P2P-1",
-    initial: "uninitialized",
-    states: {
-      uninitialized: {
-        on: {
-          initialize: {
-            target: "initialized",
-          },
+export const machine = createMachine({
+  context: {
+    log: "",
+    nodeIPs: "[]",
+    votedFor: "0",
+    nextIndex: "[]",
+    matchIndex: "[]",
+    commitIndex: "0",
+    currentTerm: "0",
+    lastApplied: "0",
+    blockTimeout: "heartbeatTimeout",
+    max_tx_bytes: "65536",
+    prevLogIndex: "0",
+    currentNodeId: "0",
+    electionReset: "0",
+    max_block_gas: "20000000",
+    electionTimeout: "0",
+    maxElectionTime: "20000",
+    minElectionTime: "10000",
+    heartbeatTimeout: "5000",
+  },
+  id: "RAFT-P2P-1",
+  initial: "uninitialized",
+  states: {
+    uninitialized: {
+      on: {
+        initialize: {
+          target: "initialized",
         },
       },
-      initialized: {
-        initial: "unstarted",
-        states: {
-          unstarted: {
-            on: {
-              setupNode: {
-                target: "unstarted",
-                actions: {
-                  type: "setupNode",
-                },
+    },
+    initialized: {
+      initial: "unstarted",
+      on: {
+        start: {},
+      },
+      states: {
+        unstarted: {
+          on: {
+            setupNode: {
+              target: "unstarted",
+              actions: {
+                type: "setupNode",
               },
-              start: {
-                target: "Follower",
-                actions: {
-                  type: "connectPeers",
-                },
+            },
+            start: {
+              target: "Follower",
+              actions: {
+                type: "connectPeers",
               },
-              setup: {
-                target: "unstarted",
-                actions: {
-                  type: "setup",
-                },
+            },
+            setup: {
+              target: "unstarted",
+              actions: {
+                type: "setup",
               },
-              prestart: {
-                target: "prestart",
+            },
+            prestart: {
+              target: "prestart",
+            },
+          },
+        },
+        Follower: {
+          on: {
+            receiveHeartbeat: {
+              target: "Follower",
+              actions: [
+                {
+                  type: "processAppendEntries",
+                },
+                {
+                  type: "sendHeartbeatResponse",
+                },
+              ],
+            },
+            receiveVoteRequest: {
+              target: "Follower",
+              actions: {
+                type: "vote",
+              },
+            },
+            newTransaction: {
+              actions: [
+                {
+                  type: "addToMempool",
+                },
+                {
+                  type: "sendNewTransactionResponse",
+                },
+              ],
+            },
+            stop: {
+              target: "#RAFT-P2P-1.stopped",
+            },
+            start: {
+              target: "Follower",
+              actions: {
+                type: "connectPeers",
+              },
+            },
+            receiveUpdateNodeResponse: {
+              actions: {
+                type: "receiveUpdateNodeResponse",
               },
             },
           },
-          Follower: {
-            entry: [
-              {
-                type: "registeredCheck",
-              },
-              {
-                type: "setRandomElectionTimeout",
-                params: {
-                  max: "$maxElectionTime",
-                  min: "$minElectionTime",
-                },
-              },
-              {
-                type: "cancelActiveIntervals",
-                params: {
-                  after: "electionTimeout",
-                },
-              },
-            ],
-            after: {
-              electionTimeout: {
-                target: "#RAFT-P2P-1.initialized.Candidate",
-                actions: [],
-                meta: {},
-              },
-              heartbeatTimeout: {
-                actions: [
-                  {
-                    type: "forwardTxsToLeader",
-                  },
-                ],
-                meta: {},
-              },
+          after: {
+            electionTimeout: {
+              target: "Candidate",
             },
-            on: {
-              receiveHeartbeat: {
-                target: "Follower",
-                actions: [
-                  {
-                    type: "processAppendEntries",
-                  },
-                  {
-                    type: "sendHeartbeatResponse",
-                  },
-                ],
-              },
-              receiveVoteRequest: {
-                target: "Follower",
-                actions: {
-                  type: "vote",
-                },
-              },
-              newTransaction: {
-                actions: [
-                  {
-                    type: "addToMempool",
-                  },
-                  {
-                    type: "sendNewTransactionResponse",
-                  },
-                ],
-              },
-              stop: {
-                target: "#RAFT-P2P-1.stopped",
-              },
-              start: {
-                target: "Follower",
-                actions: {
-                  type: "connectPeers",
-                },
-              },
-              receiveUpdateNodeResponse: {
-                actions: {
-                  type: "receiveUpdateNodeResponse",
-                },
+            heartbeatTimeout: {
+              actions: {
+                type: "forwardTxsToLeader",
               },
             },
           },
-          prestart: {
-            after: {
-              "500": {
-                target: "#RAFT-P2P-1.initialized.Follower",
-                actions: [],
-                meta: {},
+          entry: [
+            {
+              type: "registeredCheck",
+            },
+            {
+              type: "setRandomElectionTimeout",
+              params: {
+                max: "$maxElectionTime",
+                min: "$minElectionTime",
+              },
+            },
+            {
+              type: "cancelActiveIntervals",
+              params: {
+                after: "electionTimeout",
+              },
+            },
+          ],
+        },
+        prestart: {
+          after: {
+            "500": {
+              target: "Follower",
+            },
+          },
+        },
+        Candidate: {
+          on: {
+            receiveHeartbeat: {
+              target: "Follower",
+              actions: [
+                {
+                  type: "processAppendEntries",
+                },
+                {
+                  type: "sendHeartbeatResponse",
+                },
+              ],
+            },
+            newTransaction: {
+              actions: [
+                {
+                  type: "addToMempool",
+                },
+                {
+                  type: "sendNewTransactionResponse",
+                },
+              ],
+            },
+            stop: {
+              target: "#RAFT-P2P-1.stopped",
+            },
+            start: {
+              target: "Candidate",
+              actions: {
+                type: "connectPeers",
+              },
+            },
+            receiveVoteResponse: {
+              actions: {
+                type: "receiveVoteResponse",
               },
             },
           },
-          Candidate: {
-            entry: [
-              {
-                type: "incrementCurrentTerm",
-              },
-              {
-                type: "selfVote",
-              },
-              {
-                type: "setRandomElectionTimeout",
-                params: {
-                  max: "$maxElectionTime",
-                  min: "$minElectionTime",
-                },
-              },
-              {
-                type: "sendVoteRequests",
-              },
-            ],
-            always: [
+          after: {
+            electionTimeout: [
               {
                 target: "Leader",
-                cond: "isVotedLeader",
+                guard: {
+                  type: "isVotedLeader",
+                },
               },
               {
                 target: "Follower",
               },
             ],
-            on: {
-              receiveHeartbeat: {
-                target: "Follower",
-                actions: [
-                  {
-                    type: "processAppendEntries",
-                  },
-                  {
-                    type: "sendHeartbeatResponse",
-                  },
-                ],
-              },
-              newTransaction: {
-                actions: [
-                  {
-                    type: "addToMempool",
-                  },
-                  {
-                    type: "sendNewTransactionResponse",
-                  },
-                ],
-              },
-              stop: {
-                target: "#RAFT-P2P-1.stopped",
-              },
-              start: {
-                target: "Candidate",
-                actions: {
-                  type: "connectPeers",
-                },
-              },
-              receiveVoteResponse: {
-                actions: {
-                  type: "receiveVoteResponse",
-                },
+          },
+          entry: [
+            {
+              type: "incrementCurrentTerm",
+            },
+            {
+              type: "selfVote",
+            },
+            {
+              type: "setRandomElectionTimeout",
+              params: {
+                max: "$maxElectionTime",
+                min: "$minElectionTime",
               },
             },
+            {
+              type: "sendVoteRequests",
+            },
+          ],
+        },
+        Leader: {
+          initial: "active",
+          on: {
+            reset: {
+              target: "Follower",
+            },
+            stop: {
+              target: "#RAFT-P2P-1.stopped",
+            },
           },
-          Leader: {
-            entry: [
-              {
-                type: "initializeNextIndex",
-              },
-              {
-                type: "initializeMatchIndex",
-              },
-            ],
-            initial: "active",
-            states: {
-              active: {
-                entry: [
-                  {
-                    type: "proposeBlock",
-                  },
-                  {
-                    type: "sendAppendEntries",
-                  },
-                ],
-                after: {
-                  heartbeatTimeout: {
-                    target: "#RAFT-P2P-1.initialized.Leader.active",
-                    actions: [],
-                    meta: {},
-                  },
-                },
-                on: {
-                  newTransaction: {
-                    actions: [
-                      {
-                        type: "addToMempool",
-                      },
-                      {
-                        type: "sendNewTransactionResponse",
-                      },
-                    ],
-                  },
-                  start: {
-                    target: "active",
-                    actions: {
-                      type: "connectPeers",
+          entry: [
+            {
+              type: "initializeNextIndex",
+            },
+            {
+              type: "initializeMatchIndex",
+            },
+          ],
+          states: {
+            active: {
+              on: {
+                newTransaction: {
+                  actions: [
+                    {
+                      type: "addToMempool",
                     },
-                  },
-                  nodeUpdate: {
-                    actions: {
-                      type: "updateNodeAndReturn",
+                    {
+                      type: "sendNewTransactionResponse",
                     },
-                  },
-                  receiveAppendEntryResponse: {
-                    actions: [
-                      {
-                        type: "receiveAppendEntryResponse",
-                      },
-                      {
-                        type: "commitBlocks",
-                      },
-                    ],
+                  ],
+                },
+                start: {
+                  target: "active",
+                  actions: {
+                    type: "connectPeers",
                   },
                 },
+                nodeUpdate: {
+                  actions: {
+                    type: "updateNodeAndReturn",
+                  },
+                },
+                receiveAppendEntryResponse: {
+                  actions: [
+                    {
+                      type: "receiveAppendEntryResponse",
+                    },
+                    {
+                      type: "commitBlocks",
+                    },
+                  ],
+                },
               },
-            },
-            on: {
-              reset: {
-                target: "Follower",
+              after: {
+                heartbeatTimeout: {
+                  target: "active",
+                },
               },
-              stop: {
-                target: "#RAFT-P2P-1.stopped",
-              },
+              entry: [
+                {
+                  type: "proposeBlock",
+                },
+                {
+                  type: "sendAppendEntries",
+                },
+              ],
             },
           },
         },
-        on: {
-          start: {},
+      },
+    },
+    stopped: {
+      on: {
+        restart: {
+          target: "#RAFT-P2P-1.initialized.unstarted",
         },
-      },
-      stopped: {
-        on: {
-          restart: {
-            target: "#RAFT-P2P-1.initialized.unstarted",
-          },
-        },
-      },
-    },
-    schema: {
-      events: {} as
-        | { type: "" }
-        | { type: "stop" }
-        | { type: "reset" }
-        | { type: "setup"; address: string }
-        | { type: "start" }
-        | { type: "restart" }
-        | { type: "prestart" }
-        | { type: "newChange"; transaction: string }
-        | {
-            type: "setupNode";
-            nodeIPs: string;
-            currentNodeId: string;
-            initChainSetup: string;
-          }
-        | { type: "initialize" }
-        | {
-            type: "nodeUpdate";
-            ip: string;
-            index: string;
-            removed: string;
-            signature: string;
-          }
-        | { type: "newTransaction"; transaction: string }
-        | { type: "nodeListUpdate"; ips: string }
-        | {
-            type: "receiveHeartbeat";
-            termId: string;
-            entries: string;
-            nodeIps: string;
-            leaderId: string;
-            signature: string;
-            prevLogTerm: string;
-            leaderCommit: string;
-            prevLogIndex: string;
-          }
-        | { type: "heartbeatResponse"; term: string; success: string }
-        | {
-            type: "receiveVoteRequest";
-            termId: string;
-            signature: string;
-            candidateId: string;
-            lastLogTerm: string;
-            lastLogIndex: string;
-          }
-        | {
-            type: "receiveUpdateNodeResponse";
-            index: string;
-            nodeIPs: string;
-            nodeId: string;
-            validators: string;
-          }
-        | { type: "receiveVoteResponse"; termId: string; voteGranted: string }
-        | { type: "receiveAppendEntryResponse" },
-      context: {} as {
-        log: string;
-        nodeIPs: string;
-        templog: string;
-        votedFor: string;
-        nextIndex: string;
-        matchIndex: string;
-        commitIndex: string;
-        currentTerm: string;
-        lastApplied: string;
-        blockTimeout: string;
-        max_tx_bytes: string;
-        prevLogIndex: string;
-        currentNodeId: string;
-        electionReset: string;
-        max_block_gas: string;
-        electionTimeout: string;
-        maxElectionTime: string;
-        minElectionTime: string;
-        heartbeatTimeout: number;
-      },
-    },
-    predictableActionArguments: true,
-    preserveActionOrder: true,
-  },
-  {
-    actions: {
-      vote: (context, event) => {},
-      setup: (context, event) => {},
-      selfVote: (context, event) => {},
-      setupNode: (context, event) => {},
-      addToMempool: (context, event) => {},
-      commitBlocks: (context, event) => {},
-      connectPeers: (context, event) => {},
-      proposeBlock: (context, event) => {},
-      registeredCheck: (context, event) => {},
-      sendVoteRequests: (context, event) => {},
-      sendAppendEntries: (context, event) => {},
-      forwardTxsToLeader: (context, event) => {},
-      initializeNextIndex: (context, event) => {},
-      updateNodeAndReturn: (context, event) => {},
-      incrementCurrentTerm: (context, event) => {},
-      initializeMatchIndex: (context, event) => {},
-      processAppendEntries: (context, event) => {},
-      cancelActiveIntervals: (context, event) => {},
-      sendHeartbeatResponse: (context, event) => {},
-      setRandomElectionTimeout: function ({ context, event }, params) {
-        // Add your action code here
-      },
-      sendNewTransactionResponse: (context, event) => {},
-      receiveUpdateNodeResponse: (context, event) => {},
-      receiveVoteResponse: (context, event) => {},
-      receiveAppendEntryResponse: (context, event) => {},
-    },
-    services: {},
-    guards: {
-      isVotedLeader: (context, event) => {
-        return false;
-      },
-    },
-    delays: {
-      heartbeatTimeout: (context, event) => {
-        return 1000;
-      },
-      electionTimeout: (context, event) => {
-        return 1000;
       },
     },
   },
-);
+}).withConfig({
+  actions: {
+    registeredCheck: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    setRandomElectionTimeout: function (context, event) {
+      // Add your action code here
+    },
+    cancelActiveIntervals: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    incrementCurrentTerm: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    selfVote: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    sendVoteRequests: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    initializeNextIndex: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    initializeMatchIndex: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    proposeBlock: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    sendAppendEntries: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    addToMempool: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    sendNewTransactionResponse: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    processAppendEntries: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    sendHeartbeatResponse: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    setupNode: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    connectPeers: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    vote: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    updateNodeAndReturn: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    setup: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    forwardTxsToLeader: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    receiveUpdateNodeResponse: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    receiveVoteResponse: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    receiveAppendEntryResponse: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    commitBlocks: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+  },
+  guards: {
+    isVotedLeader: function (context, event) {
+      // Add your guard condition here
+      return true;
+    },
+  },
+});

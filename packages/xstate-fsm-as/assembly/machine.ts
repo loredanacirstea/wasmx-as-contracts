@@ -119,19 +119,21 @@ function handleActions(
 
 function executeGuard(
     machine: StateMachine.Machine,
-    guard: string,
+    guard: ActionObject | null,
     event: EventObject,
 ): boolean {
-    LoggerDebug("execute guard", ["guard", guard]);
-    if (!guard) return true;
-    if (guard === "isAdmin") return isAdmin([]);
-    if (guard === "ifIntervalActive") return ifIntervalActive([], event);
-    if (guard === "hasEnoughBalance") return actionsErc20.hasEnoughBalance([], event);
-    if (guard === "hasEnoughAllowance") return actionsErc20.hasEnoughAllowance([], event);
+    if (guard == null) return true;
+    LoggerDebug("execute guard", ["guard", guard.type]);
+
+    if (guard.type === "isAdmin") return isAdmin([]);
+    if (guard.type === "ifIntervalActive") return ifIntervalActive([], event);
+    if (guard.type === "hasEnoughBalance") return actionsErc20.hasEnoughBalance([], event);
+    if (guard.type === "hasEnoughAllowance") return actionsErc20.hasEnoughAllowance([], event);
 
     // If guard is not a local function, then it is an external function
-    const resp = processExternalCall(machine, guard, ctxToActionParams(machine.ctx), event);
-    LoggerDebug("execute guard", ["guard", guard, "data", resp.data]);
+    let guardParams = guard.params.concat(ctxToActionParams(machine.ctx))
+    const resp = processExternalCall(machine, guard.type, guardParams, event);
+    LoggerDebug("execute guard", ["guard", guard.type, "data", resp.data]);
     if (resp.success > 0) return false;
     // "1" = true ; "0" = false
     if (resp.data == "1") return true;
@@ -634,8 +636,8 @@ export class Machine implements StateMachine.Machine {
             throw new Error(message);
         }
 
-      if (guard && !executeGuard(this, guard, eventObject)) {
-        const message = "cannot execute transition; guard: " + guard;
+      if (guard != null && !executeGuard(this, guard, eventObject)) {
+        const message = "cannot execute transition; guard: " + guard.type;
         if (REVERT_IF_UNEXPECTED_STATE) {
           wasmx.revert(String.UTF8.encode(message));
           throw new Error(message);
@@ -900,7 +902,6 @@ export function eventual(config: MachineExternal, args: TimerArgs): void {
   const active = isRegisteredIntervalActive(args.state, args.delay, args.intervalId);
   LoggerDebug("eventual", ["state", args.state, "delay", args.delay, "intervalId", args.intervalId.toString(), "active", active.toString()]);
   if (!active) {
-    LoggerDebug("eventual interval inactive", []);
     return;
   }
 

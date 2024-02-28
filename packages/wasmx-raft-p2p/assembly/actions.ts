@@ -30,7 +30,7 @@ import { appendLogEntry, getCommitIndex, getCurrentNodeId, getCurrentState, getL
 import * as cfg from "wasmx-raft/assembly/config";
 import { callHookContract, checkValidatorsUpdate, getAllValidators, getConsensusParams, getCurrentValidator, getFinalBlock, getLastBlockIndex, getLastLog, getMajority, getRandomInRange, initChain, initializeIndexArrays, setConsensusParams, setFinalizedBlock, signMessage, updateConsensusParams, updateValidators, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
 import { PROTOCOL_ID } from "./types";
-import { checkCommits, prepareAppendEntry, prepareAppendEntryMessage, voteInternal } from "wasmx-raft/assembly/actions";
+import { checkCommits, prepareAppendEntry, prepareAppendEntryMessage, registeredCheckMessage, registeredCheckNeeded, voteInternal } from "wasmx-raft/assembly/actions";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
 
 export function connectPeers(
@@ -166,6 +166,55 @@ export function forwardTxsToLeader(
     }
 }
 
+export function registeredCheck(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    // when a node starts, it needs to add itself to the pack
+    // we just need [ourIP, leaderIP]
+
+    const ips = getNodeIPs();
+    const needed = registeredCheckNeeded(ips);
+    if (!needed) return;
+
+    const nodeId = getCurrentNodeId();
+    const msgstr = registeredCheckMessage(ips, nodeId);
+    LoggerInfo("register request", ["req", msgstr])
+
+    let peers: string[] = []
+    for (let i = 0; i < ips.length; i++) {
+        // don't send to ourselves or to removed nodes
+        if (i == nodeId || ips[i].node.ip == "") continue;
+        peers.push(getP2PAddress(ips[i]))
+    }
+
+    LoggerDebug("sending node registration", ["peers", peers.join(","), "data", msgstr])
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(msgstr, PROTOCOL_ID, peers))
+}
+
+export function registeredCheckResponse(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    // TODO registeredCheckResponse
+
+    // LoggerInfo("register response", ["error", response.error, "data", response.data])
+    // if (response.error.length > 0 || response.data.length == 0) {
+    //     return
+    // }
+    // const resp = JSON.parse<UpdateNodeResponse>(response.data);
+    // if (resp.nodes[resp.nodeId].node.ip != nodeIp.node.ip) {
+    //     LoggerError("register node response has wrong ip", ["expected", nodeIp.node.ip]);
+    //     revert(`register node response has wrong ip`)
+    // }
+    // const allvalidStr = String.UTF8.decode(decodeBase64(resp.validators).buffer);
+    // console.debug("* register node allvalidStr: " + allvalidStr)
+    // const allvalidators = JSON.parse<typestnd.ValidatorInfo[]>(allvalidStr);
+    // checkValidatorsUpdate(allvalidators, validatorInfo, resp.nodeId);
+    // setCurrentNodeId(resp.nodeId);
+    // setNodeIPs(resp.nodes);
+}
+
 export function sendVoteRequests(
     params: ActionParam[],
     event: EventObject,
@@ -179,7 +228,7 @@ export function sendVoteRequests(
     // iterate through the other nodes and send a VoteRequest
     const request = new VoteRequest(termId, candidateId, lastLogIndex, lastLogTerm);
     const ips = getNodeIPs();
-    LoggerInfo("sending vote requests...", ["candidateId", candidateId.toString(), "termId", termId.toString(), "lastLogIndex", lastLogIndex.toString(), "lastLogTerm", lastLogTerm.toString(), "ips", JSON.stringify<Array<NodeInfo>>(ips)])
+    LoggerInfo("sending vote requests...", [])
     for (let i = 0; i < ips.length; i++) {
         // don't send to ourselves or to removed nodes
         if (candidateId === i || ips[i].node.ip.length == 0) continue;
@@ -218,7 +267,8 @@ export function receiveVoteResponse(
     }
     const signature = ctx.get("signature")
     const sender = ctx.get("sender")
-    const data = ctx.get("entry")
+    const entry = ctx.get("entry")
+    const data = String.UTF8.decode(decodeBase64(entry).buffer);
     const resp = JSON.parse<VoteResponse>(data)
     LoggerDebug("received vote response", ["sender", sender, "data", data])
 
@@ -315,14 +365,15 @@ export function receiveAppendEntryResponse(
     }
     const signature = ctx.get("signature")
     const sender = ctx.get("sender")
-    const data = ctx.get("data")
+    const entry = ctx.get("data")
+    const data = String.UTF8.decode(decodeBase64(entry).buffer);
     const resp = JSON.parse<AppendEntryResponse>(data)
     LoggerDebug("received append entry response", ["sender", sender, "data", data])
 
     // verify signature
     const isSender = verifyMessageByAddr(sender, signature, data);
     if (!isSender) {
-        LoggerError("signature verification failed for receiveVoteResponse", ["sender", sender]);
+        LoggerError("signature verification failed for receiveAppendEntryResponse", ["sender", sender]);
         return;
     }
     const nodeId = getNodeId(sender);
@@ -375,6 +426,7 @@ export function vote(
     // send response
     const nodeId = entry.candidateId;
     const nodeIps = getNodeIPs();
+    const ourId = getCurrentNodeId();
     const nodeInfo = nodeIps[nodeId];
     const peers = [getP2PAddress(nodeInfo)]
 
@@ -382,7 +434,8 @@ export function vote(
     const signatureResp = signMessage(datastr);
 
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
-    const msgstr = `{"run":{"event":{"type":"receiveVoteResponse","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signatureResp}"}]}}}`
+    const senderaddr = nodeIps[ourId].address;
+    const msgstr = `{"run":{"event":{"type":"receiveVoteResponse","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signatureResp}"},{"key": "sender","value":"${senderaddr}"}]}}}`
 
     LoggerDebug("sending vote response", ["to", entry.candidateId.toString(), "data", datastr])
 

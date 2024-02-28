@@ -37,35 +37,15 @@ export function registeredCheck(
     // when a node starts, it needs to add itself to the pack
     // we just need [ourIP, leaderIP]
 
-    // if blocks, return
-    const lastIndex = getLastLogIndex();
-    if (lastIndex > cfg.LOG_START) {
-        return;
-    }
-    // if we are alone, return
     const ips = getNodeIPs();
-    if (ips.length == 1) {
-        return;
-    }
-    // we have tried to become leader 2 times
-    const termId = getTermId();
-    if (termId < 2) {
-        return;
-    }
-    LoggerInfo("trying to register node IP with Leader", []);
+    const needed = registeredCheckNeeded(ips);
+    if (!needed) return;
 
-    // send updateNode to all ips except us
     const nodeId = getCurrentNodeId();
-    const nodeIp = ips[nodeId];
-    // TODO signature on protobuf encoding, not JSON
     const validatorInfo = getCurrentValidator();
-    const updateMsg = new NodeUpdate(nodeIp, nodeId, cfg.NODE_UPDATE_ADD);
-    const updateMsgStr = JSON.stringify<NodeUpdate>(updateMsg);
-    const signature = signMessage(updateMsgStr);
+    const nodeIp = ips[nodeId];
 
-    // const msgstr = `{"run":{"event":{"type":"nodeUpdate","params":[{"key": "ip","value":"${updateMsg.ip.toString()}"},{"key": "index","value":"${updateMsg.index.toString()}"},{"key": "removed","value":"0"},{"key": "signature","value":"${signature}"}]}}}`
-    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(updateMsgStr)));
-    const msgstr = `{"run":{"event":{"type":"nodeUpdate","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
+    const msgstr = registeredCheckMessage(ips, nodeId);
     const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
     LoggerInfo("register request", ["req", msgstr])
 
@@ -93,6 +73,44 @@ export function registeredCheck(
         setCurrentNodeId(resp.nodeId);
         setNodeIPs(resp.nodes);
     }
+}
+
+export function registeredCheckNeeded(ips: NodeInfo[]): boolean {
+    // when a node starts, it needs to add itself to the pack
+    // we just need [ourIP, leaderIP]
+
+    // if blocks, return
+    const lastIndex = getLastLogIndex();
+    if (lastIndex > cfg.LOG_START) {
+        return false;
+    }
+    // if we are alone, return
+    if (ips.length == 1) {
+        return false;
+    }
+    // we have tried to become leader 2 times
+    const termId = getTermId();
+    if (termId < 2) {
+        return false;
+    }
+    return true;
+}
+
+export function registeredCheckMessage(ips: NodeInfo[], nodeId: i32): string {
+    LoggerInfo("trying to register node IP with Leader", []);
+
+    // send updateNode to all ips except us
+    const nodeIp = ips[nodeId];
+    // TODO signature on protobuf encoding, not JSON
+    const updateMsg = new NodeUpdate(nodeIp, nodeId, cfg.NODE_UPDATE_ADD);
+    const updateMsgStr = JSON.stringify<NodeUpdate>(updateMsg);
+    const signature = signMessage(updateMsgStr);
+
+    // const msgstr = `{"run":{"event":{"type":"nodeUpdate","params":[{"key": "ip","value":"${updateMsg.ip.toString()}"},{"key": "index","value":"${updateMsg.index.toString()}"},{"key": "removed","value":"0"},{"key": "signature","value":"${signature}"}]}}}`
+    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(updateMsgStr)));
+    const msgstr = `{"run":{"event":{"type":"nodeUpdate","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
+    LoggerInfo("register request", ["req", msgstr])
+    return msgstr
 }
 
 // temporary node updates - only for Leader
@@ -1172,7 +1190,7 @@ export function isVotedLeader(
     }
     const len = getNodeCount();
     const majority = getMajority(len);
-    LoggerDebug("check if is voted Leader", ["yes", count.toString(), "votes", len.toString(), "majority", majority.toString()])
+    LoggerDebug("check if is voted Leader", ["yes", count.toString(), "total_votes", len.toString(), "majority", majority.toString()])
     return count >= majority;
 }
 

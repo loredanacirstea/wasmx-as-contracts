@@ -269,13 +269,13 @@ export class ActionClass {
 export class Transition {
   target: string;
   actions: Array<ActionObject>;
-  guard: string;
+  guard: ActionObject | null;
   meta: Array<ActionParam>;
 
   constructor(
     target: string,
     actions: Array<ActionObject>,
-    guard: string,
+    guard: ActionObject | null,
     meta: Array<ActionParam>,
   ) {
     this.target = target;

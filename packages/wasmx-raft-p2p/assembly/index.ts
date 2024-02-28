@@ -3,7 +3,7 @@ import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap } from "wasmx-raft/assembly/calldata";
 import * as actions from "wasmx-raft/assembly/actions";
 import { revert } from "./utils";
-import { commitBlocks, connectPeers, forwardTxsToLeader, receiveVoteResponse, sendAppendEntries, sendVoteRequests, setupNode, vote } from "./actions";
+import { commitBlocks, connectPeers, forwardTxsToLeader, receiveVoteResponse, registeredCheck, sendAppendEntries, sendVoteRequests, setupNode, vote } from "./actions";
 import { ExternalActionCallData } from "xstate-fsm-as/assembly/types";
 
 export function wasmx_env_2(): void {}
@@ -52,7 +52,7 @@ export function main(): void {
   } else if (calld.method === "updateNodeAndReturn") {
     actions.updateNodeAndReturn(calld.params, calld.event);
   } else if (calld.method === "registeredCheck") {
-    actions.registeredCheck(calld.params, calld.event);
+    registeredCheck(calld.params, calld.event);
   } else if (calld.method === "sendVoteRequests") {
     sendVoteRequests(calld.params, calld.event);
   } else if (calld.method === "proposeBlock") {
