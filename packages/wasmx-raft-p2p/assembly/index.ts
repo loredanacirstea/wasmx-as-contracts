@@ -3,7 +3,7 @@ import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap } from "wasmx-raft/assembly/calldata";
 import * as actions from "wasmx-raft/assembly/actions";
 import { revert } from "./utils";
-import { commitBlocks, connectPeers, forwardTxsToLeader, receiveVoteResponse, registeredCheck, sendAppendEntries, sendVoteRequests, setupNode, vote } from "./actions";
+import { commitBlocks, connectPeers, forwardTxsToLeader, receiveAppendEntryResponse, receiveVoteResponse, registeredCheck, sendAppendEntries, sendHeartbeatResponse, sendVoteRequests, setupNode, vote } from "./actions";
 import { ExternalActionCallData } from "xstate-fsm-as/assembly/types";
 
 export function wasmx_env_2(): void {}
@@ -23,8 +23,10 @@ export function main(): void {
     setupNode(calld.params, calld.event);
   } else if (calld.method === "processAppendEntries") {
     actions.processAppendEntries(calld.params, calld.event);
+  } else if (calld.method === "receiveAppendEntryResponse") {
+    receiveAppendEntryResponse(calld.params, calld.event);
   } else if (calld.method === "sendHeartbeatResponse") {
-    actions.sendHeartbeatResponse(calld.params, calld.event);
+    sendHeartbeatResponse(calld.params, calld.event);
   } else if (calld.method === "sendAppendEntries") {
     sendAppendEntries(calld.params, calld.event);
   } else if (calld.method === "sendNewTransactionResponse") {

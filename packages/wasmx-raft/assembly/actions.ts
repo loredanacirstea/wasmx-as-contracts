@@ -618,8 +618,15 @@ export function sendHeartbeatResponse(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    const termId = getTermId();
-    const lastLogIndex = getLastLogIndex();
+    const entry = extractAppendEntry(params, event)
+    const response = prepareHeartbeatResponse(entry)
+    wasmx.setFinishData(String.UTF8.encode(JSON.stringify<AppendEntryResponse>(response)));
+}
+
+export function extractAppendEntry(
+    params: ActionParam[],
+    event: EventObject,
+): AppendEntry {
     let entryBase64: string = "";
     for (let i = 0; i < event.params.length; i++) {
         if (event.params[i].key === "entry") {
@@ -632,6 +639,12 @@ export function sendHeartbeatResponse(
     }
     const entryStr = String.UTF8.decode(decodeBase64(entryBase64).buffer);
     let entry: AppendEntry = JSON.parse<AppendEntry>(entryStr);
+    return entry
+}
+
+export function prepareHeartbeatResponse(entry: AppendEntry): AppendEntryResponse {
+    const termId = getTermId();
+    const lastLogIndex = getLastLogIndex();
     let successful = true;
     for (let i = 0; i < entry.entries.length; i++) {
         if (entry.entries[i].index > lastLogIndex) {
@@ -639,10 +652,9 @@ export function sendHeartbeatResponse(
             break;
         }
     }
-
     const response = new AppendEntryResponse(termId, successful, lastLogIndex);
-    LoggerDebug("send heartbeat response", ["termId", termId.toString(), "success", "true"])
-    wasmx.setFinishData(String.UTF8.encode(JSON.stringify<AppendEntryResponse>(response)));
+    LoggerDebug("send heartbeat response", ["termId", termId.toString(), "success", "true", "lastLogIndex", lastLogIndex.toString()])
+    return response
 }
 
 export function sendAppendEntries(

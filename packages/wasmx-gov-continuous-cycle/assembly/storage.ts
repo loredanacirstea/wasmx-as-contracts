@@ -10,3 +10,8 @@ export const PROPOSAL_VOTE_KEY = "proposal_vote."
 export function getProposalVoterKey(proposal_id: u64, voter: Bech32String): string {
     return PROPOSAL_VOTER_KEY + proposal_id.toString() + SPLIT + voter
 }
+
+// key.proposal_id.voter
+export function getProposalVoterKey(proposal_id: u64, voter: Bech32String): string {
+    return PROPOSAL_VOTER_KEY + proposal_id.toString() + SPLIT + voter
+}

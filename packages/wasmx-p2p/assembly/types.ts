@@ -1,5 +1,5 @@
 import { JSON } from "json-as/assembly";
-import { Base64String } from 'wasmx-env/assembly/types';
+import { Base64String, Bech32String } from 'wasmx-env/assembly/types';
 
 export const MODULE_NAME = "p2p"
 
@@ -41,19 +41,25 @@ export class StartNodeWithIdentityRequest {
 // @ts-ignore
 @serializable
 export class SendMessageRequest {
+    contract: Bech32String
     msg: Base64String
-    constructor(msg: Base64String) {
+    protocolId: string
+    constructor(contract: Bech32String, msg: Base64String, protocolId: string) {
+        this.contract = contract
         this.msg = msg
+        this.protocolId = protocolId
     }
 }
 
 // @ts-ignore
 @serializable
 export class SendMessageToPeersRequest {
+    contract: Bech32String
     msg: Base64String
     protocolId: string
     peers: string[]
-    constructor(msg: Base64String, protocolId: string, peers: string[]) {
+    constructor(contract: Bech32String, msg: Base64String, protocolId: string, peers: string[]) {
+        this.contract = contract
         this.msg = msg
         this.protocolId = protocolId
         this.peers = peers

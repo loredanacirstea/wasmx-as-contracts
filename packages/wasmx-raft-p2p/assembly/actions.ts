@@ -30,7 +30,7 @@ import { appendLogEntry, getCommitIndex, getCurrentNodeId, getCurrentState, getL
 import * as cfg from "wasmx-raft/assembly/config";
 import { callHookContract, checkValidatorsUpdate, getAllValidators, getConsensusParams, getCurrentValidator, getFinalBlock, getLastBlockIndex, getLastLog, getMajority, getRandomInRange, initChain, initializeIndexArrays, setConsensusParams, setFinalizedBlock, signMessage, updateConsensusParams, updateValidators, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
 import { PROTOCOL_ID } from "./types";
-import { checkCommits, prepareAppendEntry, prepareAppendEntryMessage, registeredCheckMessage, registeredCheckNeeded, voteInternal } from "wasmx-raft/assembly/actions";
+import { checkCommits, extractAppendEntry, prepareAppendEntry, prepareAppendEntryMessage, prepareHeartbeatResponse, registeredCheckMessage, registeredCheckNeeded, voteInternal } from "wasmx-raft/assembly/actions";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
 
 export function connectPeers(
@@ -156,13 +156,14 @@ export function forwardTxsToLeader(
     }
     const txs = mempool.txs.slice(0, limit);
     LoggerDebug("forwarding txs to leader", ["nodeId", nodeId.toString(), "nodeIp", nodeInfo.node.ip, "count", limit.toString()])
+    const contract = wasmxw.getAddress();
 
     for (let i = 0; i < limit; i++) {
         const tx = txs[0];
         const msgstr = `{"run":{"event":{"type":"newTransaction","params":[{"key": "transaction","value":"${tx}"}]}}}`
         const peers = [getP2PAddress(nodeInfo)]
         LoggerDebug("forwarding tx to leader", ["nodeId", nodeId.toString(), "nodeIp", nodeInfo.node.ip, "tx_batch_index", i.toString()])
-        p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(msgstr, PROTOCOL_ID, peers))
+        p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
     }
 }
 
@@ -189,7 +190,8 @@ export function registeredCheck(
     }
 
     LoggerDebug("sending node registration", ["peers", peers.join(","), "data", msgstr])
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(msgstr, PROTOCOL_ID, peers))
+    const contract = wasmxw.getAddress();
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
 }
 
 export function registeredCheckResponse(
@@ -247,7 +249,8 @@ function sendVoteRequest(nodeId: i32, node: NodeInfo, request: VoteRequest, term
     LoggerDebug("sending vote request", ["nodeId", nodeId.toString(), "nodeIp", node.node.ip, "termId", termId.toString(), "data", datastr])
 
     const peers = [getP2PAddress(node)]
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(msgstr, PROTOCOL_ID, peers))
+    const contract = wasmxw.getAddress();
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
 }
 
 export function receiveVoteResponse(
@@ -344,7 +347,8 @@ export function sendAppendEntry(
     // we send the request to the same contract
     // const contract = wasmx.getAddress();
     const peers = [getP2PAddress(node)]
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(msgstr, PROTOCOL_ID, peers))
+    const contract = wasmxw.getAddress();
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
     // Uint8Array.wrap(contract)
 }
 
@@ -354,7 +358,7 @@ export function receiveAppendEntryResponse(
 ): void {
     const p = getParamsOrEventParams(params, event);
     const ctx = actionParamsToMap(p);
-    if (!ctx.has("data")) {
+    if (!ctx.has("entry")) {
         revert("no data found");
     }
     if (!ctx.has("signature")) {
@@ -365,7 +369,7 @@ export function receiveAppendEntryResponse(
     }
     const signature = ctx.get("signature")
     const sender = ctx.get("sender")
-    const entry = ctx.get("data")
+    const entry = ctx.get("entry")
     const data = String.UTF8.decode(decodeBase64(entry).buffer);
     const resp = JSON.parse<AppendEntryResponse>(data)
     LoggerDebug("received append entry response", ["sender", sender, "data", data])
@@ -383,7 +387,7 @@ export function receiveAppendEntryResponse(
     if (resp.success) {
         const nextIndexPerNode = getNextIndexArray();
         // const nextIndex = nextIndexPerNode.at(nodeId);
-        nextIndexPerNode[nodeId] = resp.lastIndex;
+        nextIndexPerNode[nodeId] = resp.lastIndex + 1;
         setNextIndexArray(nextIndexPerNode);
     }
 }
@@ -439,9 +443,31 @@ export function vote(
 
     LoggerDebug("sending vote response", ["to", entry.candidateId.toString(), "data", datastr])
 
-    // receiveVoteResponse
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(msgstr, PROTOCOL_ID, peers))
+    const contract = wasmxw.getAddress();
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
 
+}
+
+// send to leader
+export function sendHeartbeatResponse(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const entry = extractAppendEntry(params, event)
+    const response = prepareHeartbeatResponse(entry)
+
+    const datastr = JSON.stringify<AppendEntryResponse>(response);
+    const signatureResp = signMessage(datastr);
+    const nodeIps = getNodeIPs();
+    const ourId = getCurrentNodeId();
+    const peers = [getP2PAddress(nodeIps[entry.leaderId])]
+
+    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
+    const senderaddr = nodeIps[ourId].address;
+    const msgstr = `{"run":{"event":{"type":"receiveAppendEntryResponse","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signatureResp}"},{"key": "sender","value":"${senderaddr}"}]}}}`
+
+    const contract = wasmxw.getAddress();
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
 }
 
 function getP2PAddress(nodeInfo: NodeInfo): string {
