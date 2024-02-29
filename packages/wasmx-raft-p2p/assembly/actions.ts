@@ -30,7 +30,7 @@ import { appendLogEntry, getCommitIndex, getCurrentNodeId, getCurrentState, getL
 import * as cfg from "wasmx-raft/assembly/config";
 import { callHookContract, checkValidatorsUpdate, getAllValidators, getConsensusParams, getCurrentValidator, getFinalBlock, getLastBlockIndex, getLastLog, getMajority, getRandomInRange, initChain, initializeIndexArrays, setConsensusParams, setFinalizedBlock, signMessage, updateConsensusParams, updateValidators, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
 import { PROTOCOL_ID } from "./types";
-import { checkCommits, extractAppendEntry, prepareAppendEntry, prepareAppendEntryMessage, prepareHeartbeatResponse, registeredCheckMessage, registeredCheckNeeded, voteInternal } from "wasmx-raft/assembly/actions";
+import { checkCommits, extractAppendEntry, extractUpdateNodeEntryAndVerify, prepareAppendEntry, prepareAppendEntryMessage, prepareHeartbeatResponse, registeredCheckMessage, registeredCheckNeeded, updateNodeEntry, voteInternal } from "wasmx-raft/assembly/actions";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
 
 export function connectPeers(
@@ -129,6 +129,39 @@ export function setupNode(
     initializeIndexArrays(peers.length);
 }
 
+// Leader node receives a node update from a node and sends
+// the updated list of nodes to all validators
+export function updateNodeAndReturn(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    let entry = extractUpdateNodeEntryAndVerify(params, event);
+    const response = updateNodeEntry(entry);
+    if (response == null) {
+        return;
+    }
+
+    const updateMsgStr = JSON.stringify<UpdateNodeResponse>(response);
+    const signature = signMessage(updateMsgStr);
+    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(updateMsgStr)));
+    const nodeIps = getNodeIPs();
+    const ourId = getCurrentNodeId();
+    const senderaddr = nodeIps[ourId].address;
+    const msgstr = `{"run":{"event":{"type":"receiveUpdateNodeResponse","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"},{"key": "sender","value":"${senderaddr}"}]}}}`
+
+    const ips = getNodeIPs();
+    const nodeId = getCurrentNodeId();
+    let peers: string[] = []
+    for (let i = 0; i < ips.length; i++) {
+        // don't send to ourselves or to removed nodes
+        if (i == nodeId || ips[i].node.ip == "") continue;
+        peers.push(getP2PAddress(ips[i]))
+    }
+
+    const contract = wasmxw.getAddress();
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
+}
+
 // forward transactions to leader
 export function forwardTxsToLeader(
     params: ActionParam[],
@@ -194,27 +227,58 @@ export function registeredCheck(
     p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
 }
 
-export function registeredCheckResponse(
+// received an updated node list from Leader
+export function receiveUpdateNodeResponse(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    // TODO registeredCheckResponse
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("entry")) {
+        revert("no data found");
+    }
+    if (!ctx.has("signature")) {
+        revert("no signature found");
+    }
+    if (!ctx.has("sender")) { // node/validator address
+        revert("no sender found");
+    }
+    const signature = ctx.get("signature")
+    const sender = ctx.get("sender")
+    const entry = ctx.get("entry")
+    const data = String.UTF8.decode(decodeBase64(entry).buffer);
+    const resp = JSON.parse<UpdateNodeResponse>(data)
+    LoggerInfo("nodes list update", ["data", data])
 
-    // LoggerInfo("register response", ["error", response.error, "data", response.data])
-    // if (response.error.length > 0 || response.data.length == 0) {
-    //     return
-    // }
-    // const resp = JSON.parse<UpdateNodeResponse>(response.data);
-    // if (resp.nodes[resp.nodeId].node.ip != nodeIp.node.ip) {
-    //     LoggerError("register node response has wrong ip", ["expected", nodeIp.node.ip]);
-    //     revert(`register node response has wrong ip`)
-    // }
+    // verify signature
+    const isSender = verifyMessageByAddr(sender, signature, data);
+    if (!isSender) {
+        LoggerError("signature verification failed for nodes list update", ["sender", sender]);
+        return;
+    }
+
+    const nodeIps = getNodeIPs();
+    const nodeId = getCurrentNodeId();
+    const nodeIp = nodeIps[nodeId];
+
+    if (resp.nodes[resp.nodeId].address != nodeIp.address) {
+        LoggerError("node list node mismatch", ["id", nodeId.toString(), "address_found", resp.nodes[resp.nodeId].address, "expected_address", nodeIp.address]);
+        revert(`node list node address mismatch`)
+    }
+    if (resp.nodes[resp.nodeId].node.id != nodeIp.node.id) {
+        LoggerError("node list node mismatch", ["id", nodeId.toString()]);
+        revert(`node list node id mismatch`)
+    }
+    if (resp.nodes[resp.nodeId].node.ip != nodeIp.node.ip) {
+        LoggerError("node list node mismatch", ["id", nodeId.toString(), "ip_found", resp.nodes[resp.nodeId].node.ip, "expected_ip", nodeIp.node.ip]);
+        revert(`node list node ip mismatch`)
+    }
+    setNodeIPs(resp.nodes);
+
     // const allvalidStr = String.UTF8.decode(decodeBase64(resp.validators).buffer);
-    // console.debug("* register node allvalidStr: " + allvalidStr)
     // const allvalidators = JSON.parse<typestnd.ValidatorInfo[]>(allvalidStr);
     // checkValidatorsUpdate(allvalidators, validatorInfo, resp.nodeId);
     // setCurrentNodeId(resp.nodeId);
-    // setNodeIPs(resp.nodes);
 }
 
 export function sendVoteRequests(

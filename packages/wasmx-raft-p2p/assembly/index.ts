@@ -3,7 +3,7 @@ import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap } from "wasmx-raft/assembly/calldata";
 import * as actions from "wasmx-raft/assembly/actions";
 import { revert } from "./utils";
-import { commitBlocks, connectPeers, forwardTxsToLeader, receiveAppendEntryResponse, receiveVoteResponse, registeredCheck, sendAppendEntries, sendHeartbeatResponse, sendVoteRequests, setupNode, vote } from "./actions";
+import { commitBlocks, connectPeers, forwardTxsToLeader, receiveAppendEntryResponse, receiveUpdateNodeResponse, receiveVoteResponse, registeredCheck, sendAppendEntries, sendHeartbeatResponse, sendVoteRequests, setupNode, updateNodeAndReturn, vote } from "./actions";
 import { ExternalActionCallData } from "xstate-fsm-as/assembly/types";
 
 export function wasmx_env_2(): void {}
@@ -52,7 +52,7 @@ export function main(): void {
   } else if (calld.method === "forwardTxsToLeader") {
     forwardTxsToLeader(calld.params, calld.event);
   } else if (calld.method === "updateNodeAndReturn") {
-    actions.updateNodeAndReturn(calld.params, calld.event);
+    updateNodeAndReturn(calld.params, calld.event);
   } else if (calld.method === "registeredCheck") {
     registeredCheck(calld.params, calld.event);
   } else if (calld.method === "sendVoteRequests") {
@@ -63,6 +63,8 @@ export function main(): void {
     actions.setup(calld.params, calld.event);
   } else if (calld.method === "receiveVoteResponse") {
     receiveVoteResponse(calld.params, calld.event);
+  } else if (calld.method === "receiveUpdateNodeResponse") {
+    receiveUpdateNodeResponse(calld.params, calld.event);
   }
   else {
     revert(`invalid function call data: ${calld.method}`);

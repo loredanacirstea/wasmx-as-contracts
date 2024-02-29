@@ -25,7 +25,7 @@ import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, AppendEn
 import { BigInt } from "wasmx-env/assembly/bn";
 import { appendLogEntry, getCommitIndex, getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getMatchIndexArray, getMempool, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, getVoteIndexArray, hasVotedFor, removeLogEntry, setCommitIndex, setCurrentNodeId, setCurrentState, setElectionTimeout, setLastApplied, setLastLogIndex, setMatchIndexArray, setMempool, setNextIndexArray, setNodeIPs, setTermId, setVoteIndexArray, setVotedFor } from "./storage";
 import * as cfg from "./config";
-import { callHookContract, checkValidatorsUpdate, getAllValidators,getConsensusParams, getCurrentValidator, getFinalBlock, getLastBlockIndex, getLastLog, getMajority, getRandomInRange, initChain, initializeIndexArrays, setFinalizedBlock, signMessage, updateConsensusParams, updateValidators, verifyMessage } from "./action_utils";
+import { callHookContract, checkValidatorsUpdate, getAllValidators,getConsensusParams, getCurrentValidator, getFinalBlock, getLastBlockIndex, getLastLog, getMajority, getRandomInRange, initChain, initializeIndexArrays, setFinalizedBlock, signMessage, updateConsensusParams, updateValidators, verifyMessage, verifyMessageByAddr } from "./action_utils";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
 
 // Docs: https://raft.github.io/raft.pdf
@@ -106,18 +106,31 @@ export function registeredCheckMessage(ips: NodeInfo[], nodeId: i32): string {
     const updateMsgStr = JSON.stringify<NodeUpdate>(updateMsg);
     const signature = signMessage(updateMsgStr);
 
-    // const msgstr = `{"run":{"event":{"type":"nodeUpdate","params":[{"key": "ip","value":"${updateMsg.ip.toString()}"},{"key": "index","value":"${updateMsg.index.toString()}"},{"key": "removed","value":"0"},{"key": "signature","value":"${signature}"}]}}}`
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(updateMsgStr)));
     const msgstr = `{"run":{"event":{"type":"nodeUpdate","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
     LoggerInfo("register request", ["req", msgstr])
     return msgstr
 }
 
-// temporary node updates - only for Leader
+// Leader node receives a node update from a node and sends
+// the updated list of nodes to all validators
+// TODO right now we only send to the validators who sent us the update
+// p2p version sends to all
 export function updateNodeAndReturn(
     params: ActionParam[],
     event: EventObject,
 ): void {
+    let entry = extractUpdateNodeEntryAndVerify(params, event);
+    const response = updateNodeEntry(entry);
+    if (response != null) {
+        wasmx.setFinishData(String.UTF8.encode(JSON.stringify<UpdateNodeResponse>(response)));
+    }
+}
+
+export function extractUpdateNodeEntryAndVerify(
+    params: ActionParam[],
+    event: EventObject,
+): NodeUpdate {
     let entryBase64: string = "";
     let signature: string = "";
     for (let i = 0; i < event.params.length; i++) {
@@ -142,39 +155,46 @@ export function updateNodeAndReturn(
 
     LoggerInfo("update node", ["ip", entry.node.node.ip, "type", entry.type.toString(), "index", entry.index.toString(), "address", entry.node.address])
 
+    if (!entry.node || !entry.node.address) {
+        revert("node update failed, address missing");
+    }
+    // verify signature
+    const isSender = verifyMessageByAddr(entry.node.address, signature, entryStr);
+    if (!isSender) {
+        revert(`signature verification failed: address ${entry.node.address}`);
+    }
+    return entry;
+}
+
+export function updateNodeEntry(entry: NodeUpdate): UpdateNodeResponse | null {
     const ips = getNodeIPs();
     let entryIndex = entry.index;
+    let response: UpdateNodeResponse | null = null;
 
     if (entry.type == cfg.NODE_UPDATE_ADD) {
-        if (!entry.node || entry.node.node.ip == "" || entry.node.address == "") {
-            LoggerError("validator info missing from node update", ["ip", entry.node.node.ip, "address", entry.node.address])
-            return;
+        if (entry.node.node.ip == "") {
+            revert(`validator info missing from node update: address ${entry.node.address}`)
         }
-        // make it idempotent & don't add same ip multiple times
+        // make it idempotent & don't add same node address multiple times
         let ndx = -1
         for (let i = 0; i < ips.length; i++) {
-            if (ips[i].node.ip == entry.node.node.ip) {
+            if (ips[i].address == entry.node.address) {
                 ndx = i;
                 break;
             }
         }
         if (ndx > -1) {
-            LoggerDebug("ip already included", ["ip", entry.node.node.ip])
-            return;
+            revert(`node address already included: address ${entry.node.address}`)
         }
         entryIndex = ips.length;
-    }
-    // verify signature
-    const isSender = verifyMessage(entryIndex, signature, entryStr);
-    if (!isSender) {
-        LoggerError("signature verification failed", ["nodeIndex", entryIndex.toString(), "nodeIp", entry.node.node.ip, "address", entry.node.address]);
-        return;
     }
 
     // removed
     if (entry.type == cfg.NODE_UPDATE_REMOVE) {
         // idempotent
         ips[entryIndex].node.ip = "";
+        ips[entryIndex].node.host = "";
+        ips[entryIndex].node.port = "";
     } else if (entry.type == cfg.NODE_UPDATE_ADD) {
         ips.push(entry.node);
         const nextIndexes = getNextIndexArray();
@@ -184,8 +204,7 @@ export function updateNodeAndReturn(
         setNextIndexArray(nextIndexes);
         setMatchIndexArray(matchIndexes);
         const validators = encodeBase64(Uint8Array.wrap(String.UTF8.encode(fsm.getContextValue(cfg.VALIDATORS_KEY))))
-        const response = new UpdateNodeResponse(ips, entryIndex, validators);
-        wasmx.setFinishData(String.UTF8.encode(JSON.stringify<UpdateNodeResponse>(response)));
+        response = new UpdateNodeResponse(ips, entryIndex, validators);
     } else {
         // NODE_UPDATE_UPDATE
         // just update the ip
@@ -193,6 +212,7 @@ export function updateNodeAndReturn(
     }
     LoggerInfo("node updates", ["ips", JSON.stringify<NodeInfo[]>(ips)])
     setNodeIPs(ips);
+    return response;
 }
 
 // forward transactions to leader

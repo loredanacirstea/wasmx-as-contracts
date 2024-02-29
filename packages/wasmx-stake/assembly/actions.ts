@@ -73,32 +73,32 @@ export function CreateValidator(req: MsgCreateValidator): void {
 }
 
 export function EditValidator(): void {
-
+    // TODO
 }
 
 export function Delegate (): void {
-    // check validator exists
+    // TODO check validator exists
     // call delegated token directly
 }
 
 export function BeginRedelegate(): void {
-
+    // TODO
 }
 
 export function Undelegate(): void {
-
+    // TODO
 }
 
 export function CancelUnbondingDelegation(): void {
-
+    // TODO
 }
 
 export function UpdateParams(): void {
-
+    // TODO
 }
 
 export function ExportGenesis(): void {
-
+    // TODO
 }
 
 export function UpdateValidators(req: MsgUpdateValidators): ArrayBuffer {
