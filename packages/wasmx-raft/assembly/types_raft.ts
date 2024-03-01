@@ -144,12 +144,8 @@ export class NodeUpdate {
 @serializable
 export class UpdateNodeResponse {
   nodes: NodeInfo[]
-  nodeId: i32
-  validators: Base64String
-  constructor(nodes: NodeInfo[], nodeId: i32, validators: Base64String) {
+  constructor(nodes: NodeInfo[]) {
     this.nodes = nodes
-    this.nodeId = nodeId
-    this.validators = validators
   }
 }
 

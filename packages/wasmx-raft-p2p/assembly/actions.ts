@@ -259,26 +259,40 @@ export function receiveUpdateNodeResponse(
 
     const nodeIps = getNodeIPs();
     const nodeId = getCurrentNodeId();
-    const nodeIp = nodeIps[nodeId];
+    const nodeInfo = nodeIps[nodeId];
 
-    if (resp.nodes[resp.nodeId].address != nodeIp.address) {
-        LoggerError("node list node mismatch", ["id", nodeId.toString(), "address_found", resp.nodes[resp.nodeId].address, "expected_address", nodeIp.address]);
-        revert(`node list node address mismatch`)
+    // we find our id
+    let ourId = -1;
+    for (let j = 0; j < resp.nodes.length; j++) {
+        if (resp.nodes[j].address == nodeInfo.address) {
+            ourId = j;
+            break;
+        }
     }
-    if (resp.nodes[resp.nodeId].node.id != nodeIp.node.id) {
-        LoggerError("node list node mismatch", ["id", nodeId.toString()]);
-        revert(`node list node id mismatch`)
+    if (ourId == -1) {
+        LoggerError("node list does not contain our node", [])
+        return;
     }
-    if (resp.nodes[resp.nodeId].node.ip != nodeIp.node.ip) {
-        LoggerError("node list node mismatch", ["id", nodeId.toString(), "ip_found", resp.nodes[resp.nodeId].node.ip, "expected_ip", nodeIp.node.ip]);
-        revert(`node list node ip mismatch`)
+    const node = resp.nodes[ourId];
+    if (node.node.host != nodeInfo.node.host) {
+        LoggerError("node list contains wrong host data", ["address", nodeInfo.address, "id", ourId.toString(), "actual", node.node.host, "expected", nodeInfo.node.host])
+        return;
+        // revert(`node list node address mismatch`)
+    }
+    if (node.node.id != nodeInfo.node.id) {
+        LoggerError("node list contains wrong id data", ["address", nodeInfo.address, "id", ourId.toString(), "actual", node.node.id, "expected", nodeInfo.node.id])
+        return;
+    }
+    if (node.node.ip != nodeInfo.node.ip) {
+        LoggerError("node list contains wrong ip data", ["address", nodeInfo.address, "id", ourId.toString(), "actual", node.node.ip, "expected", nodeInfo.node.ip])
+        return;
+    }
+    if (node.node.port != nodeInfo.node.port) {
+        LoggerError("node list contains wrong port data", ["address", nodeInfo.address, "id", ourId.toString(), "actual", node.node.port, "expected", nodeInfo.node.port])
+        return;
     }
     setNodeIPs(resp.nodes);
-
-    // const allvalidStr = String.UTF8.decode(decodeBase64(resp.validators).buffer);
-    // const allvalidators = JSON.parse<typestnd.ValidatorInfo[]>(allvalidStr);
-    // checkValidatorsUpdate(allvalidators, validatorInfo, resp.nodeId);
-    // setCurrentNodeId(resp.nodeId);
+    setCurrentNodeId(ourId);
 }
 
 export function sendVoteRequests(
@@ -294,7 +308,9 @@ export function sendVoteRequests(
     // iterate through the other nodes and send a VoteRequest
     const request = new VoteRequest(termId, candidateId, lastLogIndex, lastLogTerm);
     const ips = getNodeIPs();
-    LoggerInfo("sending vote requests...", [])
+    if (ips.length > 1) {
+        LoggerInfo("sending vote requests...", [])
+    }
     for (let i = 0; i < ips.length; i++) {
         // don't send to ourselves or to removed nodes
         if (candidateId === i || ips[i].node.ip.length == 0) continue;
@@ -416,6 +432,8 @@ export function sendAppendEntry(
     // Uint8Array.wrap(contract)
 }
 
+// received by the Leader node from the other nodes that have received and
+// applied the new entries
 export function receiveAppendEntryResponse(
     params: ActionParam[],
     event: EventObject,
@@ -512,7 +530,7 @@ export function vote(
 
 }
 
-// send to leader
+// send to leader node
 export function sendHeartbeatResponse(
     params: ActionParam[],
     event: EventObject,

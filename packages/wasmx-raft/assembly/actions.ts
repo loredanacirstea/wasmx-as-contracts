@@ -42,8 +42,7 @@ export function registeredCheck(
     if (!needed) return;
 
     const nodeId = getCurrentNodeId();
-    const validatorInfo = getCurrentValidator();
-    const nodeIp = ips[nodeId];
+    const nodeInfo = ips[nodeId];
 
     const msgstr = registeredCheckMessage(ips, nodeId);
     const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
@@ -62,16 +61,38 @@ export function registeredCheck(
             return
         }
         const resp = JSON.parse<UpdateNodeResponse>(response.data);
-        if (resp.nodes[resp.nodeId].node.ip != nodeIp.node.ip) {
-            LoggerError("register node response has wrong ip", ["expected", nodeIp.node.ip]);
-            revert(`register node response has wrong ip`)
+
+        // we find our id
+        let ourId = -1;
+        for (let j = 0; j < resp.nodes.length; j++) {
+            if (resp.nodes[j].address == nodeInfo.address) {
+                ourId = j;
+                break;
+            }
         }
-        const allvalidStr = String.UTF8.decode(decodeBase64(resp.validators).buffer);
-        console.debug("* register node allvalidStr: " + allvalidStr)
-        const allvalidators = JSON.parse<typestnd.ValidatorInfo[]>(allvalidStr);
-        checkValidatorsUpdate(allvalidators, validatorInfo, resp.nodeId);
-        setCurrentNodeId(resp.nodeId);
-        setNodeIPs(resp.nodes);
+        if (ourId != -1) {
+            const node = resp.nodes[ourId];
+            if (node.node.host != nodeInfo.node.host) {
+                LoggerError("node list contains wrong host data", ["address", nodeInfo.address, "id", ourId.toString(), "actual", node.node.host, "expected", nodeInfo.node.host])
+                continue;
+            }
+            if (node.node.id != nodeInfo.node.id) {
+                LoggerError("node list contains wrong id data", ["address", nodeInfo.address, "id", ourId.toString(), "actual", node.node.id, "expected", nodeInfo.node.id])
+                continue;
+            }
+            if (node.node.ip != nodeInfo.node.ip) {
+                LoggerError("node list contains wrong ip data", ["address", nodeInfo.address, "id", ourId.toString(), "actual", node.node.ip, "expected", nodeInfo.node.ip])
+                continue;
+            }
+            if (node.node.port != nodeInfo.node.port) {
+                LoggerError("node list contains wrong port data", ["address", nodeInfo.address, "id", ourId.toString(), "actual", node.node.port, "expected", nodeInfo.node.port])
+                continue;
+            }
+            setCurrentNodeId(ourId);
+            setNodeIPs(resp.nodes);
+            // we can stop here and not query other nodes
+            break;
+        }
     }
 }
 
@@ -122,9 +143,7 @@ export function updateNodeAndReturn(
 ): void {
     let entry = extractUpdateNodeEntryAndVerify(params, event);
     const response = updateNodeEntry(entry);
-    if (response != null) {
-        wasmx.setFinishData(String.UTF8.encode(JSON.stringify<UpdateNodeResponse>(response)));
-    }
+    wasmx.setFinishData(String.UTF8.encode(JSON.stringify<UpdateNodeResponse>(response)));
 }
 
 export function extractUpdateNodeEntryAndVerify(
@@ -166,11 +185,10 @@ export function extractUpdateNodeEntryAndVerify(
     return entry;
 }
 
-export function updateNodeEntry(entry: NodeUpdate): UpdateNodeResponse | null {
+export function updateNodeEntry(entry: NodeUpdate): UpdateNodeResponse {
     const ips = getNodeIPs();
-    let entryIndex = entry.index;
-    let response: UpdateNodeResponse | null = null;
 
+    // new node
     if (entry.type == cfg.NODE_UPDATE_ADD) {
         if (entry.node.node.ip == "") {
             revert(`validator info missing from node update: address ${entry.node.address}`)
@@ -186,16 +204,6 @@ export function updateNodeEntry(entry: NodeUpdate): UpdateNodeResponse | null {
         if (ndx > -1) {
             revert(`node address already included: address ${entry.node.address}`)
         }
-        entryIndex = ips.length;
-    }
-
-    // removed
-    if (entry.type == cfg.NODE_UPDATE_REMOVE) {
-        // idempotent
-        ips[entryIndex].node.ip = "";
-        ips[entryIndex].node.host = "";
-        ips[entryIndex].node.port = "";
-    } else if (entry.type == cfg.NODE_UPDATE_ADD) {
         ips.push(entry.node);
         const nextIndexes = getNextIndexArray();
         const matchIndexes = getMatchIndexArray();
@@ -203,16 +211,21 @@ export function updateNodeEntry(entry: NodeUpdate): UpdateNodeResponse | null {
         matchIndexes.push(cfg.LOG_START);
         setNextIndexArray(nextIndexes);
         setMatchIndexArray(matchIndexes);
-        const validators = encodeBase64(Uint8Array.wrap(String.UTF8.encode(fsm.getContextValue(cfg.VALIDATORS_KEY))))
-        response = new UpdateNodeResponse(ips, entryIndex, validators);
-    } else {
-        // NODE_UPDATE_UPDATE
-        // just update the ip
-        ips[entryIndex].node.ip = entry.node.node.ip;
     }
+    else if (entry.type == cfg.NODE_UPDATE_UPDATE) {
+        // just update the ip
+        ips[entry.index].node.ip = entry.node.node.ip;
+    }
+    else if (entry.type == cfg.NODE_UPDATE_REMOVE) {
+        // idempotent
+        ips[entry.index].node.ip = "";
+        ips[entry.index].node.host = "";
+        ips[entry.index].node.port = "";
+    }
+
     LoggerInfo("node updates", ["ips", JSON.stringify<NodeInfo[]>(ips)])
     setNodeIPs(ips);
-    return response;
+    return new UpdateNodeResponse(ips);
 }
 
 // forward transactions to leader
@@ -396,7 +409,9 @@ export function sendVoteRequests(
     // iterate through the other nodes and send a VoteRequest
     const request = new VoteRequest(termId, candidateId, lastLogIndex, lastLogTerm);
     const ips = getNodeIPs();
-    LoggerInfo("sending vote requests...", ["candidateId", candidateId.toString(), "termId", termId.toString(), "lastLogIndex", lastLogIndex.toString(), "lastLogTerm", lastLogTerm.toString(), "ips", JSON.stringify<Array<NodeInfo>>(ips)])
+    if (ips.length > 1) {
+        LoggerInfo("sending vote requests...", ["candidateId", candidateId.toString(), "termId", termId.toString(), "lastLogIndex", lastLogIndex.toString(), "lastLogTerm", lastLogTerm.toString(), "ips", JSON.stringify<Array<NodeInfo>>(ips)])
+    }
     for (let i = 0; i < ips.length; i++) {
         // don't send to ourselves or to removed nodes
         if (candidateId === i || ips[i].node.ip.length == 0) continue;
