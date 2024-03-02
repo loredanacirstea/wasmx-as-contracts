@@ -49,9 +49,14 @@ export const machine = createMachine({
             },
             start: {
               target: "Follower",
-              actions: {
-                type: "connectPeers",
-              },
+              actions: [
+                {
+                  type: "connectPeers",
+                },
+                {
+                  type: "requestNetworkSync",
+                },
+              ],
             },
             setup: {
               target: "unstarted",
@@ -98,13 +103,28 @@ export const machine = createMachine({
             },
             start: {
               target: "Follower",
-              actions: {
-                type: "connectPeers",
-              },
+              actions: [
+                {
+                  type: "connectPeers",
+                },
+                {
+                  type: "requestNetworkSync",
+                },
+              ],
             },
             receiveUpdateNodeResponse: {
               actions: {
                 type: "receiveUpdateNodeResponse",
+              },
+            },
+            receiveStateSyncRequest: {
+              actions: {
+                type: "receiveStateSyncRequest",
+              },
+            },
+            receiveStateSyncResponse: {
+              actions: {
+                type: "receiveStateSyncResponse",
               },
             },
           },
@@ -119,9 +139,6 @@ export const machine = createMachine({
             },
           },
           entry: [
-            {
-              type: "registeredCheck",
-            },
             {
               type: "setRandomElectionTimeout",
               params: {
@@ -172,13 +189,34 @@ export const machine = createMachine({
             },
             start: {
               target: "Candidate",
-              actions: {
-                type: "connectPeers",
-              },
+              actions: [
+                {
+                  type: "connectPeers",
+                },
+                {
+                  type: "requestNetworkSync",
+                },
+              ],
             },
             receiveVoteResponse: {
               actions: {
                 type: "receiveVoteResponse",
+              },
+            },
+            receiveUpdateNodeResponse: {
+              target: "Follower",
+              actions: {
+                type: "receiveUpdateNodeResponse",
+              },
+            },
+            receiveStateSyncRequest: {
+              actions: {
+                type: "receiveStateSyncRequest",
+              },
+            },
+            receiveStateSyncResponse: {
+              actions: {
+                type: "receiveStateSyncResponse",
               },
             },
           },
@@ -255,6 +293,8 @@ export const machine = createMachine({
                   actions: {
                     type: "updateNodeAndReturn",
                   },
+                  description:
+                    "when a node comes back online, or is new to the network, or has changed its IP, or is removing itself from the network",
                 },
                 receiveAppendEntryResponse: {
                   actions: [
@@ -295,10 +335,6 @@ export const machine = createMachine({
   },
 }).withConfig({
   actions: {
-    registeredCheck: function (context, event) {
-      // Add your action code here
-      // ...
-    },
     setRandomElectionTimeout: function (context, event) {
       // Add your action code here
     },
@@ -362,6 +398,10 @@ export const machine = createMachine({
       // Add your action code here
       // ...
     },
+    requestNetworkSync: function (context, event) {
+      // Add your action code here
+      // ...
+    },
     updateNodeAndReturn: function (context, event) {
       // Add your action code here
       // ...
@@ -387,6 +427,14 @@ export const machine = createMachine({
       // ...
     },
     commitBlocks: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    receiveStateSyncRequest: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    receiveStateSyncResponse: function (context, event) {
       // Add your action code here
       // ...
     },

@@ -11,7 +11,7 @@ import {
 } from 'wasmx-env/assembly/types';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as staking from "wasmx-stake/assembly/types";
-import { LogEntry, MODULE_NAME } from "./types_raft";
+import { LogEntry, MODULE_NAME, Node, NodeInfo } from "./types_raft";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { getCurrentState, getLastLogIndex, getLogEntryObj, getNodeIPs, setCurrentState, setMatchIndexArray, setNextIndexArray } from "./storage";
 import * as cfg from "./config";
@@ -46,15 +46,35 @@ export function updateConsensusParams(updates: typestnd.ConsensusParams): void {
     setConsensusParams(params);
 }
 
+// includes both min and max
 export function getRandomInRange(min: i64, max: i64): i64 {
     const rand = Math.random()
     const numb = Math.floor(rand * f64((max - min + 1)))
     return i64(numb) + min;
 }
 
+export function getRandomInRangeI64(min: i64, max: i64): i64 {
+    return getRandomInRange(min, max);
+}
+
+export function getRandomInRangeI32(min: i32, max: i32): i32 {
+    const rand = Math.random()
+    const numb = Math.floor(rand * f32((max - min + 1)))
+    return i32(numb) + min;
+}
+
 export function signMessage(msgstr: string): Base64String {
     const currentState = getCurrentState();
     return wasmxw.ed25519Sign(currentState.validator_privkey, msgstr);
+}
+
+export function getNodeByAddress(addr: Bech32String, nodes: NodeInfo[]): NodeInfo | null {
+    for (let i = 0; i < nodes.length; i++) {
+        if (nodes[i].address == addr) {
+            return nodes[i]
+        }
+    }
+    return null
 }
 
 export function verifyMessage(nodeIndex: i32, signatureStr: Base64String, msg: string): boolean {

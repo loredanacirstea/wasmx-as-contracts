@@ -186,11 +186,11 @@ export function extractUpdateNodeEntryAndVerify(
 }
 
 export function updateNodeEntry(entry: NodeUpdate): UpdateNodeResponse {
-    const ips = getNodeIPs();
+    let ips = getNodeIPs();
 
-    // new node
+    // new node or node comming back online
     if (entry.type == cfg.NODE_UPDATE_ADD) {
-        if (entry.node.node.ip == "") {
+        if (entry.node.node.ip == "" && entry.node.node.host == "") {
             revert(`validator info missing from node update: address ${entry.node.address}`)
         }
         // make it idempotent & don't add same node address multiple times
@@ -202,9 +202,13 @@ export function updateNodeEntry(entry: NodeUpdate): UpdateNodeResponse {
             }
         }
         if (ndx > -1) {
-            revert(`node address already included: address ${entry.node.address}`)
+            // we just update the node
+            ips[ndx].node = entry.node.node
+        } else {
+            ips.push(entry.node);
         }
-        ips.push(entry.node);
+        // we reset these values
+        // a node coming back online will send updated indexes later
         const nextIndexes = getNextIndexArray();
         const matchIndexes = getMatchIndexArray();
         nextIndexes.push(cfg.LOG_START + 1);
@@ -213,19 +217,24 @@ export function updateNodeEntry(entry: NodeUpdate): UpdateNodeResponse {
         setMatchIndexArray(matchIndexes);
     }
     else if (entry.type == cfg.NODE_UPDATE_UPDATE) {
-        // just update the ip
-        ips[entry.index].node.ip = entry.node.node.ip;
+        // just update the node
+        ips[entry.index].node = entry.node.node;
     }
     else if (entry.type == cfg.NODE_UPDATE_REMOVE) {
         // idempotent
-        ips[entry.index].node.ip = "";
-        ips[entry.index].node.host = "";
-        ips[entry.index].node.port = "";
+        ips = removeNode(ips, entry.index)
     }
 
     LoggerInfo("node updates", ["ips", JSON.stringify<NodeInfo[]>(ips)])
     setNodeIPs(ips);
-    return new UpdateNodeResponse(ips);
+    return new UpdateNodeResponse(ips, getCurrentNodeId(), getLastLogIndex());
+}
+
+export function removeNode(nodes: NodeInfo[], index: i32): NodeInfo[] {
+    nodes[index].node.ip = "";
+    nodes[index].node.host = "";
+    nodes[index].node.port = "";
+    return nodes;
 }
 
 // forward transactions to leader
@@ -414,9 +423,13 @@ export function sendVoteRequests(
     }
     for (let i = 0; i < ips.length; i++) {
         // don't send to ourselves or to removed nodes
-        if (candidateId === i || ips[i].node.ip.length == 0) continue;
+        if (candidateId === i || !isNodeActive(ips[i])) continue;
         sendVoteRequest(i, ips[i], request, termId);
     }
+}
+
+export function isNodeActive(node: NodeInfo): bool {
+    return !node.outofsync && (node.node.ip != "" || node.node.host != "")
 }
 
 function sendVoteRequest(nodeId: i32, node: NodeInfo, request: VoteRequest, termId: i32): void {
@@ -538,7 +551,7 @@ export function setupNode(
         if (peer.length != 2) {
             revert(`invalid node format; found: ${data.peers[i]}`)
         }
-        peers[i] = new NodeInfo(peer[0], new Node("","","",peer[1]));
+        peers[i] = new NodeInfo(peer[0], new Node("","","",peer[1]), false);
     }
     setNodeIPs(peers);
     initChain(data);
@@ -574,6 +587,13 @@ export function processAppendEntries(
     LoggerDebug("received new entries", ["AppendEntry", entryStr.slice(0, cfg.MAX_LOGGED) + " [...]"]);
 
     let entry: AppendEntry = JSON.parse<AppendEntry>(entryStr);
+    // verify signature
+    const isSender = verifyMessage(entry.leaderId, signature, entryStr);
+    if (!isSender) {
+        LoggerError("signature verification failed for AppendEntry", ["leaderId", entry.leaderId.toString(), "termId", entry.termId.toString()]);
+        return;
+    }
+
     LoggerInfo("received new entries", [
         "leaderId", entry.leaderId.toString(),
         "termId", entry.termId.toString(),
@@ -583,13 +603,6 @@ export function processAppendEntries(
         "count", entry.entries.length.toString(),
         "nodeIps", entry.nodeIps.length.toString(),
     ]);
-
-    // verify signature
-    const isSender = verifyMessage(entry.leaderId, signature, entryStr);
-    if (!isSender) {
-        LoggerError("signature verification failed for AppendEntry", ["leaderId", entry.leaderId.toString(), "termId", entry.termId.toString()]);
-        return;
-    }
 
     // update our nodeips
     const ips = getNodeIPs();
@@ -607,12 +620,6 @@ export function processAppendEntries(
         LoggerDebug("our node ID has changed", ["old", nodeId.toString(), "new", newId.toString()])
         setCurrentNodeId(newId);
     }
-    // TODO validator update
-    // const allvalidStr = String.UTF8.decode(decodeBase64(entry.validators).buffer);
-    // console.debug("* processAppendEntries allvalidStr: " + allvalidStr)
-    // const allvalidators = JSON.parse<typestnd.ValidatorInfo[]>(allvalidStr);
-    // const validatorInfo = getCurrentValidator();
-    // checkValidatorsUpdate(allvalidators, validatorInfo, newId);
     setNodeIPs(entry.nodeIps);
     setTermId(entry.termId);
 
@@ -633,6 +640,12 @@ export function processAppendEntries(
     for (let i = 0; i < entry.entries.length; i++) {
         processAppendEntry(entry.entries[i]);
     }
+    LoggerDebug("new entries processing finished", [
+        "leaderId", entry.leaderId.toString(),
+        "leaderCommit", entry.leaderCommit.toString(),
+        "prevLogIndex", entry.prevLogIndex.toString(),
+        "count", entry.entries.length.toString(),
+    ]);
 }
 
 export function processAppendEntry(entry: LogEntryAggregate): void {
@@ -702,7 +715,7 @@ export function sendAppendEntries(
     LoggerDebug("diseminate entries...", ["nodeId", nodeId.toString(), "ips", JSON.stringify<Array<NodeInfo>>(ips)])
     for (let i = 0; i < ips.length; i++) {
         // don't send to Leader or removed nodes
-        if (nodeId === i || ips[i].node.ip.length == 0) continue;
+        if (nodeId === i || !isNodeActive(ips[i])) continue;
         sendAppendEntry(i, ips[i], ips);
     }
 }
@@ -768,9 +781,15 @@ export function sendAppendEntry(
 ): void {
     const nextIndexPerNode = getNextIndexArray();
     const nextIndex = nextIndexPerNode.at(nodeId);
-    let lastIndex = getLastLogIndex();
-    const data = prepareAppendEntry(nodeIps, nextIndex, lastIndex);
-    const msgstr = prepareAppendEntryMessage(nodeId, nextIndex, lastIndex, node, data);
+    const lastIndex = getLastLogIndex();
+    let lastIndexToSend = lastIndex
+
+    // right now, don't send more than STATE_SYNC_BATCH blocks at a time
+    if ((lastIndex - nextIndex) > cfg.STATE_SYNC_BATCH) {
+        lastIndexToSend = nextIndex + cfg.STATE_SYNC_BATCH;
+    }
+    const data = prepareAppendEntry(nodeIps, nextIndex, lastIndexToSend);
+    const msgstr = prepareAppendEntryMessage(nodeId, nextIndex, lastIndex, lastIndexToSend,node, data);
     const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
 
     // we send the request to the same contract
@@ -794,12 +813,6 @@ export function prepareAppendEntry(
     nextIndex: i64,
     lastIndex: i64,
 ): AppendEntry {
-    // TODO state sync & snapshotting
-    // right now, don't send more than STATE_SYNC_BATCH blocks at a time
-    if ((lastIndex - nextIndex) > cfg.STATE_SYNC_BATCH) {
-        lastIndex = nextIndex + cfg.STATE_SYNC_BATCH;
-    }
-
     const entries: Array<LogEntryAggregate> = [];
     for (let i = nextIndex; i <= lastIndex; i++) {
         const entry = getLogEntryAggregate(i);
@@ -825,6 +838,7 @@ export function prepareAppendEntryMessage(
     nodeId: i32,
     nextIndex: i64,
     lastIndex: i64,
+    lastIndexToSend: i64,
     node: NodeInfo,
     data: AppendEntry,
 ): string {
@@ -833,7 +847,7 @@ export function prepareAppendEntryMessage(
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
     const msgstr = `{"run":{"event":{"type":"receiveHeartbeat","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
 
-    LoggerDebug("diseminate append entry...", ["nodeId", nodeId.toString(), "receiver", node.address, "count", data.entries.length.toString(), "from", nextIndex.toString(), "to", lastIndex.toString()])
+    LoggerDebug("diseminate append entry...", ["nodeId", nodeId.toString(), "receiver", node.address, "count", data.entries.length.toString(), "from", nextIndex.toString(), "to", lastIndexToSend.toString(), "last_index", lastIndex.toString()])
     return msgstr
 }
 

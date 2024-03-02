@@ -144,8 +144,12 @@ export class NodeUpdate {
 @serializable
 export class UpdateNodeResponse {
   nodes: NodeInfo[]
-  constructor(nodes: NodeInfo[]) {
+  sync_node_id: i32
+  last_entry_index: i64
+  constructor(nodes: NodeInfo[], sync_node_id: i32, last_entry_index: i64) {
     this.nodes = nodes
+    this.sync_node_id = sync_node_id
+    this.last_entry_index = last_entry_index
   }
 }
 
@@ -180,9 +184,11 @@ export class Node {
 export class NodeInfo {
     address: Bech32String
     node: Node
-    constructor(address: Bech32String, node: Node) {
+    outofsync: bool
+    constructor(address: Bech32String, node: Node, outofsync: bool) {
         this.address = address
         this.node = node
+        this.outofsync = outofsync
     }
 }
 
