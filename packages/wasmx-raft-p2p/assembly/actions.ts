@@ -154,11 +154,9 @@ export function updateNodeAndReturn(
     const senderaddr = nodeIps[ourId].address;
     const msgstr = `{"run":{"event":{"type":"receiveUpdateNodeResponse","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"},{"key": "sender","value":"${senderaddr}"}]}}}`
 
-    const ips = getNodeIPs();
-
     // send update message only to the requesting node
     // other nodes get an updated list each heartbeat
-    const peers = [getP2PAddress(ips[entry.index])]
+    const peers = [getP2PAddress(entry.node)]
 
     const contract = wasmxw.getAddress();
     p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
@@ -625,13 +623,15 @@ export function receiveStateSyncRequest(
     let startIndex = resp.start_index;
     let lastIndexToSend = startIndex;
     for (let i = 0; i < batches - 1; i++) {
-        startIndex = resp.start_index + cfg.STATE_SYNC_BATCH*i
         lastIndexToSend = startIndex + cfg.STATE_SYNC_BATCH
         sendStateSyncBatch(startIndex, lastIndexToSend, lastIndex, termId, sender);
+        startIndex += cfg.STATE_SYNC_BATCH
     }
-    // last batch
-    startIndex += cfg.STATE_SYNC_BATCH
-    sendStateSyncBatch(startIndex, lastIndex, lastIndex, termId, sender);
+    if (lastIndexToSend < lastIndex) {
+        // last batch
+        sendStateSyncBatch(startIndex, lastIndex, lastIndex, termId, sender);
+    }
+    LoggerInfo("state sync messages finished", ["lastIndex", lastIndex.toString()])
 }
 
 function sendStateSyncBatch(start_index: i64, lastIndexToSend: i64, lastIndex: i64, termId: i32, receiver: Bech32String): void {

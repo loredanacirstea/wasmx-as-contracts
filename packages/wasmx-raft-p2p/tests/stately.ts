@@ -306,6 +306,11 @@ export const machine = createMachine({
                     },
                   ],
                 },
+                receiveStateSyncRequest: {
+                  actions: {
+                    type: "receiveStateSyncRequest",
+                  },
+                },
               },
               after: {
                 heartbeatTimeout: {
