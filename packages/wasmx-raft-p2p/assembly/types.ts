@@ -31,10 +31,14 @@ export class StateSyncRequest {
 // @ts-ignore
 @serializable
 export class StateSyncResponse {
-  entries: LogEntryAggregate[]
+  start_batch_index: i64
+  last_batch_index: i64
   last_log_index: i64
   termId: i32
-  constructor(entries: LogEntryAggregate[], last_log_index: i64, termId: i32) {
+  entries: Array<LogEntryAggregate> // Array<LogEntryAggregate>
+  constructor(start_batch_index: i64, last_batch_index: i64, last_log_index: i64, termId: i32, entries: Array<LogEntryAggregate>) {
+    this.start_batch_index = start_batch_index
+    this.last_batch_index = last_batch_index
     this.entries = entries;
     this.last_log_index = last_log_index
     this.termId = termId

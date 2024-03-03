@@ -130,7 +130,7 @@ export function setupNode(
 }
 
 // Leader node receives a node update from a node and sends
-// the updated list of nodes to all validators
+// the updated list of nodes to the requester & the state sync provider
 export function updateNodeAndReturn(
     params: ActionParam[],
     event: EventObject,
@@ -144,16 +144,21 @@ export function updateNodeAndReturn(
     // here, we use a random node that is in sync
     const nextIndexes = getNextIndexArray();
     const lastIndex = getLastLogIndex();
-    response.sync_node_id = getRandomSynced(nextIndexes, lastIndex, getCurrentNodeId());
+    const ourId = getCurrentNodeId();
+    response.sync_node_id = getRandomSynced(nextIndexes, lastIndex, ourId);
 
     const updateMsgStr = JSON.stringify<UpdateNodeResponse>(response);
     const signature = signMessage(updateMsgStr);
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(updateMsgStr)));
     const nodeIps = getNodeIPs();
-    const ourId = getCurrentNodeId();
     const senderaddr = nodeIps[ourId].address;
     const msgstr = `{"run":{"event":{"type":"receiveUpdateNodeResponse","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"},{"key": "sender","value":"${senderaddr}"}]}}}`
 
+    // send an appendEntry to the state sync provider, so the node has an updated list of nodes
+    // in order to verify the message signature from the new node
+    if (response.sync_node_id != ourId) {
+        sendAppendEntry(response.sync_node_id, nodeIps[response.sync_node_id], nodeIps);
+    }
     // send update message only to the requesting node
     // other nodes get an updated list each heartbeat
     const peers = [getP2PAddress(entry.node)]
@@ -198,6 +203,12 @@ export function forwardTxsToLeader(
         LoggerDebug("forwarding tx to leader", ["nodeId", nodeId.toString(), "nodeIp", nodeInfo.node.ip, "tx_batch_index", i.toString()])
         p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
     }
+    // TODO we will remove the tx from mempool now
+    // if it is an invalid transaction (it can happen), then the leader will
+    // reject it, so this node will continue to send it to the Leader
+    // we should remove it only if found invalid
+    mempool.txs.splice(0, limit);
+    setMempool(mempool);
 }
 
 // this is executed each time the node is started in Follower or Candidate state if needed
@@ -321,11 +332,12 @@ export function sendStateSyncRequest(nodeId: i32): void {
     const ourNodeId = getCurrentNodeId()
     const nodes = getNodeIPs();
     const receiverNode = nodes[nodeId]
-    const request = new StateSyncRequest(lastIndex);
+    const request = new StateSyncRequest(lastIndex + 1);
     const datastr = JSON.stringify<StateSyncRequest>(request);
     const signature = signMessage(datastr);
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
-    const msgstr = `{"run":{"event":{"type":"receiveStateSyncRequest","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"},{"key": "sender","value":"${nodes[ourNodeId].address}"}]}}}`
+    const senderaddr = nodes[ourNodeId].address
+    const msgstr = `{"run":{"event":{"type":"receiveStateSyncRequest","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"},{"key": "sender","value":"${senderaddr}"}]}}}`
 
     LoggerDebug("sending statesync request", ["nodeId", nodeId.toString(), "address", receiverNode.address, "data", datastr])
 
@@ -468,6 +480,8 @@ export function sendAppendEntry(
     const data = prepareAppendEntry(nodeIps, nextIndex, lastIndex);
     const msgstr = prepareAppendEntryMessage(nodeId, nextIndex, lastIndex, lastIndex, node, data);
 
+    LoggerDebug("diseminate entry", ["count", data.entries.length.toString(), "address", node.address])
+
     // we send the request to the same contract
     // const contract = wasmx.getAddress();
     const peers = [getP2PAddress(node)]
@@ -515,6 +529,11 @@ export function receiveAppendEntryResponse(
         // const nextIndex = nextIndexPerNode.at(nodeId);
         nextIndexPerNode[nodeId] = resp.lastIndex + 1;
         setNextIndexArray(nextIndexPerNode);
+        const nodes = getNodeIPs();
+        if (nodes[nodeId].outofsync) {
+            nodes[nodeId].outofsync = false;
+            setNodeIPs(nodes);
+        }
     }
 }
 
@@ -534,36 +553,14 @@ export function receiveStateSyncResponse(
     if (!ctx.has("entry")) {
         revert("no data found");
     }
-    if (!ctx.has("signature")) {
-        revert("no signature found");
-    }
     if (!ctx.has("sender")) { // node/validator address
         revert("no sender found");
     }
-    const signature = ctx.get("signature")
-    const sender = ctx.get("sender")
     const entry = ctx.get("entry")
     const data = String.UTF8.decode(decodeBase64(entry).buffer);
     const resp = JSON.parse<StateSyncResponse>(data)
 
-    // verify signature
-    const isSender = verifyMessageByAddr(sender, signature, data);
-    if (!isSender) {
-        LoggerError("signature verification failed for statesync response", ["sender", sender]);
-        return;
-    }
-
-    let firstIndex: i64 = 0;
-    let lastIndex: i64 = 0;
-    if (resp.entries.length > 0) {
-        firstIndex = resp.entries[0].index;
-        lastIndex = firstIndex;
-    }
-    if (resp.entries.length > 1) {
-        lastIndex = resp.entries[resp.entries.length - 1].index;
-    }
-
-    LoggerInfo("received statesync response", ["count", resp.entries.length.toString(), "from", firstIndex.toString(), "to", lastIndex.toString(), "last_log_index", resp.last_log_index.toString()])
+    LoggerInfo("received statesync response", ["count", resp.entries.length.toString(), "from", resp.start_batch_index.toString(), "to", resp.last_batch_index.toString(), "last_log_index", resp.last_log_index.toString()])
 
     setTermId(resp.termId);
     // now we check the new block
@@ -571,12 +568,12 @@ export function receiveStateSyncResponse(
         processAppendEntry(resp.entries[i]);
     }
 
-    // check if we are synced
-    if (lastIndex >= resp.last_log_index) {
+    // if we are synced, we announce the Leader node
+    if (resp.last_batch_index >= resp.last_log_index) {
         // send receiveAppendEntryResponse to Leader node
         const lastLog = getLastLog();
-        const response = new AppendEntryResponse(resp.termId, true, lastIndex);
-        LoggerDebug("send heartbeat response", ["termId", resp.termId.toString(), "success", "true", "lastLogIndex", lastIndex.toString()])
+        const response = new AppendEntryResponse(resp.termId, true, resp.last_batch_index);
+        LoggerInfo("send heartbeat response", ["termId", resp.termId.toString(), "success", "true", "lastLogIndex", resp.last_batch_index.toString(), "leaderId", lastLog.leaderId.toString()])
         sendHeartbeatResponseMessage(response, lastLog.leaderId);
     }
 }
@@ -641,18 +638,22 @@ function sendStateSyncBatch(start_index: i64, lastIndexToSend: i64, lastIndex: i
         entries.push(entry);
     }
 
-    const response = new StateSyncResponse(entries, lastIndex, termId);
+    // we do not sign this message, because the receiver does not have our publicKey
+
+    const response = new StateSyncResponse(start_index, lastIndexToSend, lastIndex, termId, entries);
     const datastr = JSON.stringify<StateSyncResponse>(response);
-    const sig = signMessage(datastr);
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
     const nodes = getNodeIPs();
     const ourId = getCurrentNodeId();
     const senderaddr = nodes[ourId].address;
-    const msgstr = `{"run":{"event":{"type":"receiveStateSyncResponse","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${sig}"},{"key": "sender","value":"${senderaddr}"}]}}}`
+    const msgstr = `{"run":{"event":{"type":"receiveStateSyncResponse","params":[{"key": "entry","value":"${dataBase64}"},{"key": "sender","value":"${senderaddr}"}]}}}`
     LoggerDebug("sending state sync chunk", ["to", receiver, "count", response.entries.length.toString(), "from", start_index.toString(), "to", lastIndexToSend.toString(), "last_index", lastIndex.toString()])
 
     const nodeInfo = getNodeByAddress(receiver, nodes)
-    const peers = [getP2PAddress(nodeInfo!)]
+    if (nodeInfo == null) {
+        return revert(`cannot find node by address: ${receiver}`)
+    }
+    const peers = [getP2PAddress(nodeInfo)]
     const contract = wasmxw.getAddress();
     p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
 }

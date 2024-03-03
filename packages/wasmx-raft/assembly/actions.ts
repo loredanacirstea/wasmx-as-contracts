@@ -277,7 +277,7 @@ export function forwardTxsToLeader(
             mempool.txs.splice(i, 1);
             continue;
         }
-        // should never happen, because we check when we receive the tx
+        // this may happen even if we check when we receive the tx
         if (response.error.includes(cfg.ERROR_INVALID_TX)) {
             mempool.txs.splice(i, 1);
             LoggerDebug("forwarded invalid transaction", ["tx", tx]);
