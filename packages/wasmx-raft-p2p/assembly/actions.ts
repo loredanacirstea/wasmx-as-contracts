@@ -38,7 +38,6 @@ export function connectPeers(
     event: EventObject,
 ): void {
     const state = getCurrentState()
-    const valid = getCurrentValidator()
     const index = getCurrentNodeId();
     const nodeInfos = getNodeIPs();
     const node = nodeInfos[index];
@@ -741,7 +740,7 @@ export function sendHeartbeatResponseMessage(response: AppendEntryResponse, lead
     p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
 }
 
-function getP2PAddress(nodeInfo: NodeInfo): string {
+export function getP2PAddress(nodeInfo: NodeInfo): string {
     return `/ip4/${nodeInfo.node.host}/tcp/${nodeInfo.node.port}/ipfs/${nodeInfo.node.id}`
 }
 
@@ -755,7 +754,7 @@ function getNodeId(addr: Bech32String): i32 {
     return -1;
 }
 
-function getRandomSynced(arr: i64[], lastIndex: i64, leaderId: i32): i32 {
+export function getRandomSynced(arr: i64[], lastIndex: i64, leaderId: i32): i32 {
     if (arr.length < 3) return leaderId;
     const synced: i32[] = []
     for (let i = 0; i < arr.length; i++) {

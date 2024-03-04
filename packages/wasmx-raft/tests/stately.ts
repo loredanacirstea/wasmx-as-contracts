@@ -240,7 +240,7 @@ export const machine = createMachine(
                   start: {
                     target: "active",
                   },
-                  nodeUpdate: {
+                  updateNode: {
                     actions: {
                       type: "updateNodeAndReturn",
                     },
@@ -288,7 +288,7 @@ export const machine = createMachine(
           }
         | { type: "initialize" }
         | {
-            type: "nodeUpdate";
+            type: "updateNode";
             ip: string;
             index: string;
             removed: string;

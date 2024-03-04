@@ -1,6 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
-import { Base64String, Bech32String } from "wasmx-env/assembly/types";
+import { Base64String, Bech32String, Coin } from "wasmx-env/assembly/types";
+import { NodeInfo } from "wasmx-raft/assembly/types_raft";
 
 export const MODULE_NAME = "tendermint"
 
@@ -38,6 +39,38 @@ export class LogEntryAggregate {
 
 // @ts-ignore
 @serializable
+export class Transaction {
+    from: string;
+    to: string;
+    funds: Array<Coin>;
+    data: string;
+    gas: i64;
+    price: i64;
+    constructor(from: string, to: string, funds: Array<Coin>, data: string, gas: i64, price: i64) {
+        this.from = from;
+        this.to = to;
+        this.funds = funds;
+        this.data = data;
+        this.gas = gas;
+        this.price = price;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class TransactionResponse {
+    termId: i32;
+    leaderId: i32;
+    index: i64;
+    constructor(termId: i32, leaderId: i32, index: i64) {
+        this.termId = termId;
+        this.leaderId = leaderId;
+        this.index = index;
+    }
+}
+
+// @ts-ignore
+@serializable
 export class AppendEntry {
     // leader’s term
     termId: i32;
@@ -63,48 +96,11 @@ export class AppendEntryResponse {
     termId: i32;
     // true if follower contained entry matching prevLogIndex and prevLogTerm
     success: bool;
-    constructor(termId: i32, success: bool) {
+    lastIndex: i64;
+    constructor(termId: i32, success: bool, lastIndex: i64) {
         this.termId = termId;
         this.success = success;
-    }
-}
-
-// @ts-ignore
-@serializable
-export class NodeUpdate {
-    node: NodeInfo;
-    index: i32;
-    type: i32; // removed = 0; added = 1; updated = 2;
-    constructor(node: NodeInfo, index: i32, type: i32) {
-        this.node = node;
-        this.index = index;
-        this.type = type;
-    }
-}
-
-// @ts-ignore
-@serializable
-export class UpdateNodeResponse {
-  nodeIPs: NodeInfo[]
-  nodeId: i32
-  validators: Base64String
-  constructor(nodeIPs: NodeInfo[], nodeId: i32, validators: Base64String) {
-    this.nodeIPs = nodeIPs
-    this.nodeId = nodeId
-    this.validators = validators
-  }
-}
-
-// @ts-ignore
-@serializable
-export class TransactionResponse {
-    termId: i32;
-    leaderId: i32;
-    index: i64;
-    constructor(termId: i32, leaderId: i32, index: i64) {
-        this.termId = termId;
-        this.leaderId = leaderId;
-        this.index = index;
+        this.lastIndex = lastIndex;
     }
 }
 
@@ -121,16 +117,5 @@ export class Precommit {
         this.termId = termId;
         this.proposerId = proposerId;
         this.index = index;
-    }
-}
-
-// @ts-ignore
-@serializable
-export class NodeInfo {
-    address: Bech32String
-    ip: string
-    constructor(address: Bech32String, ip: string) {
-        this.address = address
-        this.ip = ip
     }
 }

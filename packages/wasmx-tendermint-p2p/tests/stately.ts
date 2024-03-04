@@ -8,22 +8,14 @@ export const machine = createMachine({
     nodeIPs: "[]",
     votedFor: "0",
     nextIndex: "[]",
-    matchIndex: "[]",
-    commitIndex: "0",
     currentTerm: "0",
-    lastApplied: "0",
-    blockTimeout: "heartbeatTimeout",
+    blockTimeout: "roundTimeout",
     max_tx_bytes: "65536",
-    prevLogIndex: "0",
+    roundTimeout: 10000,
     currentNodeId: "0",
-    electionReset: "0",
     max_block_gas: "20000000",
-    electionTimeout: "0",
-    maxElectionTime: "20000",
-    minElectionTime: "10000",
-    heartbeatTimeout: "5000",
   },
-  id: "RAFT-P2P-1",
+  id: "Tendermint-P2P-1",
   initial: "uninitialized",
   states: {
     uninitialized: {
@@ -47,16 +39,8 @@ export const machine = createMachine({
                 type: "setupNode",
               },
             },
-            start: {
-              target: "Follower",
-              actions: [
-                {
-                  type: "connectPeers",
-                },
-                {
-                  type: "requestNetworkSync",
-                },
-              ],
+            prestart: {
+              target: "prestart",
             },
             setup: {
               target: "unstarted",
@@ -64,45 +48,8 @@ export const machine = createMachine({
                 type: "setup",
               },
             },
-            prestart: {
-              target: "prestart",
-            },
-          },
-        },
-        Follower: {
-          on: {
-            receiveHeartbeat: {
-              target: "Follower",
-              actions: [
-                {
-                  type: "processAppendEntries",
-                },
-                {
-                  type: "sendHeartbeatResponse",
-                },
-              ],
-            },
-            receiveVoteRequest: {
-              target: "Follower",
-              actions: {
-                type: "vote",
-              },
-            },
-            newTransaction: {
-              actions: [
-                {
-                  type: "addToMempool",
-                },
-                {
-                  type: "sendNewTransactionResponse",
-                },
-              ],
-            },
-            stop: {
-              target: "#RAFT-P2P-1.stopped",
-            },
             start: {
-              target: "Follower",
+              target: "Validator",
               actions: [
                 {
                   type: "connectPeers",
@@ -112,65 +59,24 @@ export const machine = createMachine({
                 },
               ],
             },
-            receiveUpdateNodeResponse: {
-              actions: {
-                type: "receiveUpdateNodeResponse",
-              },
-            },
-            receiveStateSyncRequest: {
-              actions: {
-                type: "receiveStateSyncRequest",
-              },
-            },
-            receiveStateSyncResponse: {
-              actions: {
-                type: "receiveStateSyncResponse",
-              },
-            },
           },
-          after: {
-            electionTimeout: {
-              target: "Candidate",
-            },
-            heartbeatTimeout: {
-              actions: {
-                type: "forwardTxsToLeader",
-              },
-            },
-          },
-          entry: [
-            {
-              type: "setRandomElectionTimeout",
-              params: {
-                max: "$maxElectionTime",
-                min: "$minElectionTime",
-              },
-            },
-            {
-              type: "cancelActiveIntervals",
-              params: {
-                after: "electionTimeout",
-              },
-            },
-          ],
         },
         prestart: {
           after: {
             "500": {
-              target: "Follower",
+              target: "Validator",
             },
           },
         },
-        Candidate: {
+        Validator: {
           on: {
-            receiveHeartbeat: {
-              target: "Follower",
+            receiveProposal: {
               actions: [
                 {
-                  type: "processAppendEntries",
+                  type: "processBlock",
                 },
                 {
-                  type: "sendHeartbeatResponse",
+                  type: "sendProposalResponse",
                 },
               ],
             },
@@ -182,13 +88,16 @@ export const machine = createMachine({
                 {
                   type: "sendNewTransactionResponse",
                 },
+                {
+                  type: "forwardTx",
+                },
               ],
             },
             stop: {
-              target: "#RAFT-P2P-1.stopped",
+              target: "#Tendermint-P2P-1.stopped",
             },
             start: {
-              target: "Candidate",
+              target: "Validator",
               actions: [
                 {
                   type: "connectPeers",
@@ -198,13 +107,17 @@ export const machine = createMachine({
                 },
               ],
             },
-            receiveVoteResponse: {
-              actions: {
-                type: "receiveVoteResponse",
-              },
+            receivePrecommit: {
+              actions: [
+                {
+                  type: "commitBlock",
+                },
+                {
+                  type: "sendPrecommitResponse",
+                },
+              ],
             },
             receiveUpdateNodeResponse: {
-              target: "Follower",
               actions: {
                 type: "receiveUpdateNodeResponse",
               },
@@ -219,57 +132,45 @@ export const machine = createMachine({
                 type: "receiveStateSyncResponse",
               },
             },
+            updateNode: {
+              actions: {
+                type: "updateNodeAndReturn",
+              },
+            },
           },
           after: {
-            electionTimeout: [
-              {
-                target: "Leader",
-                guard: {
-                  type: "isVotedLeader",
-                },
-              },
-              {
-                target: "Follower",
-              },
-            ],
+            roundTimeout: {
+              target: "Validator",
+            },
+          },
+          always: {
+            target: "Proposer",
+            guard: {
+              type: "isNextProposer",
+            },
           },
           entry: [
+            {
+              type: "cancelActiveIntervals",
+              params: {
+                after: "roundTimeout",
+              },
+            },
             {
               type: "incrementCurrentTerm",
             },
             {
-              type: "selfVote",
-            },
-            {
-              type: "setRandomElectionTimeout",
-              params: {
-                max: "$maxElectionTime",
-                min: "$minElectionTime",
-              },
-            },
-            {
-              type: "sendVoteRequests",
+              type: "initializeNextIndex",
             },
           ],
         },
-        Leader: {
+        Proposer: {
           initial: "active",
           on: {
-            reset: {
-              target: "Follower",
-            },
             stop: {
-              target: "#RAFT-P2P-1.stopped",
+              target: "#Tendermint-P2P-1.stopped",
             },
           },
-          entry: [
-            {
-              type: "initializeNextIndex",
-            },
-            {
-              type: "initializeMatchIndex",
-            },
-          ],
           states: {
             active: {
               on: {
@@ -285,16 +186,36 @@ export const machine = createMachine({
                 },
                 start: {
                   target: "active",
-                  actions: {
-                    type: "connectPeers",
-                  },
+                  actions: [
+                    {
+                      type: "connectPeers",
+                    },
+                    {
+                      type: "requestNetworkSync",
+                    },
+                  ],
                 },
                 updateNode: {
                   actions: {
                     type: "updateNodeAndReturn",
                   },
-                  description:
-                    "when a node comes back online, or is new to the network, or has changed its IP, or is removing itself from the network",
+                },
+                receiveProposal: {
+                  target: "#Tendermint-P2P-1.initialized.Validator",
+                  actions: [
+                    {
+                      type: "processBlock",
+                    },
+                    {
+                      type: "sendProposalResponse",
+                    },
+                    {
+                      type: "cancelActiveIntervals",
+                      params: {
+                        after: "roundTimeout",
+                      },
+                    },
+                  ],
                 },
                 receiveAppendEntryResponse: {
                   actions: [
@@ -313,11 +234,17 @@ export const machine = createMachine({
                 },
               },
               after: {
-                heartbeatTimeout: {
-                  target: "active",
+                roundTimeout: {
+                  target: "#Tendermint-P2P-1.initialized.Validator",
                 },
               },
               entry: [
+                {
+                  type: "cancelActiveIntervals",
+                  params: {
+                    after: "roundTimeout",
+                  },
+                },
                 {
                   type: "proposeBlock",
                 },
@@ -333,16 +260,13 @@ export const machine = createMachine({
     stopped: {
       on: {
         restart: {
-          target: "#RAFT-P2P-1.initialized.unstarted",
+          target: "#Tendermint-P2P-1.initialized.unstarted",
         },
       },
     },
   },
 }).withConfig({
   actions: {
-    setRandomElectionTimeout: function (context, event) {
-      // Add your action code here
-    },
     cancelActiveIntervals: function (context, event) {
       // Add your action code here
       // ...
@@ -351,19 +275,7 @@ export const machine = createMachine({
       // Add your action code here
       // ...
     },
-    selfVote: function (context, event) {
-      // Add your action code here
-      // ...
-    },
-    sendVoteRequests: function (context, event) {
-      // Add your action code here
-      // ...
-    },
     initializeNextIndex: function (context, event) {
-      // Add your action code here
-      // ...
-    },
-    initializeMatchIndex: function (context, event) {
       // Add your action code here
       // ...
     },
@@ -383,14 +295,6 @@ export const machine = createMachine({
       // Add your action code here
       // ...
     },
-    processAppendEntries: function (context, event) {
-      // Add your action code here
-      // ...
-    },
-    sendHeartbeatResponse: function (context, event) {
-      // Add your action code here
-      // ...
-    },
     setupNode: function (context, event) {
       // Add your action code here
       // ...
@@ -399,11 +303,19 @@ export const machine = createMachine({
       // Add your action code here
       // ...
     },
-    vote: function (context, event) {
+    requestNetworkSync: function (context, event) {
       // Add your action code here
       // ...
     },
-    requestNetworkSync: function (context, event) {
+    processBlock: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    sendProposalResponse: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    forwardTx: function (context, event) {
       // Add your action code here
       // ...
     },
@@ -415,15 +327,11 @@ export const machine = createMachine({
       // Add your action code here
       // ...
     },
-    forwardTxsToLeader: function (context, event) {
+    commitBlock: function (context, event) {
       // Add your action code here
       // ...
     },
-    receiveUpdateNodeResponse: function (context, event) {
-      // Add your action code here
-      // ...
-    },
-    receiveVoteResponse: function (context, event) {
+    sendPrecommitResponse: function (context, event) {
       // Add your action code here
       // ...
     },
@@ -432,6 +340,10 @@ export const machine = createMachine({
       // ...
     },
     commitBlocks: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    receiveUpdateNodeResponse: function (context, event) {
       // Add your action code here
       // ...
     },
@@ -445,7 +357,7 @@ export const machine = createMachine({
     },
   },
   guards: {
-    isVotedLeader: function (context, event) {
+    isNextProposer: function (context, event) {
       // Add your guard condition here
       return true;
     },

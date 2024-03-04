@@ -128,7 +128,7 @@ export function registeredCheckMessage(ips: NodeInfo[], nodeId: i32): string {
     const signature = signMessage(updateMsgStr);
 
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(updateMsgStr)));
-    const msgstr = `{"run":{"event":{"type":"nodeUpdate","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
+    const msgstr = `{"run":{"event":{"type":"updateNode","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
     LoggerInfo("register request", ["req", msgstr])
     return msgstr
 }
@@ -205,7 +205,9 @@ export function updateNodeEntry(entry: NodeUpdate): UpdateNodeResponse {
             // we just update the node
             ips[ndx].node = entry.node.node
         } else {
+            // TODO mark as outofsync for raft too?
             ips.push(entry.node);
+            // TODO adding a new node must be under the same index as in the validators array
         }
         // we reset these values
         // a node coming back online will send updated indexes later
@@ -468,7 +470,11 @@ function sendVoteRequest(nodeId: i32, node: NodeInfo, request: VoteRequest, term
 export function voteInternal(termId: i32, candidateId: i32, lastLogIndex: i64, lastLogTerm: i32): VoteResponse {
     const mytermId = getTermId();
     let response = new VoteResponse(mytermId, true);
-    if (termId < mytermId) {
+    const nodes = getNodeIPs();
+    // we don't vote on outofsync candidates
+    if (!isNodeActive(nodes[candidateId])) {
+        response = new VoteResponse(mytermId, false);
+    } else if (termId < mytermId) {
         response = new VoteResponse(mytermId, false);
     } else if (termId > mytermId) {
         // TODO what now?

@@ -1099,7 +1099,7 @@ function sendQuery(ip: string, contract: ArrayBuffer, req: QueryResponse): Query
     // const queryMsg = JSON.stringify<QueryResponse>(req)
     // const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(queryMsg)))
     // const signature = signMessage(queryMsg);
-    // const msgstr = `{"run":{"event":{"type":"nodeUpdate","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
+    // const msgstr = `{"run":{"event":{"type":"updateNode","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
     const msgstr = `{"run":{"event":{"type":"query","params":[{"key": "block","value":"${req.block}"},{"key": "header","value":"${req.header}"}]}}}`
     const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
     LoggerDebug("query request", ["req", msgstr])

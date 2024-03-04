@@ -1,5 +1,5 @@
 {
-  "name": "wasmx-tendermint",
+  "name": "wasmx-tendermint-p2p",
   "version": "0.0.1",
   "description": "",
   "main": "index.js",
@@ -13,7 +13,7 @@
   "author": "Loredana Cirstea",
   "license": "UNLICENSED",
   "devDependencies": {
-    "assemblyscript": "^0.27.22"
+    "assemblyscript": "^0.27.24"
   },
   "type": "module",
   "exports": {
@@ -30,9 +30,12 @@
     "wasmx-env": "file:../wasmx-env",
     "wasmx-consensus": "file:../wasmx-consensus",
     "wasmx-consensus-utils": "file:../wasmx-consensus-utils",
+    "wasmx-p2p": "file:../wasmx-p2p",
     "wasmx-utils": "file:../wasmx-utils",
     "wasmx-raft": "file:../wasmx-raft",
+    "wasmx-raft-p2p": "file:../wasmx-raft-p2p",
     "wasmx-stake": "file:../wasmx-stake",
+    "wasmx-tendermint": "file:../wasmx-tendermint",
     "xstate-fsm-as": "file:../xstate-fsm-as"
   }
 }

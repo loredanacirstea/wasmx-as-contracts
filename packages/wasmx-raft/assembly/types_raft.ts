@@ -191,4 +191,3 @@ export class NodeInfo {
         this.outofsync = outofsync
     }
 }
-

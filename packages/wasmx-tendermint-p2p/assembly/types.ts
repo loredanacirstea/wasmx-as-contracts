@@ -1,10 +1,11 @@
 import { JSON } from "json-as/assembly";
+import * as wblocks from "wasmx-blocks/assembly/types";
 import { Base64String, Bech32String } from "wasmx-env/assembly/types";
-import { LogEntryAggregate } from "wasmx-raft/assembly/types_raft";
+import { LogEntryAggregate } from "wasmx-tendermint/assembly/types";
 
-export const MODULE_NAME = "raftp2p"
+export const MODULE_NAME = "tendermintp2p"
 
-export const PROTOCOL_ID = "raftp2p_1"
+export const PROTOCOL_ID = "tendermintp2p_1"
 
 // @ts-ignore
 @serializable

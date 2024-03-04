@@ -20,55 +20,14 @@ import {
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
 import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, parseUint8ArrayToU32BigEndian, base64ToHex, hex64ToBase64 } from "wasmx-utils/assembly/utils";
-import { LogEntry, LogEntryAggregate, AppendEntry, NodeUpdate, UpdateNodeResponse, AppendEntryResponse, TransactionResponse, Precommit, MODULE_NAME, NodeInfo } from "./types";
+import { extractUpdateNodeEntryAndVerify, registeredCheckMessage, registeredCheckNeeded, removeNode } from "wasmx-raft/assembly/actions";
+import { LogEntry, LogEntryAggregate, AppendEntry, AppendEntryResponse, TransactionResponse, Precommit, MODULE_NAME } from "./types";
+import * as cfg from "./config";
 import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
-
-const ROUND_TIMEOUT = "roundTimeout";
-
-//// Cosmos-specific
-const MEMPOOL_KEY = "mempool";
-const MAX_TX_BYTES = "max_tx_bytes";
-
-//// blockchain
-const VALIDATORS_KEY = "validators";
-const STATE_KEY = "state";
-
-// const
-
-const LOG_START = 1;
-const STATE_SYNC_BATCH = 200;
-const ERROR_INVALID_TX = "transaction is invalid";
-const MAX_LOGGED = 2000;
-// ABCISemVer is the semantic version of the ABCI protocol
-const ABCISemVer  = "2.0.0"
-const ABCIVersion = ABCISemVer
-// P2PProtocol versions all p2p behavior and msgs.
-// This includes proposer selection.
-const P2PProtocol: u64 = 8
-// BlockProtocol versions all block data structures and processing.
-// This includes validity of blocks and state updates.
-const BlockProtocol: u64 = 12;
-//// blockchain constants
-// MaxBlockSizeBytes is the maximum permitted size of the blocks.
-export const MaxBlockSizeBytes = 104857600 // 100MB
-// BlockPartSizeBytes is the size of one block part.
-export const BlockPartSizeBytes: u32 = 65536 // 64kB
-// MaxBlockPartsCount is the maximum number of block parts.
-export const MaxBlockPartsCount = (MaxBlockSizeBytes / BlockPartSizeBytes) + 1
-
-/// Context values
-const NODE_IPS = "nodeIPs";
-const CURRENT_NODE_ID = "currentNodeId";
-const ELECTION_TIMEOUT_KEY = "electionTimeout";
-const TERM_ID = "currentTerm"; // current round
-const NEXT_INDEX_ARRAY = "nextIndex";
-const MATCH_INDEX_ARRAY = "matchIndex";
-
-const NODE_UPDATE_REMOVE = 0
-const NODE_UPDATE_ADD = 1
-const NODE_UPDATE_UPDATE = 2
+import { appendLogEntry, getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLogIndex, getLogEntryObj, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, removeLogEntry, setCurrentState, setLastLogIndex, setNextIndexArray, setNodeIPs, setTermId } from "./action_utils";
+import { Node, NodeInfo, NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft";
 
 // guards
 
@@ -126,7 +85,7 @@ export function proposeBlock(
     const cparams = getConsensusParams();
     let maxbytes = cparams.block.max_bytes;
     if (maxbytes == -1) {
-        maxbytes = MaxBlockSizeBytes;
+        maxbytes = cfg.MaxBlockSizeBytes;
     }
     const batch = mempool.batch(cparams.block.max_gas, maxbytes);
     LoggerDebug("batch transactions", ["count", batch.txs.length.toString()])
@@ -171,11 +130,11 @@ export function setupNode(
     let nodeIPs: string = "";
     let initChainSetup: string = "";
     for (let i = 0; i < event.params.length; i++) {
-        if (event.params[i].key === CURRENT_NODE_ID) {
+        if (event.params[i].key === cfg.CURRENT_NODE_ID) {
             currentNodeId = event.params[i].value;
             continue;
         }
-        if (event.params[i].key === NODE_IPS) {
+        if (event.params[i].key === cfg.NODE_IPS) {
             nodeIPs = event.params[i].value;
             continue;
         }
@@ -193,13 +152,13 @@ export function setupNode(
     if (initChainSetup === "") {
         revert("no initChainSetup found");
     }
-    fsm.setContextValue(CURRENT_NODE_ID, currentNodeId);
+    fsm.setContextValue(cfg.CURRENT_NODE_ID, currentNodeId);
 
     // !! nodeIps must be the same for all nodes
 
     // TODO ID@host:ip
     // 6efc12ab37fc0e096d8618872f6930df53972879@0.0.0.0:26757
-    fsm.setContextValue(NODE_IPS, nodeIPs);
+    fsm.setContextValue(cfg.NODE_IPS, nodeIPs);
 
     const datajson = String.UTF8.decode(decodeBase64(initChainSetup).buffer);
     // TODO remove validator private key from logs in initChainSetup
@@ -213,7 +172,7 @@ export function setupNode(
         if (peer.length != 2) {
             revert(`invalid node format; found: ${data.peers[i]}`)
         }
-        peers[i] = new NodeInfo(peer[0], peer[1]);
+        peers[i] = new NodeInfo(peer[0], new Node("","","",peer[1]), false);
     }
     setNodeIPs(peers);
     initChain(data);
@@ -226,63 +185,63 @@ export function registeredCheck(
     // when a node starts, it needs to add itself to the pack
     // we just need [ourIP, leaderIP]
 
-    // if blocks, return
-    const lastIndex = getLastLogIndex();
-    if (lastIndex > LOG_START) {
-        return;
-    }
-    // if we are alone, return
     const ips = getNodeIPs();
-    if (ips.length == 1) {
-        return;
-    }
-    // we have tried to become leader 2 times
-    const termId = getTermId();
-    if (termId < 2) {
-        return;
-    }
-    LoggerInfo("trying to register node IP with Leader", []);
+    const needed = registeredCheckNeeded(ips);
+    if (!needed) return;
 
     // send updateNode to all ips except us
     const nodeId = getCurrentNodeId();
-    const nodeIp = ips[nodeId];
-    // TODO signature on protobuf encoding, not JSON
-    const validatorInfo = getCurrentValidator();
-    // TODO ?
-    // const validatorInfoStr = encodeBase64(Uint8Array.wrap(String.UTF8.encode(JSON.stringify<typestnd.ValidatorInfo>(validatorInfo))))
-    const updateMsg = new NodeUpdate(nodeIp, nodeId, NODE_UPDATE_ADD);
-    const updateMsgStr = JSON.stringify<NodeUpdate>(updateMsg);
-    const signature = signMessage(updateMsgStr);
+    const nodeInfo = ips[nodeId];
 
-    // const msgstr = `{"run":{"event":{"type":"nodeUpdate","params":[{"key": "ip","value":"${updateMsg.ip.toString()}"},{"key": "index","value":"${updateMsg.index.toString()}"},{"key": "removed","value":"0"},{"key": "signature","value":"${signature}"}]}}}`
-    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(updateMsgStr)));
-    const msgstr = `{"run":{"event":{"type":"nodeUpdate","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
+    const msgstr = registeredCheckMessage(ips, nodeId);
     const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
     LoggerInfo("register request", ["req", msgstr])
+
 
     // we send the request to the same contract
     const contract = wasmx.getAddress();
 
     for (let i = 0; i < ips.length; i++) {
         // don't send to ourselves or to removed nodes
-        if (i == nodeId || ips[i].ip == "") continue;
-        LoggerInfo("register request", ["IP", ips[i].ip])
-        const response = wasmxw.grpcRequest(ips[i].ip, Uint8Array.wrap(contract), msgBase64);
+        if (i == nodeId || ips[i].node.ip == "") continue;
+        LoggerInfo("register request", ["IP", ips[i].node.ip, "address", ips[i].address])
+        const response = wasmxw.grpcRequest(ips[i].node.ip, Uint8Array.wrap(contract), msgBase64);
         LoggerInfo("register response", ["error", response.error, "data", response.data])
         if (response.error.length > 0 || response.data.length == 0) {
             return
         }
         const resp = JSON.parse<UpdateNodeResponse>(response.data);
-        if (resp.nodeIPs[resp.nodeId] != nodeIp) {
-            LoggerError("register node response has wrong ip", ["expected", nodeIp.ip]);
-            revert(`register node response has wrong ip`)
+        // we find our id
+        let ourId = -1;
+        for (let j = 0; j < resp.nodes.length; j++) {
+            if (resp.nodes[j].address == nodeInfo.address) {
+                ourId = j;
+                break;
+            }
         }
-        const allvalidStr = String.UTF8.decode(decodeBase64(resp.validators).buffer);
-        console.debug("* register node allvalidStr: " + allvalidStr)
-        const allvalidators = JSON.parse<typestnd.ValidatorInfo[]>(allvalidStr);
-        checkValidatorsUpdate(allvalidators, validatorInfo, resp.nodeId);
-        setCurrentNodeId(resp.nodeId);
-        setNodeIPs(resp.nodeIPs);
+        if (ourId != -1) {
+            const node = resp.nodes[ourId];
+            if (node.node.host != nodeInfo.node.host) {
+                LoggerError("node list contains wrong host data", ["address", nodeInfo.address, "id", ourId.toString(), "actual", node.node.host, "expected", nodeInfo.node.host])
+                continue;
+            }
+            if (node.node.id != nodeInfo.node.id) {
+                LoggerError("node list contains wrong id data", ["address", nodeInfo.address, "id", ourId.toString(), "actual", node.node.id, "expected", nodeInfo.node.id])
+                continue;
+            }
+            if (node.node.ip != nodeInfo.node.ip) {
+                LoggerError("node list contains wrong ip data", ["address", nodeInfo.address, "id", ourId.toString(), "actual", node.node.ip, "expected", nodeInfo.node.ip])
+                continue;
+            }
+            if (node.node.port != nodeInfo.node.port) {
+                LoggerError("node list contains wrong port data", ["address", nodeInfo.address, "id", ourId.toString(), "actual", node.node.port, "expected", nodeInfo.node.port])
+                continue;
+            }
+            setCurrentNodeId(ourId);
+            setNodeIPs(resp.nodes);
+            // we can stop here and not query other nodes
+            break;
+        }
     }
 }
 
@@ -314,7 +273,7 @@ export function processBlock(
         revert("update node: empty signature");
     }
     const entryStr = String.UTF8.decode(decodeBase64(entryBase64).buffer);
-    LoggerDebug("received new block proposal", ["block", entryStr.slice(0, MAX_LOGGED) + " [...]"]);
+    LoggerDebug("received new block proposal", ["block", entryStr.slice(0, cfg.MAX_LOGGED) + " [...]"]);
 
     let entry: AppendEntry = JSON.parse<AppendEntry>(entryStr);
     LoggerInfo("received new block proposal", [
@@ -401,9 +360,13 @@ export function sendAppendEntries(
     LoggerDebug("diseminate blocks...", ["nodeId", nodeId.toString(), "ips", JSON.stringify<Array<NodeInfo>>(ips)])
     for (let i = 0; i < ips.length; i++) {
         // don't send to Leader or removed nodes
-        if (nodeId === i || ips[i].ip.length == 0) continue;
+        if (nodeId === i || !isNodeActive(ips[i])) continue;
         sendAppendEntry(i, ips[i], ips);
     }
+}
+
+export function isNodeActive(node: NodeInfo): bool {
+    return !node.outofsync && (node.node.ip != "" || node.node.host != "")
 }
 
 export function sendAppendEntry(
@@ -414,12 +377,37 @@ export function sendAppendEntry(
     const nextIndexPerNode = getNextIndexArray();
     const nextIndex = nextIndexPerNode.at(nodeId);
     let lastIndex = getLastLogIndex();
+    let lastIndexToSend = lastIndex
+
     // TODO state sync & snapshotting
     // right now, don't send more than STATE_SYNC_BATCH blocks at a time
-    if ((lastIndex - nextIndex) > STATE_SYNC_BATCH) {
-        lastIndex = nextIndex + STATE_SYNC_BATCH;
+    if ((lastIndex - nextIndex) > cfg.STATE_SYNC_BATCH) {
+        lastIndexToSend = nextIndex + cfg.STATE_SYNC_BATCH;
     }
 
+    const data = prepareAppendEntry(nodeIps, nextIndex, lastIndexToSend);
+    const msgstr = prepareAppendEntryMessage(nodeId, nextIndex, lastIndex, lastIndexToSend,node, data);
+    const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
+
+    // we send the request to the same contract
+    const contract = wasmx.getAddress();
+    const response = wasmxw.grpcRequest(node.node.ip, Uint8Array.wrap(contract), msgBase64);
+    if (response.error.length > 0) {
+        return
+    }
+    const resp = JSON.parse<AppendEntryResponse>(response.data);
+    // TODO something with resp.term
+    if (resp.success) {
+        nextIndexPerNode[nodeId] = nextIndex + data.entries.length;
+        setNextIndexArray(nextIndexPerNode);
+    }
+}
+
+export function prepareAppendEntry(
+    nodeIps: NodeInfo[],
+    nextIndex: i64,
+    lastIndex: i64,
+): AppendEntry {
     const entries: Array<LogEntryAggregate> = [];
     for (let i = nextIndex; i <= lastIndex; i++) {
         const entry = getLogEntryAggregate(i);
@@ -427,7 +415,7 @@ export function sendAppendEntry(
     }
     const previousEntry = getLogEntryObj(nextIndex-1);
     const lastCommitIndex = getLastBlockIndex();
-    const validators = encodeBase64(Uint8Array.wrap(String.UTF8.encode(fsm.getContextValue(VALIDATORS_KEY))))
+    const validators = encodeBase64(Uint8Array.wrap(String.UTF8.encode(fsm.getContextValue(cfg.VALIDATORS_KEY))))
     const data = new AppendEntry(
         getTermId(),
         getCurrentNodeId(),
@@ -435,26 +423,24 @@ export function sendAppendEntry(
         nodeIps,
         validators,
     )
+    return data;
+}
+
+export function prepareAppendEntryMessage(
+    nodeId: i32,
+    nextIndex: i64,
+    lastIndex: i64,
+    lastIndexToSend: i64,
+    node: NodeInfo,
+    data: AppendEntry,
+): string {
     const datastr = JSON.stringify<AppendEntry>(data);
     const signature = signMessage(datastr);
-
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
     const msgstr = `{"run":{"event":{"type":"receiveProposal","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
 
-    LoggerDebug("diseminate blocks...", ["nodeId", nodeId.toString(), "receiver", node.address, "count", entries.length.toString(), "from", nextIndex.toString(), "to", lastIndex.toString()])
-    const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
-    // we send the request to the same contract
-    const contract = wasmx.getAddress();
-    const response = wasmxw.grpcRequest(node.ip, Uint8Array.wrap(contract), msgBase64);
-    if (response.error.length > 0) {
-        return
-    }
-    const resp = JSON.parse<AppendEntryResponse>(response.data);
-    // TODO something with resp.term
-    if (resp.success) {
-        nextIndexPerNode[nodeId] = nextIndex + entries.length;
-        setNextIndexArray(nextIndexPerNode);
-    }
+    LoggerDebug("diseminate blocks...", ["nodeId", nodeId.toString(), "receiver", node.address, "count", data.entries.length.toString(), "from", nextIndex.toString(), "to", lastIndex.toString()])
+    return msgstr
 }
 
 export function sendPrecommits(
@@ -467,7 +453,7 @@ export function sendPrecommits(
     LoggerDebug("sending precommits...", ["nodeId", nodeId.toString(), "ips", JSON.stringify<Array<NodeInfo>>(ips)])
     for (let i = 0; i < ips.length; i++) {
         // don't send to Leader or removed nodes
-        if (nodeId === i || ips[i].ip.length == 0) continue;
+        if (nodeId === i || !isNodeActive(ips[i])) continue;
         sendPrecommit(i, ips[i]);
     }
 }
@@ -490,9 +476,9 @@ export function sendPrecommit(
     const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
     // we send the request to the same contract
     const contract = wasmx.getAddress();
-    const response = wasmxw.grpcRequest(node.ip, Uint8Array.wrap(contract), msgBase64);
+    const response = wasmxw.grpcRequest(node.node.ip, Uint8Array.wrap(contract), msgBase64);
     if (response.error.length > 0) {
-        LoggerError("precommit failed", ["nodeId", nodeId.toString(), "address", node.address, "nodeIp", node.ip])
+        LoggerError("precommit failed", ["nodeId", nodeId.toString(), "address", node.address, "nodeIp", node.node.ip])
     }
 }
 
@@ -505,7 +491,7 @@ export function addTransactionToMempool(
     // we only check the code type; CheckTx should be stateless, just form checking
     if (checkResp.code !== typestnd.CodeType.Ok) {
         // transaction is not valid, we should finish; we use this error to check forwarded txs to leader
-        return revert(`${ERROR_INVALID_TX}; code ${checkResp.code}; ${checkResp.log}`);
+        return revert(`${cfg.ERROR_INVALID_TX}; code ${checkResp.code}; ${checkResp.log}`);
     }
 
     // add to mempool
@@ -533,8 +519,15 @@ export function sendProposalResponse(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    const termId = getTermId();
-    const lastLogIndex = getLastLogIndex();
+    const entry = extractAppendEntry(params, event)
+    const response = sendProposalResponseMessage(entry)
+    wasmx.setFinishData(String.UTF8.encode(JSON.stringify<AppendEntryResponse>(response)));
+}
+
+export function extractAppendEntry(
+    params: ActionParam[],
+    event: EventObject,
+): AppendEntry {
     let entryBase64: string = "";
     for (let i = 0; i < event.params.length; i++) {
         if (event.params[i].key === "entry") {
@@ -547,114 +540,72 @@ export function sendProposalResponse(
     }
     const entryStr = String.UTF8.decode(decodeBase64(entryBase64).buffer);
     let entry: AppendEntry = JSON.parse<AppendEntry>(entryStr);
+    return entry
+}
+
+export function sendProposalResponseMessage(entry: AppendEntry): AppendEntryResponse {
+    const termId = getTermId();
+    const lastLogIndex = getLastLogIndex();
     let successful = true;
     if (entry.entries.length > 0 && entry.entries[0].index > lastLogIndex) {
         successful = false;
     }
-
-    const response = new AppendEntryResponse(termId, successful);
+    const response = new AppendEntryResponse(termId, successful, lastLogIndex);
     LoggerDebug("send proposal response", ["termId", termId.toString(), "success", "true"])
-    wasmx.setFinishData(String.UTF8.encode(JSON.stringify<AppendEntryResponse>(response)));
+    return response
 }
 
-// temporary node updates - only for Leader
 export function updateNodeAndReturn(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    let entryBase64: string = "";
-    let signature: string = "";
-    for (let i = 0; i < event.params.length; i++) {
-        if (event.params[i].key === "entry") {
-            entryBase64 = event.params[i].value;
-            continue;
-        }
-        if (event.params[i].key === "signature") {
-            signature = event.params[i].value;
-            continue;
-        }
-    }
-    if (entryBase64 === "") {
-        revert("updateNodeAndReturn: empty entry");
-    }
-    if (signature === "") {
-        revert("updateNodeAndReturn: empty signature");
-    }
-    const entryStr = String.UTF8.decode(decodeBase64(entryBase64).buffer);
-    LoggerDebug("updateNodeAndReturn", ["entry", entryStr, "signature", signature])
-    let entry: NodeUpdate = JSON.parse<NodeUpdate>(entryStr);
+    let entry = extractUpdateNodeEntryAndVerify(params, event);
+    const response = updateNodeEntry(entry);
+    wasmx.setFinishData(String.UTF8.encode(JSON.stringify<UpdateNodeResponse>(response)));
+}
 
-    LoggerInfo("update node", ["ip", entry.node.ip, "type", entry.type.toString(), "index", entry.index.toString(), "address", entry.node.address])
+export function updateNodeEntry(entry: NodeUpdate): UpdateNodeResponse {
+    let ips = getNodeIPs();
 
-    const ips = getNodeIPs();
-    let entryIndex = entry.index;
-
-    if (entry.type == NODE_UPDATE_ADD) {
-        if (!entry.node || entry.node.ip == "" || entry.node.address == "") {
-            LoggerError("validator info missing from node update", ["ip", entry.node.ip])
-            return;
+    // new node or node comming back online
+    if (entry.type == cfg.NODE_UPDATE_ADD) {
+        if (entry.node.node.ip == "" && entry.node.node.host == "") {
+            revert(`validator info missing from node update: address ${entry.node.address}`)
         }
-        // make it idempotent & don't add same ip multiple times
+        // make it idempotent & don't add same node address multiple times
         let ndx = -1
         for (let i = 0; i < ips.length; i++) {
-            if (ips[i].ip == entry.node.ip) {
+            if (ips[i].address == entry.node.address) {
                 ndx = i;
                 break;
             }
         }
         if (ndx > -1) {
-            LoggerDebug("ip already included", ["ip", entry.node.ip])
-            return;
+            // we just update the node
+            ips[ndx].node = entry.node.node
+        } else {
+            // TODO mark as outofsync for raft too?
+            ips.push(entry.node);
+            // TODO adding a new node must be under the same index as in the validators array
         }
-        entryIndex = ips.length;
-
-        // verify signature and store the new validator
-        // we expect that the validator was added by transaction to the staking module
-        const allvalidators = getAllValidators()
-        let validatorInfo: staking.Validator | null = null;
-        for (let i = 0; i < allvalidators.length; i++) {
-            if (allvalidators[i].operator_address == entry.node.address) {
-                validatorInfo = allvalidators[i];
-            }
-        }
-        if (validatorInfo == null) {
-            return revert("validator must be registered first on-chain");
-        }
-
-        const isSender = wasmxw.ed25519Verify(validatorInfo.consensus_pubkey.key, signature, entryStr);
-        if (!isSender) {
-            LoggerError("signature verification failed", ["nodeIndex", entryIndex.toString(), "address", entry.node.address, "nodeIp", entry.node.ip]);
-            return;
-        }
-    } else {
-        // verify signature
-        const isSender = verifyMessage(entryIndex, signature, entryStr);
-        if (!isSender) {
-            LoggerError("signature verification failed", ["nodeIndex", entryIndex.toString(), "address", entry.node.address, "nodeIp", entry.node.ip]);
-            return;
-        }
-    }
-
-    // removed
-    if (entry.type == NODE_UPDATE_REMOVE) {
-        // idempotent
-        ips[entryIndex].ip == ""
-    } else if (entry.type == NODE_UPDATE_ADD) {
-        ips.push(entry.node);
+        // we reset these values
+        // a node coming back online will send updated indexes later
         const nextIndexes = getNextIndexArray();
-        nextIndexes.push(LOG_START + 1);
+        nextIndexes.push(cfg.LOG_START + 1);
         setNextIndexArray(nextIndexes);
-        const validators = encodeBase64(Uint8Array.wrap(String.UTF8.encode(fsm.getContextValue(VALIDATORS_KEY))))
-        const response = new UpdateNodeResponse(ips, entryIndex, validators);
-        wasmx.setFinishData(String.UTF8.encode(JSON.stringify<UpdateNodeResponse>(response)));
-    } else {
-        // NODE_UPDATE_UPDATE
-        // just update the ip
-        ips[entryIndex].ip = entry.node.ip;
+    }
+    else if (entry.type == cfg.NODE_UPDATE_UPDATE) {
+        // just update the node
+        ips[entry.index].node = entry.node.node;
+    }
+    else if (entry.type == cfg.NODE_UPDATE_REMOVE) {
+        // idempotent
+        ips = removeNode(ips, entry.index)
     }
 
     LoggerInfo("node updates", ["ips", JSON.stringify<NodeInfo[]>(ips)])
     setNodeIPs(ips);
+    return new UpdateNodeResponse(ips, getCurrentNodeId(), getLastLogIndex());
 }
 
 export function sendPrecommitResponse(
@@ -697,7 +648,7 @@ export function commitBlock(
         revert("update node: empty signature");
     }
     const entryStr = String.UTF8.decode(decodeBase64(entryBase64).buffer);
-    LoggerDebug("received precommit", ["Precommit", entryStr.slice(0, MAX_LOGGED) + " [...]"]);
+    LoggerDebug("received precommit", ["Precommit", entryStr.slice(0, cfg.MAX_LOGGED) + " [...]"]);
 
     let entry: Precommit = JSON.parse<Precommit>(entryStr);
     LoggerInfo("received precommit", [
@@ -818,17 +769,11 @@ export function setup(
     callHookContract("EndBlock", blockData);
 }
 
-function getCurrentValidator(): typestnd.ValidatorInfo {
-    const currentState = getCurrentState();
-    // TODO voting_power & proposer_priority
-    return new typestnd.ValidatorInfo(currentState.validator_address, currentState.validator_pubkey, 0, 0);
-}
-
 function setCurrentNodeId(index: i32): void {
-    fsm.setContextValue(CURRENT_NODE_ID, index.toString());
+    fsm.setContextValue(cfg.CURRENT_NODE_ID, index.toString());
 }
 
-function initChain(req: typestnd.InitChainSetup): void {
+export function initChain(req: typestnd.InitChainSetup): void {
     LoggerDebug("start chain init", [])
 
     // TODO what are the correct empty valuew?
@@ -886,46 +831,21 @@ function initializeIndexArrays(len: i32): void {
         // for each server, index of the next log entry to send to that server (initialized to leader's last log index + 1)
         nextIndex[i] = lastLogIndex + 1;
         // for each server, index of highest log entry known to be replicated on server (initialized to 0, increases monotonically)
-        matchIndex[i] = LOG_START; // TODO ?
+        matchIndex[i] = cfg.LOG_START; // TODO ?
     }
     setNextIndexArray(nextIndex);
     setMatchIndexArray(matchIndex);
 }
 
 function setMatchIndexArray(value: Array<i64>): void {
-    fsm.setContextValue(MATCH_INDEX_ARRAY, JSON.stringify<Array<i64>>(value));
+    fsm.setContextValue(cfg.MATCH_INDEX_ARRAY, JSON.stringify<Array<i64>>(value));
 }
 
 // this gets called each reentry in Leader.active state
-function checkCommits(): void {
-    const lastCommitIndex = getLastBlockIndex();
-    // all commited + uncommited logs
-    const lastLogIndex = getLastLogIndex();
-    const currentNodeId = getCurrentNodeId();
-    const nextIndexPerNode = getNextIndexArray();
-    const validators = getValidators();
-    const len = getNodeCount();
-    const nodeId = getCurrentNodeId();
-    let nextCommit = lastCommitIndex + 1;
-
-    LoggerDebug("trying to commit next block...", ["lastCommitIndex", lastCommitIndex.toString(), "lastSaved", lastLogIndex.toString(), "blocksToCommit", (lastLogIndex >= nextCommit).toString()])
-
-    if (lastLogIndex < nextCommit) {
-        return;
-    }
-    const threshold = getBFTThreshold();
-    let count = validators[nodeId].voting_power; // leader
-    for (let i = 0; i < len; i++) {
-        // next index is the next index to send, so we use >
-        if (nextIndexPerNode.at(i) > nextCommit) {
-            count += validators[i].voting_power;
-        }
-    }
-    const committing = count >= threshold;
-    LoggerDebug("trying to commit next block...", ["height", nextCommit.toString(), "nodes_count", len.toString(), "voting power", count.toString(), "threshold voting power", threshold.toString(), "committing", committing.toString()])
-
+export function checkCommits(): void {
+    const nextCommit = readyToCommit()
     // TODO If AppendEntries fails because of log inconsistency: decrement nextIndex and retry
-    if (committing) {
+    if (nextCommit > 0) {
 
         sendPrecommits([], new EventObject("", []));
 
@@ -942,44 +862,35 @@ function checkCommits(): void {
     }
 }
 
-function getNodeCount(): i32 {
-    const ips = getNodeIPs();
-    return getNodeCountInternal(ips);
-}
+export function readyToCommit(): i64 {
+    const lastCommitIndex = getLastBlockIndex();
+    // all commited + uncommited logs
+    const lastLogIndex = getLastLogIndex();
+    const currentNodeId = getCurrentNodeId();
+    const nextIndexPerNode = getNextIndexArray();
+    const validators = getValidators();
+    const len = getNodeCount();
+    const nodeId = getCurrentNodeId();
+    let nextCommit = lastCommitIndex + 1;
 
-export function getNodeIPs(): Array<NodeInfo> {
-    const valuestr = fsm.getContextValue(NODE_IPS);
-    let value: Array<NodeInfo> = [];
-    if (valuestr === "") return value;
-    value = JSON.parse<Array<NodeInfo>>(valuestr);
-    return value;
-}
+    LoggerDebug("trying to commit next block...", ["lastCommitIndex", lastCommitIndex.toString(), "lastSaved", lastLogIndex.toString(), "blocksToCommit", (lastLogIndex >= nextCommit).toString()])
 
-export function setNodeIPs(ips: Array<NodeInfo>): void {
-    const valuestr = JSON.stringify<Array<NodeInfo>>(ips);
-    fsm.setContextValue(NODE_IPS, valuestr);
-}
-
-function getNodeCountInternal(ips: NodeInfo[]): i32 {
-    let count = 0;
-    for (let i = 0; i < ips.length; i++) {
-        if (ips[i].ip.length > 0) {
-            count += 1;
+    if (lastLogIndex < nextCommit) {
+        return 0;
+    }
+    const threshold = getBFTThreshold();
+    let count = validators[nodeId].voting_power; // leader
+    for (let i = 0; i < len; i++) {
+        // next index is the next index to send, so we use >
+        if (nextIndexPerNode.at(i) > nextCommit) {
+            count += validators[i].voting_power;
         }
     }
-    return count;
-}
+    const committing = count >= threshold;
+    LoggerDebug("trying to commit next block...", ["height", nextCommit.toString(), "nodes_count", len.toString(), "voting power", count.toString(), "threshold voting power", threshold.toString(), "committing", committing.toString()])
 
-function getNextIndexArray(): Array<i64> {
-    const valuestr = fsm.getContextValue(NEXT_INDEX_ARRAY);
-    let value: Array<i64> = [];
-    if (valuestr === "") return value;
-    value = JSON.parse<Array<i64>>(valuestr);
-    return value;
-}
-
-function setNextIndexArray(arr: Array<i64>): void {
-    fsm.setContextValue(NEXT_INDEX_ARRAY, JSON.stringify<Array<i64>>(arr));
+    if(committing) return nextCommit;
+    return 0;
 }
 
 export function wrapGuard(value: boolean): ArrayBuffer {
@@ -1053,7 +964,7 @@ function startBlockProposal(txs: string[], cummulatedGas: i64, maxDataBytes: i64
     // TODO load app version from storage or Info()?
 
     const header = new typestnd.Header(
-        new typestnd.VersionConsensus(BlockProtocol, currentState.version.consensus.app),
+        new typestnd.VersionConsensus(cfg.BlockProtocol, currentState.version.consensus.app),
         currentState.chain_id,
         prepareReq.height,
         prepareReq.time,
@@ -1115,147 +1026,34 @@ function appendLogInternalVerified(processReq: typestnd.RequestProcessProposal, 
     appendLogEntry(entry);
 }
 
-// temporarily store the entries
-export function appendLogEntry(
-    entry: LogEntryAggregate,
-): void {
-    const index = getLastLogIndex() + 1;
-    // TODO rollback entries in case of a network split (e.g. entries with higher termId than we have have priority); they must be uncommited
-    // and just return if already saved
-    if (index > entry.index) {
-        LoggerDebug("already appended entry", ["height", entry.index.toString()])
-        return;
-    }
-    if (index !== entry.index) {
-        revert(`mismatched index while appending log entry: expected ${index}, found ${entry.index}`);
-    }
-    setLastLogIndex(index);
-    setLogEntryAggregate(entry);
-}
-
-export function setLogEntryAggregate(
-    entry: LogEntryAggregate,
-): void {
-    const blockData = encodeBase64(Uint8Array.wrap(String.UTF8.encode(JSON.stringify<wblocks.BlockEntry>(entry.data))))
-    const tempEntry = new LogEntry(
-        entry.index,
-        entry.termId,
-        entry.leaderId,
-        blockData,
-    )
-    const data = JSON.stringify<LogEntry>(tempEntry);
-    setLogEntry(entry.index, data);
-}
-
-export function setLogEntryObj(
-    entry: LogEntry,
-): void {
-    const data = JSON.stringify<LogEntry>(entry);
-    setLogEntry(entry.index, data);
-}
-
-export function setLogEntry(
-    index: i64,
-    entry: string,
-): void {
-    LoggerDebug("setting entry", ["height", index.toString(), "value", entry.slice(0, MAX_LOGGED) + " [...]"])
-    const key = getLogEntryKey(index);
-    fsm.setContextValue(key, entry);
-}
-
-// remove the temporary block data
-export function removeLogEntry(
-    index: i64,
-): void {
-    const entry = getLogEntryObj(index);
-    entry.data = "";
-    const data = JSON.stringify<LogEntry>(entry);
-    setLogEntry(index, data)
-}
-
-export function getLogEntryObj(index: i64): LogEntry {
-    const value = getLogEntry(index);
-    if (value == "") return new LogEntry(0, 0, 0, "");
-    return JSON.parse<LogEntry>(value);
-}
-
-export function getLogEntry(
-    index: i64,
-): string {
-    const key = getLogEntryKey(index);
-    return fsm.getContextValue(key);
-}
-
-export function getLogEntryKey(index: i64): string {
-    return "logs_" + index.toString();
-}
-
-function getCurrentNodeId(): i32 {
-    const value = fsm.getContextValue(CURRENT_NODE_ID);
-    if (value === "") return i32(0);
-    return parseInt32(value);
-}
-
-function getTermId(): i32 {
-    const value = fsm.getContextValue(TERM_ID);
-    if (value === "") return i32(0);
-    return parseInt32(value);
-}
-
-function setTermId(value: i32): void {
-    fsm.setContextValue(TERM_ID, value.toString());
-}
-
-export function getLastLogIndexKey(): string {
-    return "logs_last_index";
-}
-
-export function getLastLogIndex(): i64 {
-    const key = getLastLogIndexKey();
-    const valuestr = fsm.getContextValue(key);
-    if (valuestr != "") {
-        const value = parseInt(valuestr);
-        return i64(value);
-    }
-    return i64(LOG_START);
-}
-
-export function setLastLogIndex(
-    value: i64,
-): void {
-    const key = getLastLogIndexKey();
-    LoggerDebug("setting entry count", ["height", value.toString()])
-    fsm.setContextValue(key, value.toString());
-}
-
 export function getMempool(): Mempool {
-    const mempool = fsm.getContextValue(MEMPOOL_KEY);
+    const mempool = fsm.getContextValue(cfg.MEMPOOL_KEY);
     if (mempool === "") return  new Mempool(new Array<string>(0), new Array<i32>(0));
     return JSON.parse<Mempool>(mempool);
 }
 
 export function setMempool(mempool: Mempool): void {
-    fsm.setContextValue(MEMPOOL_KEY, JSON.stringify<Mempool>(mempool));
+    fsm.setContextValue(cfg.MEMPOOL_KEY, JSON.stringify<Mempool>(mempool));
 }
 
 export function getMaxTxBytes(): i64 {
-    const value = fsm.getContextValue(MAX_TX_BYTES);
+    const value = fsm.getContextValue(cfg.MAX_TX_BYTES);
     if (value === "") return i64(0);
     return parseInt64(value);
 }
 
 export function setMaxTxBytes(value: i64): void {
-    fsm.setContextValue(MAX_TX_BYTES, value.toString());
+    fsm.setContextValue(cfg.MAX_TX_BYTES, value.toString());
 }
 
 export function getValidators(): typestnd.ValidatorInfo[] {
-    const value = fsm.getContextValue(VALIDATORS_KEY);
+    const value = fsm.getContextValue(cfg.VALIDATORS_KEY);
     if (value === "") return [];
     return JSON.parse<typestnd.ValidatorInfo[]>(value);
 }
 
 export function setValidators(value: typestnd.ValidatorInfo[]): void {
-    fsm.setContextValue(VALIDATORS_KEY, JSON.stringify<typestnd.ValidatorInfo[]>(value));
+    fsm.setContextValue(cfg.VALIDATORS_KEY, JSON.stringify<typestnd.ValidatorInfo[]>(value));
 }
 
 export function updateValidators(updates: typestnd.ValidatorUpdate[]): void {
@@ -1316,19 +1114,6 @@ function getConsensusParams(): typestnd.ConsensusParams {
     return JSON.parse<typestnd.ConsensusParams>(resp.data);
 }
 
-export function getCurrentState(): CurrentState {
-    const value = fsm.getContextValue(STATE_KEY);
-    // this must be set before we try to read it
-    if (value === "") {
-        revert("chain init setup was not ran")
-    }
-    return JSON.parse<CurrentState>(value);
-}
-
-export function setCurrentState(value: CurrentState): void {
-    fsm.setContextValue(STATE_KEY, JSON.stringify<CurrentState>(value));
-}
-
 function getRandomInRange(min: i64, max: i64): i64 {
     const rand = Math.random()
     const numb = Math.floor(rand * f64((max - min + 1)))
@@ -1346,7 +1131,7 @@ export function verifyMessage(nodeIndex: i32, signatureStr: Base64String, msg: s
     return wasmxw.ed25519Verify(validator.pub_key, signatureStr, msg);
 }
 
-function startBlockFinalizationLeader(index: i64): boolean {
+export function startBlockFinalizationLeader(index: i64): boolean {
     LoggerInfo("start block finalization", ["height", index.toString()])
     // get entry and apply it
     const entryobj = getLogEntryAggregate(index);
@@ -1361,7 +1146,7 @@ function startBlockFinalizationLeader(index: i64): boolean {
     }
 }
 
-function startBlockFinalizationFollower(index: i64): boolean {
+export function startBlockFinalizationFollower(index: i64): boolean {
     LoggerInfo("start block finalization", ["height", index.toString()])
     // get entry and apply it
     const entryobj = getLogEntryAggregate(index);
