@@ -116,12 +116,12 @@ export function EndBlock(req: MsgEndBlock): ArrayBuffer {
             proposal.status = PROPOSAL_STATUS_REJECTED
             // TODO we return the deposits; (now:) leave them in gov contract
             setProposal(proposal.id, proposal);
-            LoggerDebug(`proposal rejected`, ["id", proposal.id.toString()])
+            LoggerInfo(`proposal rejected`, ["id", proposal.id.toString()])
             break;
         }
 
         // proposal passed, we execut messages
-        LoggerDebug(`proposal passed`, ["id", proposal.id.toString()])
+        LoggerInfo(`proposal passed`, ["id", proposal.id.toString()])
 
         // Messages may mutate state thus we use a cached context. If one of
         // the handlers fails, no state mutation is written and the error
@@ -131,11 +131,11 @@ export function EndBlock(req: MsgEndBlock): ArrayBuffer {
         const result = executeProposal(proposal)
         if (result.success) {
             proposal.status = PROPOSAL_STATUS_PASSED
-            LoggerDebug(`proposal passed and execution succeeded`, ["id", proposal.id.toString()])
+            LoggerInfo(`proposal passed and execution succeeded`, ["id", proposal.id.toString()])
         } else {
             proposal.status = PROPOSAL_STATUS_FAILED
             proposal.failed_reason = result.data
-            LoggerDebug(`proposal passed and execution failed`, ["id", proposal.id.toString(), "error", result.data])
+            LoggerInfo(`proposal passed and execution failed`, ["id", proposal.id.toString(), "error", result.data])
         }
         setProposal(proposal.id, proposal);
     }
