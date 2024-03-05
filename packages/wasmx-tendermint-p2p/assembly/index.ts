@@ -8,6 +8,8 @@ import { commitBlocks, forwardTx, receiveStateSyncRequest, receiveStateSyncRespo
 
 export function wasmx_env_2(): void {}
 
+export function wasmx_p2p_1(): void {}
+
 export function instantiate(): void {}
 
 export function main(): void {
