@@ -4,11 +4,12 @@ import * as wasmxw from "wasmx-env/assembly/wasmx_wrap"
 import { BigInt } from "wasmx-env/assembly/bn"
 import * as banktypes from "wasmx-bank/assembly/types"
 import * as derc20types from "wasmx-derc20/assembly/types"
+import * as erc20types from "wasmx-erc20/assembly/types"
 import { getParamsInternal, setParams, setNewValidator, getParams, getValidator, getValidatorsAddresses } from './storage';
 import { MsgInitGenesis, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool } from './types';
 import { LoggerDebug, revert } from './utils';
 import { parseInt64 } from "wasmx-utils/assembly/utils";
-import { Bech32String, CallRequest, CallResponse } from "wasmx-env/assembly/types";
+import { Bech32String, CallRequest, CallResponse, Coin } from "wasmx-env/assembly/types";
 
 const POWER_REDUCTION: u32 = 1000000
 
@@ -26,9 +27,8 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
     for (let i = 0; i < genesis.validators.length; i++) {
         const validator = genesis.validators[i];
         setNewValidator(validator);
-        // @ts-ignore
-        const power: BigInt = validator.tokens / BigInt.fromU32(POWER_REDUCTION);
-        vupdates.push(new ValidatorUpdate(validator.consensus_pubkey, power.toI64()))
+        const power = getPower(validator.tokens);
+        vupdates.push(new ValidatorUpdate(validator.consensus_pubkey, power))
     }
     for (let i = 0; i < genesis.delegations.length; i++) {
         const delegation = genesis.delegations[i]
@@ -113,7 +113,7 @@ export function GetAllValidators(): ArrayBuffer {
     const addrs = getValidatorsAddresses()
     const validators = new Array<Validator>(addrs.length)
     for (let i = 0; i < validators.length; i++) {
-        const valid = getValidator(addrs[i]);
+        const valid = getValidatorWithBalance(addrs[i]);
         if (valid != null) {
             validators[i] = valid;
         }
@@ -124,7 +124,7 @@ export function GetAllValidators(): ArrayBuffer {
 }
 
 export function GetValidator(req: QueryValidatorRequest): ArrayBuffer {
-    const validator = getValidator(req.validator_addr)
+    const validator = getValidatorWithBalance(req.validator_addr)
     if (validator == null) {
         revert(`validator not found: ${req.validator_addr}`)
         return new ArrayBuffer(0)
@@ -164,6 +164,28 @@ export function GetPool(req: QueryPoolRequest): ArrayBuffer {
     return String.UTF8.encode(JSON.stringify<QueryPoolResponse>(res))
 }
 
+export function getValidatorWithBalance(validatorAddr: Bech32String): Validator | null {
+    const validator = getValidator(validatorAddr)
+    if (validator == null) {
+        return null
+    }
+    const balance = callGetValidatorBalance(validator.operator_address);
+    validator.tokens = balance.amount
+    return validator;
+}
+
+export function callGetValidatorBalance(validator: Bech32String): Coin {
+    const tokenAddress = getTokenAddress()
+    const calldata = new erc20types.MsgBalanceOf(validator);
+    const calldatastr = `{"balanceOfValidator":${JSON.stringify<erc20types.MsgBalanceOf>(calldata)}}`;
+    const resp = callContract(tokenAddress, calldatastr, false)
+    if (resp.success > 0) {
+        revert(`balanceOfValidator not found`)
+    }
+    const amount = JSON.parse<erc20types.MsgBalanceOfResponse>(resp.data)
+    return amount.balance
+}
+
 export function callGetDelegation(tokenAddress: Bech32String, delegator: Bech32String, validator: Bech32String): string {
     const calldata = new QueryDelegationRequest(delegator, validator);
     const calldatastr = `{"GetDelegation":${JSON.stringify<QueryDelegationRequest>(calldata)}}`;
@@ -173,7 +195,6 @@ export function callGetDelegation(tokenAddress: Bech32String, delegator: Bech32S
     }
     return resp.data
 }
-
 
 export function callDelegate(tokenAddress: Bech32String, delegator: Bech32String, validator: Bech32String, value: BigInt): void {
     const calldata = new derc20types.MsgDelegate(delegator, validator, value);
@@ -212,4 +233,10 @@ export function callContract(addr: Bech32String, calldata: string, isQuery: bool
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
     return resp;
+}
+
+export function getPower(tokens: BigInt): i64 {
+    // @ts-ignore
+    const v: BigInt = tokens / BigInt.fromU32(POWER_REDUCTION);
+    return v.toI64()
 }

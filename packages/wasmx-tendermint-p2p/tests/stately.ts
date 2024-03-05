@@ -251,6 +251,9 @@ export const machine = createMachine({
                 {
                   type: "sendAppendEntries",
                 },
+                {
+                  type: "commitBlocks",
+                },
               ],
             },
           },
@@ -284,6 +287,10 @@ export const machine = createMachine({
       // ...
     },
     sendAppendEntries: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    commitBlocks: function (context, event) {
       // Add your action code here
       // ...
     },
@@ -336,10 +343,6 @@ export const machine = createMachine({
       // ...
     },
     receiveAppendEntryResponse: function (context, event) {
-      // Add your action code here
-      // ...
-    },
-    commitBlocks: function (context, event) {
       // Add your action code here
       // ...
     },

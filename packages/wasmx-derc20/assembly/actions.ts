@@ -10,10 +10,17 @@ import { setInfo, getInfo, getBalance, setBalance, getAllowance, setAllowance, g
 import * as banktypes from "wasmx-bank/assembly/types";
 import { MODULE_NAME, MsgDelegate, MsgGetAllSDKDelegations, MsgRedelegate, MsgUndelegate, SDKDelegations } from "./types";
 import { LoggerDebug, revert } from "./utils";
-import { addDelegatorToValidator, addValidatorToDelegator, setDelegatorToValidatorDelegation, addTotalDelegationToValidator, removeValidatorFromDelegator, removeDelegatorFromValidator, removeValidatorDelegationFromDelegator, removeDelegationAmountFromValidator, getDelegatorToValidatorDelegation } from "./storage";
+import { addDelegatorToValidator, addValidatorToDelegator, setDelegatorToValidatorDelegation, addTotalDelegationToValidator, removeValidatorFromDelegator, removeDelegatorFromValidator, removeValidatorDelegationFromDelegator, removeDelegationAmountFromValidator, getDelegatorToValidatorDelegation, getBalanceValidator, setBalanceValidator } from "./storage";
+import { MsgBalanceOf, MsgBalanceOfResponse } from "wasmx-erc20/assembly/types";
 
 // TODO this must be in initialization
 const DENOM_BASE = "amyt"
+
+export function balanceOfValidator(req: MsgBalanceOf): ArrayBuffer {
+    const value = getBalanceValidator(req.owner)
+    const info = getInfo()
+    return String.UTF8.encode(JSON.stringify<MsgBalanceOfResponse>(new MsgBalanceOfResponse(new Coin(info.symbol, value))))
+}
 
 // can only be called by the staking contract, which vets validators
 export function delegate(req: MsgDelegate): ArrayBuffer {
@@ -38,6 +45,10 @@ export function delegate(req: MsgDelegate): ArrayBuffer {
     // @ts-ignore
     supply += req.value;
     setTotalSupply(supply);
+    // add to validator's balance
+    // @ts-ignore
+    const vbal: BigInt = getBalanceValidator(req.validator) + req.value;
+    setBalanceValidator(req.validator, vbal);
 
     // add validator to delegator's list
     addValidatorToDelegator(req.delegator, req.validator)
@@ -71,6 +82,10 @@ export function undelegate(req: MsgUndelegate): ArrayBuffer {
     // @ts-ignore
     supply -= req.value;
     setTotalSupply(supply);
+    // sub to validator's balance
+    // @ts-ignore
+    const vbal: BigInt = getBalanceValidator(req.validator) - req.value;
+    setBalanceValidator(req.validator, vbal);
 
     const delegation = getDelegatorToValidatorDelegation(req.delegator, req.validator)
     if (delegation == req.value) {
@@ -107,6 +122,13 @@ export function redelegate(req: MsgRedelegate): ArrayBuffer {
         // remove delegator from validator's list
         removeDelegatorFromValidator(req.validatorSource, req.delegator)
     }
+
+    // @ts-ignore
+    const vbalS: BigInt = getBalanceValidator(req.validatorSource) - req.value;
+    setBalanceValidator(req.validatorSource, vbalS);
+    // @ts-ignore
+    const vbalD: BigInt = getBalanceValidator(req.validatorDestination) + req.value;
+    setBalanceValidator(req.validatorDestination, vbalD);
 
     // individual delegation amount
     removeValidatorDelegationFromDelegator(req.delegator, req.validatorSource, req.value)

@@ -27,14 +27,37 @@ import { BigInt } from "wasmx-env/assembly/bn";
 import { PROTOCOL_ID, StateSyncRequest, StateSyncResponse } from "./types";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
 import { getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLog, getNextIndexArray, getNodeIPs, setNodeIPs, setTermId } from "wasmx-tendermint/assembly/action_utils";
-import { getP2PAddress, getRandomSynced } from "wasmx-raft-p2p/assembly/actions"
+import { connectPeersInternal, getP2PAddress, receiveUpdateNodeResponseInternal, registeredCheck } from "wasmx-raft-p2p/assembly/actions"
 import * as cfg from "wasmx-tendermint/assembly/config";
 import { AppendEntry, AppendEntryResponse, LogEntryAggregate, Precommit } from "wasmx-tendermint/assembly/types";
-import { extractAppendEntry, getLogEntryAggregate, initChain, isNodeActive, prepareAppendEntry, prepareAppendEntryMessage, processAppendEntry, readyToCommit, sendProposalResponseMessage, signMessage, startBlockFinalizationLeader, updateNodeEntry } from "wasmx-tendermint/assembly/actions";
+import { extractAppendEntry, getLogEntryAggregate, initChain, initializeIndexArrays, isNodeActive, prepareAppendEntry, prepareAppendEntryMessage, processAppendEntry, readyToCommit, sendProposalResponseMessage, signMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal, startBlockFinalizationLeader, updateNodeEntry } from "wasmx-tendermint/assembly/actions";
 import { extractUpdateNodeEntryAndVerify } from "wasmx-raft/assembly/actions";
 import { getLastLogIndex, getTermId } from "wasmx-raft/assembly/storage";
 import { getNodeByAddress, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
 import { Node, NodeInfo, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft"
+
+export function connectPeers(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    connectPeersInternal(PROTOCOL_ID);
+}
+
+export function requestNetworkSync(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    // we check that we are registered with the Leader
+    // and that we are in sync
+    registeredCheck(PROTOCOL_ID);
+}
+
+export function receiveUpdateNodeResponse(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    receiveUpdateNodeResponseInternal(params, event, PROTOCOL_ID)
+}
 
 export function setupNode(
     params: ActionParam[],
@@ -99,6 +122,7 @@ export function setupNode(
     }
     setNodeIPs(peers);
     initChain(data);
+    initializeIndexArrays(peers.length);
 }
 
 export function updateNodeAndReturn(
@@ -213,6 +237,21 @@ export function sendPrecommit(
     const peers = [getP2PAddress(node)]
     const contract = wasmxw.getAddress();
     p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
+}
+
+export function sendAppendEntries(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    // go through each node
+    const nodeId = getCurrentNodeId();
+    const ips = getNodeIPs();
+    LoggerDebug("diseminate blocks...", ["nodeId", nodeId.toString(), "ips", JSON.stringify<Array<NodeInfo>>(ips)])
+    for (let i = 0; i < ips.length; i++) {
+        // don't send to Leader or removed nodes
+        if (nodeId === i || !isNodeActive(ips[i])) continue;
+        sendAppendEntry(i, ips[i], ips);
+    }
 }
 
 export function sendAppendEntry(
@@ -348,16 +387,18 @@ export function receiveStateSyncResponse(
     // now we check the new block
     for (let i = 0; i < resp.entries.length; i++) {
         processAppendEntry(resp.entries[i]);
+        startBlockFinalizationFollowerInternal(resp.entries[i]);
     }
 
-    // if we are synced, we announce the Leader node
-    if (resp.last_batch_index >= resp.last_log_index) {
-        // send receiveAppendEntryResponse to Leader node
-        const lastLog = getLastLog();
-        const response = new AppendEntryResponse(resp.termId, true, resp.last_batch_index);
-        LoggerInfo("send heartbeat response", ["termId", resp.termId.toString(), "success", "true", "lastLogIndex", resp.last_batch_index.toString(), "leaderId", lastLog.leaderId.toString()])
-        sendAppendEntryResponseMessage(response, lastLog.leaderId);
-    }
+    // we dont need this
+    // // if we are synced, we announce the Leader node
+    // if (resp.last_batch_index >= resp.last_log_index) {
+    //     // send receiveAppendEntryResponse to Leader node
+    //     const lastLog = getLastLog();
+    //     const response = new AppendEntryResponse(resp.termId, true, resp.last_batch_index);
+    //     LoggerInfo("sending new entries response", ["termId", resp.termId.toString(), "success", "true", "lastLogIndex", resp.last_batch_index.toString(), "proposerId", lastLog.leaderId.toString()])
+    //     sendAppendEntryResponseMessage(response, lastLog.leaderId);
+    // }
 }
 
 export function sendAppendEntryResponseMessage(response: AppendEntryResponse, leaderId: i32): void {
@@ -371,7 +412,7 @@ export function sendAppendEntryResponseMessage(response: AppendEntryResponse, le
     const senderaddr = nodeIps[ourId].address;
     const msgstr = `{"run":{"event":{"type":"receiveAppendEntryResponse","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signatureResp}"},{"key": "sender","value":"${senderaddr}"}]}}}`
 
-    LoggerDebug("sending new entries response to leader", ["leaderId", leaderId.toString(), "lastIndex", response.lastIndex.toString()])
+    LoggerDebug("sending new entries response to proposer", ["proposerId", leaderId.toString(), "lastIndex", response.lastIndex.toString()])
 
     const contract = wasmxw.getAddress();
     p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))

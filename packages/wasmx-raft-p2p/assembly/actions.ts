@@ -37,12 +37,16 @@ export function connectPeers(
     params: ActionParam[],
     event: EventObject,
 ): void {
+    connectPeersInternal(PROTOCOL_ID);
+}
+
+export function connectPeersInternal(protocolId: string): void {
     const state = getCurrentState()
     const index = getCurrentNodeId();
     const nodeInfos = getNodeIPs();
     const node = nodeInfos[index];
 
-    const reqstart = new p2ptypes.StartNodeWithIdentityRequest(node.node.port, PROTOCOL_ID, state.validator_privkey);
+    const reqstart = new p2ptypes.StartNodeWithIdentityRequest(node.node.port, protocolId, state.validator_privkey);
     const resp = p2pw.StartNodeWithIdentity(reqstart);
     if (resp.error != "") {
         revert(`start node with identity: ${resp.error}`)
@@ -53,7 +57,7 @@ export function connectPeers(
             continue;
         }
         const p2paddr = getP2PAddress(nodeInfos[i])
-        const req = new p2ptypes.ConnectPeerRequest(PROTOCOL_ID, p2paddr)
+        const req = new p2ptypes.ConnectPeerRequest(protocolId, p2paddr)
         LoggerDebug(`trying to connect to peer`, ["p2paddress", p2paddr, "address", nodeInfos[i].address]);
         p2pw.ConnectPeer(req);
     }
@@ -218,15 +222,12 @@ export function requestNetworkSync(
 ): void {
     // we check that we are registered with the Leader
     // and that we are in sync
-    registeredCheck(params, event);
+    registeredCheck(PROTOCOL_ID);
 }
 
 // we just send a NodeUpdateRequest
 // the node will receive a UpdateNodeResponse from the leader and then proceed to do state sync
-export function registeredCheck(
-    params: ActionParam[],
-    event: EventObject,
-): void {
+export function registeredCheck(protocolId: string): void {
     // when a node starts, it needs to add itself to the Leader's node list
     // we just need [ourIP, leaderIP]
 
@@ -250,13 +251,21 @@ export function registeredCheck(
 
     LoggerDebug("sending node registration", ["peers", peers.join(","), "data", msgstr])
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
 }
 
 // received an updated node list from Leader
 export function receiveUpdateNodeResponse(
     params: ActionParam[],
     event: EventObject,
+): void {
+    receiveUpdateNodeResponseInternal(params, event, PROTOCOL_ID)
+}
+
+export function receiveUpdateNodeResponseInternal(
+    params: ActionParam[],
+    event: EventObject,
+    protocolId: string,
 ): void {
     const p = getParamsOrEventParams(params, event);
     const ctx = actionParamsToMap(p);
@@ -321,12 +330,12 @@ export function receiveUpdateNodeResponse(
     setCurrentNodeId(ourId);
 
     // state sync from the node provided by the leader, who is known to be synced
-    sendStateSyncRequest(resp.sync_node_id);
+    sendStateSyncRequest(protocolId, resp.sync_node_id);
 }
 
 // this is executed each time the node is started in Follower or Candidate state if needed
 // and is also called after node registration with the leader
-export function sendStateSyncRequest(nodeId: i32): void {
+export function sendStateSyncRequest(protocolId: string, nodeId: i32): void {
     const lastIndex = getLastLogIndex();
     const ourNodeId = getCurrentNodeId()
     const nodes = getNodeIPs();
@@ -342,7 +351,7 @@ export function sendStateSyncRequest(nodeId: i32): void {
 
     const peers = [getP2PAddress(receiverNode)]
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
 }
 
 export function sendVoteRequests(
@@ -447,15 +456,10 @@ export function sendAppendEntries(
     const nodeId = getCurrentNodeId();
     const ips = getNodeIPs();
     LoggerDebug("diseminate entries...", ["nodeId", nodeId.toString(), "ips", JSON.stringify<Array<NodeInfo>>(ips)])
-    let otherNodesCount = 0;
     for (let i = 0; i < ips.length; i++) {
         // don't send to Leader or removed nodes
         if (nodeId === i || !isNodeActive(ips[i])) continue;
         sendAppendEntry(i, ips[i], ips);
-        otherNodesCount += 1;
-    }
-    if (otherNodesCount == 0) {
-        checkCommits();
     }
 }
 

@@ -13,6 +13,13 @@ export const VALIDATOR_TO_DELEGATORS_KEY = "validator_to_delegators."
 // validator => total delegation
 export const VALIDATOR_DELEGATION_KEY = "validator_delegation."
 
+// validator total delegated amounts
+export const BALANCE_VALID_KEY = "balance_validator_"
+
+export function getBalanceValidatorKey(addr: string): string {
+    return BALANCE_VALID_KEY + addr;
+}
+
 // delegator => validators[]
 export function getDelegatorToValidatorsKey(delegator: Bech32String): string {
     return DELEGATOR_TO_VALIDATORS_KEY + delegator;
@@ -31,6 +38,23 @@ export function getValidatorToDelegatorsKey(validator: Bech32String): string {
 // validator => total delegation
 export function getValidatorToTotalDelegationKey(validator: Bech32String): string {
     return VALIDATOR_DELEGATION_KEY + validator;
+}
+
+export function getBalanceValidator(
+    addr: string,
+): BigInt {
+    const key = getBalanceValidatorKey(addr);
+    const value = wasmxw.sload(key);
+    if (value == "") return BigInt.zero();
+    return BigInt.fromString(value)
+}
+
+export function setBalanceValidator(
+    addr: string,
+    amount: BigInt,
+): void {
+    const key = getBalanceValidatorKey(addr);
+    wasmxw.sstore(key, amount.toString());
 }
 
 // delegator => validators[] GET

@@ -5,7 +5,6 @@ export const MEMPOOL_KEY = "mempool";
 export const MAX_TX_BYTES = "max_tx_bytes";
 
 //// blockchain
-export const VALIDATORS_KEY = "validators";
 export const STATE_KEY = "state";
 
 // const
@@ -42,3 +41,5 @@ export const MATCH_INDEX_ARRAY = "matchIndex";
 export const NODE_UPDATE_REMOVE = 0
 export const NODE_UPDATE_ADD = 1
 export const NODE_UPDATE_UPDATE = 2
+
+export const STAKE_REDUCTION: u64 = 1000000000000

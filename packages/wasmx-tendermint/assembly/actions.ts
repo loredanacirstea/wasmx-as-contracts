@@ -28,6 +28,7 @@ import { BigInt } from "wasmx-env/assembly/bn";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
 import { appendLogEntry, getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLogIndex, getLogEntryObj, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, removeLogEntry, setCurrentState, setLastLogIndex, setNextIndexArray, setNodeIPs, setTermId } from "./action_utils";
 import { Node, NodeInfo, NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft";
+import { verifyMessage } from "wasmx-raft/assembly/action_utils";
 
 // guards
 
@@ -36,11 +37,18 @@ export function isNextProposer(
     event: EventObject,
 ): boolean {
     const currentState = getCurrentState();
-    const validators = getValidators();
+    const validators = getAllValidators();
+    if (validators.length == 1) {
+        const nodes = getNodeIPs();
+        if (nodes.length > validators.length) {
+            LoggerInfo("cannot propose block, state is not synced", ["validators", validators.length.toString(), "nodes", nodes.length.toString()])
+            return false;
+        }
+    }
     console.debug("* isNextProposer validators: " + validators.length.toString())
-    const totalPower = getTotalPower();
-    LoggerDebug("isNextProposer", ["total power", totalPower.toString()])
-    const proposerIndex = getNextProposer(currentState.last_block_id.hash, totalPower, validators);
+    const totalStaked = getTotalStaked(validators);
+    LoggerDebug("isNextProposer", ["total staked", totalStaked.toString()])
+    const proposerIndex = getNextProposer(currentState.last_block_id.hash, totalStaked, validators);
     LoggerDebug("isNextProposer", ["next proposer", proposerIndex.toString()])
     const currentNode = getCurrentNodeId();
     return proposerIndex == currentNode;
@@ -176,6 +184,7 @@ export function setupNode(
     }
     setNodeIPs(peers);
     initChain(data);
+    initializeIndexArrays(peers.length);
 }
 
 export function registeredCheck(
@@ -285,7 +294,7 @@ export function processBlock(
     // verify signature
     const isSender = verifyMessage(entry.proposerId, signature, entryStr);
     if (!isSender) {
-        LoggerError("signature verification failed for AppendEntry", ["leaderId", entry.proposerId.toString(), "termId", entry.termId.toString()]);
+        LoggerError("signature verification failed for AppendEntry", ["proposerId", entry.proposerId.toString(), "termId", entry.termId.toString()]);
         return;
     }
 
@@ -296,7 +305,7 @@ export function processBlock(
     // check that our nodeId is still in line
     let newId = nodeId;
     for(let i = 0; i < entry.nodeIps.length; i++) {
-        if (entry.nodeIps[i] == nodeIp) {
+        if (entry.nodeIps[i].address == nodeIp.address) {
             newId = i;
             break;
         }
@@ -305,14 +314,8 @@ export function processBlock(
         LoggerDebug("our node ID has changed", ["old", nodeId.toString(), "new", newId.toString()])
         setCurrentNodeId(newId);
     }
-    const allvalidStr = String.UTF8.decode(decodeBase64(entry.validators).buffer);
-    console.debug("* processAppendEntries allvalidStr: " + allvalidStr)
-    const allvalidators = JSON.parse<typestnd.ValidatorInfo[]>(allvalidStr);
-    const validatorInfo = getCurrentValidator();
-    checkValidatorsUpdate(allvalidators, validatorInfo, newId);
-    setNodeIPs(entry.nodeIps);
-    setValidators(allvalidators);
 
+    setNodeIPs(entry.nodeIps);
     setTermId(entry.termId);
 
     // we commit as close to the transition end as possible
@@ -413,15 +416,11 @@ export function prepareAppendEntry(
         const entry = getLogEntryAggregate(i);
         entries.push(entry);
     }
-    const previousEntry = getLogEntryObj(nextIndex-1);
-    const lastCommitIndex = getLastBlockIndex();
-    const validators = encodeBase64(Uint8Array.wrap(String.UTF8.encode(fsm.getContextValue(cfg.VALIDATORS_KEY))))
     const data = new AppendEntry(
         getTermId(),
         getCurrentNodeId(),
         entries,
         nodeIps,
-        validators,
     )
     return data;
 }
@@ -660,7 +659,7 @@ export function commitBlock(
     // verify signature
     const isSender = verifyMessage(entry.proposerId, signature, entryStr);
     if (!isSender) {
-        LoggerError("signature verification failed for AppendEntry", ["leaderId", entry.proposerId.toString(), "termId", entry.termId.toString()]);
+        LoggerError("signature verification failed for AppendEntry", ["proposerId", entry.proposerId.toString(), "termId", entry.termId.toString()]);
         return;
     }
 
@@ -823,7 +822,7 @@ export function initializeNextIndex(
     setNextIndexArray(nextIndexes);
 }
 
-function initializeIndexArrays(len: i32): void {
+export function initializeIndexArrays(len: i32): void {
     const lastLogIndex = getLastLogIndex()
     const nextIndex: Array<i64> = [];
     const matchIndex: Array<i64> = [];
@@ -866,9 +865,8 @@ export function readyToCommit(): i64 {
     const lastCommitIndex = getLastBlockIndex();
     // all commited + uncommited logs
     const lastLogIndex = getLastLogIndex();
-    const currentNodeId = getCurrentNodeId();
     const nextIndexPerNode = getNextIndexArray();
-    const validators = getValidators();
+    const validators = getAllValidators();
     const len = getNodeCount();
     const nodeId = getCurrentNodeId();
     let nextCommit = lastCommitIndex + 1;
@@ -878,14 +876,18 @@ export function readyToCommit(): i64 {
     if (lastLogIndex < nextCommit) {
         return 0;
     }
-    const threshold = getBFTThreshold();
-    let count = validators[nodeId].voting_power; // leader
+    let totalStake = getTotalStaked(validators)
+    const threshold = getBFTThreshold(totalStake);
+    // calculate voting stake for the proposed block
+    let count: BigInt = validators[nodeId].tokens;
     for (let i = 0; i < len; i++) {
         // next index is the next index to send, so we use >
         if (nextIndexPerNode.at(i) > nextCommit) {
-            count += validators[i].voting_power;
+            // @ts-ignore
+            count += validators[i].tokens;
         }
     }
+    // @ts-ignore
     const committing = count >= threshold;
     LoggerDebug("trying to commit next block...", ["height", nextCommit.toString(), "nodes_count", len.toString(), "voting power", count.toString(), "threshold voting power", threshold.toString(), "committing", committing.toString()])
 
@@ -898,7 +900,7 @@ export function wrapGuard(value: boolean): ArrayBuffer {
     return String.UTF8.encode("0");
 }
 
-function getNextProposer(blockHash: Base64String, totalPower: i64, validators: typestnd.ValidatorInfo[]): i32 {
+function getNextProposer(blockHash: Base64String, totalStaked: BigInt, validators: staking.Validator[]): i32 {
     console.debug("-getNextProposer: " + blockHash)
     const hashbz = decodeBase64(blockHash);
     console.debug("-getNextProposer hashbz: " + hashbz.toString())
@@ -907,14 +909,17 @@ function getNextProposer(blockHash: Base64String, totalPower: i64, validators: t
     const hashslice = Uint8Array.wrap(hashbz.buffer, 0, 4)
     const part = parseUint8ArrayToU32BigEndian(hashslice)
     console.debug("-getNextProposer part: " + part.toString())
+    // @ts-ignore
+    const totalPower: u64 = (totalStaked / BigInt.fromU64(cfg.STAKE_REDUCTION)).toU64();
     const valf = f64(part) / f64(normalizer) * f64(totalPower);
-    const val = i64(valf);
+    const val = u64(valf);
     LoggerDebug("getNextProposer", ["hashslice", uint8ArrayToHex(hashslice), "part", part.toString(), "ratio", (f64(part) / f64(normalizer)).toString(), "val_f64", valf.toString(), "val", val.toString()])
     let closestVal: i32 = -1;
-    let aggregatedVP: i64[] = new Array<i64>(validators.length);
-    let lastSumVP: i64 = 0;
+    let aggregatedVP: u64[] = new Array<u64>(validators.length);
+    let lastSumVP: u64 = 0;
     for (let i = 0; i < validators.length; i++) {
-        aggregatedVP[i] = validators[i].voting_power + lastSumVP;
+        const pow: u64 = (validators[i].tokens.div(BigInt.fromU64(cfg.STAKE_REDUCTION))).toU64();
+        aggregatedVP[i] = pow + lastSumVP;
         lastSumVP = aggregatedVP[i];
         LoggerDebug("getNextProposer", ["i", i.toString(), "aggregatedVP", aggregatedVP[i].toString(), "aggregatedVP[i] >= val", (aggregatedVP[i] >= val).toString(), ])
         if (aggregatedVP[i] >= val) {
@@ -1046,16 +1051,6 @@ export function setMaxTxBytes(value: i64): void {
     fsm.setContextValue(cfg.MAX_TX_BYTES, value.toString());
 }
 
-export function getValidators(): typestnd.ValidatorInfo[] {
-    const value = fsm.getContextValue(cfg.VALIDATORS_KEY);
-    if (value === "") return [];
-    return JSON.parse<typestnd.ValidatorInfo[]>(value);
-}
-
-export function setValidators(value: typestnd.ValidatorInfo[]): void {
-    fsm.setContextValue(cfg.VALIDATORS_KEY, JSON.stringify<typestnd.ValidatorInfo[]>(value));
-}
-
 export function updateValidators(updates: typestnd.ValidatorUpdate[]): void {
     const calldata = `{"UpdateValidators":{"updates":${JSON.stringify<typestnd.ValidatorUpdate[]>(updates)}}}`
     const resp = callStaking(calldata, true);
@@ -1125,17 +1120,11 @@ export function signMessage(msgstr: string): Base64String {
     return wasmxw.ed25519Sign(currentState.validator_privkey, msgstr);
 }
 
-export function verifyMessage(nodeIndex: i32, signatureStr: Base64String, msg: string): boolean {
-    const validators = getValidators();
-    const validator = validators[nodeIndex];
-    return wasmxw.ed25519Verify(validator.pub_key, signatureStr, msg);
-}
-
 export function startBlockFinalizationLeader(index: i64): boolean {
     LoggerInfo("start block finalization", ["height", index.toString()])
     // get entry and apply it
     const entryobj = getLogEntryAggregate(index);
-    LoggerDebug("start block finalization", ["height", index.toString(), "leaderId", entryobj.leaderId.toString(), "termId", entryobj.termId.toString(), "data", JSON.stringify<wblocks.BlockEntry>(entryobj.data)])
+    LoggerDebug("start block finalization", ["height", index.toString(), "proposerId", entryobj.leaderId.toString(), "termId", entryobj.termId.toString(), "data", JSON.stringify<wblocks.BlockEntry>(entryobj.data)])
 
     const currentTerm = getTermId();
     if (currentTerm == entryobj.termId) {
@@ -1147,10 +1136,14 @@ export function startBlockFinalizationLeader(index: i64): boolean {
 }
 
 export function startBlockFinalizationFollower(index: i64): boolean {
-    LoggerInfo("start block finalization", ["height", index.toString()])
     // get entry and apply it
     const entryobj = getLogEntryAggregate(index);
-    LoggerDebug("start block finalization", ["height", index.toString(), "leaderId", entryobj.leaderId.toString(), "termId", entryobj.termId.toString(), "data", JSON.stringify<wblocks.BlockEntry>(entryobj.data)])
+    return startBlockFinalizationFollowerInternal(entryobj)
+}
+
+export function startBlockFinalizationFollowerInternal(entryobj: LogEntryAggregate): boolean {
+    LoggerInfo("start block finalization", ["height", entryobj.index.toString()])
+    LoggerDebug("start block finalization", ["height", entryobj.index.toString(), "proposerId", entryobj.leaderId.toString(), "termId", entryobj.termId.toString(), "data", JSON.stringify<wblocks.BlockEntry>(entryobj.data)])
     return startBlockFinalizationInternal(entryobj, false);
 }
 
@@ -1434,16 +1427,15 @@ export function callContract(addr: Bech32String, calldata: string, isQuery: bool
     return resp;
 }
 
-function getTotalPower(): i64 {
-    const validators = getValidators()
-    let totalPow: i64 = 0;
+function getTotalStaked(validators: staking.Validator[]): BigInt {
+    let bonded = BigInt.zero();
     for (let i = 0; i < validators.length; i++) {
-        totalPow += validators[i].voting_power;
+        // @ts-ignore
+        bonded += validators[i].tokens;
     }
-    return totalPow
+    return bonded
 }
 
-function getBFTThreshold(): i64 {
-    let totalPow = getTotalPower()
-    return i64(f64.floor(f64(totalPow) / 3 * 2) + 1)
+function getBFTThreshold(totalState: BigInt): BigInt {
+    return totalState.mul(BigInt.fromU32(2)).div(BigInt.fromU32(3)).add(BigInt.fromU32(1))
 }

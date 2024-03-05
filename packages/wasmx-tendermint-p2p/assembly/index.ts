@@ -4,7 +4,7 @@ import { getCallDataWrap } from 'wasmx-tendermint/assembly/calldata';
 import * as actions from "wasmx-tendermint/assembly/actions";
 import * as raftp2p from "wasmx-raft-p2p/assembly/actions";
 import { revert } from "./utils";
-import { commitBlocks, forwardTx, receiveStateSyncRequest, receiveStateSyncResponse, sendProposalResponse, setupNode } from "./actions";
+import { commitBlocks, connectPeers, forwardTx, receiveStateSyncRequest, receiveStateSyncResponse, receiveUpdateNodeResponse, requestNetworkSync, sendAppendEntries, sendProposalResponse, setupNode, updateNodeAndReturn } from "./actions";
 
 export function wasmx_env_2(): void {}
 
@@ -56,9 +56,9 @@ export function main(): void {
   } else if (calld.method === "incrementCurrentTerm") {
     actions.incrementCurrentTerm(calld.params, calld.event);
   } else if (calld.method === "sendAppendEntries") {
-    actions.sendAppendEntries(calld.params, calld.event);
+    sendAppendEntries(calld.params, calld.event);
   } else if (calld.method === "updateNodeAndReturn") {
-    actions.updateNodeAndReturn(calld.params, calld.event);
+    updateNodeAndReturn(calld.params, calld.event);
   } else if (calld.method === "registeredCheck") {
     actions.registeredCheck(calld.params, calld.event);
   } else if (calld.method === "proposeBlock") {
@@ -70,15 +70,15 @@ export function main(): void {
   } else if (calld.method === "forwardTx") {
     forwardTx(calld.params, calld.event);
   } else if (calld.method === "connectPeers") {
-    raftp2p.connectPeers(calld.params, calld.event);
+    connectPeers(calld.params, calld.event);
   } else if (calld.method === "requestNetworkSync") {
-    raftp2p.requestNetworkSync(calld.params, calld.event);
+    requestNetworkSync(calld.params, calld.event);
   } else if (calld.method === "receiveStateSyncRequest") {
     receiveStateSyncRequest(calld.params, calld.event);
   } else if (calld.method === "receiveStateSyncResponse") {
     receiveStateSyncResponse(calld.params, calld.event);
   } else if (calld.method === "receiveUpdateNodeResponse") {
-    raftp2p.receiveUpdateNodeResponse(calld.params, calld.event);
+    receiveUpdateNodeResponse(calld.params, calld.event);
   }
   else {
     revert(`invalid function call data: ${calld.method}`);

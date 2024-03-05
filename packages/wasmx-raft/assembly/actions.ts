@@ -826,7 +826,6 @@ export function prepareAppendEntry(
     }
     const previousEntry = getLogEntryObj(nextIndex-1);
     const lastCommitIndex = getCommitIndex();
-    const validators = encodeBase64(Uint8Array.wrap(String.UTF8.encode(fsm.getContextValue(cfg.VALIDATORS_KEY))))
     const data = new AppendEntry(
         getTermId(),
         getCurrentNodeId(),
@@ -835,7 +834,6 @@ export function prepareAppendEntry(
         entries,
         lastCommitIndex,
         nodeIps,
-        validators,
     )
     return data;
 }

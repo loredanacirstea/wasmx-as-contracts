@@ -79,13 +79,11 @@ export class AppendEntry {
     // block
     entries: LogEntryAggregate[]
     nodeIps: Array<NodeInfo>;
-    validators: Base64String;
-    constructor(termId: i32, proposerId: i32, entries: LogEntryAggregate[], nodeIps: Array<NodeInfo>, validators: Base64String) {
+    constructor(termId: i32, proposerId: i32, entries: LogEntryAggregate[], nodeIps: Array<NodeInfo>) {
         this.termId = termId;
         this.proposerId = proposerId;
         this.entries = entries;
         this.nodeIps = nodeIps;
-        this.validators = validators;
     }
 }
 

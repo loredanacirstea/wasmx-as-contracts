@@ -69,5 +69,4 @@ export const MAX_TX_BYTES = "max_tx_bytes";
 // const PREV_LOG_INDEX = "prevLogIndex";
 
 //// blockchain
-export const VALIDATORS_KEY = "validators";
 export const STATE_KEY = "state";

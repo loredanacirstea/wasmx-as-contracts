@@ -14,6 +14,7 @@ export class CallData {
     balanceOf: MsgBalanceOf | null = null;
     approve: MsgApprove | null = null;
     allowance: MsgAllowance | null = null;
+    balanceOfValidator: MsgBalanceOf | null = null;
 
     delegate: MsgDelegate | null = null;
     undelegate: MsgUndelegate | null = null;
