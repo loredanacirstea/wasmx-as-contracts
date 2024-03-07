@@ -8,17 +8,6 @@ export const PROTOCOL_ID = "raftp2p_1"
 
 // @ts-ignore
 @serializable
-export class MsgP2PReceived {
-  sender: string // peerId
-  msg: Base64String
-  constructor(sender: string, msg: Base64String) {
-    this.sender = sender
-    this.msg = msg
-  }
-}
-
-// @ts-ignore
-@serializable
 export class StateSyncRequest {
   start_index: i64
   constructor(start_index: i64) {

@@ -38,7 +38,7 @@ export const NODE_UPDATE_UPDATE = 2
 
 /// storage
 /// Context values
-export const NODE_IPS = "nodeIPs";
+export const NODE_IPS = "validatorNodesInfo";
 export const CURRENT_NODE_ID = "currentNodeId";
 export const HEARTBEAT_TIMEOUT = "heartbeatTimeout";
 export const ELECTION_TIMEOUT_KEY = "electionTimeout";

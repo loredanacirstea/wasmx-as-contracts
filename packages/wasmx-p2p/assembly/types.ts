@@ -83,9 +83,34 @@ export class ConnectPeerResponse {}
 
 // @ts-ignore
 @serializable
-export class SubscribeRequest {
-    topic: Base64String
-    constructor(topic: Base64String) {
+export class ConnectChatRoomRequest {
+    protocolId: string
+    topic: string
+    constructor(protocolId: string, topic: string) {
+        this.protocolId = protocolId
         this.topic = topic
     }
 }
+
+// @ts-ignore
+@serializable
+export class ConnectChatRoomResponse {}
+
+// @ts-ignore
+@serializable
+export class SendMessageToChatRoomRequest {
+    contract: Bech32String
+    msg: Base64String
+    protocolId: string
+    topic: string
+    constructor(contract: Bech32String, msg: Base64String, protocolId: string, topic: string) {
+        this.contract = contract
+        this.msg = msg
+        this.protocolId = protocolId
+        this.topic = topic
+    }
+}
+
+// @ts-ignore
+@serializable
+export class SendMessageToChatRoomResponse {}

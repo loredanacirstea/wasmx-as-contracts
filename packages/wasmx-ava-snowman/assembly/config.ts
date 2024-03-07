@@ -43,7 +43,7 @@ export const BlockPartSizeBytes: u32 = 65536 // 64kB
 export const MaxBlockPartsCount = (MaxBlockSizeBytes / BlockPartSizeBytes) + 1
 
 /// Context values
-export const NODE_IPS = "nodeIPs";
+export const NODE_IPS = "validatorNodesInfo";
 export const CURRENT_NODE_ID = "currentNodeId";
 export const ELECTION_TIMEOUT_KEY = "electionTimeout";
 export const NEXT_INDEX_ARRAY = "nextIndex";

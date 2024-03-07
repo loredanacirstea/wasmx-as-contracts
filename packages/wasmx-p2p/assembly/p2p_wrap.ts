@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64, decode } from "as-base64/assembly";
 import * as p2p from './p2p';
 import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
-import {WasmxResponse, StartNodeWithIdentityRequest, SendMessageRequest, ConnectPeerRequest, ConnectPeerResponse, SendMessageToPeersRequest } from "./types";
+import {WasmxResponse, StartNodeWithIdentityRequest, SendMessageRequest, ConnectPeerRequest, ConnectPeerResponse, SendMessageToPeersRequest, ConnectChatRoomRequest, SendMessageToChatRoomRequest } from "./types";
 
 export function StartNodeWithIdentity(req: StartNodeWithIdentityRequest): WasmxResponse {
     const data = JSON.stringify<StartNodeWithIdentityRequest>(req);
@@ -37,10 +37,15 @@ export function SendMessageToPeers(req: SendMessageToPeersRequest): void {
     p2p.SendMessageToPeers(String.UTF8.encode(data));
 }
 
-// export function Subscribe(req: SubscribeRequest): void {
-//     const data = JSON.stringify<SubscribeRequest>(req);
-//     p2p.Subscribe(String.UTF8.encode(data));
-// }
+export function ConnectChatRoom(req: ConnectChatRoomRequest): void {
+    const data = JSON.stringify<ConnectChatRoomRequest>(req);
+    p2p.ConnectChatRoom(String.UTF8.encode(data));
+}
+
+export function SendMessageToChatRoom(req: SendMessageToChatRoomRequest): void {
+    const data = JSON.stringify<SendMessageToChatRoomRequest>(req);
+    p2p.SendMessageToChatRoom(String.UTF8.encode(data));
+}
 
 export function LoggerInfo(msg: string, parts: string[]): void {
     wasmxwrap.LoggerInfo("wasmx_p2p", msg, parts)
