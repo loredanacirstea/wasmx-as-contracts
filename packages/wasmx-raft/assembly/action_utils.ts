@@ -77,6 +77,15 @@ export function getNodeByAddress(addr: Bech32String, nodes: NodeInfo[]): NodeInf
     return null
 }
 
+export function getNodeIdByAddress(addr: Bech32String, nodes: NodeInfo[]): i32 {
+    for (let i = 0; i < nodes.length; i++) {
+        if (nodes[i].address == addr) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 export function verifyMessage(nodeIndex: i32, signatureStr: Base64String, msg: string): boolean {
     const nodes = getNodeIPs();
     const addr = nodes[nodeIndex].address;

@@ -900,7 +900,7 @@ export function wrapGuard(value: boolean): ArrayBuffer {
     return String.UTF8.encode("0");
 }
 
-function getNextProposer(blockHash: Base64String, totalStaked: BigInt, validators: staking.Validator[]): i32 {
+export function getNextProposer(blockHash: Base64String, totalStaked: BigInt, validators: staking.Validator[]): i32 {
     console.debug("-getNextProposer: " + blockHash)
     const hashbz = decodeBase64(blockHash);
     console.debug("-getNextProposer hashbz: " + hashbz.toString())
@@ -1427,7 +1427,7 @@ export function callContract(addr: Bech32String, calldata: string, isQuery: bool
     return resp;
 }
 
-function getTotalStaked(validators: staking.Validator[]): BigInt {
+export function getTotalStaked(validators: staking.Validator[]): BigInt {
     let bonded = BigInt.zero();
     for (let i = 0; i < validators.length; i++) {
         // @ts-ignore

@@ -15,7 +15,7 @@ export const machine = createMachine({
     currentNodeId: "0",
     max_block_gas: "20000000",
   },
-  id: "Tendermint-P2P-1",
+  id: "Tendermint-P2P-4",
   initial: "uninitialized",
   states: {
     uninitialized: {
@@ -27,9 +27,6 @@ export const machine = createMachine({
     },
     initialized: {
       initial: "unstarted",
-      on: {
-        start: {},
-      },
       states: {
         unstarted: {
           on: {
@@ -49,10 +46,13 @@ export const machine = createMachine({
               },
             },
             start: {
-              target: "Validator",
+              target: "started",
               actions: [
                 {
                   type: "connectPeers",
+                },
+                {
+                  type: "connectRooms",
                 },
                 {
                   type: "requestNetworkSync",
@@ -64,22 +64,13 @@ export const machine = createMachine({
         prestart: {
           after: {
             "500": {
-              target: "Validator",
+              target: "started",
             },
           },
         },
-        Validator: {
+        started: {
+          initial: "Node",
           on: {
-            receiveProposal: {
-              actions: [
-                {
-                  type: "processBlock",
-                },
-                {
-                  type: "sendProposalResponse",
-                },
-              ],
-            },
             newTransaction: {
               actions: [
                 {
@@ -89,31 +80,10 @@ export const machine = createMachine({
                   type: "sendNewTransactionResponse",
                 },
                 {
-                  type: "forwardTx",
-                },
-              ],
-            },
-            stop: {
-              target: "#Tendermint-P2P-1.stopped",
-            },
-            start: {
-              target: "Validator",
-              actions: [
-                {
-                  type: "connectPeers",
-                },
-                {
-                  type: "requestNetworkSync",
-                },
-              ],
-            },
-            receivePrecommit: {
-              actions: [
-                {
-                  type: "commitBlock",
-                },
-                {
-                  type: "sendPrecommitResponse",
+                  type: "forwardMsgToChat",
+                  params: {
+                    protocolId: "mempool",
+                  },
                 },
               ],
             },
@@ -127,134 +97,260 @@ export const machine = createMachine({
                 type: "receiveStateSyncRequest",
               },
             },
-            receiveStateSyncResponse: {
-              actions: {
-                type: "receiveStateSyncResponse",
-              },
-            },
             updateNode: {
               actions: {
                 type: "updateNodeAndReturn",
               },
             },
-          },
-          after: {
-            roundTimeout: {
-              target: "Validator",
-            },
-          },
-          always: {
-            target: "Proposer",
-            guard: {
-              type: "isNextProposer",
-            },
-          },
-          entry: [
-            {
-              type: "cancelActiveIntervals",
-              params: {
-                after: "roundTimeout",
-              },
-            },
-            {
-              type: "incrementCurrentTerm",
-            },
-            {
-              type: "initializeNextIndex",
-            },
-          ],
-        },
-        Proposer: {
-          initial: "active",
-          on: {
-            stop: {
-              target: "#Tendermint-P2P-1.stopped",
+            start: {
+              actions: [
+                {
+                  type: "connectPeers",
+                },
+                {
+                  type: "connectRooms",
+                },
+                {
+                  type: "requestNetworkSync",
+                },
+              ],
             },
           },
           states: {
-            active: {
+            Node: {
               on: {
-                newTransaction: {
-                  actions: [
-                    {
-                      type: "addToMempool",
+                newValidator: [
+                  {
+                    target: "Validator",
+                    actions: {
+                      type: "transitionNodeToValidator",
                     },
-                    {
-                      type: "sendNewTransactionResponse",
+                    guard: {
+                      type: "newValidatorIsSelf",
                     },
-                  ],
-                },
-                start: {
-                  target: "active",
-                  actions: [
-                    {
-                      type: "connectPeers",
+                  },
+                  {
+                    target: "Node",
+                    actions: {
+                      type: "transitionNodeToValidator",
                     },
-                    {
-                      type: "requestNetworkSync",
-                    },
-                  ],
-                },
-                updateNode: {
+                  },
+                ],
+                receiveStateSyncResponse: {
                   actions: {
-                    type: "updateNodeAndReturn",
+                    type: "receiveStateSyncResponse",
                   },
                 },
-                receiveProposal: {
-                  target: "#Tendermint-P2P-1.initialized.Validator",
+                receiveBlockProposal: {
+                  actions: {
+                    type: "receiveBlockProposal",
+                  },
+                },
+              },
+            },
+            Validator: {
+              initial: "active",
+              on: {
+                receiveBlockProposal: {
                   actions: [
                     {
-                      type: "processBlock",
+                      type: "receiveBlockProposal",
                     },
                     {
-                      type: "sendProposalResponse",
+                      type: "sendPrevote",
                     },
+                  ],
+                  guard: {
+                    type: "ifSenderIsProposer",
+                  },
+                },
+                stop: {
+                  target: "#Tendermint-P2P-4.stopped",
+                },
+                receiveStateSyncResponse: {
+                  actions: {
+                    type: "receiveStateSyncResponse",
+                  },
+                },
+                receivePrevote: {
+                  actions: {
+                    type: "receivePrevote",
+                  },
+                },
+              },
+              after: {
+                roundTimeout: {
+                  target: "Validator",
+                },
+              },
+              states: {
+                active: {
+                  always: [
+                    {
+                      target: "#Tendermint-P2P-4.initialized.started.Proposer",
+                      guard: {
+                        type: "isNextProposer",
+                      },
+                    },
+                    {
+                      target: "prevote",
+                    },
+                  ],
+                  entry: [
                     {
                       type: "cancelActiveIntervals",
                       params: {
                         after: "roundTimeout",
                       },
                     },
-                  ],
-                },
-                receiveAppendEntryResponse: {
-                  actions: [
                     {
-                      type: "receiveAppendEntryResponse",
+                      type: "incrementCurrentTerm",
                     },
                     {
-                      type: "commitBlocks",
+                      type: "setRoundProposer",
                     },
                   ],
                 },
-                receiveStateSyncRequest: {
-                  actions: {
-                    type: "receiveStateSyncRequest",
+                prevote: {
+                  on: {
+                    receivePrevote: {
+                      target: "prevote",
+                      actions: {
+                        type: "receivePrevote",
+                      },
+                    },
+                  },
+                  always: {
+                    target: "precommit",
+                    actions: {
+                      type: "sendPrecommit",
+                    },
+                    guard: {
+                      type: "ifPrevoteThreshold",
+                    },
                   },
                 },
-              },
-              after: {
-                roundTimeout: {
-                  target: "#Tendermint-P2P-1.initialized.Validator",
+                precommit: {
+                  on: {
+                    receivePrecommit: {
+                      target: "precommit",
+                      actions: {
+                        type: "receivePrecommit",
+                      },
+                    },
+                  },
+                  always: [
+                    {
+                      target: "active",
+                      actions: {
+                        type: "commitBlock",
+                      },
+                      guard: {
+                        type: "ifPrecommitThreshold",
+                      },
+                    },
+                    {
+                      target: "active",
+                    },
+                  ],
                 },
               },
-              entry: [
-                {
-                  type: "cancelActiveIntervals",
-                  params: {
-                    after: "roundTimeout",
+            },
+            Proposer: {
+              initial: "active",
+              on: {
+                stop: {
+                  target: "#Tendermint-P2P-4.stopped",
+                },
+              },
+              states: {
+                active: {
+                  on: {
+                    start: {
+                      target: "#Tendermint-P2P-4.initialized.started.Validator",
+                      actions: [
+                        {
+                          type: "connectPeers",
+                        },
+                        {
+                          type: "connectRooms",
+                        },
+                        {
+                          type: "requestNetworkSync",
+                        },
+                      ],
+                    },
+                  },
+                  after: {
+                    roundTimeout: {
+                      target: "#Tendermint-P2P-4.initialized.started.Validator",
+                    },
+                  },
+                  always: {
+                    target: "prevote",
+                  },
+                  entry: [
+                    {
+                      type: "cancelActiveIntervals",
+                      params: {
+                        after: "roundTimeout",
+                      },
+                    },
+                    {
+                      type: "proposeBlock",
+                    },
+                    {
+                      type: "sendBlockProposal",
+                    },
+                    {
+                      type: "sendPrevote",
+                    },
+                  ],
+                },
+                prevote: {
+                  on: {
+                    receivePrevote: {
+                      target: "prevote",
+                      actions: {
+                        type: "receivePrevote",
+                      },
+                    },
+                  },
+                  always: {
+                    target: "precommit",
+                    actions: {
+                      type: "sendPrecommit",
+                    },
+                    guard: {
+                      type: "ifPrevoteThreshold",
+                    },
                   },
                 },
-                {
-                  type: "proposeBlock",
+                precommit: {
+                  on: {
+                    receivePrecommit: {
+                      target: "precommit",
+                      actions: {
+                        type: "receivePrecommit",
+                      },
+                    },
+                  },
+                  always: [
+                    {
+                      target: "#Tendermint-P2P-4.initialized.started.Validator",
+                      actions: {
+                        type: "commitBlock",
+                      },
+                      guard: {
+                        type: "ifPrecommitThreshold",
+                      },
+                    },
+                    {
+                      target: "#Tendermint-P2P-4.initialized.started.Validator",
+                    },
+                  ],
                 },
-                {
-                  type: "sendAppendEntries",
-                },
-                {
-                  type: "commitBlocks",
-                },
-              ],
+              },
             },
           },
         },
@@ -263,7 +359,7 @@ export const machine = createMachine({
     stopped: {
       on: {
         restart: {
-          target: "#Tendermint-P2P-1.initialized.unstarted",
+          target: "#Tendermint-P2P-4.initialized.unstarted",
         },
       },
     },
@@ -278,7 +374,7 @@ export const machine = createMachine({
       // Add your action code here
       // ...
     },
-    initializeNextIndex: function (context, event) {
+    setRoundProposer: function (context, event) {
       // Add your action code here
       // ...
     },
@@ -286,19 +382,11 @@ export const machine = createMachine({
       // Add your action code here
       // ...
     },
-    sendAppendEntries: function (context, event) {
+    sendBlockProposal: function (context, event) {
       // Add your action code here
       // ...
     },
-    commitBlocks: function (context, event) {
-      // Add your action code here
-      // ...
-    },
-    addToMempool: function (context, event) {
-      // Add your action code here
-      // ...
-    },
-    sendNewTransactionResponse: function (context, event) {
+    sendPrevote: function (context, event) {
       // Add your action code here
       // ...
     },
@@ -310,39 +398,31 @@ export const machine = createMachine({
       // Add your action code here
       // ...
     },
+    connectRooms: function (context, event) {
+      // Add your action code here
+      // ...
+    },
     requestNetworkSync: function (context, event) {
       // Add your action code here
       // ...
     },
-    processBlock: function (context, event) {
+    receiveBlockProposal: function (context, event) {
       // Add your action code here
       // ...
     },
-    sendProposalResponse: function (context, event) {
+    addToMempool: function (context, event) {
       // Add your action code here
       // ...
     },
-    forwardTx: function (context, event) {
+    sendNewTransactionResponse: function (context, event) {
       // Add your action code here
       // ...
     },
-    updateNodeAndReturn: function (context, event) {
+    forwardMsgToChat: function (context, event) {
       // Add your action code here
       // ...
     },
     setup: function (context, event) {
-      // Add your action code here
-      // ...
-    },
-    commitBlock: function (context, event) {
-      // Add your action code here
-      // ...
-    },
-    sendPrecommitResponse: function (context, event) {
-      // Add your action code here
-      // ...
-    },
-    receiveAppendEntryResponse: function (context, event) {
       // Add your action code here
       // ...
     },
@@ -354,13 +434,53 @@ export const machine = createMachine({
       // Add your action code here
       // ...
     },
+    updateNodeAndReturn: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    transitionNodeToValidator: function (context, event) {
+      // Add your action code here
+      // ...
+    },
     receiveStateSyncResponse: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    receivePrevote: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    sendPrecommit: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    receivePrecommit: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    commitBlock: function (context, event) {
       // Add your action code here
       // ...
     },
   },
   guards: {
+    ifSenderIsProposer: function (context, event) {
+      // Add your guard condition here
+      return true;
+    },
     isNextProposer: function (context, event) {
+      // Add your guard condition here
+      return true;
+    },
+    newValidatorIsSelf: function (context, event) {
+      // Add your guard condition here
+      return true;
+    },
+    ifPrevoteThreshold: function (context, event) {
+      // Add your guard condition here
+      return true;
+    },
+    ifPrecommitThreshold: function (context, event) {
       // Add your guard condition here
       return true;
     },

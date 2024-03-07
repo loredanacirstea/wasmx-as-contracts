@@ -1,6 +1,6 @@
 import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { MODULE_NAME } from './types';
+import { MODULE_NAME } from './config';
 
 export function LoggerInfo(msg: string, parts: string[]): void {
     wasmxwrap.LoggerInfo(MODULE_NAME, msg, parts)

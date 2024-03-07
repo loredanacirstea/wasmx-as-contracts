@@ -24,17 +24,22 @@ import {
 } from 'xstate-fsm-as/assembly/types';
 import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, base64ToHex, hex64ToBase64 } from "wasmx-utils/assembly/utils";
 import { BigInt } from "wasmx-env/assembly/bn";
-import { PROTOCOL_ID, StateSyncRequest, StateSyncResponse } from "./types";
+import { StateSyncRequest, StateSyncResponse } from "./sync_types";
+import { PROTOCOL_ID } from "./config";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
-import { getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLog, getNextIndexArray, getNodeIPs, setNodeIPs, setTermId } from "wasmx-tendermint/assembly/action_utils";
+import { getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLog, getPrevoteArray, setPrevoteArray, getPrecommitArray, setPrecommitArray, getValidatorNodesInfo, setValidatorNodesInfo, setTermId, setCurrentProposer, getCurrentProposer, appendLogEntry, setLogEntryAggregate, setCurrentState, setLastLogIndex } from "./storage";
 import { connectPeersInternal, getP2PAddress, receiveUpdateNodeResponseInternal, registeredCheck } from "wasmx-raft-p2p/assembly/actions"
-import * as cfg from "wasmx-tendermint/assembly/config";
-import { AppendEntry, AppendEntryResponse, LogEntryAggregate, Precommit } from "wasmx-tendermint/assembly/types";
-import { extractAppendEntry, getLogEntryAggregate, initChain, initializeIndexArrays, isNodeActive, prepareAppendEntry, prepareAppendEntryMessage, processAppendEntry, readyToCommit, sendProposalResponseMessage, signMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal, startBlockFinalizationLeader, updateNodeEntry } from "wasmx-tendermint/assembly/actions";
+import { callHookContract, setMempool, signMessage, updateNodeEntry } from "wasmx-tendermint/assembly/actions"
+import { Mempool } from "wasmx-tendermint/assembly/types_blockchain";
+import * as cfg from "./config";
+import { AppendEntry, AppendEntryResponse, LogEntryAggregate } from "./types";
+import { calculateCurrentProposer, extractAppendEntry, getLogEntryAggregate, initChain, initializeVoteArrays, isNodeActive, prepareAppendEntry, prepareAppendEntryMessage, readyToPrecommit, readyToPrevote, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
 import { extractUpdateNodeEntryAndVerify } from "wasmx-raft/assembly/actions";
-import { getLastLogIndex, getTermId } from "wasmx-raft/assembly/storage";
-import { getNodeByAddress, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
+import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembly/storage";
+import { getAllValidators, getFinalBlock, getNodeByAddress, getNodeIdByAddress, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
 import { Node, NodeInfo, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft"
+import { getLastBlockIndex } from "wasmx-blocks/assembly/storage";
+import { CurrentState, Precommit, Prevote } from "./types_blockchain";
 
 export function connectPeers(
     params: ActionParam[],
@@ -56,6 +61,7 @@ export function receiveUpdateNodeResponse(
     params: ActionParam[],
     event: EventObject,
 ): void {
+    console.log("--receiveUpdateNodeResponse--")
     receiveUpdateNodeResponseInternal(params, event, PROTOCOL_ID)
 }
 
@@ -71,7 +77,7 @@ export function setupNode(
             currentNodeId = event.params[i].value;
             continue;
         }
-        if (event.params[i].key === cfg.NODE_IPS) {
+        if (event.params[i].key === cfg.VALIDATOR_NODES_INFO) {
             nodeIPs = event.params[i].value;
             continue;
         }
@@ -95,7 +101,7 @@ export function setupNode(
 
     // TODO ID@host:ip
     // 6efc12ab37fc0e096d8618872f6930df53972879@0.0.0.0:26757
-    fsm.setContextValue(cfg.NODE_IPS, nodeIPs);
+    fsm.setContextValue(cfg.VALIDATOR_NODES_INFO, nodeIPs);
 
     const datajson = String.UTF8.decode(decodeBase64(initChainSetup).buffer);
     // TODO remove validator private key from logs in initChainSetup
@@ -120,9 +126,95 @@ export function setupNode(
         const p2pid = parts2[6]
         peers[i] = new NodeInfo(addr, new Node(p2pid, host, port, parts1[1]), false);
     }
-    setNodeIPs(peers);
+    setValidatorNodesInfo(peers);
     initChain(data);
-    initializeIndexArrays(peers.length);
+    initializeVoteArrays(peers.length);
+}
+
+export function setup(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    LoggerInfo("setting up new tendermint consensus contract", [])
+    // get nodeIPs and validators from old contract
+    // get currentState
+    // get mempool
+    let oldContract = "";
+    if (params.length > 0) {
+        oldContract = params[0].value;
+    } else if (event.params.length > 0) {
+        oldContract = event.params[0].value;
+    }
+    if (oldContract == "") {
+        return revert("previous contract address not provided")
+    }
+
+    let calldata = `{"getContextValue":{"key":"nodeIPs"}}`
+    let req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
+    let resp = wasmxw.call(req, cfg.MODULE_NAME);
+    if (resp.success > 0) {
+        return revert("cannot get nodeIPs from previous contract")
+    }
+    let data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    LoggerInfo("setting up nodeIPs", ["ips", data])
+    const nodeIps = JSON.parse<Array<NodeInfo>>(data)
+    setValidatorNodesInfo(nodeIps);
+
+    calldata = `{"getContextValue":{"key":"state"}}`
+    req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
+    resp = wasmxw.call(req, cfg.MODULE_NAME);
+    if (resp.success > 0) {
+        return revert("cannot get state from previous contract")
+    }
+    data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    LoggerInfo("setting up state", ["data", data])
+    const state = JSON.parse<CurrentState>(data)
+    setCurrentState(state);
+
+    calldata = `{"getContextValue":{"key":"mempool"}}`
+    req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
+    resp = wasmxw.call(req, cfg.MODULE_NAME);
+    if (resp.success > 0) {
+        return revert("cannot get mempool from previous contract")
+    }
+    data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    LoggerInfo("setting up mempool", ["data", data])
+    const mempool = JSON.parse<Mempool>(data)
+    setMempool(mempool);
+
+    calldata = `{"getContextValue":{"key":"currentNodeId"}}`
+    req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
+    resp = wasmxw.call(req, cfg.MODULE_NAME);
+    if (resp.success > 0) {
+        return revert("cannot get currentNodeId from previous contract")
+    }
+    data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    LoggerInfo("setting up currentNodeId", ["data", data])
+    const currentNodeId = parseInt32(data);
+    setCurrentNodeId(currentNodeId);
+
+    calldata = `{"getContextValue":{"key":"currentTerm"}}`
+    req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
+    resp = wasmxw.call(req, cfg.MODULE_NAME);
+    if (resp.success > 0) {
+        return revert("cannot get currentTerm from previous contract")
+    }
+    data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    LoggerInfo("setting up currentTerm", ["data", data])
+    const currentTerm = parseInt32(data);
+    setTermId(currentTerm);
+
+    // get last block index from storage contract
+    const lastIndex = getLastBlockIndex();
+    LoggerInfo("setting up last log index", ["index", lastIndex.toString()])
+    setLastLogIndex(lastIndex);
+
+    // after we set last log index
+    initializeVoteArrays(nodeIps.length);
+
+    // TODO we run the hooks that must be ran after block end
+    const blockData = getFinalBlock(getLastBlockIndex())
+    callHookContract("EndBlock", blockData);
 }
 
 export function updateNodeAndReturn(
@@ -131,36 +223,37 @@ export function updateNodeAndReturn(
 ): void {
     let entry = extractUpdateNodeEntryAndVerify(params, event);
     const response = updateNodeEntry(entry);
+    console.log("--updateNodeEntry--")
     if (response == null) {
         return;
     }
+    console.log("--updateNodeEntry2--")
     const ourId = getCurrentNodeId();
     response.sync_node_id = ourId
 
     const updateMsgStr = JSON.stringify<UpdateNodeResponse>(response);
     const signature = signMessage(updateMsgStr);
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(updateMsgStr)));
-    const nodeIps = getNodeIPs();
+    const nodeIps = getValidatorNodesInfo();
     const senderaddr = nodeIps[ourId].address;
     const msgstr = `{"run":{"event":{"type":"receiveUpdateNodeResponse","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"},{"key": "sender","value":"${senderaddr}"}]}}}`
+    console.log("--updateNodeEntry msgstr--" + msgstr)
 
-    // send an appendEntry to the state sync provider, so the node has an updated list of nodes
-    // in order to verify the message signature from the new node
-    if (response.sync_node_id != ourId) {
-        sendAppendEntry(response.sync_node_id, nodeIps[response.sync_node_id], nodeIps);
-    }
     // send update message only to the requesting node
     // other nodes get an updated list each heartbeat
     const peers = [getP2PAddress(entry.node)]
+    console.log("--updateNodeAndReturn--" + peers[0])
 
     const contract = wasmxw.getAddress();
     p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
 }
 
-export function forwardTx(
+export function forwardMsgToChat(
     params: ActionParam[],
     event: EventObject,
 ): void {
+    // protocolId as param
+
     // TODO forward tx to other nodes too
     // let transaction: string = "";
     // for (let i = 0; i < event.params.length; i++) {
@@ -174,108 +267,17 @@ export function forwardTx(
     // }
 }
 
-// this actually commits one block at a time
-export function commitBlocks(
+export function sendBlockProposal(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    checkCommits();
-}
-
-// this gets called each reentry in Leader.active state
-function checkCommits(): void {
-    const nextCommit = readyToCommit()
-    // TODO If AppendEntries fails because of log inconsistency: decrement nextIndex and retry
-    if (nextCommit > 0) {
-
-        sendPrecommits([], new EventObject("", []));
-
-        // TODO commit only if entry.term == currentTerm:
-
-        // We commit the state
-        const consensusChanged = startBlockFinalizationLeader(nextCommit);
-        if(consensusChanged) {
-            // we need to also propagate the commit of this entry to the rest of the nodes
-            // so they can enter the new consensus
-            // TODO ?
-            // sendAppendEntries([], new EventObject("", []))
-        }
-    }
-}
-
-export function sendPrecommits(
-    params: ActionParam[],
-    event: EventObject,
-): void {
-    // go through each node
-    const nodeId = getCurrentNodeId();
-    const ips = getNodeIPs();
-    LoggerDebug("sending precommits...", ["nodeId", nodeId.toString(), "ips", JSON.stringify<Array<NodeInfo>>(ips)])
-    for (let i = 0; i < ips.length; i++) {
-        // don't send to Leader or removed nodes
-        if (nodeId === i || !isNodeActive(ips[i])) continue;
-        sendPrecommit(i, ips[i]);
-    }
-}
-
-export function sendPrecommit(
-    nodeId: i32,
-    node: NodeInfo,
-): void {
-    const termId = getTermId();
-    const lastIndex = getLastLogIndex();
-    const proposerId = getCurrentNodeId()
-    const entry: Precommit = new Precommit(termId, proposerId, lastIndex)
-    const datastr = JSON.stringify<Precommit>(entry);
-    const signature = signMessage(datastr);
-
-    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
-    const msgstr = `{"run":{"event":{"type":"receivePrecommit","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
-
-    LoggerDebug("sending precommit...", ["nodeId", nodeId.toString(), "receiver", node.address, "index", lastIndex.toString()])
-
-    const peers = [getP2PAddress(node)]
-    const contract = wasmxw.getAddress();
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
-}
-
-export function sendAppendEntries(
-    params: ActionParam[],
-    event: EventObject,
-): void {
-    // go through each node
-    const nodeId = getCurrentNodeId();
-    const ips = getNodeIPs();
-    LoggerDebug("diseminate blocks...", ["nodeId", nodeId.toString(), "ips", JSON.stringify<Array<NodeInfo>>(ips)])
-    for (let i = 0; i < ips.length; i++) {
-        // don't send to Leader or removed nodes
-        if (nodeId === i || !isNodeActive(ips[i])) continue;
-        sendAppendEntry(i, ips[i], ips);
-    }
-}
-
-export function sendAppendEntry(
-    nodeId: i32,
-    node: NodeInfo,
-    nodeIps: NodeInfo[],
-): void {
-    const nextIndexPerNode = getNextIndexArray();
-    const nextIndex = nextIndexPerNode.at(nodeId);
     let lastIndex = getLastLogIndex();
-    let lastIndexToSend = lastIndex
+    const data = prepareAppendEntry(lastIndex);
+    const msgstr = prepareAppendEntryMessage(data);
+    LoggerDebug("sending block proposal", ["height", lastIndex.toString()])
 
-    // TODO state sync & snapshotting
-    // right now, don't send more than STATE_SYNC_BATCH blocks at a time
-    if ((lastIndex - nextIndex) > cfg.STATE_SYNC_BATCH) {
-        lastIndexToSend = nextIndex + cfg.STATE_SYNC_BATCH;
-    }
-
-    const data = prepareAppendEntry(nodeIps, nextIndex, lastIndexToSend);
-    const msgstr = prepareAppendEntryMessage(nodeId, nextIndex, lastIndex, lastIndexToSend,node, data);
-
-    const peers = [getP2PAddress(node)]
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, PROTOCOL_ID, cfg.CHAT_ROOM_BLOCK_PROPOSAL))
 }
 
 // received statesync request
@@ -343,7 +345,7 @@ function sendStateSyncBatch(start_index: i64, lastIndexToSend: i64, lastIndex: i
     const response = new StateSyncResponse(start_index, lastIndexToSend, lastIndex, termId, entries);
     const datastr = JSON.stringify<StateSyncResponse>(response);
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
-    const nodes = getNodeIPs();
+    const nodes = getValidatorNodesInfo();
     const ourId = getCurrentNodeId();
     const senderaddr = nodes[ourId].address;
     const msgstr = `{"run":{"event":{"type":"receiveStateSyncResponse","params":[{"key": "entry","value":"${dataBase64}"},{"key": "sender","value":"${senderaddr}"}]}}}`
@@ -404,7 +406,7 @@ export function receiveStateSyncResponse(
 export function sendAppendEntryResponseMessage(response: AppendEntryResponse, leaderId: i32): void {
     const datastr = JSON.stringify<AppendEntryResponse>(response);
     const signatureResp = signMessage(datastr);
-    const nodeIps = getNodeIPs();
+    const nodeIps = getValidatorNodesInfo();
     const ourId = getCurrentNodeId();
     const peers = [getP2PAddress(nodeIps[leaderId])]
 
@@ -418,11 +420,280 @@ export function sendAppendEntryResponseMessage(response: AppendEntryResponse, le
     p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
 }
 
-export function sendProposalResponse(
+// validator receiving block proposal
+export function receiveBlockProposal(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    const entry = extractAppendEntry(params, event)
-    const response = sendProposalResponseMessage(entry)
-    sendAppendEntryResponseMessage(response, entry.proposerId);
+    // here we receive new entries/logs/blocks
+    // we need to run ProcessProposal
+    // and then FinalizeBlock & Commit
+    // TODO we also look at termId, as we might need to rollback changes in case of a network split
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("entry")) {
+        revert("no entry found");
+    }
+    if (!ctx.has("signature")) {
+        revert("no signature found");
+    }
+    const entryBase64 = ctx.get("entry");
+    const signature = ctx.get("signature");
+    const entryStr = String.UTF8.decode(decodeBase64(entryBase64).buffer);
+    LoggerDebug("received new block proposal", ["block", entryStr.slice(0, cfg.MAX_LOGGED) + " [...]"]);
+
+    let entry: AppendEntry = JSON.parse<AppendEntry>(entryStr);
+    LoggerInfo("received new block proposal", [
+        "proposerId", entry.proposerId.toString(),
+        "termId", entry.termId.toString(),
+    ]);
+
+    // verify signature
+    const isSender = verifyMessage(entry.proposerId, signature, entryStr);
+    if (!isSender) {
+        LoggerError("signature verification failed for AppendEntry", ["proposerId", entry.proposerId.toString(), "termId", entry.termId.toString()]);
+        return;
+    }
+    // TODO do we need this?
+    setTermId(entry.termId);
+
+    const lastFinalizedBlock = getLastBlockIndex();
+
+    // now we check the new block
+    for (let i = 0; i < entry.entries.length; i++) {
+        const block = entry.entries[i];
+        if (block.index > (lastFinalizedBlock + 1)) {
+            // if we are not fully synced, just store the proposal
+            // this may be overwritten later
+            setLogEntryAggregate(block);
+        } else {
+            processAppendEntry(entry.entries[i]);
+        }
+    }
+}
+
+// receive new block
+export function processAppendEntry(entry: LogEntryAggregate): void {
+    const data = decodeBase64(entry.data.data);
+    const processReq = JSON.parse<typestnd.RequestProcessProposal>(String.UTF8.decode(data.buffer));
+
+    const processResp = consensuswrap.ProcessProposal(processReq);
+    if (processResp.status === typestnd.ProposalStatus.REJECT) {
+        // TODO - what to do here? returning just discards the block and does not return a response to the leader
+        // but this node will not sync with the leader anymore
+        LoggerError("new block rejected", ["height", processReq.height.toString(), "node type", "Follower"])
+        return;
+    }
+    appendLogEntry(entry);
+}
+
+export function setRoundProposer(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const validators = getAllValidators();
+    const index = calculateCurrentProposer(validators);
+    setCurrentProposer(index);
+}
+
+export function isNextProposer(
+    params: ActionParam[],
+    event: EventObject,
+): boolean {
+    const validators = getAllValidators();
+    if (validators.length == 1) {
+        const nodes = getValidatorNodesInfo();
+        if (nodes.length > validators.length) {
+            LoggerInfo("cannot propose block, state is not synced", ["validators", validators.length.toString(), "nodes", nodes.length.toString()])
+            return false;
+        }
+    }
+    const proposerIndex = getCurrentProposer();
+    const currentNode = getCurrentNodeId();
+    return proposerIndex == currentNode;
+}
+
+export function ifSenderIsProposer(
+    params: ActionParam[],
+    event: EventObject,
+): boolean {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("entry")) {
+        revert("no entry found");
+    }
+    const entryBase64 = ctx.get("entry");
+    const entryStr = String.UTF8.decode(decodeBase64(entryBase64).buffer);
+    let entry: AppendEntry = JSON.parse<AppendEntry>(entryStr);
+    const proposerIndex = getCurrentProposer();
+    return entry.proposerId == proposerIndex;
+}
+
+export function sendPrevote(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    // get the current proposal & vote on the block hash
+    const data = buildPrevoteMessage();
+    const msgstr = preparePrevoteMessage(data);
+    LoggerDebug("sending prevote", ["index", data.index.toString(), "hash", data.hash])
+
+    const contract = wasmxw.getAddress();
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, PROTOCOL_ID, cfg.CHAT_ROOM_PREVOTE))
+}
+
+export function buildPrevoteMessage(): Prevote {
+    const proposal = getLastLog();
+    const blockstr = String.UTF8.decode(decodeBase64(proposal.data).buffer);
+    const block = JSON.parse<wblocks.BlockEntry>(blockstr)
+    const data = JSON.parse<typestnd.RequestFinalizeBlock>(String.UTF8.decode(decodeBase64(block.data).buffer))
+    const hash = data.hash
+    const nodeIps = getValidatorNodesInfo();
+    const ourId = getCurrentNodeId();
+    const senderaddr = nodeIps[ourId].address;
+    return new Prevote(senderaddr, block.index, hash);
+}
+
+export function preparePrevoteMessage(data: Prevote): string {
+    const datastr = JSON.stringify<Prevote>(data);
+    const signature = signMessage(datastr);
+    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
+    const msgstr = `{"run":{"event":{"type":"receivePrevote","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
+    return msgstr
+}
+
+export function sendPrecommit(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    // get the current proposal & vote on the block hash
+    const data = buildPrecommitMessage();
+    const msgstr = preparePrecommitMessage(data);
+    LoggerDebug("sending precommit", ["index", data.index.toString(), "hash", data.hash])
+
+    const contract = wasmxw.getAddress();
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, PROTOCOL_ID, cfg.CHAT_ROOM_PRECOMMIT))
+}
+
+export function buildPrecommitMessage(): Precommit {
+    const proposal = getLastLog();
+    const blockstr = String.UTF8.decode(decodeBase64(proposal.data).buffer);
+    const block = JSON.parse<wblocks.BlockEntry>(blockstr)
+    const data = JSON.parse<typestnd.RequestFinalizeBlock>(String.UTF8.decode(decodeBase64(block.data).buffer))
+    const hash = data.hash
+    const nodeIps = getValidatorNodesInfo();
+    const ourId = getCurrentNodeId();
+    const senderaddr = nodeIps[ourId].address;
+    return new Precommit(senderaddr, block.index, hash);
+}
+
+export function preparePrecommitMessage(data: Precommit): string {
+    const datastr = JSON.stringify<Precommit>(data);
+    const signature = signMessage(datastr);
+    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
+    const msgstr = `{"run":{"event":{"type":"receivePrecommit","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
+    return msgstr
+}
+
+export function receivePrevote(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("entry")) {
+        revert("no entry found");
+    }
+    if (!ctx.has("signature")) {
+        revert("no signature found");
+    }
+    const entry = ctx.get("entry");
+    const signature = ctx.get("signature");
+
+    const datastr = String.UTF8.decode(decodeBase64(entry).buffer)
+    const data = JSON.parse<Prevote>(datastr)
+    LoggerDebug("prevote received", ["sender", data.sender, "index", data.index.toString(), "hash", data.hash])
+
+    // verify signature
+    const isSender = verifyMessageByAddr(data.sender, signature, datastr);
+    if (!isSender) {
+        LoggerError("signature verification failed for prevote", ["sender", data.sender]);
+        return;
+    }
+
+    // we add the prevote to the arrays
+    const prevoteArr = getPrevoteArray();
+    const nodes = getValidatorNodesInfo();
+    const nodeIndex = getNodeIdByAddress(data.sender, nodes);
+    if (nodeIndex == -1) {
+        LoggerError("prevote sender node not found", ["sender", data.sender]);
+        return;
+    }
+    prevoteArr[nodeIndex] = data.index;
+    setPrevoteArray(prevoteArr);
+}
+
+
+export function receivePrecommit(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    // we add the precommit to the arrays
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("entry")) {
+        revert("no entry found");
+    }
+    if (!ctx.has("signature")) {
+        revert("no signature found");
+    }
+    const entry = ctx.get("entry");
+    const signature = ctx.get("signature");
+
+    const datastr = String.UTF8.decode(decodeBase64(entry).buffer)
+    const data = JSON.parse<Precommit>(datastr)
+    LoggerDebug("precommit received", ["sender", data.sender, "index", data.index.toString(), "hash", data.hash])
+
+    // verify signature
+    const isSender = verifyMessageByAddr(data.sender, signature, datastr);
+    if (!isSender) {
+        LoggerError("signature verification failed for precommit", ["sender", data.sender]);
+        return;
+    }
+
+    // we add the precommit to the arrays
+    const precommitArr = getPrecommitArray();
+    const nodes = getValidatorNodesInfo();
+    const nodeIndex = getNodeIdByAddress(data.sender, nodes);
+    if (nodeIndex == -1) {
+        LoggerError("precommit sender node not found", ["sender", data.sender]);
+        return;
+    }
+    precommitArr[nodeIndex] = data.index;
+    setPrecommitArray(precommitArr);
+}
+
+export function ifPrevoteThreshold(
+    params: ActionParam[],
+    event: EventObject,
+): boolean {
+    const index = getLastLogIndex();
+    return readyToPrevote(index);
+}
+
+export function ifPrecommitThreshold(
+    params: ActionParam[],
+    event: EventObject,
+): boolean {
+    const index = getLastLogIndex();
+    return readyToPrecommit(index);
+}
+
+// this actually commits one block at a time
+export function commitBlock(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const index = getLastLogIndex();
+    startBlockFinalizationFollower(index);
 }

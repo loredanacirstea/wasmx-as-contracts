@@ -1,45 +1,99 @@
 import { JSON } from "json-as/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
-import { Base64String, Bech32String } from "wasmx-env/assembly/types";
-import { LogEntryAggregate } from "wasmx-tendermint/assembly/types";
-
-export const MODULE_NAME = "tendermintp2p"
-
-export const PROTOCOL_ID = "tendermintp2p_1"
+import { Base64String, Bech32String, Coin } from "wasmx-env/assembly/types";
+import { NodeInfo } from "wasmx-raft/assembly/types_raft";
 
 // @ts-ignore
 @serializable
-export class MsgP2PReceived {
-  sender: string // peerId
-  msg: Base64String
-  constructor(sender: string, msg: Base64String) {
-    this.sender = sender
-    this.msg = msg
-  }
+export class LogEntry {
+    // this is also the block height
+    index: i64;
+    termId: i32;
+    leaderId: i32;
+    data: Base64String; // empty for finalized blocks;
+    constructor(index: i64, termId: i32, leaderId: i32, data: string) {
+        this.index = index;
+        this.termId = termId;
+        this.leaderId = leaderId;
+        this.data = data;
+    }
 }
 
 // @ts-ignore
 @serializable
-export class StateSyncRequest {
-  start_index: i64
-  constructor(start_index: i64) {
-    this.start_index = start_index
-  }
+export class LogEntryAggregate {
+    // this is also the block height
+    index: i64;
+    termId: i32;
+    leaderId: i32;
+    data: wblocks.BlockEntry;
+    constructor(index: i64, termId: i32, leaderId: i32, data: wblocks.BlockEntry) {
+        this.index = index;
+        this.termId = termId;
+        this.leaderId = leaderId;
+        this.data = data;
+    }
 }
 
 // @ts-ignore
 @serializable
-export class StateSyncResponse {
-  start_batch_index: i64
-  last_batch_index: i64
-  last_log_index: i64
-  termId: i32
-  entries: Array<LogEntryAggregate>
-  constructor(start_batch_index: i64, last_batch_index: i64, last_log_index: i64, termId: i32, entries: Array<LogEntryAggregate>) {
-    this.start_batch_index = start_batch_index
-    this.last_batch_index = last_batch_index
-    this.entries = entries;
-    this.last_log_index = last_log_index
-    this.termId = termId
-  }
+export class Transaction {
+    from: string;
+    to: string;
+    funds: Array<Coin>;
+    data: string;
+    gas: i64;
+    price: i64;
+    constructor(from: string, to: string, funds: Array<Coin>, data: string, gas: i64, price: i64) {
+        this.from = from;
+        this.to = to;
+        this.funds = funds;
+        this.data = data;
+        this.gas = gas;
+        this.price = price;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class TransactionResponse {
+    termId: i32;
+    leaderId: i32;
+    index: i64;
+    constructor(termId: i32, leaderId: i32, index: i64) {
+        this.termId = termId;
+        this.leaderId = leaderId;
+        this.index = index;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class AppendEntry {
+    // leader’s term
+    termId: i32;
+    // so follower can redirect clients
+    proposerId: i32;
+    // block
+    entries: LogEntryAggregate[]
+    constructor(termId: i32, proposerId: i32, entries: LogEntryAggregate[]) {
+        this.termId = termId;
+        this.proposerId = proposerId;
+        this.entries = entries;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class AppendEntryResponse {
+    // currentTerm, for leader to update itself
+    termId: i32;
+    // true if follower contained entry matching prevLogIndex and prevLogTerm
+    success: bool;
+    lastIndex: i64;
+    constructor(termId: i32, success: bool, lastIndex: i64) {
+        this.termId = termId;
+        this.success = success;
+        this.lastIndex = lastIndex;
+    }
 }

@@ -889,13 +889,12 @@ export function findStateInfoByPath(
     return state;
 }
 
-// TODO use only absolute paths for states
-export function equalState(state1: string, state2: string): boolean {
-  // const config1 = findStateInfo(states, state1);
-  // const config2 = findStateInfo(states, state2);
-  const st1 = state1.split(".").pop();
-  const st2 = state2.split(".").pop();
-  return st1 === st2;
+// we only use absolute paths for states
+export function equalStateOrIncluded(state1: string, state2: string): boolean {
+  if (state1 == state2) return true;
+  if (state1.includes(state2)) return true;
+  if (state2.includes(state1)) return true;
+  return false;
 }
 
 export function eventual(config: MachineExternal, args: TimerArgs): void {
@@ -911,7 +910,7 @@ export function eventual(config: MachineExternal, args: TimerArgs): void {
   const service = loadServiceFromConfig(config);
   const currentState = storage.getCurrentState();
   LoggerDebug("eventual", ["current state", currentState.value]);
-  const isEqual = equalState(currentState.value, args.state);
+  const isEqual = equalStateOrIncluded(currentState.value, args.state);
 
   if (!isEqual) {
     // we are in the wrong state, so the interval must be stopped
