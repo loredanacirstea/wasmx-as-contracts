@@ -32,6 +32,10 @@ export function main(): void {
     result = wrapGuard(actions.ifSenderIsProposer(calld.params, calld.event));
     wasmx.finish(result);
     return;
+  } else if (calld.method === "ifNodeIsValidator") {
+    result = wrapGuard(actions.ifNodeIsValidator(calld.params, calld.event));
+    wasmx.finish(result);
+    return;
   } else if (calld.method === "setRoundProposer") {
     actions.setRoundProposer(calld.params, calld.event);
   } else if (calld.method === "sendBlockProposal") {
@@ -66,6 +70,8 @@ export function main(): void {
     actions.forwardMsgToChat(calld.params, calld.event);
   } else if (calld.method === "connectPeers") {
     actions.connectPeers(calld.params, calld.event);
+  } else if (calld.method === "connectRooms") {
+    actions.connectRooms(calld.params, calld.event);
   } else if (calld.method === "requestNetworkSync") {
     actions.requestNetworkSync(calld.params, calld.event);
   } else if (calld.method === "receiveStateSyncRequest") {

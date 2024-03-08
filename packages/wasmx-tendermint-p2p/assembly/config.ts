@@ -36,7 +36,7 @@ export const MaxBlockPartsCount = (MaxBlockSizeBytes / BlockPartSizeBytes) + 1
 
 /// Context values
 export const VALIDATOR_NODES_INFO = "validatorNodesInfo";
-export const SIMPLE_NODES_INFO = "validatorNodesInfo";
+export const SIMPLE_NODES_INFO = "simpleNodesInfo";
 export const CURRENT_NODE_ID = "currentNodeId";
 export const ELECTION_TIMEOUT_KEY = "electionTimeout";
 export const TERM_ID = "currentTerm"; // current round

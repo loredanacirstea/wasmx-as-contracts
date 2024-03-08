@@ -43,6 +43,7 @@ export function ConnectChatRoom(req: ConnectChatRoomRequest): void {
 }
 
 export function SendMessageToChatRoom(req: SendMessageToChatRoomRequest): void {
+    req.msg = encodeBase64(Uint8Array.wrap(String.UTF8.encode(req.msg)))
     const data = JSON.stringify<SendMessageToChatRoomRequest>(req);
     p2p.SendMessageToChatRoom(String.UTF8.encode(data));
 }

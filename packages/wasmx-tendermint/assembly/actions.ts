@@ -135,15 +135,10 @@ export function setupNode(
     event: EventObject,
 ): void {
     let currentNodeId: string = "";
-    let nodeIPs: string = "";
     let initChainSetup: string = "";
     for (let i = 0; i < event.params.length; i++) {
         if (event.params[i].key === cfg.CURRENT_NODE_ID) {
             currentNodeId = event.params[i].value;
-            continue;
-        }
-        if (event.params[i].key === cfg.NODE_IPS) {
-            nodeIPs = event.params[i].value;
             continue;
         }
         if (event.params[i].key === "initChainSetup") {
@@ -154,9 +149,6 @@ export function setupNode(
     if (currentNodeId === "") {
         revert("no currentNodeId found");
     }
-    if (nodeIPs === "") {
-        revert("no nodeIPs found");
-    }
     if (initChainSetup === "") {
         revert("no initChainSetup found");
     }
@@ -166,11 +158,10 @@ export function setupNode(
 
     // TODO ID@host:ip
     // 6efc12ab37fc0e096d8618872f6930df53972879@0.0.0.0:26757
-    fsm.setContextValue(cfg.NODE_IPS, nodeIPs);
 
     const datajson = String.UTF8.decode(decodeBase64(initChainSetup).buffer);
     // TODO remove validator private key from logs in initChainSetup
-    LoggerDebug("setupNode", ["currentNodeId", currentNodeId, "nodeIPs", nodeIPs, "initChainSetup", datajson])
+    LoggerDebug("setupNode", ["currentNodeId", currentNodeId, "initChainSetup", datajson])
     const data = JSON.parse<typestnd.InitChainSetup>(datajson);
     // const ips = JSON.parse<string[]>(nodeIPs);
 
@@ -700,7 +691,7 @@ export function setup(
         return revert("previous contract address not provided")
     }
 
-    let calldata = `{"getContextValue":{"key":"nodeIPs"}}`
+    let calldata = `{"getContextValue":{"key":"${cfg.NODE_IPS}"}}`
     let req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
     let resp = wasmxw.call(req, MODULE_NAME);
     if (resp.success > 0) {

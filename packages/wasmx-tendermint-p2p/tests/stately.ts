@@ -5,7 +5,6 @@ import { createMachine } from "xstate";
 export const machine = createMachine({
   context: {
     log: "",
-    nodeIPs: "[]",
     votedFor: "0",
     nextIndex: "[]",
     currentTerm: "0",
@@ -147,6 +146,12 @@ export const machine = createMachine({
                   },
                 },
               },
+              always: {
+                target: "Validator",
+                guard: {
+                  type: "ifNodeIsValidator",
+                },
+              },
             },
             Validator: {
               initial: "active",
@@ -185,17 +190,28 @@ export const machine = createMachine({
               },
               states: {
                 active: {
-                  always: [
-                    {
-                      target: "#Tendermint-P2P-4.initialized.started.Proposer",
+                  on: {
+                    receiveBlockProposal: {
+                      target: "prevote",
+                      actions: [
+                        {
+                          type: "receiveBlockProposal",
+                        },
+                        {
+                          type: "sendPrevote",
+                        },
+                      ],
                       guard: {
-                        type: "isNextProposer",
+                        type: "ifSenderIsProposer",
                       },
                     },
-                    {
-                      target: "prevote",
+                  },
+                  always: {
+                    target: "#Tendermint-P2P-4.initialized.started.Proposer",
+                    guard: {
+                      type: "isNextProposer",
                     },
-                  ],
+                  },
                   entry: [
                     {
                       type: "cancelActiveIntervals",
@@ -239,20 +255,14 @@ export const machine = createMachine({
                       },
                     },
                   },
-                  always: [
-                    {
-                      target: "active",
-                      actions: {
-                        type: "commitBlock",
-                      },
-                      guard: {
-                        type: "ifPrecommitThreshold",
-                      },
+                  always: {
+                    actions: {
+                      type: "commitBlock",
                     },
-                    {
-                      target: "active",
+                    guard: {
+                      type: "ifPrecommitThreshold",
                     },
-                  ],
+                  },
                 },
               },
             },
@@ -261,6 +271,11 @@ export const machine = createMachine({
               on: {
                 stop: {
                   target: "#Tendermint-P2P-4.stopped",
+                },
+              },
+              after: {
+                roundTimeout: {
+                  target: "Validator",
                 },
               },
               states: {
@@ -279,11 +294,6 @@ export const machine = createMachine({
                           type: "requestNetworkSync",
                         },
                       ],
-                    },
-                  },
-                  after: {
-                    roundTimeout: {
-                      target: "#Tendermint-P2P-4.initialized.started.Validator",
                     },
                   },
                   always: {
@@ -335,20 +345,14 @@ export const machine = createMachine({
                       },
                     },
                   },
-                  always: [
-                    {
-                      target: "#Tendermint-P2P-4.initialized.started.Validator",
-                      actions: {
-                        type: "commitBlock",
-                      },
-                      guard: {
-                        type: "ifPrecommitThreshold",
-                      },
+                  always: {
+                    actions: {
+                      type: "commitBlock",
                     },
-                    {
-                      target: "#Tendermint-P2P-4.initialized.started.Validator",
+                    guard: {
+                      type: "ifPrecommitThreshold",
                     },
-                  ],
+                  },
                 },
               },
             },
@@ -481,6 +485,10 @@ export const machine = createMachine({
       return true;
     },
     ifPrecommitThreshold: function (context, event) {
+      // Add your guard condition here
+      return true;
+    },
+    ifNodeIsValidator: function (context, event) {
       // Add your guard condition here
       return true;
     },

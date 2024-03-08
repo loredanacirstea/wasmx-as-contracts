@@ -28,24 +28,58 @@ import { StateSyncRequest, StateSyncResponse } from "./sync_types";
 import { PROTOCOL_ID } from "./config";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
 import { getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLog, getPrevoteArray, setPrevoteArray, getPrecommitArray, setPrecommitArray, getValidatorNodesInfo, setValidatorNodesInfo, setTermId, setCurrentProposer, getCurrentProposer, appendLogEntry, setLogEntryAggregate, setCurrentState, setLastLogIndex } from "./storage";
-import { connectPeersInternal, getP2PAddress, receiveUpdateNodeResponseInternal, registeredCheck } from "wasmx-raft-p2p/assembly/actions"
+import { getP2PAddress } from "wasmx-raft-p2p/assembly/actions"
 import { callHookContract, setMempool, signMessage, updateNodeEntry } from "wasmx-tendermint/assembly/actions"
 import { Mempool } from "wasmx-tendermint/assembly/types_blockchain";
 import * as cfg from "./config";
 import { AppendEntry, AppendEntryResponse, LogEntryAggregate } from "./types";
 import { calculateCurrentProposer, extractAppendEntry, getLogEntryAggregate, initChain, initializeVoteArrays, isNodeActive, prepareAppendEntry, prepareAppendEntryMessage, readyToPrecommit, readyToPrevote, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
-import { extractUpdateNodeEntryAndVerify } from "wasmx-raft/assembly/actions";
+import { extractUpdateNodeEntryAndVerify, registeredCheckMessage } from "wasmx-raft/assembly/actions";
 import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembly/storage";
 import { getAllValidators, getFinalBlock, getNodeByAddress, getNodeIdByAddress, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
 import { Node, NodeInfo, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft"
 import { getLastBlockIndex } from "wasmx-blocks/assembly/storage";
 import { CurrentState, Precommit, Prevote } from "./types_blockchain";
 
+export function connectRooms(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_BLOCK_PROPOSAL))
+    p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_MEMPOOL))
+    p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_NODEINFO))
+    p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_PRECOMMIT))
+    p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_PREVOTE))
+}
+
 export function connectPeers(
     params: ActionParam[],
     event: EventObject,
 ): void {
     connectPeersInternal(PROTOCOL_ID);
+}
+
+export function connectPeersInternal(protocolId: string): void {
+    const state = getCurrentState()
+    const index = getCurrentNodeId();
+    const nodeInfos = getValidatorNodesInfo();
+    const node = nodeInfos[index];
+
+    const reqstart = new p2ptypes.StartNodeWithIdentityRequest(node.node.port, protocolId, state.validator_privkey);
+    const resp = p2pw.StartNodeWithIdentity(reqstart);
+    if (resp.error != "") {
+        revert(`start node with identity: ${resp.error}`)
+    }
+    for (let i = 0; i < nodeInfos.length; i++) {
+        if (i == index) {
+            // don't connect with ourselves
+            continue;
+        }
+        const p2paddr = getP2PAddress(nodeInfos[i])
+        const req = new p2ptypes.ConnectPeerRequest(protocolId, p2paddr)
+        LoggerDebug(`trying to connect to peer`, ["p2paddress", p2paddr, "address", nodeInfos[i].address]);
+        p2pw.ConnectPeer(req);
+    }
 }
 
 export function requestNetworkSync(
@@ -57,6 +91,35 @@ export function requestNetworkSync(
     registeredCheck(PROTOCOL_ID);
 }
 
+// we just send a NodeUpdateRequest
+// the node will receive a UpdateNodeResponse from the leader and then proceed to do state sync
+export function registeredCheck(protocolId: string): void {
+    // when a node starts, it needs to add itself to the Leader's node list
+    // we just need [ourIP, leaderIP]
+
+    const ips = getValidatorNodesInfo();
+
+    // if we are alone, return
+    if (ips.length == 1) {
+        return;
+    }
+
+    const nodeId = getCurrentNodeId();
+    const msgstr = registeredCheckMessage(ips, nodeId);
+    LoggerInfo("register request", ["req", msgstr])
+
+    let peers: string[] = []
+    for (let i = 0; i < ips.length; i++) {
+        // don't send to ourselves or to removed nodes
+        if (i == nodeId || ips[i].node.ip == "") continue;
+        peers.push(getP2PAddress(ips[i]))
+    }
+
+    LoggerDebug("sending node registration", ["peers", peers.join(","), "data", msgstr])
+    const contract = wasmxw.getAddress();
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
+}
+
 export function receiveUpdateNodeResponse(
     params: ActionParam[],
     event: EventObject,
@@ -65,20 +128,107 @@ export function receiveUpdateNodeResponse(
     receiveUpdateNodeResponseInternal(params, event, PROTOCOL_ID)
 }
 
+export function receiveUpdateNodeResponseInternal(
+    params: ActionParam[],
+    event: EventObject,
+    protocolId: string,
+): void {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("entry")) {
+        revert("no data found");
+    }
+    if (!ctx.has("signature")) {
+        revert("no signature found");
+    }
+    if (!ctx.has("sender")) { // node/validator address
+        revert("no sender found");
+    }
+    const signature = ctx.get("signature")
+    const sender = ctx.get("sender")
+    const entry = ctx.get("entry")
+    const data = String.UTF8.decode(decodeBase64(entry).buffer);
+    const resp = JSON.parse<UpdateNodeResponse>(data)
+    LoggerInfo("nodes list update", ["data", data])
+
+    // verify signature
+    const isSender = verifyMessageByAddr(sender, signature, data);
+    if (!isSender) {
+        LoggerError("signature verification failed for nodes list update", ["sender", sender]);
+        return;
+    }
+
+    const nodeIps = getValidatorNodesInfo();
+    const nodeId = getCurrentNodeId();
+    const nodeInfo = nodeIps[nodeId];
+
+    // we find our id
+    let ourId = -1;
+    for (let j = 0; j < resp.nodes.length; j++) {
+        if (resp.nodes[j].address == nodeInfo.address) {
+            ourId = j;
+            break;
+        }
+    }
+    if (ourId == -1) {
+        LoggerError("node list does not contain our node", [])
+        return;
+    }
+    const node = resp.nodes[ourId];
+    if (node.node.host != nodeInfo.node.host) {
+        LoggerError("node list contains wrong host data", ["address", nodeInfo.address, "id", ourId.toString(), "actual", node.node.host, "expected", nodeInfo.node.host])
+        return;
+        // revert(`node list node address mismatch`)
+    }
+    if (node.node.id != nodeInfo.node.id) {
+        LoggerError("node list contains wrong id data", ["address", nodeInfo.address, "id", ourId.toString(), "actual", node.node.id, "expected", nodeInfo.node.id])
+        return;
+    }
+    if (node.node.ip != nodeInfo.node.ip) {
+        LoggerError("node list contains wrong ip data", ["address", nodeInfo.address, "id", ourId.toString(), "actual", node.node.ip, "expected", nodeInfo.node.ip])
+        return;
+    }
+    if (node.node.port != nodeInfo.node.port) {
+        LoggerError("node list contains wrong port data", ["address", nodeInfo.address, "id", ourId.toString(), "actual", node.node.port, "expected", nodeInfo.node.port])
+        return;
+    }
+    setValidatorNodesInfo(resp.nodes);
+    setCurrentNodeId(ourId);
+
+    // state sync from the node provided by the leader, who is known to be synced
+    sendStateSyncRequest(protocolId, resp.sync_node_id);
+}
+
+// this is executed each time the node is started in Follower or Candidate state if needed
+// and is also called after node registration with the leader
+export function sendStateSyncRequest(protocolId: string, nodeId: i32): void {
+    const lastIndex = getLastLogIndex();
+    const ourNodeId = getCurrentNodeId()
+    const nodes = getValidatorNodesInfo();
+    const receiverNode = nodes[nodeId]
+    const request = new StateSyncRequest(lastIndex + 1);
+    const datastr = JSON.stringify<StateSyncRequest>(request);
+    const signature = signMessage(datastr);
+    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
+    const senderaddr = nodes[ourNodeId].address
+    const msgstr = `{"run":{"event":{"type":"receiveStateSyncRequest","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"},{"key": "sender","value":"${senderaddr}"}]}}}`
+
+    LoggerDebug("sending statesync request", ["nodeId", nodeId.toString(), "address", receiverNode.address, "data", datastr])
+
+    const peers = [getP2PAddress(receiverNode)]
+    const contract = wasmxw.getAddress();
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
+}
+
 export function setupNode(
     params: ActionParam[],
     event: EventObject,
 ): void {
     let currentNodeId: string = "";
-    let nodeIPs: string = "";
     let initChainSetup: string = "";
     for (let i = 0; i < event.params.length; i++) {
         if (event.params[i].key === cfg.CURRENT_NODE_ID) {
             currentNodeId = event.params[i].value;
-            continue;
-        }
-        if (event.params[i].key === cfg.VALIDATOR_NODES_INFO) {
-            nodeIPs = event.params[i].value;
             continue;
         }
         if (event.params[i].key === "initChainSetup") {
@@ -89,25 +239,18 @@ export function setupNode(
     if (currentNodeId === "") {
         revert("no currentNodeId found");
     }
-    if (nodeIPs === "") {
-        revert("no nodeIPs found");
-    }
     if (initChainSetup === "") {
         revert("no initChainSetup found");
     }
     fsm.setContextValue(cfg.CURRENT_NODE_ID, currentNodeId);
 
-    // !! nodeIps must be the same for all nodes
-
     // TODO ID@host:ip
     // 6efc12ab37fc0e096d8618872f6930df53972879@0.0.0.0:26757
-    fsm.setContextValue(cfg.VALIDATOR_NODES_INFO, nodeIPs);
 
     const datajson = String.UTF8.decode(decodeBase64(initChainSetup).buffer);
     // TODO remove validator private key from logs in initChainSetup
-    LoggerDebug("setupNode", ["currentNodeId", currentNodeId, "nodeIPs", nodeIPs, "initChainSetup", datajson])
+    LoggerDebug("setupNode", ["currentNodeId", currentNodeId, "initChainSetup", datajson])
     const data = JSON.parse<typestnd.InitChainSetup>(datajson);
-    // const ips = JSON.parse<string[]>(nodeIPs);
 
     const peers = new Array<NodeInfo>(data.peers.length);
     for (let i = 0; i < data.peers.length; i++) {
@@ -149,7 +292,7 @@ export function setup(
         return revert("previous contract address not provided")
     }
 
-    let calldata = `{"getContextValue":{"key":"nodeIPs"}}`
+    let calldata = `{"getContextValue":{"key":"${cfg.VALIDATOR_NODES_INFO}"}}`
     let req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
     let resp = wasmxw.call(req, cfg.MODULE_NAME);
     if (resp.success > 0) {
@@ -529,6 +672,28 @@ export function ifSenderIsProposer(
     return entry.proposerId == proposerIndex;
 }
 
+export function ifNodeIsValidator(
+    params: ActionParam[],
+    event: EventObject,
+): boolean {
+    const validators = getAllValidators();
+    const nodes = getValidatorNodesInfo();
+    const index = getCurrentNodeId();
+    return ifNodeIsValidatorInternal(validators, nodes, index);
+}
+
+export function ifNodeIsValidatorInternal(validators: staking.Validator[], nodes: NodeInfo[], nodeId: i32): boolean {
+    if (validators.length == 1 && nodes.length == 1 && nodeId == 0) return true;
+    // we are not synced here:
+    if (validators.length == 1 && nodes.length > 1) return false;
+
+    const node = nodes[nodeId];
+    for (let i = 0; i < validators.length; i++) {
+        if (validators[i].operator_address == node.address) return true;
+    }
+    return false;
+}
+
 export function sendPrevote(
     params: ActionParam[],
     event: EventObject,
@@ -695,5 +860,8 @@ export function commitBlock(
     event: EventObject,
 ): void {
     const index = getLastLogIndex();
-    startBlockFinalizationFollower(index);
+    const lastFinalizedIndex = getLastBlockIndex();
+    if (index > lastFinalizedIndex) {
+        startBlockFinalizationFollower(index);
+    }
 }
