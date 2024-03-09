@@ -34,10 +34,10 @@ import { Mempool } from "wasmx-tendermint/assembly/types_blockchain";
 import * as cfg from "./config";
 import { AppendEntry, AppendEntryResponse, LogEntryAggregate } from "./types";
 import { calculateCurrentProposer, extractAppendEntry, getLogEntryAggregate, initChain, initializeVoteArrays, isNodeActive, prepareAppendEntry, prepareAppendEntryMessage, readyToPrecommit, readyToPrevote, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
-import { extractUpdateNodeEntryAndVerify, registeredCheckMessage } from "wasmx-raft/assembly/actions";
+import { extractUpdateNodeEntryAndVerify } from "wasmx-raft/assembly/actions";
 import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembly/storage";
 import { getAllValidators, getFinalBlock, getNodeByAddress, getNodeIdByAddress, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
-import { Node, NodeInfo, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft"
+import { Node, NodeInfo, NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft"
 import { getLastBlockIndex } from "wasmx-blocks/assembly/storage";
 import { CurrentState, Precommit, Prevote } from "./types_blockchain";
 
@@ -118,6 +118,22 @@ export function registeredCheck(protocolId: string): void {
     LoggerDebug("sending node registration", ["peers", peers.join(","), "data", msgstr])
     const contract = wasmxw.getAddress();
     p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
+}
+
+export function registeredCheckMessage(ips: NodeInfo[], nodeId: i32): string {
+    LoggerInfo("trying to register node with other nodes", []);
+
+    // send updateNode to all ips except us
+    const nodeIp = ips[nodeId];
+    // TODO signature on protobuf encoding, not JSON
+    const updateMsg = new NodeUpdate(nodeIp, nodeId, cfg.NODE_UPDATE_ADD);
+    const updateMsgStr = JSON.stringify<NodeUpdate>(updateMsg);
+    const signature = signMessage(updateMsgStr);
+
+    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(updateMsgStr)));
+    const msgstr = `{"run":{"event":{"type":"updateNode","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
+    LoggerInfo("register request", ["req", msgstr])
+    return msgstr
 }
 
 export function receiveUpdateNodeResponse(

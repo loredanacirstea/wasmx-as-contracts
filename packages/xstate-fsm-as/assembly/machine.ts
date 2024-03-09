@@ -164,6 +164,13 @@ function executeStateActions(
     return revert("could not find state config for " + state.value);
   }
 
+  // run the current state after transitions
+  const afterTimers = newstateconfig.after;
+  if (afterTimers != null) {
+    runAfterTransitions(state.value, afterTimers.keys());
+  }
+
+  // run the current state always
   if (newstateconfig.always.length > 0) {
     const newstate = applyTransitions(service.machine, state, newstateconfig.always, new EventObject("", []), 0)
     if (newstate != null) {
@@ -172,14 +179,10 @@ function executeStateActions(
       executeStateActions(service, newstate, new EventObject("", []));
     }
   }
+}
 
-  const afterTimers = newstateconfig.after;
-  // console.log("===executeStateActions afterTimers===")
-  if (afterTimers == null) {
-    return;
-  }
-  const delayKeys = afterTimers.keys();
-  console.debug("* setting timed actions for " + state.value);
+function runAfterTransitions(statePath: string, delayKeys: string[]): void {
+  console.debug("* setting timed actions for " + statePath);
   console.debug("* setting timed actions... " + delayKeys.join(","));
 
   for (let i = 0; i < delayKeys.length; i++) {
@@ -198,7 +201,7 @@ function executeStateActions(
     }
     const intervalId = getLastIntervalId() + 1;
     setLastIntervalId(intervalId);
-    registerIntervalId(state.value, delayKeys[i], intervalId);
+    registerIntervalId(statePath, delayKeys[i], intervalId);
 
     let contractAddress = "";
 
@@ -215,7 +218,7 @@ function executeStateActions(
     if (contractAddress == "") {
       contractAddress = wasmxw.addr_humanize(wasmx.getAddress());
     }
-    const args = new TimerArgs(delayKeys[i], state.value, intervalId);
+    const args = new TimerArgs(delayKeys[i], statePath, intervalId);
     const argsStr = JSON.stringify<TimerArgs>(args);
     LoggerDebug("starting timeout", ["intervalId", intervalId.toString()]);
     wasmxw.startTimeout(contractAddress, delay, argsStr);
@@ -591,7 +594,7 @@ export class Machine implements StateMachine.Machine {
     transition: Transition,
     eventObject: EventObject,
   ): State | null {
-    LoggerDebug("applyTransition: ", ["target", transition.target]);
+    LoggerDebug("applyTransition: ", ["from", state.value, "to", transition.target]);
     const value = state.value;
     const stateConfig = findStateInfo(this.states, value);
     if (!stateConfig) {
@@ -651,10 +654,13 @@ export class Machine implements StateMachine.Machine {
       if (true) {
         let allActions: ActionObject[] = [];
 
+        // state exit actions
         if (!isTargetless) {
           allActions = allActions.concat(processActions(stateConfig.exit, eventObject));
         }
+        // event actions
         allActions = allActions.concat(processActions(actions, eventObject));
+        // state entry actions
         if (!isTargetless) {
           allActions = allActions.concat(processActions(nextStateConfig.entry, eventObject));
         }
@@ -685,6 +691,7 @@ export class Machine implements StateMachine.Machine {
         }
         // console.log("--findStateInfo--END1=");
         if (stateConfigResolved.states !== null && stateConfigResolved.states.keys().length > 0) {
+          // state has children
           // initial key
           let initialState = stateConfigResolved.states.keys()[0];
           const initialStateObj = stateConfigResolved.states.get(initialState);
@@ -695,8 +702,13 @@ export class Machine implements StateMachine.Machine {
 
           // add the action of this child state
           allActions = allActions.concat(processActions(initialStateObj.entry, eventObject));
+
+          // we run any "after" transitions on the parent
+          const afterTimersParent = nextStateConfig.after;
+          if (afterTimersParent != null) {
+            runAfterTransitions(target, afterTimersParent.keys());
+          }
         }
-        // console.log("--findStateInfo--END2=");
 
         console.debug("* transition next target: " + resolvedTarget);
 
@@ -918,9 +930,9 @@ export function eventual(config: MachineExternal, args: TimerArgs): void {
     return;
   }
 
-  const newstateconfig = findStateInfo(service.machine.states, currentState.value);
+  const newstateconfig = findStateInfo(service.machine.states, args.state);
   if (!newstateconfig) {
-    return revert("could not find state config for " + currentState.value);
+    return revert("could not find state config for " + args.state);
   }
   const afterTimers = newstateconfig.after;
   if (afterTimers == null || !afterTimers.has(args.delay)) {

@@ -162,11 +162,8 @@ export function prepareAppendEntryMessage(
 
 export function calculateCurrentProposer(validators: staking.Validator[]): i32 {
     const currentState = getCurrentState();
-    console.debug("* isNextProposer validators: " + validators.length.toString())
     const totalStaked = getTotalStaked(validators);
-    LoggerDebug("isNextProposer", ["total staked", totalStaked.toString()])
     const proposerIndex = getNextProposer(currentState.last_block_id.hash, totalStaked, validators);
-    LoggerDebug("isNextProposer", ["next proposer", proposerIndex.toString()])
     return proposerIndex
 }
 

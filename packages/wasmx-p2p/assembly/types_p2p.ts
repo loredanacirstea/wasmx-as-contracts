@@ -17,21 +17,6 @@ export class Peer {
 
 // @ts-ignore
 @serializable
-export class MsgStart {
-  protocolId: string
-  pk: Base64String
-  node: Peer
-  peers: Peer[]
-  constructor(privateKey: Base64String, protocolId: string, node: Peer, peers: Peer[]) {
-    this.pk = privateKey
-    this.protocolId = protocolId
-    this.node = node
-    this.peers = peers
-  }
-}
-
-// @ts-ignore
-@serializable
 export class MessageReceivedFromPeer {
     data: Base64String
     peer: Peer

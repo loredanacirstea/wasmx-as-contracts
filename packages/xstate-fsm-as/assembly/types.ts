@@ -166,18 +166,15 @@ export class State {
   value: string;
   actions: Array<ActionObject>;
   changed: boolean;
-  // matches: (value: string) => (stateValue: string) => boolean;
 
   constructor(
     value: string,
     actions: Array<ActionObject>,
     changed: boolean,
-    // matches: (value: string) => (stateValue: string) => boolean,
   ) {
     this.value = value;
     this.actions = actions;
     this.changed = changed;
-    // this.matches = matches;
   }
 }
 
@@ -187,7 +184,6 @@ export class StateClassExternal {
   value: string;
   actions: Array<ActionObject>;
   changed: boolean;
-  // matches: (value: string) => (stateValue: string) => boolean;
 
   constructor(
     value: string,
@@ -214,6 +210,7 @@ export class StateClassExternal {
         const act = state.actions[i];
         iniactions.push(new ActionObject(act.type, act.params, act.event));
     }
+
     return new StateClassExternal(
         state.value,
         iniactions,
@@ -401,54 +398,9 @@ export class StateInfoClassExternal {
     let afterTimers: Array<TransitionExternal> = [];
     const afterT = stateInfo.after;
     if (afterT != null) {
-      const keys = afterT.keys();
-      for (let i = 0; i < keys.length; i++) {
-        const delay = keys[i];
-        const delayedTransitions = afterT.get(delay);
-        const transitions: Transition[] = [];
-        for (let j = 0; j < delayedTransitions.length; j++) {
-          const delayedTransition = delayedTransitions[j];
-          const dActions: Array<ActionObject> = [];
-          for (let k = 0; k < delayedTransition.actions.length; k++) {
-              const actionobj = delayedTransition.actions[k];
-              dActions.push(new ActionObject(actionobj.type, actionobj.params, actionobj.event));
-          }
-          const tr = new Transition(
-            delayedTransition.target,
-            dActions,
-            delayedTransition.guard,
-            delayedTransition.meta,
-          );
-          transitions.push(tr);
-        }
-
-        const afterTimer = new TransitionExternal(
-          delay,
-          transitions,
-        );
-        afterTimers.push(afterTimer);
-      }
+      afterTimers = afterInternalToExternal(afterT);
     }
-
-    let alwaysTransitions = new Array<TransitionExternal>(stateInfo.always.length);
-    for (let i = 0; i < stateInfo.always.length; i++) {
-      const tr = stateInfo.always[i];
-      const alwaysActions: Array<ActionObject> = [];
-      for (let k = 0; k < tr.actions.length; k++) {
-        const actionobj = tr.actions[k];
-        alwaysActions.push(new ActionObject(actionobj.type, actionobj.params, actionobj.event));
-      }
-      const alwaystr = new Transition(
-        tr.target,
-        alwaysActions,
-        tr.guard,
-        tr.meta,
-      )
-      alwaysTransitions[i] = new TransitionExternal(
-        "always",
-        [alwaystr],
-      );
-    }
+    let alwaysTransitions = alwaysInternalToExternal(stateInfo.always);
 
     return new StateInfoClassExternal(
       stateName,
@@ -495,38 +447,9 @@ export class StateInfoClassExternal {
     }
     let afterTimers: StateTimers | null = null;
     if (this.after.length > 0) {
-      afterTimers = new Map();
-      for (let i = 0; i < this.after.length; i++) {
-        const aft = this.after[i];
-        const transitions: Transition[] = [];
-        for (let t = 0; t < aft.transitions.length; t++) {
-          const afttr = aft.transitions[t];
-          const actions: Array<ActionObject> = [];
-          for (let k = 0; k < afttr.actions.length; k++) {
-              const action = afttr.actions[k];
-              actions.push(new ActionObject(action.type, action.params, action.event));
-          }
-          const transition = new Transition(afttr.target, actions, afttr.guard, afttr.meta);
-          transitions.push(transition);
-        }
-        afterTimers.set(aft.name, transitions);
-      }
+      afterTimers = afterExternalToInternal(this.after);
     }
-    let alwaysTransitions = new Array<Transition>(this.always.length);
-    for (let i = 0; i < this.always.length; i++) {
-      const trext = this.always[i];
-      // we expect one transition here
-      if (trext.transitions.length == 0) {
-        throw new Error("always TransitionExternal does not have any transitions")
-      }
-      const tr = trext.transitions[0];
-      alwaysTransitions[i] = new Transition(
-        tr.target,
-        tr.actions,
-        tr.guard,
-        tr.meta,
-      );
-    }
+    let alwaysTransitions = alwaysExternalToInternal(this.always);
 
     const childstates = StateInfoClassExternal.toInternalFromArray(this.states);
     return new StateInfoClass(
@@ -587,4 +510,98 @@ export class ExternalActionCallData {
         this.params = params
         this.event = event
     }
+}
+
+export function afterInternalToExternal(afterT: StateTimers): Array<TransitionExternal> {
+  let afterTimers: Array<TransitionExternal> = [];
+  const keys = afterT.keys();
+  for (let i = 0; i < keys.length; i++) {
+    const delay = keys[i];
+    const delayedTransitions = afterT.get(delay);
+    const transitions: Transition[] = [];
+    for (let j = 0; j < delayedTransitions.length; j++) {
+      const delayedTransition = delayedTransitions[j];
+      const dActions: Array<ActionObject> = [];
+      for (let k = 0; k < delayedTransition.actions.length; k++) {
+          const actionobj = delayedTransition.actions[k];
+          dActions.push(new ActionObject(actionobj.type, actionobj.params, actionobj.event));
+      }
+      const tr = new Transition(
+        delayedTransition.target,
+        dActions,
+        delayedTransition.guard,
+        delayedTransition.meta,
+      );
+      transitions.push(tr);
+    }
+
+    const afterTimer = new TransitionExternal(
+      delay,
+      transitions,
+    );
+    afterTimers.push(afterTimer);
+  }
+  return afterTimers;
+}
+
+export function alwaysInternalToExternal(always: Transition[]): Array<TransitionExternal> {
+  let alwaysTransitions = new Array<TransitionExternal>(always.length);
+  for (let i = 0; i < always.length; i++) {
+    const tr = always[i];
+    const alwaysActions: Array<ActionObject> = [];
+    for (let k = 0; k < tr.actions.length; k++) {
+      const actionobj = tr.actions[k];
+      alwaysActions.push(new ActionObject(actionobj.type, actionobj.params, actionobj.event));
+    }
+    const alwaystr = new Transition(
+      tr.target,
+      alwaysActions,
+      tr.guard,
+      tr.meta,
+    )
+    alwaysTransitions[i] = new TransitionExternal(
+      "always",
+      [alwaystr],
+    );
+  }
+  return alwaysTransitions;
+}
+
+export function afterExternalToInternal(after: Array<TransitionExternal>): StateTimers {
+  const afterTimers: StateTimers = new Map();
+  for (let i = 0; i < after.length; i++) {
+    const aft = after[i];
+    const transitions: Transition[] = [];
+    for (let t = 0; t < aft.transitions.length; t++) {
+      const afttr = aft.transitions[t];
+      const actions: Array<ActionObject> = [];
+      for (let k = 0; k < afttr.actions.length; k++) {
+          const action = afttr.actions[k];
+          actions.push(new ActionObject(action.type, action.params, action.event));
+      }
+      const transition = new Transition(afttr.target, actions, afttr.guard, afttr.meta);
+      transitions.push(transition);
+    }
+    afterTimers.set(aft.name, transitions);
+  }
+  return afterTimers;
+}
+
+export function alwaysExternalToInternal(always: Array<TransitionExternal>): Transition[] {
+  let alwaysTransitions = new Array<Transition>(always.length);
+  for (let i = 0; i < always.length; i++) {
+    const trext = always[i];
+    // we expect one transition here
+    if (trext.transitions.length == 0) {
+      throw new Error("always TransitionExternal does not have any transitions")
+    }
+    const tr = trext.transitions[0];
+    alwaysTransitions[i] = new Transition(
+      tr.target,
+      tr.actions,
+      tr.guard,
+      tr.meta,
+    );
+  }
+  return alwaysTransitions;
 }

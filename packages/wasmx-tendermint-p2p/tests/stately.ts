@@ -183,11 +183,6 @@ export const machine = createMachine({
                   },
                 },
               },
-              after: {
-                roundTimeout: {
-                  target: "Validator",
-                },
-              },
               states: {
                 active: {
                   on: {
@@ -206,6 +201,11 @@ export const machine = createMachine({
                       },
                     },
                   },
+                  after: {
+                    roundTimeout: {
+                      target: "#Tendermint-P2P-4.initialized.started.Validator",
+                    },
+                  },
                   always: {
                     target: "#Tendermint-P2P-4.initialized.started.Proposer",
                     guard: {
@@ -213,12 +213,6 @@ export const machine = createMachine({
                     },
                   },
                   entry: [
-                    {
-                      type: "cancelActiveIntervals",
-                      params: {
-                        after: "roundTimeout",
-                      },
-                    },
                     {
                       type: "incrementCurrentTerm",
                     },
@@ -301,12 +295,6 @@ export const machine = createMachine({
                   },
                   entry: [
                     {
-                      type: "cancelActiveIntervals",
-                      params: {
-                        after: "roundTimeout",
-                      },
-                    },
-                    {
                       type: "proposeBlock",
                     },
                     {
@@ -370,10 +358,6 @@ export const machine = createMachine({
   },
 }).withConfig({
   actions: {
-    cancelActiveIntervals: function (context, event) {
-      // Add your action code here
-      // ...
-    },
     incrementCurrentTerm: function (context, event) {
       // Add your action code here
       // ...
