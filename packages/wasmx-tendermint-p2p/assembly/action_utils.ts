@@ -181,9 +181,7 @@ export function calculateVote(votePerNode: Array<ValidatorProposalVote>, hash: s
     const validators = getAllValidators();
     const nodeId = getCurrentNodeId();
     let totalStake = getTotalStaked(validators)
-    console.log("--calculateVote totalStake--" + totalStake.toString())
     const threshold = getBFTThreshold(totalStake);
-    console.log("--calculateVote threshold--" + threshold.toString())
     // calculate voting stake for the proposed block
     let count: BigInt = validators[nodeId].tokens;
     for (let i = 0; i < votePerNode.length; i++) {
@@ -199,7 +197,6 @@ export function calculateVote(votePerNode: Array<ValidatorProposalVote>, hash: s
     }
     // @ts-ignore
     const committing = count >= threshold;
-    console.log("--calculateVote count--" + count.toString() + "--committing--" + committing.toString())
     return committing;
 }
 

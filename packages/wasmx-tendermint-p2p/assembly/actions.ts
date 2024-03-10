@@ -491,22 +491,26 @@ export function receiveStateSyncRequest(
     const entry = ctx.get("entry")
     const data = String.UTF8.decode(decodeBase64(entry).buffer);
     const resp = JSON.parse<StateSyncRequest>(data)
-    LoggerInfo("statesync request", ["data", data, "sender", sender])
 
+    // we dont verify, because the node may not be a validator
+    // TODO non-validators should sync from dedicated nodes
     // verify signature
-    const isSender = verifyMessageByAddr(sender, signature, data);
-    if (!isSender) {
-        LoggerError("signature verification failed for nodes list update", ["sender", sender]);
-        return;
-    }
+    // const isSender = verifyMessageByAddr(sender, signature, data);
+    // if (!isSender) {
+    //     LoggerError("signature verification failed for nodes list update", ["sender", sender]);
+    //     return;
+    // }
 
     // we send statesync response with the first batch
     const termId = getTermId()
-    const lastIndex = getLastLogIndex()
+    const lastIndex = getLastBlockIndex()
+
+    LoggerInfo("received statesync request", ["sender", sender, "startIndex", resp.start_index.toString(), "lastIndex", lastIndex.toString()])
+
+    if (lastIndex < resp.start_index) return;
 
     // send successive messages with max STATE_SYNC_BATCH blocks at a time
-    const count = lastIndex - resp.start_index
-    if (count == 0) return;
+    const count = lastIndex - resp.start_index + 1
 
     const batches = i32(Math.ceil(f64(count)/f64(cfg.STATE_SYNC_BATCH)))
     let startIndex = resp.start_index;
@@ -516,11 +520,11 @@ export function receiveStateSyncRequest(
         sendStateSyncBatch(startIndex, lastIndexToSend, lastIndex, termId, sender);
         startIndex += cfg.STATE_SYNC_BATCH
     }
-    if (lastIndexToSend < lastIndex) {
+    if (lastIndexToSend <= lastIndex) {
         // last batch
         sendStateSyncBatch(startIndex, lastIndex, lastIndex, termId, sender);
     }
-    LoggerInfo("state sync messages finished", ["lastIndex", lastIndex.toString()])
+    LoggerInfo("statesync request processed", ["sender", sender, "startIndex", resp.start_index.toString(), "lastIndex", lastIndex.toString(), "batches", batches.toString()])
 }
 
 function sendStateSyncBatch(start_index: i64, lastIndexToSend: i64, lastIndex: i64, termId: i32, receiver: Bech32String): void {
@@ -530,7 +534,7 @@ function sendStateSyncBatch(start_index: i64, lastIndexToSend: i64, lastIndex: i
         entries.push(entry);
     }
 
-    // we do not sign this message, because the receiver does not have our publicKey
+    // we do not sign this message, because the receiver may not have our publicKey
 
     const response = new StateSyncResponse(start_index, lastIndexToSend, lastIndex, termId, entries);
     const datastr = JSON.stringify<StateSyncResponse>(response);
@@ -852,6 +856,9 @@ export function receivePrevote(
     const data = JSON.parse<ValidatorProposalVote>(datastr)
     LoggerDebug("prevote received", ["sender", data.sender, "index", data.index.toString(), "hash", data.hash])
 
+    const state = getCurrentState();
+    if (state.nextHeight != data.index) return;
+
     // verify signature
     const isSender = verifyMessageByAddr(data.sender, signature, datastr);
     if (!isSender) {
@@ -891,6 +898,9 @@ export function receivePrecommit(
     const datastr = String.UTF8.decode(decodeBase64(entry).buffer)
     const data = JSON.parse<ValidatorProposalVote>(datastr)
     LoggerDebug("precommit received", ["sender", data.sender, "index", data.index.toString(), "hash", data.hash])
+
+    const state = getCurrentState();
+    if (state.nextHeight != data.index) return;
 
     // verify signature
     const isSender = verifyMessageByAddr(data.sender, signature, datastr);

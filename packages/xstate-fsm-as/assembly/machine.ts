@@ -36,7 +36,7 @@ import {
   isRegisteredIntervalActive,
   removeInterval,
 } from './timer';
-import { LoggerDebug, revert, ctxToActionParams, LoggerError } from "./utils";
+import { LoggerDebug, revert, ctxToActionParams, LoggerError, LoggerInfo } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 
 export function instantiate(
@@ -963,6 +963,8 @@ export function eventual(config: MachineExternal, args: TimerArgs): void {
   }
 
   LoggerDebug("eventual: execute delayed action", ["delay", args.delay]);
+
+  LoggerInfo("eventual", ["state", args.state, "delay", args.delay, "intervalId", args.intervalId.toString(), "current_state", currentState.value]);
 
   // just a copied transition
   let state = storage.getCurrentState();

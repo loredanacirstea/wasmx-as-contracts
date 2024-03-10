@@ -42,7 +42,6 @@ export function actionParamsToMap(params: ActionParam[]): Map<string,string> {
 }
 
 export function getParamsOrEventParams(params: ActionParam[], event: EventObject): ActionParam[] {
-    if (params.length > 0) return params;
-    return event.params;
+    return params.concat(event.params)
 }
 

@@ -10,7 +10,7 @@ export const machine = createMachine({
     currentTerm: "0",
     blockTimeout: "roundTimeout",
     max_tx_bytes: "65536",
-    roundTimeout: 10000,
+    roundTimeout: 2000,
     currentNodeId: "0",
     max_block_gas: "20000000",
     timeoutPropose: 3000,
@@ -185,6 +185,20 @@ export const machine = createMachine({
                     type: "receivePrevote",
                   },
                 },
+                start: {
+                  target: "Validator",
+                  actions: [
+                    {
+                      type: "connectPeers",
+                    },
+                    {
+                      type: "connectRooms",
+                    },
+                    {
+                      type: "requestNetworkSync",
+                    },
+                  ],
+                },
               },
               states: {
                 active: {
@@ -197,6 +211,12 @@ export const machine = createMachine({
                         },
                         {
                           type: "sendPrevote",
+                        },
+                        {
+                          type: "cancelActiveIntervals",
+                          params: {
+                            after: "timeoutPropose",
+                          },
                         },
                       ],
                       guard: {
@@ -271,6 +291,12 @@ export const machine = createMachine({
                       {
                         type: "setValidRound",
                       },
+                      {
+                        type: "cancelActiveIntervals",
+                        params: {
+                          after: "timeoutPrevote",
+                        },
+                      },
                     ],
                     guard: {
                       type: "ifPrevoteAcceptThreshold",
@@ -312,6 +338,12 @@ export const machine = createMachine({
                       {
                         type: "resetValidRound",
                       },
+                      {
+                        type: "cancelActiveIntervals",
+                        params: {
+                          after: "timeoutPrecommit",
+                        },
+                      },
                     ],
                     guard: {
                       type: "ifPrecommitAcceptThreshold",
@@ -319,8 +351,10 @@ export const machine = createMachine({
                   },
                 },
                 commit: {
-                  always: {
-                    target: "active",
+                  after: {
+                    roundTimeout: {
+                      target: "active",
+                    },
                   },
                 },
               },
@@ -485,6 +519,10 @@ export const machine = createMachine({
       // ...
     },
     setValidRound: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    cancelActiveIntervals: function (context, event) {
       // Add your action code here
       // ...
     },
