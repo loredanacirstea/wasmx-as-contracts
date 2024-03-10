@@ -922,29 +922,47 @@ export function eventual(config: MachineExternal, args: TimerArgs): void {
   const service = loadServiceFromConfig(config);
   const currentState = storage.getCurrentState();
   LoggerDebug("eventual", ["current state", currentState.value]);
-  const isEqual = equalStateOrIncluded(currentState.value, args.state);
-
-  if (!isEqual) {
-    // we are in the wrong state, so the interval must be stopped
-    LoggerDebug("eventual: we are in the wrong state", []);
-    return;
-  }
 
   const newstateconfig = findStateInfo(service.machine.states, args.state);
   if (!newstateconfig) {
     return revert("could not find state config for " + args.state);
   }
+
+  const isEqual = equalStateOrIncluded(currentState.value, args.state);
+
   const afterTimers = newstateconfig.after;
   if (afterTimers == null || !afterTimers.has(args.delay)) {
     // we are in the wrong state, so the interval must be stopped
     return;
   }
-  LoggerDebug("eventual: execute delayed action", ["delay", args.delay]);
+
   // delay is in milliseconds
   const transitions = afterTimers.get(args.delay);
   if (!transitions) {
     revert("delayed transition not found: " + args.delay);
   }
+
+  let validTransitions = transitions;
+  // we may have forced transitions to execute
+  // even if the current state does not match the eventual state
+  if (!isEqual) {
+    validTransitions = [];
+    for (let i = 0; i < transitions.length; i++) {
+      if (transitions[i].meta.length > 0 && transitions[i].meta[0].key == "force") {
+        validTransitions.push(transitions[i]);
+      }
+    }
+    if (validTransitions.length == 0) {
+      // we are in the wrong state, so the interval must be stopped
+      LoggerDebug("eventual: we are in the wrong state", []);
+      return;
+    }
+  }
+  if (validTransitions.length == 0) {
+    return;
+  }
+
+  LoggerDebug("eventual: execute delayed action", ["delay", args.delay]);
 
   // just a copied transition
   let state = storage.getCurrentState();
@@ -953,7 +971,7 @@ export function eventual(config: MachineExternal, args: TimerArgs): void {
   let stateField = new ActionParam("state", args.state)
   let delayField = new ActionParam("delay", args.delay)
   let emptyEvent = new EventObject("", [intervalIdField, stateField, delayField]);
-  const newstate = applyTransitions(service.machine, state, transitions, emptyEvent, 0);
+  const newstate = applyTransitions(service.machine, state, validTransitions, emptyEvent, 0);
   if (newstate == null) {
     return;
   }

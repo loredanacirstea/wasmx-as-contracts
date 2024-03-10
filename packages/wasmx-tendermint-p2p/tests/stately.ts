@@ -203,7 +203,10 @@ export const machine = createMachine({
                   },
                   after: {
                     roundTimeout: {
-                      target: "#Tendermint-P2P-4.initialized.started.Validator",
+                      target: "active",
+                      meta: {
+                        force: "true",
+                      },
                     },
                   },
                   always: {

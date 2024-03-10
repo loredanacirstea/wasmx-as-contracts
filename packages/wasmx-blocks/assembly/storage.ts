@@ -14,6 +14,8 @@ const TX_INDEXER = "tx_";
 const PARAMS_KEY = "consensus_params";
 const DATA_INDEXER = "data_";
 
+export const LOG_START = 1;
+
 export function getBlockKey(index: i64): string {
     return BLOCK_INDEX_KEY + index.toString();
 }
@@ -56,7 +58,7 @@ export function getLastBlockIndex(): i64 {
         const value = parseInt(valuestr);
         return i64(value);
     }
-    return i64(0);
+    return i64(LOG_START);
 }
 
 export function setLastBlockIndex(index: i64): void {

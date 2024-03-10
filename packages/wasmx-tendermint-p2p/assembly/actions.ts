@@ -2,7 +2,6 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import { getParamsOrEventParams, actionParamsToMap } from 'xstate-fsm-as/assembly/utils';
 import * as wblocks from "wasmx-blocks/assembly/types";
-import * as wblockscalld from "wasmx-blocks/assembly/calldata";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as p2pw from "wasmx-p2p/assembly/p2p_wrap";
@@ -33,23 +32,24 @@ import { callHookContract, setMempool, signMessage, updateNodeEntry } from "wasm
 import { Mempool } from "wasmx-tendermint/assembly/types_blockchain";
 import * as cfg from "./config";
 import { AppendEntry, AppendEntryResponse, LogEntryAggregate } from "./types";
-import { calculateCurrentProposer, extractAppendEntry, getLogEntryAggregate, initChain, initializeVoteArrays, isNodeActive, prepareAppendEntry, prepareAppendEntryMessage, readyToPrecommit, readyToPrevote, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
+import { calculateCurrentProposer, extractAppendEntry, getFinalBlock, getLastBlockIndex, getLogEntryAggregate, initChain, initializeVoteArrays, isNodeActive, prepareAppendEntry, prepareAppendEntryMessage, readyToPrecommit, readyToPrevote, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
 import { extractUpdateNodeEntryAndVerify } from "wasmx-raft/assembly/actions";
 import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembly/storage";
-import { getAllValidators, getFinalBlock, getNodeByAddress, getNodeIdByAddress, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
+import { getAllValidators, getNodeByAddress, getNodeIdByAddress, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
 import { Node, NodeInfo, NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft"
-import { getLastBlockIndex } from "wasmx-blocks/assembly/storage";
 import { CurrentState, Precommit, Prevote } from "./types_blockchain";
 
 export function connectRooms(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_BLOCK_PROPOSAL))
-    p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_MEMPOOL))
-    p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_NODEINFO))
-    p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_PRECOMMIT))
-    p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_PREVOTE))
+    p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_PROTOCOL))
+
+    // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_BLOCK_PROPOSAL))
+    // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_MEMPOOL))
+    // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_NODEINFO))
+    // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_PRECOMMIT))
+    // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_PREVOTE))
 }
 
 export function connectPeers(
@@ -625,7 +625,7 @@ export function receiveBlockProposal(
             // if we are not fully synced, just store the proposal
             // this may be overwritten later
             setLogEntryAggregate(block);
-        } else {
+        } else if (block.index == lastFinalizedBlock + 1) {
             processAppendEntry(entry.entries[i]);
         }
     }

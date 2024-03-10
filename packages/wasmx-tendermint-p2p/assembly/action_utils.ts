@@ -7,19 +7,19 @@ import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as staking from "wasmx-stake/assembly/types";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { callHookContract, getNextProposer, getTotalStaked, setFinalizedBlock, updateConsensusParams, updateValidators } from "wasmx-tendermint/assembly/actions";
+import * as wblockscalld from "wasmx-blocks/assembly/calldata";
+import { callHookContract, getNextProposer, getTotalStaked, updateConsensusParams, updateValidators } from "wasmx-tendermint/assembly/actions";
 import * as cfg from "./config";
 import { AppendEntry, LogEntryAggregate } from "./types";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getPrecommitArray, getPrevoteArray, getTermId, getValidatorNodeCount, getValidatorNodesInfo, removeLogEntry, setCurrentState, setPrecommitArray, setPrevoteArray } from "./storage";
-import { getAllValidators, getFinalBlock, signMessage } from "wasmx-raft/assembly/action_utils";
+import { getAllValidators, signMessage } from "wasmx-raft/assembly/action_utils";
 import { CurrentState } from "./types_blockchain";
 import { Base64String, Bech32String, CallRequest, CallResponse } from "wasmx-env/assembly/types";
 import { LOG_START } from "./config";
 import { NodeInfo } from "wasmx-raft/assembly/types_raft";
 import { base64ToHex, parseUint8ArrayToU32BigEndian, uint8ArrayToHex } from "wasmx-utils/assembly/utils";
-import { getLastBlockIndex } from "wasmx-blocks/assembly/storage";
 import { extractIndexedTopics, getCommitHash, getResultsHash } from "wasmx-consensus-utils/assembly/utils";
 
 export function wrapGuard(value: boolean): ArrayBuffer {
@@ -399,4 +399,33 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         }
     }
     return false;
+}
+
+export function getLastBlockIndex(): i64 {
+    const calldatastr = `{"getLastBlockIndex":{}}`;
+    const resp = callStorage(calldatastr, false);
+    if (resp.success > 0) {
+        revert(`could not get last block index`);
+    }
+    const res = JSON.parse<wblockscalld.LastBlockIndexResult>(resp.data);
+    return res.index;
+}
+
+export function getFinalBlock(index: i64): string {
+    const calldata = new wblockscalld.CallDataGetBlockByIndex(index);
+    const calldatastr = `{"getBlockByIndex":${JSON.stringify<wblockscalld.CallDataGetBlockByIndex>(calldata)}}`;
+    const resp = callStorage(calldatastr, false);
+    if (resp.success > 0) {
+        revert(`could not get finalized block: ${index.toString()}`);
+    }
+    return resp.data;
+}
+
+export function setFinalizedBlock(blockData: string, hash: string, txhashes: string[], indexedTopics: wblockscalld.IndexedTopic[]): void {
+    const calldata = new wblockscalld.CallDataSetBlock(blockData, hash, txhashes, indexedTopics);
+    const calldatastr = `{"setBlock":${JSON.stringify<wblockscalld.CallDataSetBlock>(calldata)}}`;
+    const resp = callStorage(calldatastr, false);
+    if (resp.success > 0) {
+        revert(`could not set finalized block: ${resp.data}`);
+    }
 }
