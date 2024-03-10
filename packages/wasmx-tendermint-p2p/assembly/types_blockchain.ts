@@ -18,7 +18,22 @@ export class CurrentState {
     validator_privkey: Base64String
     validator_pubkey: Base64String
 
-    constructor(chain_id: string, version: Version, app_hash: string, last_block_id: BlockID, last_commit_hash: string, last_results_hash: string, validator_address: HexString, validator_privkey: Base64String, validator_pubkey: Base64String) {
+    nextHeight: i64
+    nextHash: Base64String
+
+    lockedValue: i64
+    lockedRound: i64
+    validValue: i64
+    validRound: i64
+
+    constructor(chain_id: string, version: Version, app_hash: string, last_block_id: BlockID, last_commit_hash: string, last_results_hash: string, validator_address: HexString, validator_privkey: Base64String, validator_pubkey: Base64String,
+    nextHeight: i64,
+    nextHash: Base64String,
+    lockedValue: i64,
+    lockedRound: i64,
+    validValue: i64,
+    validRound: i64,
+    ) {
         this.chain_id = chain_id
         this.version = version
         this.app_hash = app_hash
@@ -28,6 +43,12 @@ export class CurrentState {
         this.validator_address = validator_address
         this.validator_privkey = validator_privkey
         this.validator_pubkey = validator_pubkey
+        this.nextHeight = nextHeight
+        this.nextHash = nextHash
+        this.lockedValue = lockedValue
+        this.lockedRound = lockedRound
+        this.validValue = validValue
+        this.validRound = validRound
     }
 }
 
@@ -84,24 +105,13 @@ export class Mempool {
 
 // @ts-ignore
 @serializable
-export class Prevote {
+export class ValidatorProposalVote { // Prevote, Precommit
+    termId: i64
     sender: Bech32String
     index: i64
     hash: Base64String
-    constructor(sender: Bech32String, index: i64, hash: Base64String) {
-        this.sender = sender
-        this.index = index
-        this.hash = hash
-    }
-}
-
-// @ts-ignore
-@serializable
-export class Precommit {
-    sender: Bech32String
-    index: i64
-    hash: Base64String
-    constructor(sender: Bech32String, index: i64, hash: Base64String) {
+    constructor(termId: i64, sender: Bech32String, index: i64, hash: Base64String) {
+        this.termId = termId
         this.sender = sender
         this.index = index
         this.hash = hash

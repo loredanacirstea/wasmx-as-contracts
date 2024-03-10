@@ -15,7 +15,7 @@ import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getPrecommitArray, getPrevoteArray, getTermId, getValidatorNodeCount, getValidatorNodesInfo, removeLogEntry, setCurrentState, setPrecommitArray, setPrevoteArray } from "./storage";
 import { getAllValidators, signMessage } from "wasmx-raft/assembly/action_utils";
-import { CurrentState } from "./types_blockchain";
+import { CurrentState, ValidatorProposalVote } from "./types_blockchain";
 import { Base64String, Bech32String, CallRequest, CallResponse } from "wasmx-env/assembly/types";
 import { LOG_START } from "./config";
 import { NodeInfo } from "wasmx-raft/assembly/types_raft";
@@ -82,6 +82,7 @@ export function initChain(req: typestnd.InitChainSetup): void {
         req.validator_address,
         req.validator_privkey,
         req.validator_pubkey,
+        LOG_START + 1, "", 0, 0, 0, 0,
     );
 
     const valuestr = JSON.stringify<CurrentState>(currentState);
@@ -125,17 +126,6 @@ export function callStorage(calldata: string, isQuery: boolean): CallResponse {
     return resp;
 }
 
-export function initializeVoteArrays(len: i32): void {
-    const prevoteArray = new Array<i64>(len);
-    const commitArray = new Array<i64>(len);
-    for (let i = 0; i < len; i++) {
-        prevoteArray[i] = LOG_START;
-        commitArray[i] = LOG_START;
-    }
-    setPrevoteArray(prevoteArray);
-    setPrecommitArray(commitArray);
-}
-
 export function isNodeActive(node: NodeInfo): bool {
     return !node.outofsync && (node.node.ip != "" || node.node.host != "")
 }
@@ -167,17 +157,27 @@ export function calculateCurrentProposer(validators: staking.Validator[]): i32 {
     return proposerIndex
 }
 
-export function readyToPrevote(index: i64): boolean {
+export function isPrevoteAnyThreshold(): boolean {
     const prevoteArr = getPrevoteArray();
-    return calculateVote(index, prevoteArr)
+    return calculateVote(prevoteArr, "")
 }
 
-export function readyToPrecommit(index: i64): boolean {
+export function isPrevoteAcceptThreshold(hash: string): boolean {
+    const prevoteArr = getPrevoteArray();
+    return calculateVote(prevoteArr, hash)
+}
+
+export function isPrecommitAnyThreshold(): boolean {
     const precommitArr = getPrecommitArray();
-    return calculateVote(index, precommitArr)
+    return calculateVote(precommitArr, "")
 }
 
-export function calculateVote(index: i64, indexPerNode: i64[]): boolean {
+export function isPrecommitAcceptThreshold(hash: string): boolean {
+    const precommitArr = getPrecommitArray();
+    return calculateVote(precommitArr, hash)
+}
+
+export function calculateVote(votePerNode: Array<ValidatorProposalVote>, hash: string): boolean {
     const validators = getAllValidators();
     const nodeId = getCurrentNodeId();
     let totalStake = getTotalStaked(validators)
@@ -186,8 +186,13 @@ export function calculateVote(index: i64, indexPerNode: i64[]): boolean {
     console.log("--calculateVote threshold--" + threshold.toString())
     // calculate voting stake for the proposed block
     let count: BigInt = validators[nodeId].tokens;
-    for (let i = 0; i < indexPerNode.length; i++) {
-        if (indexPerNode.at(i) >= index) {
+    for (let i = 0; i < votePerNode.length; i++) {
+        if (hash == "") { // any vote
+            if (votePerNode[i].hash != "") {
+                // @ts-ignore
+                count += validators[i].tokens;
+            }
+        } else if (votePerNode[i].hash == hash) {
             // @ts-ignore
             count += validators[i].tokens;
         }
@@ -214,6 +219,7 @@ export function startBlockFinalizationFollowerInternal(entryobj: LogEntryAggrega
     return startBlockFinalizationInternal(entryobj, false);
 }
 
+// TODO CommitInfo saved in block! from voting process
 function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: boolean): boolean {
     const processReqStr = String.UTF8.decode(decodeBase64(entryobj.data.data).buffer);
     const processReq = JSON.parse<typestnd.RequestProcessProposal>(processReqStr);
@@ -273,6 +279,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     );
     state.last_commit_hash = last_commit_hash
     state.last_results_hash = last_results_hash
+    state.nextHeight = finalizeReq.height + 1
     setCurrentState(state);
     // update consensus params
     LoggerDebug("updating consensus parameters...", [])
@@ -428,4 +435,10 @@ export function setFinalizedBlock(blockData: string, hash: string, txhashes: str
     if (resp.success > 0) {
         revert(`could not set finalized block: ${resp.data}`);
     }
+}
+
+export function getSelfNodeInfo(): NodeInfo {
+    const nodeIps = getValidatorNodesInfo();
+    const ourId = getCurrentNodeId();
+    return nodeIps[ourId];
 }

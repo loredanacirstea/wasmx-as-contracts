@@ -13,8 +13,11 @@ export const machine = createMachine({
     roundTimeout: 10000,
     currentNodeId: "0",
     max_block_gas: "20000000",
+    timeoutPropose: 3000,
+    timeoutPrevote: 3000,
+    timeoutPrecommit: 3000,
   },
-  id: "Tendermint-P2P-4",
+  id: "Tendermint-P2P-5",
   initial: "uninitialized",
   states: {
     uninitialized: {
@@ -170,7 +173,7 @@ export const machine = createMachine({
                   },
                 },
                 stop: {
-                  target: "#Tendermint-P2P-4.stopped",
+                  target: "#Tendermint-P2P-5.stopped",
                 },
                 receiveStateSyncResponse: {
                   actions: {
@@ -202,15 +205,15 @@ export const machine = createMachine({
                     },
                   },
                   after: {
-                    roundTimeout: {
-                      target: "active",
-                      meta: {
-                        force: "true",
+                    timeoutPropose: {
+                      target: "prevote",
+                      actions: {
+                        type: "sendPrevoteNil",
                       },
                     },
                   },
                   always: {
-                    target: "#Tendermint-P2P-4.initialized.started.Proposer",
+                    target: "#Tendermint-P2P-5.initialized.started.Proposer",
                     guard: {
                       type: "isNextProposer",
                     },
@@ -221,6 +224,12 @@ export const machine = createMachine({
                     },
                     {
                       type: "setRoundProposer",
+                    },
+                    {
+                      type: "resetPrevotes",
+                    },
+                    {
+                      type: "resetPrecommits",
                     },
                   ],
                 },
@@ -233,13 +242,38 @@ export const machine = createMachine({
                       },
                     },
                   },
+                  after: {
+                    timeoutPrevote: {
+                      target: "precommit",
+                      actions: {
+                        type: "sendPrecommitNil",
+                      },
+                      guard: {
+                        type: "ifPrevoteAnyThreshold",
+                      },
+                    },
+                  },
                   always: {
                     target: "precommit",
-                    actions: {
-                      type: "sendPrecommit",
-                    },
+                    actions: [
+                      {
+                        type: "setLockedValue",
+                      },
+                      {
+                        type: "setLockedRound",
+                      },
+                      {
+                        type: "sendPrecommit",
+                      },
+                      {
+                        type: "setValidValue",
+                      },
+                      {
+                        type: "setValidRound",
+                      },
+                    ],
                     guard: {
-                      type: "ifPrevoteThreshold",
+                      type: "ifPrevoteAcceptThreshold",
                     },
                   },
                 },
@@ -252,13 +286,41 @@ export const machine = createMachine({
                       },
                     },
                   },
+                  after: {
+                    timeoutPrecommit: {
+                      target: "active",
+                      guard: {
+                        type: "ifPrecommitAnyThreshold",
+                      },
+                    },
+                  },
                   always: {
-                    actions: {
-                      type: "commitBlock",
-                    },
+                    target: "commit",
+                    actions: [
+                      {
+                        type: "commitBlock",
+                      },
+                      {
+                        type: "resetLockedValue",
+                      },
+                      {
+                        type: "resetLockedRound",
+                      },
+                      {
+                        type: "resetValidValue",
+                      },
+                      {
+                        type: "resetValidRound",
+                      },
+                    ],
                     guard: {
-                      type: "ifPrecommitThreshold",
+                      type: "ifPrecommitAcceptThreshold",
                     },
+                  },
+                },
+                commit: {
+                  always: {
+                    target: "active",
                   },
                 },
               },
@@ -266,35 +328,29 @@ export const machine = createMachine({
             Proposer: {
               initial: "active",
               on: {
-                stop: {
-                  target: "#Tendermint-P2P-4.stopped",
-                },
-              },
-              after: {
-                roundTimeout: {
+                start: {
                   target: "Validator",
+                  actions: [
+                    {
+                      type: "connectPeers",
+                    },
+                    {
+                      type: "connectRooms",
+                    },
+                    {
+                      type: "requestNetworkSync",
+                    },
+                  ],
+                },
+                stop: {
+                  target: "#Tendermint-P2P-5.stopped",
                 },
               },
               states: {
                 active: {
-                  on: {
-                    start: {
-                      target: "#Tendermint-P2P-4.initialized.started.Validator",
-                      actions: [
-                        {
-                          type: "connectPeers",
-                        },
-                        {
-                          type: "connectRooms",
-                        },
-                        {
-                          type: "requestNetworkSync",
-                        },
-                      ],
-                    },
-                  },
                   always: {
-                    target: "prevote",
+                    target:
+                      "#Tendermint-P2P-5.initialized.started.Validator.prevote",
                   },
                   entry: [
                     {
@@ -308,43 +364,6 @@ export const machine = createMachine({
                     },
                   ],
                 },
-                prevote: {
-                  on: {
-                    receivePrevote: {
-                      target: "prevote",
-                      actions: {
-                        type: "receivePrevote",
-                      },
-                    },
-                  },
-                  always: {
-                    target: "precommit",
-                    actions: {
-                      type: "sendPrecommit",
-                    },
-                    guard: {
-                      type: "ifPrevoteThreshold",
-                    },
-                  },
-                },
-                precommit: {
-                  on: {
-                    receivePrecommit: {
-                      target: "precommit",
-                      actions: {
-                        type: "receivePrecommit",
-                      },
-                    },
-                  },
-                  always: {
-                    actions: {
-                      type: "commitBlock",
-                    },
-                    guard: {
-                      type: "ifPrecommitThreshold",
-                    },
-                  },
-                },
               },
             },
           },
@@ -354,7 +373,7 @@ export const machine = createMachine({
     stopped: {
       on: {
         restart: {
-          target: "#Tendermint-P2P-4.initialized.unstarted",
+          target: "#Tendermint-P2P-5.initialized.unstarted",
         },
       },
     },
@@ -366,6 +385,14 @@ export const machine = createMachine({
       // ...
     },
     setRoundProposer: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    resetPrevotes: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    resetPrecommits: function (context, event) {
       // Add your action code here
       // ...
     },
@@ -441,7 +468,23 @@ export const machine = createMachine({
       // Add your action code here
       // ...
     },
+    setLockedValue: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    setLockedRound: function (context, event) {
+      // Add your action code here
+      // ...
+    },
     sendPrecommit: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    setValidValue: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    setValidRound: function (context, event) {
       // Add your action code here
       // ...
     },
@@ -450,6 +493,30 @@ export const machine = createMachine({
       // ...
     },
     commitBlock: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    resetLockedValue: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    resetLockedRound: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    resetValidValue: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    resetValidRound: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    sendPrevoteNil: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    sendPrecommitNil: function (context, event) {
       // Add your action code here
       // ...
     },
@@ -467,15 +534,23 @@ export const machine = createMachine({
       // Add your guard condition here
       return true;
     },
-    ifPrevoteThreshold: function (context, event) {
+    ifPrevoteAcceptThreshold: function (context, event) {
       // Add your guard condition here
       return true;
     },
-    ifPrecommitThreshold: function (context, event) {
+    ifPrecommitAcceptThreshold: function (context, event) {
       // Add your guard condition here
       return true;
     },
     ifNodeIsValidator: function (context, event) {
+      // Add your guard condition here
+      return true;
+    },
+    ifPrevoteAnyThreshold: function (context, event) {
+      // Add your guard condition here
+      return true;
+    },
+    ifPrecommitAnyThreshold: function (context, event) {
       // Add your guard condition here
       return true;
     },

@@ -20,12 +20,20 @@ export function main(): void {
     result = wrapGuard(actions.isNextProposer(calld.params, calld.event));
     wasmx.finish(result);
     return;
-  } else if (calld.method === "ifPrevoteThreshold") {
-    result = wrapGuard(actions.ifPrevoteThreshold(calld.params, calld.event));
+  } else if (calld.method === "ifPrevoteAnyThreshold") {
+    result = wrapGuard(actions.ifPrevoteAnyThreshold(calld.params, calld.event));
     wasmx.finish(result);
     return;
-  } else if (calld.method === "ifPrecommitThreshold") {
-    result = wrapGuard(actions.ifPrecommitThreshold(calld.params, calld.event));
+  } else if (calld.method === "ifPrevoteAcceptThreshold") {
+    result = wrapGuard(actions.ifPrevoteAcceptThreshold(calld.params, calld.event));
+    wasmx.finish(result);
+    return;
+  } else if (calld.method === "ifPrecommitAnyThreshold") {
+    result = wrapGuard(actions.ifPrecommitAnyThreshold(calld.params, calld.event));
+    wasmx.finish(result);
+    return;
+  } else if (calld.method === "ifPrecommitAcceptThreshold") {
+    result = wrapGuard(actions.ifPrecommitAcceptThreshold(calld.params, calld.event));
     wasmx.finish(result);
     return;
   } else if (calld.method === "ifSenderIsProposer") {
@@ -36,6 +44,10 @@ export function main(): void {
     result = wrapGuard(actions.ifNodeIsValidator(calld.params, calld.event));
     wasmx.finish(result);
     return;
+  } else if (calld.method === "newValidatorIsSelf") {
+    result = wrapGuard(actions.newValidatorIsSelf(calld.params, calld.event));
+    wasmx.finish(result);
+    return;
   } else if (calld.method === "setRoundProposer") {
     actions.setRoundProposer(calld.params, calld.event);
   } else if (calld.method === "sendBlockProposal") {
@@ -44,6 +56,10 @@ export function main(): void {
     actions.sendPrevote(calld.params, calld.event);
   } else if (calld.method === "sendPrecommit") {
     actions.sendPrecommit(calld.params, calld.event);
+  } else if (calld.method === "sendPrevoteNil") {
+    actions.sendPrevoteNil(calld.params, calld.event);
+  } else if (calld.method === "sendPrecommitNil") {
+    actions.sendPrecommitNil(calld.params, calld.event);
   } else if (calld.method === "setupNode") {
     actions.setupNode(calld.params, calld.event);
   } else if (calld.method === "receivePrevote") {
@@ -62,10 +78,32 @@ export function main(): void {
     tnd.incrementCurrentTerm(calld.params, calld.event);
   } else if (calld.method === "updateNodeAndReturn") {
     actions.updateNodeAndReturn(calld.params, calld.event);
+  } else if (calld.method === "proposeBlock") {
+    actions.proposeBlock(calld.params, calld.event);
+  } else if (calld.method === "resetPrevotes") {
+    actions.resetPrevotes(calld.params, calld.event);
+  } else if (calld.method === "resetPrecommits") {
+    actions.resetPrecommits(calld.params, calld.event);
+  } else if (calld.method === "setLockedValue") {
+    actions.setLockedValue(calld.params, calld.event);
+  } else if (calld.method === "setLockedRound") {
+    actions.setLockedRound(calld.params, calld.event);
+  } else if (calld.method === "setValidValue") {
+    actions.setValidValue(calld.params, calld.event);
+  } else if (calld.method === "setValidRound") {
+    actions.setValidRound(calld.params, calld.event);
+  } else if (calld.method === "resetLockedValue") {
+    actions.resetLockedValue(calld.params, calld.event);
+  } else if (calld.method === "resetLockedRound") {
+    actions.resetLockedRound(calld.params, calld.event);
+  } else if (calld.method === "resetValidValue") {
+    actions.resetValidValue(calld.params, calld.event);
+  } else if (calld.method === "resetValidRound") {
+    actions.resetValidRound(calld.params, calld.event);
+  } else if (calld.method === "resetPrecommits") {
+    actions.resetPrecommits(calld.params, calld.event);
   } else if (calld.method === "setup") {
     actions.setup(calld.params, calld.event);
-  } else if (calld.method === "proposeBlock") {
-    tnd.proposeBlock(calld.params, calld.event);
   } else if (calld.method === "forwardMsgToChat") {
     actions.forwardMsgToChat(calld.params, calld.event);
   } else if (calld.method === "connectPeers") {
@@ -80,6 +118,8 @@ export function main(): void {
     actions.receiveStateSyncResponse(calld.params, calld.event);
   } else if (calld.method === "receiveUpdateNodeResponse") {
     actions.receiveUpdateNodeResponse(calld.params, calld.event);
+  } else if (calld.method === "transitionNodeToValidator") {
+    actions.transitionNodeToValidator(calld.params, calld.event);
   }
   else {
     revert(`invalid function call data: ${calld.method}`);

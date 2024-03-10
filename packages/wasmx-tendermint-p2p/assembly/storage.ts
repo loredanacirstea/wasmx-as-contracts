@@ -3,7 +3,7 @@ import * as fsm from 'xstate-fsm-as/assembly/storage';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
-import { CurrentState } from "./types_blockchain";
+import { CurrentState, ValidatorProposalVote } from "./types_blockchain";
 import { parseInt32 } from "wasmx-utils/assembly/utils";
 import { LogEntry, LogEntryAggregate } from "./types";
 import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
@@ -131,13 +131,13 @@ export function getLogEntryKey(index: i64): string {
     return "logs_" + index.toString();
 }
 
-export function getTermId(): i32 {
+export function getTermId(): i64 {
     const value = fsm.getContextValue(cfg.TERM_ID);
-    if (value === "") return i32(0);
+    if (value === "") return i64(0);
     return parseInt32(value);
 }
 
-export function setTermId(value: i32): void {
+export function setTermId(value: i64): void {
     fsm.setContextValue(cfg.TERM_ID, value.toString());
 }
 
@@ -189,28 +189,28 @@ export function setSimpleNodesInfo(ips: Array<NodeInfo>): void {
     fsm.setContextValue(cfg.SIMPLE_NODES_INFO, valuestr);
 }
 
-export function getPrevoteArray(): Array<i64> {
+export function getPrevoteArray(): Array<ValidatorProposalVote> {
     const valuestr = fsm.getContextValue(cfg.PREVOTE_ARRAY);
-    let value: Array<i64> = [];
+    let value: Array<ValidatorProposalVote> = [];
     if (valuestr === "") return value;
-    value = JSON.parse<Array<i64>>(valuestr);
+    value = JSON.parse<Array<ValidatorProposalVote>>(valuestr);
     return value;
 }
 
-export function setPrevoteArray(arr: Array<i64>): void {
-    fsm.setContextValue(cfg.PREVOTE_ARRAY, JSON.stringify<Array<i64>>(arr));
+export function setPrevoteArray(arr: Array<ValidatorProposalVote>): void {
+    fsm.setContextValue(cfg.PREVOTE_ARRAY, JSON.stringify<Array<ValidatorProposalVote>>(arr));
 }
 
-export function getPrecommitArray(): Array<i64> {
+export function getPrecommitArray(): Array<ValidatorProposalVote> {
     const valuestr = fsm.getContextValue(cfg.PRECOMMIT_ARRAY);
-    let value: Array<i64> = [];
+    let value: Array<ValidatorProposalVote> = [];
     if (valuestr === "") return value;
-    value = JSON.parse<Array<i64>>(valuestr);
+    value = JSON.parse<Array<ValidatorProposalVote>>(valuestr);
     return value;
 }
 
-export function setPrecommitArray(arr: Array<i64>): void {
-    fsm.setContextValue(cfg.PRECOMMIT_ARRAY, JSON.stringify<Array<i64>>(arr));
+export function setPrecommitArray(arr: Array<ValidatorProposalVote>): void {
+    fsm.setContextValue(cfg.PRECOMMIT_ARRAY, JSON.stringify<Array<ValidatorProposalVote>>(arr));
 }
 
 // last log may be an uncommited one or a final one

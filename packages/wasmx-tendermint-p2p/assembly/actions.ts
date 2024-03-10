@@ -4,6 +4,7 @@ import { getParamsOrEventParams, actionParamsToMap } from 'xstate-fsm-as/assembl
 import * as wblocks from "wasmx-blocks/assembly/types";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import * as tnd from "wasmx-tendermint/assembly/actions";
 import * as p2pw from "wasmx-p2p/assembly/p2p_wrap";
 import * as p2ptypes from "wasmx-p2p/assembly/types";
 import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
@@ -26,18 +27,21 @@ import { BigInt } from "wasmx-env/assembly/bn";
 import { StateSyncRequest, StateSyncResponse } from "./sync_types";
 import { PROTOCOL_ID } from "./config";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
-import { getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLog, getPrevoteArray, setPrevoteArray, getPrecommitArray, setPrecommitArray, getValidatorNodesInfo, setValidatorNodesInfo, setTermId, setCurrentProposer, getCurrentProposer, appendLogEntry, setLogEntryAggregate, setCurrentState, setLastLogIndex } from "./storage";
+import { getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLog, getPrevoteArray, setPrevoteArray, getPrecommitArray, setPrecommitArray, getValidatorNodesInfo, setValidatorNodesInfo, setTermId, setCurrentProposer, getCurrentProposer, appendLogEntry, setLogEntryAggregate, setCurrentState, setLastLogIndex, getValidatorNodeCount, getLogEntryObj } from "./storage";
 import { getP2PAddress } from "wasmx-raft-p2p/assembly/actions"
 import { callHookContract, setMempool, signMessage, updateNodeEntry } from "wasmx-tendermint/assembly/actions"
 import { Mempool } from "wasmx-tendermint/assembly/types_blockchain";
 import * as cfg from "./config";
 import { AppendEntry, AppendEntryResponse, LogEntryAggregate } from "./types";
-import { calculateCurrentProposer, extractAppendEntry, getFinalBlock, getLastBlockIndex, getLogEntryAggregate, initChain, initializeVoteArrays, isNodeActive, prepareAppendEntry, prepareAppendEntryMessage, readyToPrecommit, readyToPrevote, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
+import { calculateCurrentProposer, extractAppendEntry, getFinalBlock, getLastBlockIndex, getLogEntryAggregate, getSelfNodeInfo, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
 import { extractUpdateNodeEntryAndVerify } from "wasmx-raft/assembly/actions";
 import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembly/storage";
 import { getAllValidators, getNodeByAddress, getNodeIdByAddress, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
 import { Node, NodeInfo, NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft"
-import { CurrentState, Precommit, Prevote } from "./types_blockchain";
+import { CurrentState, ValidatorProposalVote } from "./types_blockchain";
+
+// TODO add delta to timeouts each failed round
+// and reset after a successful round
 
 export function connectRooms(
     params: ActionParam[],
@@ -287,7 +291,6 @@ export function setupNode(
     }
     setValidatorNodesInfo(peers);
     initChain(data);
-    initializeVoteArrays(peers.length);
 }
 
 export function setup(
@@ -368,9 +371,6 @@ export function setup(
     LoggerInfo("setting up last log index", ["index", lastIndex.toString()])
     setLastLogIndex(lastIndex);
 
-    // after we set last log index
-    initializeVoteArrays(nodeIps.length);
-
     // TODO we run the hooks that must be ran after block end
     const blockData = getFinalBlock(getLastBlockIndex())
     callHookContract("EndBlock", blockData);
@@ -411,19 +411,50 @@ export function forwardMsgToChat(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    // protocolId as param
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("transaction")) {
+        revert("no transaction found");
+    }
+    const transaction = ctx.get("transaction") // base64
+    const msgstr = `{"run":{"event":{"type":"newTransaction","params":[{"key":"transaction", "value":"${transaction}"}]}}}`
 
-    // TODO forward tx to other nodes too
-    // let transaction: string = "";
-    // for (let i = 0; i < event.params.length; i++) {
-    //     if (event.params[i].key === "transaction") {
-    //         transaction = event.params[i].value;
-    //         continue;
-    //     }
-    // }
-    // if (transaction === "") {
-    //     revert("no transaction found");
-    // }
+    // TODO protocolId as param for what chat room to send it too
+    const contract = wasmxw.getAddress();
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, PROTOCOL_ID, cfg.CHAT_ROOM_MEMPOOL))
+}
+
+export function transitionNodeToValidator(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    // TODO
+}
+
+export function newValidatorIsSelf(
+    params: ActionParam[],
+    event: EventObject,
+): boolean {
+    // TODO
+    return false
+}
+
+export function proposeBlock(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const state = getCurrentState()
+    if (state.validValue > 0) {
+        // we already have this proposal stored
+        // so we can return
+        return
+    }
+    // we propose a new block or overwrite any other past proposal
+    const result = tnd.proposeBlockInternalAndStore()
+    if (result == null) return;
+
+    state.nextHash = result.proposal.hash;
+    setCurrentState(state);
 }
 
 export function sendBlockProposal(
@@ -613,19 +644,22 @@ export function receiveBlockProposal(
         LoggerError("signature verification failed for AppendEntry", ["proposerId", entry.proposerId.toString(), "termId", entry.termId.toString()]);
         return;
     }
-    // TODO do we need this?
-    setTermId(entry.termId);
+    // we make sure we are in the same round
+    const termId = getTermId()
+    if (entry.termId != termId) {
+        revert(`Round index mismatch; expected ${termId}, received ${entry.termId}`)
+    }
 
-    const lastFinalizedBlock = getLastBlockIndex();
+    const state = getCurrentState()
 
     // now we check the new block
     for (let i = 0; i < entry.entries.length; i++) {
         const block = entry.entries[i];
-        if (block.index > (lastFinalizedBlock + 1)) {
+        if (block.index > state.nextHeight) {
             // if we are not fully synced, just store the proposal
             // this may be overwritten later
             setLogEntryAggregate(block);
-        } else if (block.index == lastFinalizedBlock + 1) {
+        } else if (block.index == state.nextHeight) {
             processAppendEntry(entry.entries[i]);
         }
     }
@@ -644,6 +678,11 @@ export function processAppendEntry(entry: LogEntryAggregate): void {
         return;
     }
     appendLogEntry(entry);
+
+    // set hash for the proposal we have accepted
+    const state = getCurrentState()
+    state.nextHash = processReq.hash
+    setCurrentState(state);
 }
 
 export function setRoundProposer(
@@ -723,20 +762,29 @@ export function sendPrevote(
     p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, PROTOCOL_ID, cfg.CHAT_ROOM_PREVOTE))
 }
 
-export function buildPrevoteMessage(): Prevote {
-    const proposal = getLastLog();
-    const blockstr = String.UTF8.decode(decodeBase64(proposal.data).buffer);
-    const block = JSON.parse<wblocks.BlockEntry>(blockstr)
-    const data = JSON.parse<typestnd.RequestFinalizeBlock>(String.UTF8.decode(decodeBase64(block.data).buffer))
-    const hash = data.hash
-    const nodeIps = getValidatorNodesInfo();
-    const ourId = getCurrentNodeId();
-    const senderaddr = nodeIps[ourId].address;
-    return new Prevote(senderaddr, block.index, hash);
+export function sendPrevoteNil(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const termId = getTermId()
+    const nextIndex = getCurrentState().nextHeight;
+    const getOurInfo = getSelfNodeInfo()
+    const data = new ValidatorProposalVote(termId, getOurInfo.address, nextIndex, "")
+    const msgstr = preparePrevoteMessage(data);
+    LoggerDebug("sending prevote nil", ["index", data.index.toString()])
+
+    const contract = wasmxw.getAddress();
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, PROTOCOL_ID, cfg.CHAT_ROOM_PREVOTE))
 }
 
-export function preparePrevoteMessage(data: Prevote): string {
-    const datastr = JSON.stringify<Prevote>(data);
+export function buildPrevoteMessage(): ValidatorProposalVote {
+    const nodeInfo = getSelfNodeInfo()
+    const state = getCurrentState();
+    return new ValidatorProposalVote(getTermId(), nodeInfo.address, state.nextHeight, state.nextHash);
+}
+
+export function preparePrevoteMessage(data: ValidatorProposalVote): string {
+    const datastr = JSON.stringify<ValidatorProposalVote>(data);
     const signature = signMessage(datastr);
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
     const msgstr = `{"run":{"event":{"type":"receivePrevote","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
@@ -756,20 +804,29 @@ export function sendPrecommit(
     p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, PROTOCOL_ID, cfg.CHAT_ROOM_PRECOMMIT))
 }
 
-export function buildPrecommitMessage(): Precommit {
-    const proposal = getLastLog();
-    const blockstr = String.UTF8.decode(decodeBase64(proposal.data).buffer);
-    const block = JSON.parse<wblocks.BlockEntry>(blockstr)
-    const data = JSON.parse<typestnd.RequestFinalizeBlock>(String.UTF8.decode(decodeBase64(block.data).buffer))
-    const hash = data.hash
-    const nodeIps = getValidatorNodesInfo();
-    const ourId = getCurrentNodeId();
-    const senderaddr = nodeIps[ourId].address;
-    return new Precommit(senderaddr, block.index, hash);
+export function sendPrecommitNil(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const termId = getTermId()
+    const nextIndex = getCurrentState().nextHeight;
+    const getOurInfo = getSelfNodeInfo()
+    const data = new ValidatorProposalVote(termId, getOurInfo.address, nextIndex, "")
+    const msgstr = preparePrecommitMessage(data);
+    LoggerDebug("sending precommit nil", ["index", data.index.toString()])
+
+    const contract = wasmxw.getAddress();
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, PROTOCOL_ID, cfg.CHAT_ROOM_PREVOTE))
 }
 
-export function preparePrecommitMessage(data: Precommit): string {
-    const datastr = JSON.stringify<Precommit>(data);
+export function buildPrecommitMessage(): ValidatorProposalVote {
+    const nodeInfo = getSelfNodeInfo()
+    const state = getCurrentState();
+    return new ValidatorProposalVote(getTermId(), nodeInfo.address, state.nextHeight, state.nextHash);
+}
+
+export function preparePrecommitMessage(data: ValidatorProposalVote): string {
+    const datastr = JSON.stringify<ValidatorProposalVote>(data);
     const signature = signMessage(datastr);
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
     const msgstr = `{"run":{"event":{"type":"receivePrecommit","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
@@ -792,7 +849,7 @@ export function receivePrevote(
     const signature = ctx.get("signature");
 
     const datastr = String.UTF8.decode(decodeBase64(entry).buffer)
-    const data = JSON.parse<Prevote>(datastr)
+    const data = JSON.parse<ValidatorProposalVote>(datastr)
     LoggerDebug("prevote received", ["sender", data.sender, "index", data.index.toString(), "hash", data.hash])
 
     // verify signature
@@ -810,7 +867,7 @@ export function receivePrevote(
         LoggerError("prevote sender node not found", ["sender", data.sender]);
         return;
     }
-    prevoteArr[nodeIndex] = data.index;
+    prevoteArr[nodeIndex] = data;
     setPrevoteArray(prevoteArr);
 }
 
@@ -832,7 +889,7 @@ export function receivePrecommit(
     const signature = ctx.get("signature");
 
     const datastr = String.UTF8.decode(decodeBase64(entry).buffer)
-    const data = JSON.parse<Precommit>(datastr)
+    const data = JSON.parse<ValidatorProposalVote>(datastr)
     LoggerDebug("precommit received", ["sender", data.sender, "index", data.index.toString(), "hash", data.hash])
 
     // verify signature
@@ -850,24 +907,38 @@ export function receivePrecommit(
         LoggerError("precommit sender node not found", ["sender", data.sender]);
         return;
     }
-    precommitArr[nodeIndex] = data.index;
+    precommitArr[nodeIndex] = data;
     setPrecommitArray(precommitArr);
 }
 
-export function ifPrevoteThreshold(
+export function ifPrevoteAnyThreshold(
     params: ActionParam[],
     event: EventObject,
 ): boolean {
-    const index = getLastLogIndex();
-    return readyToPrevote(index);
+    return isPrevoteAnyThreshold();
 }
 
-export function ifPrecommitThreshold(
+export function ifPrevoteAcceptThreshold(
     params: ActionParam[],
     event: EventObject,
 ): boolean {
-    const index = getLastLogIndex();
-    return readyToPrecommit(index);
+    const state = getCurrentState()
+    return isPrevoteAcceptThreshold(state.nextHash);
+}
+
+export function ifPrecommitAnyThreshold(
+    params: ActionParam[],
+    event: EventObject,
+): boolean {
+    return isPrecommitAnyThreshold();
+}
+
+export function ifPrecommitAcceptThreshold(
+    params: ActionParam[],
+    event: EventObject,
+): boolean {
+    const state = getCurrentState()
+    return isPrecommitAcceptThreshold(state.nextHash);
 }
 
 // this actually commits one block at a time
@@ -880,4 +951,111 @@ export function commitBlock(
     if (index > lastFinalizedIndex) {
         startBlockFinalizationFollower(index);
     }
+}
+
+export function resetPrevotes(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const count = getValidatorNodeCount();
+    const emptyarr = getEmptyValidatorProposalVoteArray(count);
+    setPrevoteArray(emptyarr);
+}
+
+export function resetPrecommits(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const count = getValidatorNodeCount();
+    const emptyarr = getEmptyValidatorProposalVoteArray(count);
+    setPrecommitArray(emptyarr);
+}
+
+export function getEmptyValidatorProposalVoteArray(len: i32): Array<ValidatorProposalVote> {
+    const emptyPrevotes = new Array<ValidatorProposalVote>(len);
+    const termId = getTermId()
+    const nextIndex = getCurrentState().nextHeight;
+    for (let i = 0; i < len; i++) {
+        emptyPrevotes[i] = new ValidatorProposalVote(termId, "", nextIndex, "");
+    }
+    return emptyPrevotes
+}
+
+export function setLockedValue(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    // we mark the current height as locked
+    const state = getCurrentState()
+    state.lockedValue = state.nextHeight
+    setCurrentState(state)
+}
+
+export function setLockedRound(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    // we mark the current round as locked
+    const termId = getTermId()
+    const state = getCurrentState()
+    state.lockedRound = termId
+    setCurrentState(state)
+}
+
+export function setValidValue(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    // we mark the current height as valid
+    const state = getCurrentState()
+    state.validValue = state.nextHeight
+    setCurrentState(state)
+}
+
+export function setValidRound(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    // we mark the current round as locked
+    const termId = getTermId()
+    const state = getCurrentState()
+    state.validRound = termId
+    setCurrentState(state)
+}
+
+export function resetLockedValue(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const state = getCurrentState()
+    state.lockedValue = 0
+    setCurrentState(state)
+}
+
+export function resetLockedRound(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const state = getCurrentState()
+    state.lockedRound = 0
+    setCurrentState(state)
+}
+
+export function resetValidValue(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const state = getCurrentState()
+    state.validValue = 0
+    state.nextHash = "";
+    setCurrentState(state)
+}
+
+export function resetValidRound(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const state = getCurrentState()
+    state.validRound = 0
+    setCurrentState(state)
 }

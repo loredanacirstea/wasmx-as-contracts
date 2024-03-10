@@ -21,12 +21,12 @@ import {
 } from 'xstate-fsm-as/assembly/types';
 import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, parseUint8ArrayToU32BigEndian, base64ToHex, hex64ToBase64 } from "wasmx-utils/assembly/utils";
 import { extractUpdateNodeEntryAndVerify, registeredCheckMessage, registeredCheckNeeded, removeNode } from "wasmx-raft/assembly/actions";
-import { LogEntry, LogEntryAggregate, AppendEntry, AppendEntryResponse, TransactionResponse, Precommit, MODULE_NAME } from "./types";
+import { LogEntry, LogEntryAggregate, AppendEntry, AppendEntryResponse, TransactionResponse, Precommit, MODULE_NAME, BuildProposal } from "./types";
 import * as cfg from "./config";
 import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
-import { appendLogEntry, getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLogIndex, getLogEntryObj, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, removeLogEntry, setCurrentState, setLastLogIndex, setNextIndexArray, setNodeIPs, setTermId } from "./action_utils";
+import { appendLogEntry, getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLogIndex, getLogEntryObj, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, removeLogEntry, setCurrentState, setLastLogIndex, setLogEntryAggregate, setNextIndexArray, setNodeIPs, setTermId } from "./action_utils";
 import { Node, NodeInfo, NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft";
 import { verifyMessage } from "wasmx-raft/assembly/action_utils";
 
@@ -81,12 +81,16 @@ export function proposeBlock(
     params: ActionParam[],
     event: EventObject,
 ): void {
+    proposeBlockInternalAndStore();
+}
+
+export function proposeBlockInternalAndStore(): BuildProposal | null {
     // if last block is not commited, we return; Cosmos SDK can only commit one block at a time.
     const height = getLastLogIndex();
     const lastCommitIndex = getLastBlockIndex();
     if (lastCommitIndex < height) {
         LoggerInfo("cannot propose new block, last block not commited", ["height", height.toString(), "lastCommitIndex", lastCommitIndex.toString()])
-        return;
+        return null;
     }
 
     const mempool = getMempool();
@@ -103,8 +107,21 @@ export function proposeBlock(
     const maxDataBytes = maxbytes;
 
     // start proposal protocol
-    startBlockProposal(batch.txs, batch.cummulatedGas, maxDataBytes);
+    const result = buildBlockProposal(batch.txs, batch.cummulatedGas, maxDataBytes);
+    if (result == null) return null;
+
+    // we just save this as a temporary block
+    const lastIndex = getLastLogIndex();
+    if (lastIndex < result.proposal.height) {
+        appendLogEntry(result.entry);
+    } else {
+        // we overwrite
+        setLogEntryAggregate(result.entry);
+    }
+
+
     setMempool(mempool);
+    return result;
 }
 
 export function precommitState(
@@ -924,7 +941,7 @@ export function getNextProposer(blockHash: Base64String, totalStaked: BigInt, va
     return closestVal;
 }
 
-function startBlockProposal(txs: string[], cummulatedGas: i64, maxDataBytes: i64): void {
+export function buildBlockProposal(txs: string[], cummulatedGas: i64, maxDataBytes: i64): BuildProposal | null {
     // PrepareProposal TODO finish
     const height = getLastLogIndex() + 1;
     LoggerDebug("start block proposal", ["height", height.toString()])
@@ -991,13 +1008,14 @@ function startBlockProposal(txs: string[], cummulatedGas: i64, maxDataBytes: i64
     if (processResp.status === typestnd.ProposalStatus.REJECT) {
         // TODO - what to do here? returning just discards the block and the transactions
         LoggerError("new block rejected", ["height", processReq.height.toString(), "node type", "Leader"])
-        return;
+        return null;
     }
     // We have a valid proposal to propagate to other nodes
-    return appendLogInternalVerified(processReq, header, lastBlockCommit);
+    const entry = buildLogEntryAggregate(processReq, header, lastBlockCommit);
+    return new BuildProposal(entry, processReq);
 }
 
-function appendLogInternalVerified(processReq: typestnd.RequestProcessProposal, header: typestnd.Header, blockCommit: typestnd.BlockCommit): void {
+export function buildLogEntryAggregate(processReq: typestnd.RequestProcessProposal, header: typestnd.Header, blockCommit: typestnd.BlockCommit): LogEntryAggregate {
     const blockData = JSON.stringify<typestnd.RequestProcessProposal>(processReq);
     const blockDataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(blockData)))
     const blockHeader = JSON.stringify<typestnd.Header>(header);
@@ -1019,7 +1037,7 @@ function appendLogInternalVerified(processReq: typestnd.RequestProcessProposal, 
         "",
     )
     const entry = new LogEntryAggregate(processReq.height, termId, leaderId, blockEntry);
-    appendLogEntry(entry);
+    return entry;
 }
 
 export function getMempool(): Mempool {

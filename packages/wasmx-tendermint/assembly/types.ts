@@ -1,5 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
+import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import { Base64String, Bech32String, Coin } from "wasmx-env/assembly/types";
 import { NodeInfo } from "wasmx-raft/assembly/types_raft";
 
@@ -115,5 +116,16 @@ export class Precommit {
         this.termId = termId;
         this.proposerId = proposerId;
         this.index = index;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class BuildProposal {
+    entry: LogEntryAggregate
+    proposal: typestnd.RequestProcessProposal
+    constructor(entry: LogEntryAggregate, proposal: typestnd.RequestProcessProposal) {
+        this.entry = entry
+        this.proposal = proposal
     }
 }

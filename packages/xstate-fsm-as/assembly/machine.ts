@@ -133,7 +133,7 @@ function executeGuard(
     // If guard is not a local function, then it is an external function
     let guardParams = guard.params.concat(ctxToActionParams(machine.ctx))
     const resp = processExternalCall(machine, guard.type, guardParams, event);
-    LoggerDebug("execute guard", ["guard", guard.type, "data", resp.data]);
+    LoggerDebug("execute guard", ["guard", guard.type, "success", (resp.data == "1").toString()]);
     if (resp.success > 0) return false;
     // "1" = true ; "0" = false
     if (resp.data == "1") return true;
