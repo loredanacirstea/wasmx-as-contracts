@@ -6,8 +6,10 @@ import { LogEntryAggregate } from "./types";
 @serializable
 export class StateSyncRequest {
   start_index: i64
-  constructor(start_index: i64) {
+  peer_address: string
+  constructor(start_index: i64, peer_address: string) {
     this.start_index = start_index
+    this.peer_address = peer_address
   }
 }
 

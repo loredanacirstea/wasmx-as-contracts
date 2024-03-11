@@ -86,7 +86,20 @@ export function connectPeersInternal(protocolId: string): void {
     }
 }
 
+// used by normal nodes
 export function requestNetworkSync(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const nodeId = getCurrentNodeId();
+    const nodes = getValidatorNodesInfo()
+    for (let i = 0; i < nodes.length; i++) {
+        if (nodeId === i || !isNodeActive(nodes[i])) continue;
+        sendStateSyncRequest(PROTOCOL_ID, i);
+    }
+}
+
+export function registerValidatorWithNetwork(
     params: ActionParam[],
     event: EventObject,
 ): void {
@@ -226,7 +239,8 @@ export function sendStateSyncRequest(protocolId: string, nodeId: i32): void {
     const ourNodeId = getCurrentNodeId()
     const nodes = getValidatorNodesInfo();
     const receiverNode = nodes[nodeId]
-    const request = new StateSyncRequest(lastIndex + 1);
+    const peerAddress = getP2PAddress(nodes[ourNodeId])
+    const request = new StateSyncRequest(lastIndex + 1, peerAddress);
     const datastr = JSON.stringify<StateSyncRequest>(request);
     const signature = signMessage(datastr);
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
@@ -480,54 +494,42 @@ export function receiveStateSyncRequest(
     if (!ctx.has("entry")) {
         revert("no data found");
     }
-    if (!ctx.has("signature")) {
-        revert("no signature found");
-    }
-    if (!ctx.has("sender")) { // node/validator address
-        revert("no sender found");
-    }
-    const signature = ctx.get("signature")
-    const sender = ctx.get("sender")
     const entry = ctx.get("entry")
     const data = String.UTF8.decode(decodeBase64(entry).buffer);
     const resp = JSON.parse<StateSyncRequest>(data)
 
     // we dont verify, because the node may not be a validator
     // TODO non-validators should sync from dedicated nodes
-    // verify signature
-    // const isSender = verifyMessageByAddr(sender, signature, data);
-    // if (!isSender) {
-    //     LoggerError("signature verification failed for nodes list update", ["sender", sender]);
-    //     return;
-    // }
 
     // we send statesync response with the first batch
     const termId = getTermId()
     const lastIndex = getLastBlockIndex()
-
-    LoggerInfo("received statesync request", ["sender", sender, "startIndex", resp.start_index.toString(), "lastIndex", lastIndex.toString()])
 
     if (lastIndex < resp.start_index) return;
 
     // send successive messages with max STATE_SYNC_BATCH blocks at a time
     const count = lastIndex - resp.start_index + 1
 
+    const peers = [resp.peer_address]
+
+    LoggerInfo("received statesync request", ["sender", resp.peer_address, "startIndex", resp.start_index.toString(), "lastIndex", lastIndex.toString()])
+
     const batches = i32(Math.ceil(f64(count)/f64(cfg.STATE_SYNC_BATCH)))
     let startIndex = resp.start_index;
     let lastIndexToSend = startIndex;
     for (let i = 0; i < batches - 1; i++) {
         lastIndexToSend = startIndex + cfg.STATE_SYNC_BATCH
-        sendStateSyncBatch(startIndex, lastIndexToSend, lastIndex, termId, sender);
+        sendStateSyncBatch(startIndex, lastIndexToSend, lastIndex, termId, peers);
         startIndex += cfg.STATE_SYNC_BATCH
     }
     if (lastIndexToSend <= lastIndex) {
         // last batch
-        sendStateSyncBatch(startIndex, lastIndex, lastIndex, termId, sender);
+        sendStateSyncBatch(startIndex, lastIndex, lastIndex, termId, peers);
     }
-    LoggerInfo("statesync request processed", ["sender", sender, "startIndex", resp.start_index.toString(), "lastIndex", lastIndex.toString(), "batches", batches.toString()])
+    LoggerInfo("statesync request processed", ["sender", resp.peer_address, "startIndex", resp.start_index.toString(), "lastIndex", lastIndex.toString(), "batches", batches.toString()])
 }
 
-function sendStateSyncBatch(start_index: i64, lastIndexToSend: i64, lastIndex: i64, termId: i32, receiver: Bech32String): void {
+function sendStateSyncBatch(start_index: i64, lastIndexToSend: i64, lastIndex: i64, termId: i32, peers: string[]): void {
     const entries: Array<LogEntryAggregate> = [];
     for (let i = start_index; i <= lastIndexToSend; i++) {
         const entry = getLogEntryAggregate(i);
@@ -543,13 +545,8 @@ function sendStateSyncBatch(start_index: i64, lastIndexToSend: i64, lastIndex: i
     const ourId = getCurrentNodeId();
     const senderaddr = nodes[ourId].address;
     const msgstr = `{"run":{"event":{"type":"receiveStateSyncResponse","params":[{"key": "entry","value":"${dataBase64}"},{"key": "sender","value":"${senderaddr}"}]}}}`
-    LoggerDebug("sending state sync chunk", ["to", receiver, "count", response.entries.length.toString(), "from", start_index.toString(), "to", lastIndexToSend.toString(), "last_index", lastIndex.toString()])
+    LoggerDebug("sending state sync chunk", ["count", response.entries.length.toString(), "from", start_index.toString(), "to", lastIndexToSend.toString(), "last_index", lastIndex.toString()])
 
-    const nodeInfo = getNodeByAddress(receiver, nodes)
-    if (nodeInfo == null) {
-        return revert(`cannot find node by address: ${receiver}`)
-    }
-    const peers = [getP2PAddress(nodeInfo)]
     const contract = wasmxw.getAddress();
     p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
 }

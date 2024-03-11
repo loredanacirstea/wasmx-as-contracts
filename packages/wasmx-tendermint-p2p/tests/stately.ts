@@ -56,9 +56,6 @@ export const machine = createMachine({
                 {
                   type: "connectRooms",
                 },
-                {
-                  type: "requestNetworkSync",
-                },
               ],
             },
           },
@@ -104,19 +101,6 @@ export const machine = createMachine({
                 type: "updateNodeAndReturn",
               },
             },
-            start: {
-              actions: [
-                {
-                  type: "connectPeers",
-                },
-                {
-                  type: "connectRooms",
-                },
-                {
-                  type: "requestNetworkSync",
-                },
-              ],
-            },
           },
           states: {
             Node: {
@@ -143,18 +127,46 @@ export const machine = createMachine({
                     type: "receiveStateSyncResponse",
                   },
                 },
+                start: {
+                  actions: [
+                    {
+                      type: "connectPeers",
+                    },
+                    {
+                      type: "connectRooms",
+                    },
+                    {
+                      type: "requestNetworkSync",
+                    },
+                  ],
+                },
                 receiveBlockProposal: {
                   actions: {
                     type: "receiveBlockProposal",
                   },
                 },
-              },
-              always: {
-                target: "Validator",
-                guard: {
-                  type: "ifNodeIsValidator",
+                receiveCommit: {
+                  actions: {
+                    type: "receiveCommit",
+                  },
                 },
               },
+              always: [
+                {
+                  target: "Validator",
+                  actions: {
+                    type: "registerValidatorWithNetwork",
+                  },
+                  guard: {
+                    type: "ifNodeIsValidator",
+                  },
+                },
+                {
+                  actions: {
+                    type: "requestNetworkSync",
+                  },
+                },
+              ],
             },
             Validator: {
               initial: "active",
@@ -190,7 +202,7 @@ export const machine = createMachine({
                       type: "connectRooms",
                     },
                     {
-                      type: "requestNetworkSync",
+                      type: "registerValidatorWithNetwork",
                     },
                   ],
                 },
@@ -387,7 +399,7 @@ export const machine = createMachine({
                       type: "connectRooms",
                     },
                     {
-                      type: "requestNetworkSync",
+                      type: "registerValidatorWithNetwork",
                     },
                   ],
                 },
@@ -469,7 +481,7 @@ export const machine = createMachine({
       // Add your action code here
       // ...
     },
-    requestNetworkSync: function (context, event) {
+    registerValidatorWithNetwork: function (context, event) {
       // Add your action code here
       // ...
     },
@@ -510,6 +522,10 @@ export const machine = createMachine({
       // ...
     },
     receiveStateSyncResponse: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    requestNetworkSync: function (context, event) {
       // Add your action code here
       // ...
     },
