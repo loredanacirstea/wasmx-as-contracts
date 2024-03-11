@@ -102,6 +102,10 @@ export function main(): void {
     actions.resetValidRound(calld.params, calld.event);
   } else if (calld.method === "resetPrecommits") {
     actions.resetPrecommits(calld.params, calld.event);
+  } else if (calld.method === "sendCommit") {
+    actions.sendCommit(calld.params, calld.event);
+  } else if (calld.method === "receiveCommit") {
+    actions.receiveCommit(calld.params, calld.event);
   } else if (calld.method === "setup") {
     actions.setup(calld.params, calld.event);
   } else if (calld.method === "forwardMsgToChat") {

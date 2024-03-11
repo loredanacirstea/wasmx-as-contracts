@@ -105,16 +105,50 @@ export class Mempool {
 
 // @ts-ignore
 @serializable
-export class ValidatorProposalVote { // Prevote, Precommit
+export enum SignedMsgType {
+    SIGNED_MSG_TYPE_UNKNOWN = 0,
+    SIGNED_MSG_TYPE_PREVOTE = 1,
+    SIGNED_MSG_TYPE_PRECOMMIT = 2,
+    SIGNED_MSG_TYPE_PROPOSAL = 3
+}
+
+// @ts-ignore
+@serializable
+export class ValidatorProposalVote {
+    type: SignedMsgType
     termId: i64
-    sender: Bech32String
+    validatorAddress: Bech32String
+    validatorIndex: i32
     index: i64
     hash: Base64String
-    constructor(termId: i64, sender: Bech32String, index: i64, hash: Base64String) {
+    timestamp: Date
+    chainId: string
+    constructor(type: SignedMsgType, termId: i64, validatorAddress: Bech32String, validatorIndex: i32, index: i64, hash: Base64String, timestamp: Date, chainId: string) {
+        this.type = type
         this.termId = termId
-        this.sender = sender
+        this.validatorAddress = validatorAddress
+        this.validatorIndex = validatorIndex
         this.index = index
         this.hash = hash
+        this.timestamp = timestamp
+        this.chainId = chainId
+    }
+}
+
+// @ts-ignore
+@serializable
+export class Commit {
+    index: i64
+    termId: i64
+    hash: Base64String
+    signatures: Base64String[] // we can put Precommit sigs here in validator order
+    data: Base64String // LogEntryAggregate
+    constructor(index: i64, termId: i64, hash: Base64String, signatures: Base64String[], data: Base64String) {
+        this.index = index
+        this.termId = termId
+        this.hash = hash
+        this.signatures = signatures
+        this.data = data
     }
 }
 

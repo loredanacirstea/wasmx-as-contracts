@@ -10,7 +10,7 @@ export const machine = createMachine({
     currentTerm: "0",
     blockTimeout: "roundTimeout",
     max_tx_bytes: "65536",
-    roundTimeout: 2000,
+    roundTimeout: 4000,
     currentNodeId: "0",
     max_block_gas: "20000000",
     timeoutPropose: 3000,
@@ -160,14 +160,9 @@ export const machine = createMachine({
               initial: "active",
               on: {
                 receiveBlockProposal: {
-                  actions: [
-                    {
-                      type: "receiveBlockProposal",
-                    },
-                    {
-                      type: "sendPrevote",
-                    },
-                  ],
+                  actions: {
+                    type: "receiveBlockProposal",
+                  },
                   guard: {
                     type: "ifSenderIsProposer",
                   },
@@ -198,6 +193,11 @@ export const machine = createMachine({
                       type: "requestNetworkSync",
                     },
                   ],
+                },
+                receiveCommit: {
+                  actions: {
+                    type: "receiveCommit",
+                  },
                 },
               },
               states: {
@@ -311,6 +311,11 @@ export const machine = createMachine({
                         type: "receivePrecommit",
                       },
                     },
+                    receivePrevote: {
+                      actions: {
+                        type: "receivePrevote",
+                      },
+                    },
                   },
                   after: {
                     timeoutPrecommit: {
@@ -327,7 +332,7 @@ export const machine = createMachine({
                         type: "commitBlock",
                       },
                       {
-                        type: "resetLockedValue",
+                        type: "sendCommit",
                       },
                       {
                         type: "resetLockedRound",
@@ -344,6 +349,9 @@ export const machine = createMachine({
                           after: "timeoutPrecommit",
                         },
                       },
+                      {
+                        type: "resetLockedValue",
+                      },
                     ],
                     guard: {
                       type: "ifPrecommitAcceptThreshold",
@@ -351,6 +359,13 @@ export const machine = createMachine({
                   },
                 },
                 commit: {
+                  on: {
+                    receivePrecommit: {
+                      actions: {
+                        type: "receivePrecommit",
+                      },
+                    },
+                  },
                   after: {
                     roundTimeout: {
                       target: "active",
@@ -534,7 +549,7 @@ export const machine = createMachine({
       // Add your action code here
       // ...
     },
-    resetLockedValue: function (context, event) {
+    sendCommit: function (context, event) {
       // Add your action code here
       // ...
     },
@@ -550,11 +565,19 @@ export const machine = createMachine({
       // Add your action code here
       // ...
     },
+    resetLockedValue: function (context, event) {
+      // Add your action code here
+      // ...
+    },
     sendPrevoteNil: function (context, event) {
       // Add your action code here
       // ...
     },
     sendPrecommitNil: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    receiveCommit: function (context, event) {
       // Add your action code here
       // ...
     },

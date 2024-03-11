@@ -22,7 +22,7 @@ import {
     EventObject,
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
-import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, base64ToHex, hex64ToBase64 } from "wasmx-utils/assembly/utils";
+import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, base64ToHex, hex64ToBase64, stringToBase64, base64ToString } from "wasmx-utils/assembly/utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { StateSyncRequest, StateSyncResponse } from "./sync_types";
 import { PROTOCOL_ID } from "./config";
@@ -38,7 +38,7 @@ import { extractUpdateNodeEntryAndVerify } from "wasmx-raft/assembly/actions";
 import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembly/storage";
 import { getAllValidators, getNodeByAddress, getNodeIdByAddress, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
 import { Node, NodeInfo, NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft"
-import { CurrentState, ValidatorProposalVote } from "./types_blockchain";
+import { Commit, CurrentState, SignedMsgType, ValidatorProposalVote } from "./types_blockchain";
 
 // TODO add delta to timeouts each failed round
 // and reset after a successful round
@@ -222,7 +222,7 @@ export function receiveUpdateNodeResponseInternal(
 // this is executed each time the node is started in Follower or Candidate state if needed
 // and is also called after node registration with the leader
 export function sendStateSyncRequest(protocolId: string, nodeId: i32): void {
-    const lastIndex = getLastLogIndex();
+    const lastIndex = getLastBlockIndex();
     const ourNodeId = getCurrentNodeId()
     const nodes = getValidatorNodesInfo();
     const receiverNode = nodes[nodeId]
@@ -461,10 +461,10 @@ export function sendBlockProposal(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    let lastIndex = getLastLogIndex();
-    const data = prepareAppendEntry(lastIndex);
+    const state = getCurrentState();
+    const data = prepareAppendEntry(state.nextHeight);
     const msgstr = prepareAppendEntryMessage(data);
-    LoggerDebug("sending block proposal", ["height", lastIndex.toString()])
+    LoggerDebug("sending block proposal", ["height", state.nextHeight.toString()])
 
     const contract = wasmxw.getAddress();
     p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, PROTOCOL_ID, cfg.CHAT_ROOM_BLOCK_PROPOSAL))
@@ -577,14 +577,22 @@ export function receiveStateSyncResponse(
     const data = String.UTF8.decode(decodeBase64(entry).buffer);
     const resp = JSON.parse<StateSyncResponse>(data)
 
+    const lastIndex = getLastBlockIndex()
+    if (lastIndex >= resp.last_batch_index) return;
+
+    let nextIndex = lastIndex+1
+
     LoggerInfo("received statesync response", ["count", resp.entries.length.toString(), "from", resp.start_batch_index.toString(), "to", resp.last_batch_index.toString(), "last_log_index", resp.last_log_index.toString()])
 
-    setTermId(resp.termId);
     // now we check the new block
     for (let i = 0; i < resp.entries.length; i++) {
-        processAppendEntry(resp.entries[i]);
-        startBlockFinalizationFollowerInternal(resp.entries[i]);
+        const block = resp.entries[i]
+        // processAppendEntry(resp.entries[i]);
+        storeNewBlockOutOfOrder(block.termId, block, nextIndex)
+        startBlockFinalizationFollowerInternal(block);
+        nextIndex += 1;
     }
+    setTermId(resp.termId);
 
     // we dont need this
     // // if we are synced, we announce the Leader node
@@ -648,24 +656,26 @@ export function receiveBlockProposal(
         LoggerError("signature verification failed for AppendEntry", ["proposerId", entry.proposerId.toString(), "termId", entry.termId.toString()]);
         return;
     }
-    // we make sure we are in the same round
-    const termId = getTermId()
-    if (entry.termId != termId) {
-        revert(`Round index mismatch; expected ${termId}, received ${entry.termId}`)
-    }
 
-    const state = getCurrentState()
+    // const state = getCurrentState()
+
+    const termId = getTermId()
+    if (termId > entry.termId) return;
+
+    if (termId < entry.termId) {
+        // we are out of sync
+        // revert(`Round index mismatch; expected ${termId}, received ${entry.termId}`)
+        // TDODO fixme - how do we sync termId???
+        setTermId(entry.termId)
+    }
 
     // now we check the new block
     for (let i = 0; i < entry.entries.length; i++) {
         const block = entry.entries[i];
-        if (block.index > state.nextHeight) {
-            // if we are not fully synced, just store the proposal
-            // this may be overwritten later
-            setLogEntryAggregate(block);
-        } else if (block.index == state.nextHeight) {
-            processAppendEntry(entry.entries[i]);
-        }
+        // we only receive block proposals if we are synced
+        // if we are not synced, we use Commit messages
+        processAppendEntry(block);
+        // storeNewBlockOutOfOrder(entry.termId, block, state.nextHeight);
     }
 }
 
@@ -759,6 +769,11 @@ export function sendPrevote(
 ): void {
     // get the current proposal & vote on the block hash
     const data = buildPrevoteMessage();
+
+    const prevoteArr = getPrevoteArray();
+    prevoteArr[getCurrentNodeId()] = data;
+    setPrevoteArray(prevoteArr);
+
     const msgstr = preparePrevoteMessage(data);
     LoggerDebug("sending prevote", ["index", data.index.toString(), "hash", data.hash])
 
@@ -772,8 +787,17 @@ export function sendPrevoteNil(
 ): void {
     const termId = getTermId()
     const nextIndex = getCurrentState().nextHeight;
-    const getOurInfo = getSelfNodeInfo()
-    const data = new ValidatorProposalVote(termId, getOurInfo.address, nextIndex, "")
+    const nodeIps = getValidatorNodesInfo();
+    const ourId = getCurrentNodeId();
+    const getOurInfo = nodeIps[ourId];
+
+    // TODO chainId
+    const data = new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PREVOTE, termId, getOurInfo.address, ourId, nextIndex, "nil", new Date(Date.now()), "")
+
+    const prevoteArr = getPrevoteArray();
+    prevoteArr[getCurrentNodeId()] = data;
+    setPrevoteArray(prevoteArr);
+
     const msgstr = preparePrevoteMessage(data);
     LoggerDebug("sending prevote nil", ["index", data.index.toString()])
 
@@ -782,9 +806,12 @@ export function sendPrevoteNil(
 }
 
 export function buildPrevoteMessage(): ValidatorProposalVote {
-    const nodeInfo = getSelfNodeInfo()
+    const nodeIps = getValidatorNodesInfo();
+    const ourId = getCurrentNodeId();
+    const nodeInfo = nodeIps[ourId];
     const state = getCurrentState();
-    return new ValidatorProposalVote(getTermId(), nodeInfo.address, state.nextHeight, state.nextHash);
+     // TODO chainId
+    return new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PREVOTE, getTermId(), nodeInfo.address, ourId, state.nextHeight, state.nextHash, new Date(Date.now()), "");
 }
 
 export function preparePrevoteMessage(data: ValidatorProposalVote): string {
@@ -801,6 +828,11 @@ export function sendPrecommit(
 ): void {
     // get the current proposal & vote on the block hash
     const data = buildPrecommitMessage();
+
+    const arr = getPrecommitArray();
+    arr[getCurrentNodeId()] = data;
+    setPrecommitArray(arr);
+
     const msgstr = preparePrecommitMessage(data);
     LoggerDebug("sending precommit", ["index", data.index.toString(), "hash", data.hash])
 
@@ -814,8 +846,16 @@ export function sendPrecommitNil(
 ): void {
     const termId = getTermId()
     const nextIndex = getCurrentState().nextHeight;
-    const getOurInfo = getSelfNodeInfo()
-    const data = new ValidatorProposalVote(termId, getOurInfo.address, nextIndex, "")
+    const nodeIps = getValidatorNodesInfo();
+    const ourId = getCurrentNodeId();
+    const getOurInfo = nodeIps[ourId];
+    // TODO chainId
+    const data = new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT, termId, getOurInfo.address, ourId, nextIndex, "nil", new Date(Date.now()), "")
+
+    const arr = getPrecommitArray();
+    arr[getCurrentNodeId()] = data;
+    setPrecommitArray(arr);
+
     const msgstr = preparePrecommitMessage(data);
     LoggerDebug("sending precommit nil", ["index", data.index.toString()])
 
@@ -824,9 +864,12 @@ export function sendPrecommitNil(
 }
 
 export function buildPrecommitMessage(): ValidatorProposalVote {
-    const nodeInfo = getSelfNodeInfo()
+    const nodeIps = getValidatorNodesInfo();
+    const ourId = getCurrentNodeId();
+    const nodeInfo = nodeIps[ourId];
     const state = getCurrentState();
-    return new ValidatorProposalVote(getTermId(), nodeInfo.address, state.nextHeight, state.nextHash);
+     // TODO chainId
+    return new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT, getTermId(), nodeInfo.address, ourId, state.nextHeight, state.nextHash, new Date(Date.now()), "");
 }
 
 export function preparePrecommitMessage(data: ValidatorProposalVote): string {
@@ -854,24 +897,24 @@ export function receivePrevote(
 
     const datastr = String.UTF8.decode(decodeBase64(entry).buffer)
     const data = JSON.parse<ValidatorProposalVote>(datastr)
-    LoggerDebug("prevote received", ["sender", data.sender, "index", data.index.toString(), "hash", data.hash])
+    LoggerDebug("prevote received", ["sender", data.validatorAddress, "index", data.index.toString(), "hash", data.hash])
 
     const state = getCurrentState();
     if (state.nextHeight != data.index) return;
 
     // verify signature
-    const isSender = verifyMessageByAddr(data.sender, signature, datastr);
+    const isSender = verifyMessageByAddr(data.validatorAddress, signature, datastr);
     if (!isSender) {
-        LoggerError("signature verification failed for prevote", ["sender", data.sender]);
+        LoggerError("signature verification failed for prevote", ["sender", data.validatorAddress]);
         return;
     }
 
     // we add the prevote to the arrays
     const prevoteArr = getPrevoteArray();
     const nodes = getValidatorNodesInfo();
-    const nodeIndex = getNodeIdByAddress(data.sender, nodes);
+    const nodeIndex = getNodeIdByAddress(data.validatorAddress, nodes);
     if (nodeIndex == -1) {
-        LoggerError("prevote sender node not found", ["sender", data.sender]);
+        LoggerError("prevote sender node not found", ["sender", data.validatorAddress]);
         return;
     }
     prevoteArr[nodeIndex] = data;
@@ -897,24 +940,24 @@ export function receivePrecommit(
 
     const datastr = String.UTF8.decode(decodeBase64(entry).buffer)
     const data = JSON.parse<ValidatorProposalVote>(datastr)
-    LoggerDebug("precommit received", ["sender", data.sender, "index", data.index.toString(), "hash", data.hash])
+    LoggerDebug("precommit received", ["sender", data.validatorAddress, "index", data.index.toString(), "hash", data.hash])
 
     const state = getCurrentState();
     if (state.nextHeight != data.index) return;
 
     // verify signature
-    const isSender = verifyMessageByAddr(data.sender, signature, datastr);
+    const isSender = verifyMessageByAddr(data.validatorAddress, signature, datastr);
     if (!isSender) {
-        LoggerError("signature verification failed for precommit", ["sender", data.sender]);
+        LoggerError("signature verification failed for precommit", ["sender", data.validatorAddress]);
         return;
     }
 
     // we add the precommit to the arrays
     const precommitArr = getPrecommitArray();
     const nodes = getValidatorNodesInfo();
-    const nodeIndex = getNodeIdByAddress(data.sender, nodes);
+    const nodeIndex = getNodeIdByAddress(data.validatorAddress, nodes);
     if (nodeIndex == -1) {
-        LoggerError("precommit sender node not found", ["sender", data.sender]);
+        LoggerError("precommit sender node not found", ["sender", data.validatorAddress]);
         return;
     }
     precommitArr[nodeIndex] = data;
@@ -933,6 +976,9 @@ export function ifPrevoteAcceptThreshold(
     event: EventObject,
 ): boolean {
     const state = getCurrentState()
+    if (state.nextHash == "") {
+        return false;
+    }
     return isPrevoteAcceptThreshold(state.nextHash);
 }
 
@@ -948,6 +994,9 @@ export function ifPrecommitAcceptThreshold(
     event: EventObject,
 ): boolean {
     const state = getCurrentState()
+    if (state.nextHash == "") {
+        return false;
+    }
     return isPrecommitAcceptThreshold(state.nextHash);
 }
 
@@ -956,10 +1005,10 @@ export function commitBlock(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    const index = getLastLogIndex();
+    const state = getCurrentState();
     const lastFinalizedIndex = getLastBlockIndex();
-    if (index > lastFinalizedIndex) {
-        startBlockFinalizationFollower(index);
+    if (state.nextHeight > lastFinalizedIndex) {
+        startBlockFinalizationFollower(state.nextHeight);
     }
 }
 
@@ -968,7 +1017,7 @@ export function resetPrevotes(
     event: EventObject,
 ): void {
     const count = getValidatorNodeCount();
-    const emptyarr = getEmptyValidatorProposalVoteArray(count);
+    const emptyarr = getEmptyValidatorProposalVoteArray(count, SignedMsgType.SIGNED_MSG_TYPE_PREVOTE);
     setPrevoteArray(emptyarr);
 }
 
@@ -977,16 +1026,16 @@ export function resetPrecommits(
     event: EventObject,
 ): void {
     const count = getValidatorNodeCount();
-    const emptyarr = getEmptyValidatorProposalVoteArray(count);
+    const emptyarr = getEmptyValidatorProposalVoteArray(count, SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT);
     setPrecommitArray(emptyarr);
 }
 
-export function getEmptyValidatorProposalVoteArray(len: i32): Array<ValidatorProposalVote> {
+export function getEmptyValidatorProposalVoteArray(len: i32, type: SignedMsgType): Array<ValidatorProposalVote> {
     const emptyPrevotes = new Array<ValidatorProposalVote>(len);
     const termId = getTermId()
     const nextIndex = getCurrentState().nextHeight;
     for (let i = 0; i < len; i++) {
-        emptyPrevotes[i] = new ValidatorProposalVote(termId, "", nextIndex, "");
+        emptyPrevotes[i] = new ValidatorProposalVote(type, termId, "", 0, nextIndex, "", new Date(Date.now()), "");
     }
     return emptyPrevotes
 }
@@ -1068,4 +1117,101 @@ export function resetValidRound(
     const state = getCurrentState()
     state.validRound = 0
     setCurrentState(state)
+}
+
+export function buildCommitMessage(): Commit {
+    const state = getCurrentState();
+    const termId = getTermId();
+
+    // this is after commitBlock!!, where we increment the block height
+    const index = state.nextHeight - 1;
+    // before resetValidValue!
+    const hash = state.nextHash
+    const entry = getLogEntryAggregate(index)
+    const entryStr = JSON.stringify<LogEntryAggregate>(entry)
+    const entryBase64 = stringToBase64(entryStr)
+
+    // TODO !!!
+    // const precommits = getPrecommitArray() // must store sigs too
+    const signatures: Base64String[] = []
+
+    return new Commit(index, termId, hash, signatures, entryBase64)
+}
+
+export function sendCommit(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    // get the current proposal & vote on the block hash
+    const data = buildCommitMessage();
+    const datastr = JSON.stringify<Commit>(data);
+    const dataBase64 = stringToBase64(datastr);
+    const msgstr = `{"run":{"event":{"type":"receiveCommit","params":[{"key": "entry","value":"${dataBase64}"}]}}}`
+
+    LoggerDebug("sending commit", ["index", data.index.toString(), "hash", data.hash])
+
+    const contract = wasmxw.getAddress();
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, PROTOCOL_ID, cfg.CHAT_ROOM_PROTOCOL))
+}
+
+export function receiveCommit(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("entry")) {
+        revert("no entry found");
+    }
+    const entry = ctx.get("entry");
+
+    // TODO maybe needed for synced validators too, to verify our state
+    // otherwise, used by normal nodes or syncing validators
+
+    // we can just verify the block data & precommit signatures
+
+    const datastr = base64ToString(entry)
+    const data = JSON.parse<Commit>(datastr)
+    LoggerDebug("commit received", ["index", data.index.toString(), "hash", data.hash])
+
+    const lastIndex = getLastBlockIndex()
+    if (lastIndex >= data.index) return;
+
+    const entryStr = base64ToString(data.data)
+    const block = JSON.parse<LogEntryAggregate>(entryStr)
+    const state = getCurrentState()
+
+    // we store the block temporarily;
+    storeNewBlockOutOfOrder(data.termId, block, state.nextHeight)
+
+    // TODO state sync better with verification of votes, etc.
+    // but now we just try to finalize blocks until this height
+    const lastFinalizedIndex = getLastBlockIndex();
+    for (let i = lastFinalizedIndex + 1; i <= data.index; i++) {
+        // if empty block, we renounce
+        if (getLogEntryObj(i).index == 0) {
+            break;
+        }
+        startBlockFinalizationFollower(i);
+    }
+    // update term id
+    setTermId(data.termId)
+}
+
+// currentState.nextHeight
+export function storeNewBlockOutOfOrder(blockTermId: i64, block: LogEntryAggregate, nextHeight: i64): void {
+    if (block.index > nextHeight) {
+        // if we are not fully synced, just store the proposal with highest termId / round
+        const lastIndex = getLastLogIndex();
+        // we already have a proposal for this height
+        if (lastIndex >= block.index) {
+            const existent = getLogEntryObj(block.index)
+            // even if this entry is missing, it will have termId 0
+            if (existent.termId < block.termId) setLogEntryAggregate(block);
+        } else {
+            setLastLogIndex(block.index);
+        }
+    } else if (block.index == nextHeight) {
+        processAppendEntry(block);
+    }
 }

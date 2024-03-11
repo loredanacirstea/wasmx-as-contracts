@@ -179,11 +179,10 @@ export function isPrecommitAcceptThreshold(hash: string): boolean {
 
 export function calculateVote(votePerNode: Array<ValidatorProposalVote>, hash: string): boolean {
     const validators = getAllValidators();
-    const nodeId = getCurrentNodeId();
     let totalStake = getTotalStaked(validators)
     const threshold = getBFTThreshold(totalStake);
     // calculate voting stake for the proposed block
-    let count: BigInt = validators[nodeId].tokens;
+    let count: BigInt = BigInt.zero();
     for (let i = 0; i < votePerNode.length; i++) {
         if (hash == "") { // any vote
             if (votePerNode[i].hash != "") {
@@ -374,7 +373,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     const commitResponse = consensuswrap.Commit();
     // TODO commitResponse.retainHeight
     // Tendermint removes all data for heights lower than `retain_height`
-    LoggerInfo("block finalized", ["height", entryobj.index.toString()])
+    LoggerInfo("block finalized", ["height", entryobj.index.toString(), "termId", entryobj.termId.toString()])
 
     // TODO if we cannot start with the new contract, maybe we should remove its consensus role
 
