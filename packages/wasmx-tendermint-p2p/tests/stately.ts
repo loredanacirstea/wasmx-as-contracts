@@ -56,6 +56,9 @@ export const machine = createMachine({
                 {
                   type: "connectRooms",
                 },
+                {
+                  type: "requestBlockSync",
+                },
               ],
             },
           },
@@ -86,11 +89,6 @@ export const machine = createMachine({
                 },
               ],
             },
-            receiveUpdateNodeResponse: {
-              actions: {
-                type: "receiveUpdateNodeResponse",
-              },
-            },
             receiveStateSyncRequest: {
               actions: {
                 type: "receiveStateSyncRequest",
@@ -112,7 +110,7 @@ export const machine = createMachine({
                       type: "registerValidatorWithNetwork",
                     },
                     {
-                      type: "requestNetworkSync",
+                      type: "requestBlockSync",
                     },
                   ],
                 },
@@ -130,14 +128,9 @@ export const machine = createMachine({
                       type: "connectRooms",
                     },
                     {
-                      type: "requestNetworkSync",
+                      type: "requestBlockSync",
                     },
                   ],
-                },
-                receiveBlockProposal: {
-                  actions: {
-                    type: "receiveBlockProposal",
-                  },
                 },
                 receiveCommit: {
                   actions: {
@@ -145,27 +138,15 @@ export const machine = createMachine({
                   },
                 },
               },
-              always: [
-                {
-                  target: "Validator",
-                  actions: [
-                    {
-                      type: "registerValidatorWithNetwork",
-                    },
-                    {
-                      type: "requestNetworkSync",
-                    },
-                  ],
-                  guard: {
-                    type: "ifNodeIsValidator",
-                  },
+              always: {
+                target: "Validator",
+                actions: {
+                  type: "registerValidatorWithNetwork",
                 },
-                {
-                  actions: {
-                    type: "requestNetworkSync",
-                  },
+                guard: {
+                  type: "ifNodeIsValidator",
                 },
-              ],
+              },
             },
             Validator: {
               initial: "active",
@@ -181,9 +162,9 @@ export const machine = createMachine({
                 stop: {
                   target: "#Tendermint-P2P-5.stopped",
                 },
-                receiveStateSyncResponse: {
+                receiveUpdateNodeResponse: {
                   actions: {
-                    type: "receiveStateSyncResponse",
+                    type: "receiveUpdateNodeResponse",
                   },
                 },
                 receivePrevote: {
@@ -204,7 +185,7 @@ export const machine = createMachine({
                       type: "registerValidatorWithNetwork",
                     },
                     {
-                      type: "requestNetworkSync",
+                      type: "requestBlockSync",
                     },
                   ],
                 },
@@ -212,6 +193,21 @@ export const machine = createMachine({
                   actions: {
                     type: "receiveCommit",
                   },
+                },
+                receiveUpdateNodeRequest: {
+                  actions: {
+                    type: "receiveUpdateNodeRequest",
+                  },
+                },
+                receiveStateSyncResponse: {
+                  actions: [
+                    {
+                      type: "receiveStateSyncResponse",
+                    },
+                    {
+                      type: "requestValidatorNodeInfoIfSynced",
+                    },
+                  ],
                 },
               },
               states: {
@@ -404,12 +400,17 @@ export const machine = createMachine({
                       type: "registerValidatorWithNetwork",
                     },
                     {
-                      type: "requestNetworkSync",
+                      type: "requestBlockSync",
                     },
                   ],
                 },
                 stop: {
                   target: "#Tendermint-P2P-5.stopped",
+                },
+                receiveUpdateNodeRequest: {
+                  actions: {
+                    type: "receiveUpdateNodeRequest",
+                  },
                 },
               },
               states: {
@@ -490,7 +491,7 @@ export const machine = createMachine({
       // Add your action code here
       // ...
     },
-    requestNetworkSync: function (context, event) {
+    requestBlockSync: function (context, event) {
       // Add your action code here
       // ...
     },
@@ -595,6 +596,14 @@ export const machine = createMachine({
       // ...
     },
     receiveCommit: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    receiveUpdateNodeRequest: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    requestValidatorNodeInfoIfSynced: function (context, event) {
       // Add your action code here
       // ...
     },

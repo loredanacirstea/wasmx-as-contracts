@@ -147,7 +147,8 @@ export function prepareAppendEntryMessage(
     const datastr = JSON.stringify<AppendEntry>(data);
     const signature = signMessage(datastr);
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
-    const msgstr = `{"run":{"event":{"type":"receiveBlockProposal","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
+    const senderaddr = getSelfNodeInfo().address
+    const msgstr = `{"run":{"event":{"type":"receiveBlockProposal","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"},{"key": "sender","value":"${senderaddr}"}]}}}`
     return msgstr
 }
 

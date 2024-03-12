@@ -32,7 +32,7 @@ import { getP2PAddress } from "wasmx-raft-p2p/assembly/actions"
 import { callHookContract, setMempool, signMessage } from "wasmx-tendermint/assembly/actions"
 import { Mempool } from "wasmx-tendermint/assembly/types_blockchain";
 import * as cfg from "./config";
-import { AppendEntry, AppendEntryResponse, LogEntryAggregate } from "./types";
+import { AppendEntry, AppendEntryResponse, LogEntryAggregate, UpdateNodeRequest } from "./types";
 import { calculateCurrentProposer, extractAppendEntry, getFinalBlock, getLastBlockIndex, getLogEntryAggregate, getSelfNodeInfo, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
 import { extractUpdateNodeEntryAndVerify, removeNode } from "wasmx-raft/assembly/actions";
 import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembly/storage";
@@ -87,7 +87,7 @@ export function connectPeersInternal(protocolId: string): void {
 }
 
 // request an update of nodes list & block sync
-export function requestNetworkSync(
+export function requestBlockSync(
     params: ActionParam[],
     event: EventObject,
 ): void {
@@ -99,32 +99,36 @@ export function requestNetworkSync(
     }
 }
 
-export function registerValidatorWithNetwork(
+export function requestValidatorNodeInfoIfSynced(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    // we check that we are registered with the Leader
-    // and that we are in sync
-    registeredCheck(PROTOCOL_ID);
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("entry")) {
+        revert("no data found");
+    }
+    if (!ctx.has("sender")) { // node/validator address
+        revert("no sender found");
+    }
+    const entry = ctx.get("entry")
+    const data = String.UTF8.decode(decodeBase64(entry).buffer);
+    const resp = JSON.parse<StateSyncResponse>(data)
+    if (resp.last_batch_index != resp.last_log_index) return;
+
+    sendNodeSyncRequest(PROTOCOL_ID)
 }
 
-// we just send a NodeUpdateRequest
-// the node will receive a UpdateNodeResponse from the leader and then proceed to do state sync
-export function registeredCheck(protocolId: string): void {
-    // when a node starts, it needs to add itself to the Leader's node list
-    // we just need [ourIP, leaderIP]
-
+export function sendNodeSyncRequest(protocolId: string): void {
     const ips = getValidatorNodesInfo();
-
     // if we are alone, return
     if (ips.length == 1) {
         return;
     }
-
     const nodeId = getCurrentNodeId();
-    const msgstr = registeredCheckMessage(ips, nodeId);
-    LoggerInfo("register request", ["req", msgstr])
+    const msgstr = nodeSyncRequestMessage(ips, nodeId);
 
+    // send to all ips except us
     let peers: string[] = []
     for (let i = 0; i < ips.length; i++) {
         // don't send to ourselves or to removed nodes
@@ -132,15 +136,84 @@ export function registeredCheck(protocolId: string): void {
         peers.push(getP2PAddress(ips[i]))
     }
 
-    LoggerDebug("sending node registration", ["peers", peers.join(","), "data", msgstr])
+    LoggerInfo("sending node sync request", ["data", msgstr, "peers", peers.join(",")])
     const contract = wasmxw.getAddress();
+
+    // we also post it to the chat room
     p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
+}
+
+// send to all nodes (chat room)
+export function registerValidatorWithNetwork(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    // we check that we are registered with the Leader
+    // and that we are in sync
+    announceValidatorNodeWithNetwork(PROTOCOL_ID);
+}
+
+export function announceValidatorNodeWithNetwork(protocolId: string): void {
+    const ips = getValidatorNodesInfo();
+    // if we are alone, return
+    if (ips.length == 1) {
+        return;
+    }
+    const nodeId = getCurrentNodeId();
+    const msgstr = announceValidatorNodeWithNetworkMessage(ips, nodeId);
+    LoggerInfo("announce node info to network", ["req", msgstr])
+
+    const contract = wasmxw.getAddress();
 
     // we also post it to the chat room
     p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, protocolId, cfg.CHAT_ROOM_PROTOCOL))
 }
 
-export function registeredCheckMessage(ips: NodeInfo[], nodeId: i32): string {
+export function nodeSyncRequestMessage(ips: NodeInfo[], ourNodeId: i32): string {
+    const nodeinfo = ips[ourNodeId];
+    // TODO signature on protobuf encoding, not JSON
+    const req = new UpdateNodeRequest(getP2PAddress(nodeinfo));
+    const reqStr = JSON.stringify<UpdateNodeRequest>(req);
+    const signature = signMessage(reqStr);
+
+    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(reqStr)));
+    const msgstr = `{"run":{"event":{"type":"receiveUpdateNodeRequest","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"},{"key": "sender","value":"${nodeinfo.address}"}]}}}`
+    LoggerInfo("register request", ["req", msgstr])
+    return msgstr
+}
+
+export function receiveUpdateNodeRequest(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("entry")) {
+        revert("no data found");
+    }
+    if (!ctx.has("signature")) {
+        revert("no signature found");
+    }
+    if (!ctx.has("sender")) { // node/validator address
+        revert("no sender found");
+    }
+    const signature = ctx.get("signature")
+    const sender = ctx.get("sender")
+    const entry = ctx.get("entry")
+    const data = String.UTF8.decode(decodeBase64(entry).buffer);
+    const req = JSON.parse<UpdateNodeRequest>(data)
+    LoggerInfo("nodes request update", ["data", data])
+
+    // verify signature
+    const isSender = verifyMessageByAddr(sender, signature, data);
+    if (!isSender) {
+        LoggerError("signature verification failed for UpdateNodeRequest", ["sender", sender]);
+        return;
+    }
+    sendNodeSyncResponse(req.peer_address)
+}
+
+export function announceValidatorNodeWithNetworkMessage(ips: NodeInfo[], nodeId: i32): string {
     LoggerInfo("trying to register node with other nodes", []);
 
     // send updateNode to all ips except us
@@ -191,11 +264,11 @@ export function receiveUpdateNodeResponseInternal(
     // either message is from a known peer, or we verify this signature
 
     // verify signature
-    // const isSender = verifyMessageByAddr(sender, signature, data);
-    // if (!isSender) {
-    //     LoggerError("signature verification failed for nodes list update", ["sender", sender]);
-    //     return;
-    // }
+    const isSender = verifyMessageByAddr(sender, signature, data);
+    if (!isSender) {
+        LoggerError("signature verification failed for nodes list update", ["sender", sender]);
+        return;
+    }
 
     const nodeIps = getValidatorNodesInfo();
     const nodeId = getCurrentNodeId();
@@ -250,7 +323,7 @@ export function sendStateSyncRequest(protocolId: string, nodeId: i32): void {
     const senderaddr = nodes[ourNodeId].address
     const msgstr = `{"run":{"event":{"type":"receiveStateSyncRequest","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"},{"key": "sender","value":"${senderaddr}"}]}}}`
 
-    LoggerDebug("sending statesync request", ["nodeId", nodeId.toString(), "address", receiverNode.address, "data", datastr])
+    LoggerInfo("sending statesync request", ["nodeId", nodeId.toString(), "address", receiverNode.address, "data", datastr])
 
     const peers = [getP2PAddress(receiverNode)]
     const contract = wasmxw.getAddress();
@@ -542,18 +615,18 @@ export function receiveStateSyncRequest(
     // we send statesync response with the first batch
     const termId = getTermId()
     const lastIndex = getLastBlockIndex()
+    const peers = [resp.peer_address]
 
-    if (lastIndex < resp.start_index) return;
+    if (lastIndex < resp.start_index) {
+        // we nontheless send an empty batch response, because it is used to trigger a node list update
+        sendStateSyncBatch(resp.start_index, lastIndex, lastIndex, termId, peers);
+        return;
+    };
 
     // send successive messages with max STATE_SYNC_BATCH blocks at a time
     const count = lastIndex - resp.start_index + 1
 
-    const peers = [resp.peer_address]
-
     LoggerInfo("received statesync request", ["sender", resp.peer_address, "startIndex", resp.start_index.toString(), "lastIndex", lastIndex.toString()])
-
-    // we send our list of nodes
-    sendNodeSyncResponse(resp.peer_address)
 
     const batches = i32(Math.ceil(f64(count)/f64(cfg.STATE_SYNC_BATCH)))
     let startIndex = resp.start_index;
@@ -631,16 +704,6 @@ export function receiveStateSyncResponse(
         nextIndex += 1;
     }
     setTermId(resp.termId);
-
-    // we dont need this
-    // // if we are synced, we announce the Leader node
-    // if (resp.last_batch_index >= resp.last_log_index) {
-    //     // send receiveAppendEntryResponse to Leader node
-    //     const lastLog = getLastLog();
-    //     const response = new AppendEntryResponse(resp.termId, true, resp.last_batch_index);
-    //     LoggerInfo("sending new entries response", ["termId", resp.termId.toString(), "success", "true", "lastLogIndex", resp.last_batch_index.toString(), "proposerId", lastLog.leaderId.toString()])
-    //     sendAppendEntryResponseMessage(response, lastLog.leaderId);
-    // }
 }
 
 export function sendAppendEntryResponseMessage(response: AppendEntryResponse, leaderId: i32): void {
@@ -677,8 +740,12 @@ export function receiveBlockProposal(
     if (!ctx.has("signature")) {
         revert("no signature found");
     }
+    if (!ctx.has("sender")) {
+        revert("no sender found");
+    }
     const entryBase64 = ctx.get("entry");
     const signature = ctx.get("signature");
+    const sender = ctx.get("sender");
     const entryStr = String.UTF8.decode(decodeBase64(entryBase64).buffer);
     LoggerDebug("received new block proposal", ["block", entryStr.slice(0, cfg.MAX_LOGGED) + " [...]"]);
 
@@ -686,12 +753,13 @@ export function receiveBlockProposal(
     LoggerInfo("received new block proposal", [
         "proposerId", entry.proposerId.toString(),
         "termId", entry.termId.toString(),
+        "sender", sender,
     ]);
 
     // verify signature
-    const isSender = verifyMessage(entry.proposerId, signature, entryStr);
+    const isSender = verifyMessageByAddr(sender, signature, entryStr);
     if (!isSender) {
-        LoggerError("signature verification failed for AppendEntry", ["proposerId", entry.proposerId.toString(), "termId", entry.termId.toString()]);
+        LoggerError("signature verification failed for AppendEntry", ["proposerId", entry.proposerId.toString(), "sender", sender, "termId", entry.termId.toString()]);
         return;
     }
 

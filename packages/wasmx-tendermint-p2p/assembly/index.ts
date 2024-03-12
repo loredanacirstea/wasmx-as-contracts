@@ -114,9 +114,13 @@ export function main(): void {
     actions.connectPeers(calld.params, calld.event);
   } else if (calld.method === "connectRooms") {
     actions.connectRooms(calld.params, calld.event);
-  } else if (calld.method === "requestNetworkSync") {
-    actions.requestNetworkSync(calld.params, calld.event);
-  }  else if (calld.method === "registerValidatorWithNetwork") {
+  } else if (calld.method === "requestBlockSync") {
+    actions.requestBlockSync(calld.params, calld.event);
+  } else if (calld.method === "requestValidatorNodeInfoIfSynced") {
+    actions.requestValidatorNodeInfoIfSynced(calld.params, calld.event);
+  } else if (calld.method === "receiveUpdateNodeRequest") {
+    actions.receiveUpdateNodeRequest(calld.params, calld.event);
+  } else if (calld.method === "registerValidatorWithNetwork") {
     actions.registerValidatorWithNetwork(calld.params, calld.event);
   } else if (calld.method === "receiveStateSyncRequest") {
     actions.receiveStateSyncRequest(calld.params, calld.event);

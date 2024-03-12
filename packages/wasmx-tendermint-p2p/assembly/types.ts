@@ -97,3 +97,12 @@ export class AppendEntryResponse {
         this.lastIndex = lastIndex;
     }
 }
+
+// @ts-ignore
+@serializable
+export class UpdateNodeRequest {
+    peer_address: string
+    constructor(peer_address: string) {
+        this.peer_address = peer_address;
+    }
+}
