@@ -1,6 +1,7 @@
 import { JSON } from "json-as/assembly";
 import { Base64String, Bech32String } from "wasmx-env/assembly/types";
 import { LogEntryAggregate } from "./types";
+import { NodeInfo } from "wasmx-raft/assembly/types_raft";
 
 // @ts-ignore
 @serializable
@@ -27,5 +28,14 @@ export class StateSyncResponse {
     this.entries = entries;
     this.last_log_index = last_log_index
     this.termId = termId
+  }
+}
+
+// @ts-ignore
+@serializable
+export class NodesSyncResponse {
+  nodes: Array<NodeInfo>
+  constructor(nodes: Array<NodeInfo>) {
+    this.nodes = nodes
   }
 }

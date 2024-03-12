@@ -24,17 +24,17 @@ import {
 } from 'xstate-fsm-as/assembly/types';
 import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, base64ToHex, hex64ToBase64, stringToBase64, base64ToString } from "wasmx-utils/assembly/utils";
 import { BigInt } from "wasmx-env/assembly/bn";
-import { StateSyncRequest, StateSyncResponse } from "./sync_types";
+import { NodesSyncResponse, StateSyncRequest, StateSyncResponse } from "./sync_types";
 import { PROTOCOL_ID } from "./config";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
 import { getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLog, getPrevoteArray, setPrevoteArray, getPrecommitArray, setPrecommitArray, getValidatorNodesInfo, setValidatorNodesInfo, setTermId, setCurrentProposer, getCurrentProposer, appendLogEntry, setLogEntryAggregate, setCurrentState, setLastLogIndex, getValidatorNodeCount, getLogEntryObj } from "./storage";
 import { getP2PAddress } from "wasmx-raft-p2p/assembly/actions"
-import { callHookContract, setMempool, signMessage, updateNodeEntry } from "wasmx-tendermint/assembly/actions"
+import { callHookContract, setMempool, signMessage } from "wasmx-tendermint/assembly/actions"
 import { Mempool } from "wasmx-tendermint/assembly/types_blockchain";
 import * as cfg from "./config";
 import { AppendEntry, AppendEntryResponse, LogEntryAggregate } from "./types";
 import { calculateCurrentProposer, extractAppendEntry, getFinalBlock, getLastBlockIndex, getLogEntryAggregate, getSelfNodeInfo, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
-import { extractUpdateNodeEntryAndVerify } from "wasmx-raft/assembly/actions";
+import { extractUpdateNodeEntryAndVerify, removeNode } from "wasmx-raft/assembly/actions";
 import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembly/storage";
 import { getAllValidators, getNodeByAddress, getNodeIdByAddress, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
 import { Node, NodeInfo, NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft"
@@ -86,7 +86,7 @@ export function connectPeersInternal(protocolId: string): void {
     }
 }
 
-// used by normal nodes
+// request an update of nodes list & block sync
 export function requestNetworkSync(
     params: ActionParam[],
     event: EventObject,
@@ -135,6 +135,9 @@ export function registeredCheck(protocolId: string): void {
     LoggerDebug("sending node registration", ["peers", peers.join(","), "data", msgstr])
     const contract = wasmxw.getAddress();
     p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
+
+    // we also post it to the chat room
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, protocolId, cfg.CHAT_ROOM_PROTOCOL))
 }
 
 export function registeredCheckMessage(ips: NodeInfo[], nodeId: i32): string {
@@ -184,12 +187,15 @@ export function receiveUpdateNodeResponseInternal(
     const resp = JSON.parse<UpdateNodeResponse>(data)
     LoggerInfo("nodes list update", ["data", data])
 
+    // TODO FROM field: from what peer we have received the message
+    // either message is from a known peer, or we verify this signature
+
     // verify signature
-    const isSender = verifyMessageByAddr(sender, signature, data);
-    if (!isSender) {
-        LoggerError("signature verification failed for nodes list update", ["sender", sender]);
-        return;
-    }
+    // const isSender = verifyMessageByAddr(sender, signature, data);
+    // if (!isSender) {
+    //     LoggerError("signature verification failed for nodes list update", ["sender", sender]);
+    //     return;
+    // }
 
     const nodeIps = getValidatorNodesInfo();
     const nodeId = getCurrentNodeId();
@@ -227,9 +233,6 @@ export function receiveUpdateNodeResponseInternal(
     }
     setValidatorNodesInfo(resp.nodes);
     setCurrentNodeId(ourId);
-
-    // state sync from the node provided by the leader, who is known to be synced
-    sendStateSyncRequest(protocolId, resp.sync_node_id);
 }
 
 // this is executed each time the node is started in Follower or Candidate state if needed
@@ -390,32 +393,67 @@ export function setup(
     callHookContract("EndBlock", blockData);
 }
 
+// we just add the validator node to our list
 export function updateNodeAndReturn(
     params: ActionParam[],
     event: EventObject,
 ): void {
     let entry = extractUpdateNodeEntryAndVerify(params, event);
-    const response = updateNodeEntry(entry);
-    console.log("--updateNodeEntry--")
-    if (response == null) {
-        return;
-    }
-    console.log("--updateNodeEntry2--")
-    const ourId = getCurrentNodeId();
-    response.sync_node_id = ourId
+    updateNodeEntry(entry);
+}
 
+export function updateNodeEntry(entry: NodeUpdate): void {
+    let ips = getValidatorNodesInfo();
+
+    // new node or node comming back online
+    if (entry.type == cfg.NODE_UPDATE_ADD) {
+        if (entry.node.node.ip == "" && entry.node.node.host == "") {
+            revert(`validator info missing from node update: address ${entry.node.address}`)
+        }
+        // make it idempotent & don't add same node address multiple times
+        let ndx = -1
+        for (let i = 0; i < ips.length; i++) {
+            if (ips[i].address == entry.node.address) {
+                ndx = i;
+                break;
+            }
+        }
+        if (ndx > -1) {
+            // we just update the node
+            ips[ndx].node = entry.node.node
+        } else {
+            // TODO mark as outofsync for raft too?
+            ips.push(entry.node);
+            // TODO adding a new node must be under the same index as in the validators array
+        }
+    }
+    else if (entry.type == cfg.NODE_UPDATE_UPDATE) {
+        // just update the node
+        ips[entry.index].node = entry.node.node;
+    }
+    else if (entry.type == cfg.NODE_UPDATE_REMOVE) {
+        // idempotent
+        ips = removeNode(ips, entry.index)
+    }
+
+    LoggerInfo("node updates", ["ips", JSON.stringify<NodeInfo[]>(ips)])
+    setValidatorNodesInfo(ips);
+}
+
+export function sendNodeSyncResponse(peeraddr: string): void {
+    const nodes = getValidatorNodesInfo()
+    const ourId = getCurrentNodeId();
+    const response = new UpdateNodeResponse(nodes, getCurrentNodeId(), getLastLogIndex());
     const updateMsgStr = JSON.stringify<UpdateNodeResponse>(response);
     const signature = signMessage(updateMsgStr);
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(updateMsgStr)));
     const nodeIps = getValidatorNodesInfo();
     const senderaddr = nodeIps[ourId].address;
     const msgstr = `{"run":{"event":{"type":"receiveUpdateNodeResponse","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"},{"key": "sender","value":"${senderaddr}"}]}}}`
-    console.log("--updateNodeEntry msgstr--" + msgstr)
 
     // send update message only to the requesting node
     // other nodes get an updated list each heartbeat
-    const peers = [getP2PAddress(entry.node)]
-    console.log("--updateNodeAndReturn--" + peers[0])
+    const peers = [peeraddr]
 
     const contract = wasmxw.getAddress();
     p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
@@ -513,6 +551,9 @@ export function receiveStateSyncRequest(
     const peers = [resp.peer_address]
 
     LoggerInfo("received statesync request", ["sender", resp.peer_address, "startIndex", resp.start_index.toString(), "lastIndex", lastIndex.toString()])
+
+    // we send our list of nodes
+    sendNodeSyncResponse(resp.peer_address)
 
     const batches = i32(Math.ceil(f64(count)/f64(cfg.STATE_SYNC_BATCH)))
     let startIndex = resp.start_index;

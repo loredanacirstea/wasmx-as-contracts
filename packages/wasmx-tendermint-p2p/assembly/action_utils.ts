@@ -1,14 +1,15 @@
 import { JSON } from "json-as/assembly";
 import { decode as decodeBase64, encode as encodeBase64 } from "as-base64/assembly";
-import { ActionParam, EventObject } from "xstate-fsm-as/assembly/types";
+import { ActionParam, EventObject, ExternalActionCallData } from "xstate-fsm-as/assembly/types";
 import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
 import * as wblocks from "wasmx-blocks/assembly/types";
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
+import * as consutil from "wasmx-consensus/assembly/utils";
 import * as staking from "wasmx-stake/assembly/types";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
-import { callHookContract, getNextProposer, getTotalStaked, updateConsensusParams, updateValidators } from "wasmx-tendermint/assembly/actions";
+import { callContract, callHookContract, getNextProposer, getTotalStaked, updateConsensusParams, updateValidators } from "wasmx-tendermint/assembly/actions";
 import * as cfg from "./config";
 import { AppendEntry, LogEntryAggregate } from "./types";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
@@ -303,57 +304,40 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     removeLogEntry(entryobj.index);
 
     // before commiting, we check if consensus contract was changed
-    let newContract = "";
-    let newLabel = "";
-    let roleConsensus = false;
     let evs = finalizeResp.events
     for (let i = 0; i < finalizeResp.tx_results.length; i++) {
         evs = evs.concat(finalizeResp.tx_results[i].events)
     }
-    for (let i = 0; i < evs.length; i++) {
-        const ev = evs[i];
-        if (ev.type == "register_role") {
-            for (let j = 0; j < ev.attributes.length; j++) {
-                if (ev.attributes[j].key == "role") {
-                    roleConsensus = ev.attributes[j].value == "consensus"
-                }
-                if (ev.attributes[j].key == "contract_address") {
-                    newContract = ev.attributes[j].value;
-                }
-                if (ev.attributes[j].key == "role_label") {
-                    newLabel = ev.attributes[j].value;
-                }
-            }
-            if (roleConsensus) {
-                LoggerInfo("found new consensus contract", ["address", newContract, "label", newLabel])
-                break;
-            } else {
-                newContract = ""
-                newLabel = ""
-            }
-        }
-    }
+    const info = consutil.defaultFinalizeResponseEventsParse(evs)
 
     // execute hooks if there is no consensus change
     // this must be ran from the new contract
-    if (newContract == "") {
+    if (info.consensusContract == "") {
         callHookContract("EndBlock", blockData);
+    }
+
+    if (info.createdValidators.length > 0) {
+        for (let i = 0; i < info.createdValidators.length; i++) {
+            // move node info to validator info if it exists
+            LoggerInfo("new validator", ["height", entryobj.index.toString(), "address", info.createdValidators[i]])
+            callHookContract("CreatedValidator", info.createdValidators[i]);
+        }
     }
 
     // we have finalized and saved the new block
     // so we can execute setup on the new contract
     // this way, the delay of the timed action that starts the new consensus fsm is minimal.
     let newContractSetup = false;
-    if (newContract !== "") {
+    if (info.consensusContract !== "") {
         const myaddress = wasmxw.addr_humanize(wasmx.getAddress());
-        LoggerInfo("setting up next consensus contract", ["new contract", newContract, "previous contract", myaddress])
+        LoggerInfo("setting up next consensus contract", ["new contract", info.consensusContract, "previous contract", myaddress])
         let calldata = `{"run":{"event":{"type":"setup","params":[{"key":"address","value":"${myaddress}"}]}}}`
-        let req = new CallRequest(newContract, calldata, BigInt.zero(), 100000000, false);
+        let req = new CallRequest(info.consensusContract, calldata, BigInt.zero(), 100000000, false);
         let resp = wasmxw.call(req, cfg.MODULE_NAME);
         if (resp.success > 0) {
-            LoggerError("cannot setup next consensus contract", ["new contract", newContract, "err", resp.data]);
+            LoggerError("cannot setup next consensus contract", ["new contract", info.consensusContract, "err", resp.data]);
         } else {
-            LoggerInfo("next consensus contract is set", ["new contract", newContract])
+            LoggerInfo("next consensus contract is set", ["new contract", info.consensusContract])
             newContractSetup = true;
 
             // stop this contract and any intervals on this contract
@@ -375,16 +359,29 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     // Tendermint removes all data for heights lower than `retain_height`
     LoggerInfo("block finalized", ["height", entryobj.index.toString(), "termId", entryobj.termId.toString()])
 
+    if (info.createdValidators.length > 0) {
+        const ouraddr = getSelfNodeInfo().address
+        for (let i = 0; i < info.createdValidators.length; i++) {
+            if (info.createdValidators[i] == ouraddr) {
+                LoggerInfo("node is validator", ["height", entryobj.index.toString(), "address", ouraddr])
+
+                // call consensus contract with "becomeValidator" transition
+                const calldatastr = `{"run":{"event": {"type": "becomeValidator", "params": []}}}`;
+                callContract(wasmxw.getAddress(), calldatastr, false);
+            }
+        }
+    }
+
     // TODO if we cannot start with the new contract, maybe we should remove its consensus role
 
     // if consensus changed, start the new contract
-    if (newContract != "" && newContractSetup) {
-        LoggerInfo("starting new consensus contract", ["address", newContract])
+    if (info.consensusContract != "" && newContractSetup) {
+        LoggerInfo("starting new consensus contract", ["address", info.consensusContract])
         let calldata = `{"run":{"event":{"type":"prestart","params":[]}}}`
-        let req = new CallRequest(newContract, calldata, BigInt.zero(), 100000000, false);
+        let req = new CallRequest(info.consensusContract, calldata, BigInt.zero(), 100000000, false);
         let resp = wasmxw.call(req, cfg.MODULE_NAME);
         if (resp.success > 0) {
-            LoggerError("cannot start next consensus contract", ["new contract", newContract, "err", resp.data]);
+            LoggerError("cannot start next consensus contract", ["new contract", info.consensusContract, "err", resp.data]);
             // we can restart the old contract here, so the chain does not stop
             const myaddress = wasmxw.addr_humanize(wasmx.getAddress());
             calldata = `{"run":{"event":{"type":"restart","params":[]}}}`
@@ -396,7 +393,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
                 LoggerInfo("restarted current consensus contract", [])
             }
         } else {
-            LoggerInfo("next consensus contract is started", ["new contract", newContract])
+            LoggerInfo("next consensus contract is started", ["new contract", info.consensusContract])
             // consensus changed
             return true;
         }

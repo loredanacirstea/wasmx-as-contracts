@@ -105,23 +105,17 @@ export const machine = createMachine({
           states: {
             Node: {
               on: {
-                newValidator: [
-                  {
-                    target: "Validator",
-                    actions: {
-                      type: "transitionNodeToValidator",
+                becomeValidator: {
+                  target: "Validator",
+                  actions: [
+                    {
+                      type: "registerValidatorWithNetwork",
                     },
-                    guard: {
-                      type: "newValidatorIsSelf",
+                    {
+                      type: "requestNetworkSync",
                     },
-                  },
-                  {
-                    target: "Node",
-                    actions: {
-                      type: "transitionNodeToValidator",
-                    },
-                  },
-                ],
+                  ],
+                },
                 receiveStateSyncResponse: {
                   actions: {
                     type: "receiveStateSyncResponse",
@@ -154,9 +148,14 @@ export const machine = createMachine({
               always: [
                 {
                   target: "Validator",
-                  actions: {
-                    type: "registerValidatorWithNetwork",
-                  },
+                  actions: [
+                    {
+                      type: "registerValidatorWithNetwork",
+                    },
+                    {
+                      type: "requestNetworkSync",
+                    },
+                  ],
                   guard: {
                     type: "ifNodeIsValidator",
                   },
@@ -203,6 +202,9 @@ export const machine = createMachine({
                     },
                     {
                       type: "registerValidatorWithNetwork",
+                    },
+                    {
+                      type: "requestNetworkSync",
                     },
                   ],
                 },
@@ -401,6 +403,9 @@ export const machine = createMachine({
                     {
                       type: "registerValidatorWithNetwork",
                     },
+                    {
+                      type: "requestNetworkSync",
+                    },
                   ],
                 },
                 stop: {
@@ -485,6 +490,10 @@ export const machine = createMachine({
       // Add your action code here
       // ...
     },
+    requestNetworkSync: function (context, event) {
+      // Add your action code here
+      // ...
+    },
     receiveBlockProposal: function (context, event) {
       // Add your action code here
       // ...
@@ -517,15 +526,7 @@ export const machine = createMachine({
       // Add your action code here
       // ...
     },
-    transitionNodeToValidator: function (context, event) {
-      // Add your action code here
-      // ...
-    },
     receiveStateSyncResponse: function (context, event) {
-      // Add your action code here
-      // ...
-    },
-    requestNetworkSync: function (context, event) {
       // Add your action code here
       // ...
     },
@@ -604,10 +605,6 @@ export const machine = createMachine({
       return true;
     },
     isNextProposer: function (context, event) {
-      // Add your guard condition here
-      return true;
-    },
-    newValidatorIsSelf: function (context, event) {
       // Add your guard condition here
       return true;
     },
