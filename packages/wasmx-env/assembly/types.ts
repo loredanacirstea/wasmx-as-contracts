@@ -198,3 +198,36 @@ export class Event {
         this.attributes = attributes;
     }
 }
+
+// @ts-ignore
+@serializable
+export class StorageRange {
+	start_key: Base64String
+	end_key: Base64String
+	reverse: bool
+    constructor(start_key: Base64String, end_key: Base64String, reverse: bool) {
+        this.start_key = start_key
+        this.end_key = end_key
+        this.reverse = reverse
+    }
+}
+
+// @ts-ignore
+@serializable
+export class StoragePair {
+	key: Base64String
+	value: Base64String
+    constructor(key: Base64String, value: Base64String) {
+        this.key = key
+        this.value = value
+    }
+}
+
+// @ts-ignore
+@serializable
+export class StoragePairs {
+	values: StoragePair[]
+    constructor(values: StoragePair[]) {
+        this.values = values
+    }
+}

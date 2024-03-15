@@ -6,6 +6,8 @@ export declare function getBalance(address: ArrayBuffer): ArrayBuffer
 
 export declare function storageStore(key: ArrayBuffer, value: ArrayBuffer): void
 export declare function storageLoad(key: ArrayBuffer): ArrayBuffer
+export declare function storageLoadRange(key: ArrayBuffer): ArrayBuffer
+export declare function storageLoadRangePairs(key: ArrayBuffer): ArrayBuffer
 
 export declare function log(value: ArrayBuffer): void
 export declare function emitCosmosEvents(value: ArrayBuffer): void
@@ -21,7 +23,10 @@ export declare function call(data: ArrayBuffer): ArrayBuffer
 export declare function createAccount(data: ArrayBuffer): ArrayBuffer
 export declare function create2Account(data: ArrayBuffer): ArrayBuffer
 
+// TODO move to p2p and rename to wasmx-network
 export declare function grpcRequest(data: ArrayBuffer): ArrayBuffer
+
+// TODO move to a core/internal API; even wasmx-network
 export declare function startTimeout(req: ArrayBuffer): void
 
 export declare function sha256(value: ArrayBuffer): ArrayBuffer

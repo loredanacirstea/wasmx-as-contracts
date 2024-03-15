@@ -18,6 +18,9 @@ import {
     Create2AccountRequest,
     Create2AccountResponse,
     Event,
+    StorageRange,
+    StoragePairs,
+    StoragePair,
 } from './types';
 
 export function revert(message: string): void {
@@ -34,6 +37,31 @@ export function sstore(key: string, value: string): void {
 export function sload(key: string): string {
     const value = wasmx.storageLoad(String.UTF8.encode(key));
     return String.UTF8.decode(value);
+}
+
+/// storageLoadRangePairs
+
+export function sloadRangeStringKeys(keyStart: string, keyEnd: string, reverse: bool): Base64String[] {
+    return sloadRange(
+        encodeBase64(Uint8Array.wrap(String.UTF8.encode(keyStart))),
+        encodeBase64(Uint8Array.wrap(String.UTF8.encode(keyEnd))),
+        reverse,
+    )
+}
+
+export function sloadRange(keyStart: Base64String, keyEnd: Base64String, reverse: bool): Base64String[] {
+    const req = new StorageRange(keyStart, keyEnd, reverse)
+    const value = wasmx.storageLoadRange(String.UTF8.encode(JSON.stringify<StorageRange>(req)));
+    const responseStr = String.UTF8.decode(value);
+    return JSON.parse<Array<Base64String>>(responseStr);
+}
+
+export function sloadRangePairs(keyStart: Base64String, keyEnd: Base64String, reverse: bool): StoragePair[] {
+    const req = new StorageRange(keyStart, keyEnd, reverse)
+    const value = wasmx.storageLoadRangePairs(String.UTF8.encode(JSON.stringify<StorageRange>(req)));
+    const responseStr = String.UTF8.decode(value);
+    const response = JSON.parse<StoragePairs>(responseStr);
+    return response.values
 }
 
 export function getAccount(addr: Bech32String): Account {
