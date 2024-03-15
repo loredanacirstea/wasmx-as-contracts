@@ -31,6 +31,7 @@
     "wasmx-consensus": "file:../wasmx-consensus",
     "wasmx-consensus-utils": "file:../wasmx-consensus-utils",
     "wasmx-utils": "file:../wasmx-utils",
+    "wasmx-p2p": "file:../wasmx-p2p",
     "wasmx-raft": "file:../wasmx-raft",
     "wasmx-stake": "file:../wasmx-stake",
     "xstate-fsm-as": "file:../xstate-fsm-as"

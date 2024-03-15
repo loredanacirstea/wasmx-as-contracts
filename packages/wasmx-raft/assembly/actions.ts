@@ -21,12 +21,13 @@ import {
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
 import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, base64ToHex, hex64ToBase64 } from "wasmx-utils/assembly/utils";
-import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, AppendEntryResponse, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse, NodeInfo, MODULE_NAME, Node } from "./types_raft";
+import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, AppendEntryResponse, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse, NodeInfo, MODULE_NAME } from "./types_raft";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { appendLogEntry, getCommitIndex, getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getMatchIndexArray, getMempool, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, getVoteIndexArray, hasVotedFor, removeLogEntry, setCommitIndex, setCurrentNodeId, setCurrentState, setElectionTimeout, setLastApplied, setLastLogIndex, setMatchIndexArray, setMempool, setNextIndexArray, setNodeIPs, setTermId, setVoteIndexArray, setVotedFor } from "./storage";
 import * as cfg from "./config";
 import { callHookContract, checkValidatorsUpdate, getAllValidators,getConsensusParams, getCurrentValidator, getFinalBlock, getLastBlockIndex, getLastLog, getMajority, getRandomInRange, initChain, initializeIndexArrays, setFinalizedBlock, signMessage, updateConsensusParams, updateValidators, verifyMessage, verifyMessageByAddr } from "./action_utils";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
+import { NetworkNode } from "wasmx-p2p/assembly/types";
 
 // Docs: https://raft.github.io/raft.pdf
 
@@ -545,7 +546,7 @@ export function setupNode(
         if (peer.length != 2) {
             revert(`invalid node format; found: ${data.peers[i]}`)
         }
-        peers[i] = new NodeInfo(peer[0], new Node("","","",peer[1]), false);
+        peers[i] = new NodeInfo(peer[0], new NetworkNode("","","",peer[1]), false);
     }
     setNodeIPs(peers);
     initChain(data);

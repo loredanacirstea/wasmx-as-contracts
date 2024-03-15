@@ -2,13 +2,18 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64, decode } from "as-base64/assembly";
 import * as p2p from './p2p';
 import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
-import {WasmxResponse, StartNodeWithIdentityRequest, SendMessageRequest, ConnectPeerRequest, ConnectPeerResponse, SendMessageToPeersRequest, ConnectChatRoomRequest, SendMessageToChatRoomRequest } from "./types";
+import {WasmxResponse, StartNodeWithIdentityRequest, SendMessageRequest, ConnectPeerRequest, ConnectPeerResponse, SendMessageToPeersRequest, ConnectChatRoomRequest, SendMessageToChatRoomRequest, NetworkNode } from "./types";
 
 export function StartNodeWithIdentity(req: StartNodeWithIdentityRequest): WasmxResponse {
     const data = JSON.stringify<StartNodeWithIdentityRequest>(req);
     LoggerDebug("start node with identity", ["data", data])
     const resp = p2p.StartNodeWithIdentity(String.UTF8.encode(data));
     return JSON.parse<WasmxResponse>(String.UTF8.decode(resp));
+}
+
+export function GetNodeInfo(): NetworkNode {
+    const resp = p2p.GetNodeInfo();
+    return JSON.parse<NetworkNode>(String.UTF8.decode(resp));
 }
 
 export function CloseNode(): WasmxResponse {

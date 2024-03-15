@@ -37,7 +37,7 @@ import { calculateCurrentProposer, extractAppendEntry, getFinalBlock, getLastBlo
 import { extractUpdateNodeEntryAndVerify, removeNode } from "wasmx-raft/assembly/actions";
 import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembly/storage";
 import { getAllValidators, getNodeByAddress, getNodeIdByAddress, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
-import { Node, NodeInfo, NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft"
+import { NodeInfo, NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft"
 import { Commit, CurrentState, SignedMsgType, ValidatorProposalVote } from "./types_blockchain";
 
 // TODO add delta to timeouts each failed round
@@ -377,7 +377,7 @@ export function setupNode(
         const host = parts2[2]
         const port = parts2[4]
         const p2pid = parts2[6]
-        peers[i] = new NodeInfo(addr, new Node(p2pid, host, port, parts1[1]), false);
+        peers[i] = new NodeInfo(addr, new p2ptypes.NetworkNode(p2pid, host, port, parts1[1]), false);
     }
     setValidatorNodesInfo(peers);
     initChain(data);

@@ -3,6 +3,22 @@ import { Base64String, Bech32String } from 'wasmx-env/assembly/types';
 
 export const MODULE_NAME = "p2p"
 
+
+// @ts-ignore
+@serializable
+export class NetworkNode {
+  id: Base64String // p2p id
+  host: string
+  port: string
+  ip: string // can be empty if host & port are used
+  constructor(id: Base64String, host: string, port: string, ip: string) {
+    this.id = id
+    this.host = host
+    this.port = port
+    this.ip = ip
+  }
+}
+
 // @ts-ignore
 @serializable
 export class StartNodeRequest {

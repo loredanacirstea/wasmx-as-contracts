@@ -24,7 +24,7 @@ import {
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
 import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, base64ToHex, hex64ToBase64 } from "wasmx-utils/assembly/utils";
-import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse, NodeInfo, MODULE_NAME, Node, AppendEntryResponse } from "wasmx-raft/assembly/types_raft";
+import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse, NodeInfo, MODULE_NAME, AppendEntryResponse } from "wasmx-raft/assembly/types_raft";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { appendLogEntry, getCommitIndex, getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getMatchIndexArray, getMempool, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, getVoteIndexArray, hasVotedFor, removeLogEntry, setCommitIndex, setCurrentNodeId, setCurrentState, setElectionTimeout, setLastApplied, setLastLogIndex, setMatchIndexArray, setMempool, setNextIndexArray, setNodeIPs, setTermId, setVoteIndexArray, setVotedFor } from "wasmx-raft/assembly/storage";
 import * as cfg from "wasmx-raft/assembly/config";
@@ -113,7 +113,7 @@ export function setupNode(
         const host = parts2[2]
         const port = parts2[4]
         const p2pid = parts2[6]
-        peers[i] = new NodeInfo(addr, new Node(p2pid, host, port, parts1[1]), false);
+        peers[i] = new NodeInfo(addr, new p2ptypes.NetworkNode(p2pid, host, port, parts1[1]), false);
     }
     setNodeIPs(peers);
     initChain(data);

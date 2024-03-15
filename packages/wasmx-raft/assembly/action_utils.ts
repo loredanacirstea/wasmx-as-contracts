@@ -11,7 +11,7 @@ import {
 } from 'wasmx-env/assembly/types';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as staking from "wasmx-stake/assembly/types";
-import { LogEntry, MODULE_NAME, Node, NodeInfo } from "./types_raft";
+import { LogEntry, MODULE_NAME, NodeInfo } from "./types_raft";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { getCurrentState, getLastLogIndex, getLogEntryObj, getNodeIPs, setCurrentState, setMatchIndexArray, setNextIndexArray } from "./storage";
 import * as cfg from "./config";

@@ -27,8 +27,9 @@ import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
 import { appendLogEntry, getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLogIndex, getLogEntryObj, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, removeLogEntry, setCurrentState, setLastLogIndex, setLogEntryAggregate, setNextIndexArray, setNodeIPs, setTermId } from "./action_utils";
-import { Node, NodeInfo, NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft";
+import { NodeInfo, NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft";
 import { verifyMessage } from "wasmx-raft/assembly/action_utils";
+import { NetworkNode } from "wasmx-p2p/assembly/types";
 
 // guards
 
@@ -188,7 +189,7 @@ export function setupNode(
         if (peer.length != 2) {
             revert(`invalid node format; found: ${data.peers[i]}`)
         }
-        peers[i] = new NodeInfo(peer[0], new Node("","","",peer[1]), false);
+        peers[i] = new NodeInfo(peer[0], new NetworkNode("","","",peer[1]), false);
     }
     setNodeIPs(peers);
     initChain(data);

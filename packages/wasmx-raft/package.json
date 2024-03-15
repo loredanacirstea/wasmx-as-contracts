@@ -30,6 +30,7 @@
     "wasmx-consensus": "file:../wasmx-consensus",
     "wasmx-consensus-utils": "file:../wasmx-consensus-utils",
     "wasmx-env": "file:../wasmx-env",
+    "wasmx-p2p": "file:../wasmx-p2p",
     "wasmx-stake": "file:../wasmx-stake",
     "wasmx-utils": "file:../wasmx-utils",
     "xstate-fsm-as": "file:../xstate-fsm-as"
