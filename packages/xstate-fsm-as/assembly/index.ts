@@ -7,8 +7,8 @@ import {
   setup,
 } from './machine';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { CallDataRun, getCallDataWrap, getInterpreterCalldata } from './calldata';
-import { arrayBufferToU8Array } from 'wasmx-utils/assembly/utils';
+import { CallData, CallDataRun, getCallDataWrap, getInterpreterCalldata } from './calldata';
+import { arrayBufferToU8Array, base64ToString, uint8ArrayToHex } from 'wasmx-utils/assembly/utils';
 import {
   EventObject,
   MODULE_NAME,
@@ -19,6 +19,7 @@ import {
   getContextValueInternal,
 } from './storage';
 import { LoggerDebug, LoggerInfo, revert } from './utils';
+import { Base64String } from "wasmx-env/assembly/types";
 
 export function wasmx_env_2(): void {}
 export function wasmx_consensus_json_1(): void {}
@@ -87,4 +88,53 @@ export function StartNodeInternal(config: MachineExternal): void {
   LoggerInfo("emit start event", ["module", MODULE_NAME])
   const _event = new EventObject("start", []);
   runInternal(config, _event);
+}
+
+export function p2pmsg(): void {
+  const icalld = getInterpreterCalldata();
+  const configBz = icalld[0];
+  const calldBz = icalld[1];
+  const config = JSON.parse<MachineExternal>(String.UTF8.decode(configBz));
+  const p2pmsg = JSON.parse<P2PMessage>(String.UTF8.decode(calldBz));
+
+  LoggerDebug("p2pmsg", ["room", p2pmsg.roomId, "sender_id", p2pmsg.sender.id, "sender_ip", p2pmsg.sender.ip])
+
+  const calldata = JSON.parse<CallData>(base64ToString(p2pmsg.message))
+
+  let result: ArrayBuffer = new ArrayBuffer(0);
+  const event = calldata.run!.event;
+  const _event = new EventObject(event.type, event.params);
+  runInternal(config, _event);
+  // we may have set the return data during execution
+  result = wasmx.getFinishData();
+}
+
+// @ts-ignore
+@serializable
+export class NetworkNode {
+  id: Base64String // p2p id
+  host: string
+  port: string
+  ip: string // can be empty if host & port are used
+  constructor(id: Base64String, host: string, port: string, ip: string) {
+    this.id = id
+    this.host = host
+    this.port = port
+    this.ip = ip
+  }
+}
+
+// @ts-ignore
+@serializable
+export class P2PMessage {
+    roomId: string
+    message:   Base64String
+    timestamp: Date
+	  sender: NetworkNode
+    constructor(roomId: string, message: string, timestamp: Date, sender: NetworkNode) {
+        this.roomId = roomId
+        this.message = message
+        this.timestamp = timestamp
+        this.sender = sender
+    }
 }
