@@ -7,17 +7,18 @@ import {
   setup,
 } from './machine';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { getCallDataWrap, getInterpreterCalldata } from './calldata';
+import { CallDataRun, getCallDataWrap, getInterpreterCalldata } from './calldata';
 import { arrayBufferToU8Array } from 'wasmx-utils/assembly/utils';
 import {
   EventObject,
+  MODULE_NAME,
   TimerArgs,
 } from './types';
 import {
   getCurrentState,
   getContextValueInternal,
 } from './storage';
-import { revert } from './utils';
+import { LoggerDebug, LoggerInfo, revert } from './utils';
 
 export function wasmx_env_2(): void {}
 export function wasmx_consensus_json_1(): void {}
@@ -47,6 +48,9 @@ export function main(): u8[] {
     } else if (calldata.setup !== null) {
       setup(config, calldata.setup!);
       result = new ArrayBuffer(0);
+    } else if (calldata.StartNode !== null) {
+      StartNodeInternal(config)
+      result = new ArrayBuffer(0);
     } else {
       const calldraw = wasmx.getCallData();
       let calldstr = String.UTF8.decode(calldraw)
@@ -67,3 +71,20 @@ export function eventual(): void {
   _eventual(config, _args);
 }
 
+// forward StartNode hook to "start" event
+export function StartNode(): void {
+  let result: ArrayBuffer = new ArrayBuffer(0);
+  const icalld = getInterpreterCalldata();
+  const configBz = icalld[0];
+  const config = JSON.parse<MachineExternal>(String.UTF8.decode(configBz));
+  StartNodeInternal(config)
+  // we may have set the return data during execution
+  result = wasmx.getFinishData();
+  wasmx.finish(result);
+}
+
+export function StartNodeInternal(config: MachineExternal): void {
+  LoggerInfo("emit start event", ["module", MODULE_NAME])
+  const _event = new EventObject("start", []);
+  runInternal(config, _event);
+}

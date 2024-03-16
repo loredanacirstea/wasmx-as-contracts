@@ -22,12 +22,21 @@ export class InterpreterCallData {
 
 // @ts-ignore
 @serializable
+export class StartNodeCalld {
+    data: Base64String = ""
+}
+
+// @ts-ignore
+@serializable
 export class CallData {
     setup: string | null = null;
     instantiate: CallDataInstantiate | null = null;
     getCurrentState: CallDataGetCurrentState | null = null;
     getContextValue: CallDataGetContextValue | null = null;
     run: CallDataRun | null = null;
+
+    // consensusless hooks
+    StartNode: StartNodeCalld | null = null;
 }
 
 // @ts-ignore
