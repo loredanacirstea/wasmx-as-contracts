@@ -130,3 +130,18 @@ export class SendMessageToChatRoomRequest {
 // @ts-ignore
 @serializable
 export class SendMessageToChatRoomResponse {}
+
+// @ts-ignore
+@serializable
+export class P2PMessage {
+    roomId: string
+    message:   Base64String
+    timestamp: Date
+	sender: NetworkNode
+    constructor(roomId: string, message: string, timestamp: Date, sender: NetworkNode) {
+        this.roomId = roomId
+        this.message = message
+        this.timestamp = timestamp
+        this.sender = sender
+    }
+}
