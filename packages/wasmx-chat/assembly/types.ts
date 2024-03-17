@@ -74,3 +74,16 @@ export class NodeInfo {
         this.node = node
     }
 }
+
+// @ts-ignore
+@serializable
+export class QueryGetRooms {}
+
+// @ts-ignore
+@serializable
+export class QueryGetMessages {
+    roomId: string
+    constructor(roomId: string) {
+        this.roomId = roomId
+    }
+}

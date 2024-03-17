@@ -12,7 +12,6 @@ export function wasmx_p2p_1(): void {}
 export function instantiate(): void {}
 
 export function main(): void {
-  console.log("--chat main")
   // TODO check allowed caller!! is an authority
   // extract this in a common module package
 
@@ -23,10 +22,16 @@ export function main(): void {
   // } else
   if (calld.SendMessage !== null) {
     actions.sendMessage(calld.SendMessage!);
+  } else if (calld.JoinRoom !== null) {
+    actions.joinRoom(calld.JoinRoom!);
   } else if (calld.ReceiveMessage !== null) {
     actions.receiveMessage(calld.ReceiveMessage!);
   } else if (calld.StartNode !== null) {
     StartNode();
+  } else if (calld.GetRooms !== null) {
+    result = actions.GetRooms();
+  } else if (calld.GetMessages !== null) {
+    result = actions.GetMessages(calld.GetMessages!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)

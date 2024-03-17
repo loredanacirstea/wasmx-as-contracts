@@ -2,8 +2,8 @@ import { JSON } from "json-as/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as p2pw from "wasmx-p2p/assembly/p2p_wrap";
 import * as p2ptypes from "wasmx-p2p/assembly/types";
-import { ChatMessage, ChatRoom, MsgCreateRoom, MsgJoinRoom, MsgReceiveMessage, MsgSendMessage, PROTOCOL_ID } from "./types";
-import { appendMessage, getRoom, getRooms, setRoom } from "./storage";
+import { ChatMessage, ChatRoom, MsgCreateRoom, MsgJoinRoom, MsgReceiveMessage, MsgSendMessage, QueryGetMessages, QueryGetRooms } from "./types";
+import { appendMessage, getMessages, getRoom, getRooms, setRoom } from "./storage";
 import { LoggerInfo, revert } from "./utils";
 
 export function createRoom(req: MsgCreateRoom): void {
@@ -20,6 +20,19 @@ export function joinRoom(req: MsgJoinRoom): void {
         revert(`room already exists with id: ${req.roomId}`)
     }
     setRoom(new ChatRoom(req.roomId, []));
+    const protocolId = wasmxw.getAddress()
+    p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, req.roomId))
+    LoggerInfo("connected to chat room:", ["id", req.roomId])
+}
+
+export function GetRooms(): ArrayBuffer {
+    const rooms = getRooms("", "")
+    return String.UTF8.encode(JSON.stringify<ChatRoom[]>(rooms))
+}
+
+export function GetMessages(req: QueryGetMessages): ArrayBuffer {
+    const values = getMessages(req.roomId, 0, 10)
+    return String.UTF8.encode(JSON.stringify<ChatMessage[]>(values))
 }
 
 export function start(): void {
@@ -30,14 +43,14 @@ export function start(): void {
         roomIds[i] = rooms[i].roomId
         p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, rooms[i].roomId))
     }
-    LoggerInfo("connected to rooms:", ["rooms", roomIds.join(",")])
+    LoggerInfo("connected to chat rooms:", ["rooms", roomIds.join(",")])
 }
 
 export function sendMessage(req: MsgSendMessage): void {
     const node = p2pw.GetNodeInfo();
     const msg = new ChatMessage(req.roomId, req.message, new Date(Date.now()), node)
     const contract = wasmxw.getAddress()
-    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, req.message, PROTOCOL_ID, req.roomId))
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, req.message, contract, req.roomId))
     appendMessage(req.roomId, msg)
 }
 

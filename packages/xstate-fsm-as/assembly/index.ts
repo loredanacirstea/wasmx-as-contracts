@@ -90,6 +90,7 @@ export function StartNodeInternal(config: MachineExternal): void {
   runInternal(config, _event);
 }
 
+// TODO forward p2p received messages to the p2p endpoint of the contract library
 export function p2pmsg(): void {
   const icalld = getInterpreterCalldata();
   const configBz = icalld[0];

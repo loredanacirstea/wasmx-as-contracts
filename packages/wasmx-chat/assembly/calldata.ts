@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { MsgCreateRoom, MsgJoinRoom, MsgReceiveMessage, MsgSendMessage } from './types';
+import { MsgCreateRoom, MsgJoinRoom, MsgReceiveMessage, MsgSendMessage, QueryGetMessages, QueryGetRooms } from './types';
 import { Base64String } from "wasmx-env/assembly/types";
 
 // @ts-ignore
@@ -16,6 +16,10 @@ export class CallData {
     JoinRoom: MsgJoinRoom | null = null;
     SendMessage: MsgSendMessage | null = null;
     ReceiveMessage: MsgReceiveMessage | null = null;
+
+    // queries
+    GetRooms: QueryGetRooms | null = null;
+    GetMessages: QueryGetMessages | null = null;
 
     // consensusless hooks
     StartNode: StartNodeCalld | null = null;

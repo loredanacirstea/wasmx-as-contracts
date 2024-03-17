@@ -233,7 +233,6 @@ export function receiveUpdateNodeResponse(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    console.log("--receiveUpdateNodeResponse--")
     receiveUpdateNodeResponseInternal(params, event, PROTOCOL_ID)
 }
 
