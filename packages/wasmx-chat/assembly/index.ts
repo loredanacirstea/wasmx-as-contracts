@@ -4,6 +4,7 @@ import { getCallDataWrap } from './calldata';
 import * as actions from "./actions";
 import { LoggerInfo, revert } from "./utils";
 import { MODULE_NAME, MsgReceiveMessage } from "./types";
+import { base64ToString } from "wasmx-utils/assembly/utils";
 
 export function wasmx_env_2(): void {}
 
@@ -49,5 +50,6 @@ export function p2pmsg(): void {
   const calldraw = wasmx.getCallData();
   let calldstr = String.UTF8.decode(calldraw)
   const req = JSON.parse<MsgReceiveMessage>(calldstr);
+  req.message = base64ToString(req.message);
   actions.receiveMessage(req);
 }

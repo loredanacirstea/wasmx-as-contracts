@@ -2,6 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { base64ToString, parseInt64 } from "wasmx-utils/assembly/utils";
 import { ChatMessage, ChatRoom } from "./types";
+import { BigInt } from "wasmx-env/assembly/bn";
 
 const ROOM_COUNT_KEY = "room_count"
 const ROOM_KEY = "rooms_"
@@ -21,7 +22,7 @@ export function getMesssageCountKey(roomId: string): string {
 }
 
 export function getMesssageKey(roomId: string, index: i64): string {
-    return MSG_KEY + roomId + "_" + index.toString()
+    return MSG_KEY + roomId + "_" + BigInt.fromU64(u64(index)).toString(16, 8, false, false)
 }
 
 export function getMessageCount(roomId: string): i64 {
@@ -51,10 +52,14 @@ export function appendMessage(roomId: string, message: ChatMessage): void {
 }
 
 export function getMessages(roomId: string, startIndex: i64, endIndex: i64): ChatMessage[] {
-    const values = wasmxw.sloadRangeStringKeys(getMesssageKey(roomId, startIndex), getMesssageKey(roomId, endIndex), false)
-    const msgs: ChatMessage[] = new Array<ChatMessage>(values.length);
+    const startKey = getMesssageKey(roomId, startIndex);
+    if (endIndex == 0) endIndex = getMessageCount(roomId);
+    const endKey = getMesssageKey(roomId, endIndex);
+    const values = wasmxw.sloadRangeStringKeys(startKey, endKey, false)
+    const msgs: ChatMessage[] = [];
     for (let i = 0; i < values.length; i++) {
-        msgs[i] = JSON.parse<ChatMessage>(base64ToString(values[i]))
+        const msg = JSON.parse<ChatMessage>(base64ToString(values[i]))
+        msgs.push(msg);
     }
     return msgs
 }
@@ -80,7 +85,10 @@ export function getRoom(roomId: string): ChatRoom | null {
 }
 
 export function getRooms(startId: string, endId: string): ChatRoom[] {
-    const values = wasmxw.sloadRangeStringKeys(startId, endId, false)
+    let startKey = getRoomKey(startId);
+    let endKey = getRoomKey(endId);
+    if (endId == "") endKey = "";
+    const values = wasmxw.sloadRangeStringKeys(startKey, endKey, false)
     const rooms: ChatRoom[] = new Array<ChatRoom>(values.length);
     for (let i = 0; i < values.length; i++) {
         rooms[i] = JSON.parse<ChatRoom>(base64ToString(values[i]))

@@ -954,7 +954,9 @@ export class tally {
     static toString(a: tally, radix: u32 = 0, byteLength: i32 = 0, littleEndian: bool = false, usePrefix: bool = true): string {
         if (radix == 16) {
             let hex = u8ArrayToHex(a.toU8ArrayBe())
-            hex = processZeros(hex, byteLength);
+            if (byteLength > 0) {
+                hex = processZeros(hex, byteLength);
+            }
             if (usePrefix) return "0x" + hex;
             return hex;
         }
@@ -1058,9 +1060,12 @@ export function hexToU8(value: string): u8[] {
 }
 
 function processZeros(value: string, byteLength: i32): string {
+    if (byteLength == 0) return value;
     const hexlen = byteLength * 2
     if (hexlen > 0 && hexlen == value.length) return value;
+    // case value needs to be padded
     if (hexlen > 0 && hexlen > value.length) return "0".repeat(hexlen - value.length) + value;
+    // find index of first non-zero hex digit
     let ndx = -1
     for (let i = 0; i < value.length; i++) {
         if (value.slice(i, i+1) != "0") {
@@ -1068,11 +1073,9 @@ function processZeros(value: string, byteLength: i32): string {
             break;
         }
     }
-    if (ndx == -1) return "0";
-    if (hexlen > 0) {
-        ndx = i32(Math.max(ndx, value.length - hexlen))
-    }
+    if (ndx == -1) return "0".repeat(hexlen);
     if (ndx == 0) return value;
-    if (ndx == (value.length - 1)) return "0" + value.slice(ndx)
+
+    ndx = i32(Math.min(ndx, value.length - hexlen))
     return value.slice(ndx);
 }

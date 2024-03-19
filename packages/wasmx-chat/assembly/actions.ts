@@ -31,7 +31,7 @@ export function GetRooms(): ArrayBuffer {
 }
 
 export function GetMessages(req: QueryGetMessages): ArrayBuffer {
-    const values = getMessages(req.roomId, 0, 10)
+    const values = getMessages(req.roomId, 0, 0)
     return String.UTF8.encode(JSON.stringify<ChatMessage[]>(values))
 }
 
