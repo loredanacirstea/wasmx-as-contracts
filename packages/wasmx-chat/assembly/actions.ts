@@ -6,14 +6,6 @@ import { ChatMessage, ChatRoom, MsgCreateRoom, MsgJoinRoom, MsgReceiveMessage, M
 import { appendMessage, getMessages, getRoom, getRooms, setRoom } from "./storage";
 import { LoggerInfo, revert } from "./utils";
 
-export function createRoom(req: MsgCreateRoom): void {
-    const room = getRoom(req.roomId)
-    if (room != null) {
-        revert(`room already exists with id: ${req.roomId}`)
-    }
-    setRoom(new ChatRoom(req.roomId, []));
-}
-
 export function joinRoom(req: MsgJoinRoom): void {
     const room = getRoom(req.roomId)
     if (room != null) {

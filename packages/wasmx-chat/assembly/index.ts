@@ -13,14 +13,8 @@ export function wasmx_p2p_1(): void {}
 export function instantiate(): void {}
 
 export function main(): void {
-  // TODO check allowed caller!! is an authority
-  // extract this in a common module package
-
   let result: ArrayBuffer = new ArrayBuffer(0)
   const calld = getCallDataWrap();
-  // if (calld.CreateRoom !== null) {
-  //   actions.createRoom(calld.CreateRoom!);
-  // } else
   if (calld.SendMessage !== null) {
     actions.sendMessage(calld.SendMessage!);
   } else if (calld.JoinRoom !== null) {
