@@ -392,3 +392,32 @@ export class SignedTransaction { // TxRaw
         this.signatures = signatures
     }
 }
+
+
+// @ts-ignore
+@serializable
+export class PageRequest {
+    key: u8
+    offset: u64
+    limit: u64
+    count_total: bool
+    reverse: bool
+    constructor( key: u8, offset: u64, limit: u64, count_total: bool, reverse: bool) {
+        this.key = key
+        this.offset = offset
+        this.limit = limit
+        this.count_total = count_total
+        this.reverse = reverse
+    }
+}
+
+// @ts-ignore
+@serializable
+export class PageResponse {
+    // next_key: Base64String
+    total: u64
+    constructor(total: u64) {
+        // this.next_key = next_key
+        this.total = total
+    }
+}

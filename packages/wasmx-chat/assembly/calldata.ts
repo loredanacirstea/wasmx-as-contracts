@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { MsgCreateRoom, MsgJoinRoom, MsgReceiveMessage, MsgSendMessage, QueryGetMessages, QueryGetRooms } from './types';
+import { MsgJoinRoom, MsgSendMessage, QueryGetBlock, QueryGetBlocks, QueryGetMessage, QueryGetMessages, QueryGetRooms } from './types';
 import { Base64String } from "wasmx-env/assembly/types";
 
 // @ts-ignore
@@ -17,6 +17,9 @@ export class CallData {
     // queries
     GetRooms: QueryGetRooms | null = null;
     GetMessages: QueryGetMessages | null = null;
+    GetMessage: QueryGetMessage | null = null;
+    GetBlocks: QueryGetBlocks | null = null;
+    GetBlock: QueryGetBlock | null = null;
 
     // consensusless hooks
     StartNode: StartNodeCalld | null = null;
@@ -25,10 +28,8 @@ export class CallData {
 // @ts-ignore
 @serializable
 export class CallDataInternal {
-    CreateRoom: MsgCreateRoom | null = null;
     JoinRoom: MsgJoinRoom | null = null;
     SendMessage: MsgSendMessage | null = null;
-    ReceiveMessage: MsgReceiveMessage | null = null;
 }
 
 export function getCallDataWrap(): CallData {

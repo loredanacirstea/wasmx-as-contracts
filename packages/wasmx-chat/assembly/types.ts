@@ -1,5 +1,5 @@
 import { JSON } from "json-as/assembly";
-import { Bech32String } from "wasmx-env/assembly/types";
+import { Base64String, Bech32String, PageRequest } from "wasmx-env/assembly/types";
 import { NetworkNode } from "wasmx-p2p/assembly/types";
 
 export const MODULE_NAME = "chat"
@@ -21,9 +21,13 @@ export class NodeInfo {
 export class ChatRoom {
     roomId: string
     peers: NodeInfo[]
-    constructor(roomId: string, peers: NodeInfo[]) {
+    last_block_height: i64
+    last_block_hash: Base64String
+    constructor(roomId: string, peers: NodeInfo[], last_block_height: i64, last_block_hash: Base64String) {
         this.roomId = roomId
         this.peers = peers
+        this.last_block_height = last_block_height
+        this.last_block_hash = last_block_hash
     }
 }
 
@@ -39,15 +43,6 @@ export class ChatMessage {
         this.message = message
         this.timestamp = timestamp
         this.sender = sender
-    }
-}
-
-// @ts-ignore
-@serializable
-export class MsgCreateRoom {
-    roomId: string
-    constructor(roomId: string) {
-        this.roomId = roomId
     }
 }
 
@@ -94,7 +89,68 @@ export class QueryGetRooms {}
 @serializable
 export class QueryGetMessages {
     roomId: string
-    constructor(roomId: string) {
+    pagination: PageRequest | null
+    constructor(roomId: string, pagination: PageRequest | null) {
         this.roomId = roomId
+        this.pagination = pagination
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryGetMessage {
+    roomId: string
+    index: i64
+    constructor(roomId: string, index: i64) {
+        this.roomId = roomId
+        this.index = index
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryGetBlocks {
+    roomId: string
+    pagination: PageRequest
+    constructor(roomId: string, pagination: PageRequest) {
+        this.roomId = roomId
+        this.pagination = pagination;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryGetBlock {
+    roomId: string
+    index: i64
+    constructor(roomId: string, index: i64) {
+        this.roomId = roomId
+        this.index = index
+    }
+}
+
+// @ts-ignore
+@serializable
+export class ChatHeader {
+    height: i64
+    time: Date
+    parent_hash: Base64String
+    data_hash: Base64String // transactions
+    constructor(height: i64, time: Date, parent_hash: Base64String, data_hash: Base64String) {
+        this.height = height
+        this.time = time
+        this.parent_hash = parent_hash
+        this.data_hash = data_hash
+    }
+}
+
+// @ts-ignore
+@serializable
+export class ChatBlock {
+    header: ChatHeader
+    data: Base64String // transaction
+    constructor(header: ChatHeader, data: Base64String) {
+        this.header = header
+        this.data = data
     }
 }

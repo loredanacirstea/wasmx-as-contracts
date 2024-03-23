@@ -1,13 +1,12 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { base64ToString } from "wasmx-utils/assembly/utils";
 import { Base64String, TxMessage, WasmxExecutionMessage } from "wasmx-env/assembly/types";
-import { decode as base64decode } from "as-base64/assembly"
-import { CallData, CallDataInternal, getCallDataInternal, getCallDataWrap } from './calldata';
+import { CallDataInternal, getCallDataInternal, getCallDataWrap } from './calldata';
 import * as actions from "./actions";
 import { LoggerInfo, revert } from "./utils";
-import { MODULE_NAME, MsgReceiveMessage } from "./types";
+import { ChatBlock, MODULE_NAME, MsgReceiveMessage } from "./types";
+import { parseTx } from "./block";
 
 export function wasmx_env_2(): void {}
 
@@ -27,6 +26,12 @@ export function main(): void {
     result = actions.GetRooms();
   } else if (calld.GetMessages !== null) {
     result = actions.GetMessages(calld.GetMessages!);
+  } else if (calld.GetBlocks !== null) {
+    result = actions.GetBlocks(calld.GetBlocks!);
+  } else if (calld.GetBlock !== null) {
+    result = actions.GetBlock(calld.GetBlock!);
+  } else if (calld.GetMessage !== null) {
+    result = actions.GetMessage(calld.GetMessage!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)
@@ -45,27 +50,25 @@ export function p2pmsg(): void {
   let calldstr = String.UTF8.decode(calldraw)
   const req = JSON.parse<MsgReceiveMessage>(calldstr);
   req.message = base64ToString(req.message);
-  actions.receiveMessage(req);
+  const block = JSON.parse<ChatBlock>(req.message)
+  const ctx = parseTx(block.data);
+  if (!ctx) return;
+  const calld = getCallDataInternal(base64ToString(ctx.msg.data));
+  actions.receiveMessage(ctx, block, req, calld);
 }
 
 function handleTx(tx: Base64String): void {
-  const decoded = wasmxw.decodeCosmosTxToJson(base64decode(tx).buffer);
-  if (decoded.body.messages.length == 0) return;
-  const msg = decoded.body.messages[0]
-  if (msg.contract != wasmxw.getAddress()) {
-    revert(`${MODULE_NAME} cannot handle tx sent to ${msg.contract}`);
-  }
+  const msg = parseTx(tx);
+  if (!msg) return;
   const calld = getCallDataInternal(base64ToString(msg.msg.data));
-  handleMessage(msg, calld);
+  handleMessage(msg, tx, calld);
 }
 
-function handleMessage(ctx: TxMessage, calld: CallDataInternal): void {
+function handleMessage(ctx: TxMessage, tx: Base64String, calld: CallDataInternal): void {
   if (calld.SendMessage !== null) {
-    actions.sendMessage(ctx, calld.SendMessage!);
+    actions.sendMessage(ctx, tx, calld.SendMessage!);
   } else if (calld.JoinRoom !== null) {
-    actions.joinRoom(ctx, calld.JoinRoom!);
-  } else if (calld.ReceiveMessage !== null) {
-    actions.receiveMessage(calld.ReceiveMessage!);
+    actions.joinRoom(ctx, tx, calld.JoinRoom!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)

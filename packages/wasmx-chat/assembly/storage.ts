@@ -1,13 +1,17 @@
 import { JSON } from "json-as/assembly";
+import { encode as base64encode } from "as-base64/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { base64ToString, parseInt64 } from "wasmx-utils/assembly/utils";
-import { ChatMessage, ChatRoom } from "./types";
+import { ChatBlock, ChatRoom } from "./types";
 import { BigInt } from "wasmx-env/assembly/bn";
+import { Base64String } from "wasmx-env/assembly/types";
 
-const ROOM_COUNT_KEY = "room_count"
-const ROOM_KEY = "rooms_"
-const MSG_COUNT_KEY = "message_count_"
-const MSG_KEY = "messages_"
+export const ROOM_COUNT_KEY = "room_count"
+export const ROOM_KEY = "rooms_"
+export const BLOCK_KEY = "blocks_"
+export const MASTER_HASH_KEY = "masterhash_"
+
+export const EMPTY_HASH = "0000000000000000000000000000000000000000000000000000000000000000"
 
 export function getRoomCountKey(): string {
     return ROOM_COUNT_KEY;
@@ -17,48 +21,47 @@ export function getRoomKey(roomId: string): string {
     return ROOM_KEY + roomId;
 }
 
-export function getMesssageCountKey(roomId: string): string {
-    return MSG_COUNT_KEY + roomId;
+export function getBlockKey(roomId: string, index: i64): string {
+    return BLOCK_KEY + roomId + "_" + BigInt.fromU64(u64(index)).toString(16, 8, false, false)
 }
 
-export function getMesssageKey(roomId: string, index: i64): string {
-    return MSG_KEY + roomId + "_" + BigInt.fromU64(u64(index)).toString(16, 8, false, false)
+export function getMasterHashKey(): string {
+    return MASTER_HASH_KEY;
 }
 
-export function getMessageCount(roomId: string): i64 {
-    const value = wasmxw.sload(getMesssageCountKey(roomId))
-    if (value == "") return 0;
-    return parseInt64(value);
+export function setMasterHash(value: Base64String): void {
+    wasmxw.sstore(getMasterHashKey(), value);
 }
 
-export function setMessageCount(roomId: string, value: i64): void {
-    wasmxw.sstore(getMesssageCountKey(roomId), value.toString())
+export function getMasterHash(): Base64String {
+    const valuestr = wasmxw.sload(getMasterHashKey());
+    if (valuestr === "") return base64encode(Uint8Array.wrap(String.UTF8.encode(EMPTY_HASH)));
+    return valuestr
 }
 
-export function setMessage(roomId: string, index: i64, message: ChatMessage): void {
-    wasmxw.sstore(getMesssageKey(roomId, index), JSON.stringify<ChatMessage>(message));
+export function setBlock(roomId: string, index: i64, value: ChatBlock): void {
+    wasmxw.sstore(getBlockKey(roomId, index), JSON.stringify<ChatBlock>(value));
 }
 
-export function getMessage(roomId: string, index: i64): ChatMessage | null {
-    const valuestr = wasmxw.sload(getMesssageKey(roomId, index));
+export function getBlock(roomId: string, index: i64): ChatBlock | null {
+    const valuestr = wasmxw.sload(getBlockKey(roomId, index));
     if (valuestr === "") return null;
-    return JSON.parse<ChatMessage>(valuestr);
+    return JSON.parse<ChatBlock>(valuestr);
 }
 
-export function appendMessage(roomId: string, message: ChatMessage): void {
-    const index = getMessageCount(roomId)
-    wasmxw.sstore(getMesssageKey(roomId, index), JSON.stringify<ChatMessage>(message));
-    setMessageCount(roomId, index+1);
-}
+export function getBlocks(roomId: string, startIndex: i64, endIndex: i64): ChatBlock[] {
+    const room = getRoom(roomId);
+    if (!room) return [];
+    if (endIndex == 0 || endIndex > room.last_block_height) {
+        endIndex = room.last_block_height;
+    }
 
-export function getMessages(roomId: string, startIndex: i64, endIndex: i64): ChatMessage[] {
-    const startKey = getMesssageKey(roomId, startIndex);
-    if (endIndex == 0) endIndex = getMessageCount(roomId);
-    const endKey = getMesssageKey(roomId, endIndex);
+    const startKey = getBlockKey(roomId, startIndex);
+    const endKey = getBlockKey(roomId, endIndex + 1);
     const values = wasmxw.sloadRangeStringKeys(startKey, endKey, false)
-    const msgs: ChatMessage[] = [];
+    const msgs: ChatBlock[] = [];
     for (let i = 0; i < values.length; i++) {
-        const msg = JSON.parse<ChatMessage>(base64ToString(values[i]))
+        const msg = JSON.parse<ChatBlock>(base64ToString(values[i]))
         msgs.push(msg);
     }
     return msgs
