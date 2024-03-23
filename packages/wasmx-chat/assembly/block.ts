@@ -2,10 +2,29 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as base64decode } from "as-base64/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { ChatBlock, ChatHeader, ChatMessage, ChatRoom, MODULE_NAME } from './types';
-import { Base64String, TxMessage } from 'wasmx-env/assembly/types';
+import { Base64String, SignedTransaction, TxMessage } from 'wasmx-env/assembly/types';
 import { base64ToString, i64ToUint8ArrayBE } from "wasmx-utils/assembly/utils";
 import { revert } from "./utils";
 import { getCallDataInternal } from "./calldata";
+
+export function validateBlock(block: ChatBlock): bool {
+    const dataHash = getTxHash(block.data);
+    if (dataHash != block.header.data_hash) return false;
+
+    // verify tx signature
+    const tx = decodeTx(block.data)
+    if (tx.signatures.length == 0) return false;
+    // TODO verify tx signature
+    return true;
+}
+
+export function validateConsecutiveBlocks(block: ChatBlock, blockNext: ChatBlock): bool {
+    const blockHash = getBlockHeaderHash(block.header)
+    if (blockHash != blockNext.header.parent_hash) return false;
+    if ((block.header.height + 1) != blockNext.header.height) return false;
+    if (block.header.time.getTime() > blockNext.header.time.getTime()) return false;
+    return true;
+}
 
 export function buildBlock(room: ChatRoom, tx: Base64String): ChatBlock {
     const dataHash = getTxHash(tx);
@@ -25,6 +44,10 @@ export function getBlockHeaderHash(header: ChatHeader): Base64String {
         encodeBase64(Uint8Array.wrap(String.UTF8.encode(header.time.toISOString()))),
     ]
     return wasmxw.MerkleHash(data);
+}
+
+export function decodeTx(tx: Base64String): SignedTransaction {
+    return wasmxw.decodeCosmosTxToJson(base64decode(tx).buffer);
 }
 
 export function parseTx(tx: Base64String): TxMessage | null {
