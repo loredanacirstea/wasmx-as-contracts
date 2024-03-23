@@ -21,6 +21,7 @@ import {
     StorageRange,
     StoragePairs,
     StoragePair,
+    SignedTransaction,
 } from './types';
 
 export function revert(message: string): void {
@@ -229,4 +230,12 @@ export function executeCosmosMsg(msg: string, moduleName: string = ""): CallResp
     const responsebz = wasmx.executeCosmosMsg(String.UTF8.encode(msg));
     LoggerDebug(`${moduleName}:wasmx_env`, "executeCosmosMsg", ["response", String.UTF8.decode(responsebz)])
     return JSON.parse<CallResponse>(String.UTF8.decode(responsebz));
+}
+
+export function decodeCosmosTxToJson(data: ArrayBuffer): SignedTransaction {
+    const result = wasmx.decodeCosmosTxToJson(data)
+    // encoded JSON object
+    let resultstr = String.UTF8.decode(result)
+    resultstr = resultstr.replaceAll(`"anytype"`, `"@type"`)
+    return JSON.parse<SignedTransaction>(resultstr);
 }

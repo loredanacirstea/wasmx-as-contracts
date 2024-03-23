@@ -231,3 +231,164 @@ export class StoragePairs {
         this.values = values
     }
 }
+
+// @ts-ignore
+@serializable
+export class PublicKey {
+    anytype: string
+    key: Base64String
+    constructor(type: string, key: Base64String) {
+        this.anytype = type;
+        this.key = key
+    }
+
+    static toExternal(pk: PublicKey): string {
+        let data = JSON.stringify<PublicKey>(pk)
+        data = data.replaceAll(`"anytype"`, `"@type"`)
+        return data;
+    }
+
+    static fromExternal(value: string): PublicKey {
+        value = value.replaceAll(`"@type"`, `"anytype"`)
+        return JSON.parse<PublicKey>(value);
+    }
+}
+
+// @ts-ignore
+@serializable
+export class ModeInfoSingle {
+    mode: string
+    constructor(mode: string) {
+        this.mode = mode
+    }
+}
+
+// @ts-ignore
+@serializable
+export class ModeInfoMulti {
+    mode_infos: ModeInfo[]
+    constructor(mode_infos: ModeInfo[]) {
+        this.mode_infos = mode_infos
+    }
+}
+
+// @ts-ignore
+@serializable
+export class ModeInfo {
+    single: ModeInfoSingle | null
+    multi: ModeInfoMulti | null
+    constructor(single: ModeInfoSingle | null, multi: ModeInfoMulti | null) {
+        this.single = single
+        this.multi = multi
+    }
+}
+
+// @ts-ignore
+@serializable
+export class WasmxExecutionMessage {
+    data: Base64String
+    constructor(data: Base64String) {
+        this.data = data
+    }
+}
+
+// @ts-ignore
+@serializable
+export class TxMessage {
+    anytype: string
+    sender: Bech32String
+    contract: Bech32String
+    msg: WasmxExecutionMessage
+    funds: Coin[]
+    dependencies: string[]
+    constructor(anytype: string, sender: Bech32String, contract: Bech32String, msg: WasmxExecutionMessage, funds: Coin[], dependencies: string[]) {
+        this.anytype = anytype
+        this.sender = sender
+        this.contract = contract
+        this.msg = msg
+        this.funds = funds
+        this.dependencies = dependencies
+    }
+}
+
+// @ts-ignore
+@serializable
+export class TxBody {
+    messages: TxMessage[]
+    memo: string
+    timeout_height: u64
+    extension_options: Base64String[]
+    non_critical_extension_options: Base64String[]
+    constructor(messages: TxMessage[], memo: string, timeout_height: u64, extension_options: Base64String[], non_critical_extension_options: Base64String[]) {
+        this.messages = messages
+        this.memo = memo
+        this.timeout_height = timeout_height
+        this.extension_options = extension_options
+        this.non_critical_extension_options = non_critical_extension_options
+    }
+}
+
+// @ts-ignore
+@serializable
+export class SignerInfo {
+    public_key: PublicKey
+    mode_info: ModeInfo
+    sequence: u64
+    constructor(public_key: PublicKey, mode_info: ModeInfo, sequence: u64) {
+        this.public_key = public_key
+        this.mode_info = mode_info
+        this.sequence = sequence
+    }
+}
+
+// @ts-ignore
+@serializable
+export class Fee {
+    amount: Coin[]
+    gas_limit: u64
+    payer: Bech32String
+    granter: Bech32String
+    constructor(amount: Coin[], gas_limit: u64, payer: Bech32String, granter: Bech32String) {
+        this.amount = amount
+        this.gas_limit = gas_limit
+        this.payer = payer
+        this.granter = granter
+    }
+}
+
+// @ts-ignore
+@serializable
+export class Tip { // deprecated
+    amount: Coin[]
+    tipper: Bech32String
+    constructor(amount: Coin[], tipper: Bech32String) {
+        this.amount = amount
+        this.tipper = tipper
+    }
+}
+
+// @ts-ignore
+@serializable
+export class AuthInfo {
+    signer_infos: SignerInfo[]
+    fee: Fee | null
+    tip: Tip | null
+    constructor(signer_infos: SignerInfo[], fee: Fee | null, tip: Tip | null) {
+        this.signer_infos = signer_infos
+        this.fee = fee
+        this.tip = tip
+    }
+}
+
+// @ts-ignore
+@serializable
+export class SignedTransaction { // TxRaw
+    body: TxBody
+    auth_info: AuthInfo
+    signatures: Base64String[]
+    constructor(body: TxBody, auth_info: AuthInfo, signatures: Base64String[]) {
+        this.body = body
+        this.auth_info = auth_info
+        this.signatures = signatures
+    }
+}

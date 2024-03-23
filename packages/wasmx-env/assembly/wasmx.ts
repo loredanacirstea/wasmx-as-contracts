@@ -46,3 +46,5 @@ export declare function addr_canonicalize(value: ArrayBuffer): ArrayBuffer
 export declare function getAddressByRole(value: ArrayBuffer): ArrayBuffer
 
 export declare function executeCosmosMsg(value: ArrayBuffer): ArrayBuffer
+
+export declare function decodeCosmosTxToJson(value: ArrayBuffer): ArrayBuffer

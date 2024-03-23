@@ -12,10 +12,7 @@ export class StartNodeCalld {
 // @ts-ignore
 @serializable
 export class CallData {
-    CreateRoom: MsgCreateRoom | null = null;
-    JoinRoom: MsgJoinRoom | null = null;
-    SendMessage: MsgSendMessage | null = null;
-    ReceiveMessage: MsgReceiveMessage | null = null;
+    HandleTx: Base64String | null = null;
 
     // queries
     GetRooms: QueryGetRooms | null = null;
@@ -25,8 +22,21 @@ export class CallData {
     StartNode: StartNodeCalld | null = null;
 }
 
+// @ts-ignore
+@serializable
+export class CallDataInternal {
+    CreateRoom: MsgCreateRoom | null = null;
+    JoinRoom: MsgJoinRoom | null = null;
+    SendMessage: MsgSendMessage | null = null;
+    ReceiveMessage: MsgReceiveMessage | null = null;
+}
+
 export function getCallDataWrap(): CallData {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)
     return JSON.parse<CallData>(calldstr);
+}
+
+export function getCallDataInternal(data: string): CallDataInternal {
+    return JSON.parse<CallDataInternal>(data);
 }

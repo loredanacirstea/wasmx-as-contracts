@@ -5,15 +5,15 @@ import * as p2ptypes from "wasmx-p2p/assembly/types";
 import { ChatMessage, ChatRoom, MsgCreateRoom, MsgJoinRoom, MsgReceiveMessage, MsgSendMessage, NodeInfo, QueryGetMessages, QueryGetRooms } from "./types";
 import { appendMessage, getMessages, getRoom, getRooms, setRoom } from "./storage";
 import { LoggerInfo, revert } from "./utils";
+import { TxMessage } from "wasmx-env/assembly/types";
 
-export function joinRoom(req: MsgJoinRoom): void {
+export function joinRoom(ctx: TxMessage, req: MsgJoinRoom): void {
     const room = getRoom(req.roomId)
     if (room != null) {
         revert(`room already exists with id: ${req.roomId}`)
     }
     const node = p2pw.GetNodeInfo();
-    const address = wasmxw.getCaller();
-    const nodeInfo = new NodeInfo(address, node);
+    const nodeInfo = new NodeInfo(ctx.sender, node);
     setRoom(new ChatRoom(req.roomId, [nodeInfo]));
     const protocolId = wasmxw.getAddress()
     p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, req.roomId))
@@ -41,9 +41,8 @@ export function start(): void {
     LoggerInfo("connected to chat rooms:", ["rooms", roomIds.join(",")])
 }
 
-export function sendMessage(req: MsgSendMessage): void {
-    const address = wasmxw.getCaller();
-    const msg = new ChatMessage(req.roomId, req.message, new Date(Date.now()), address)
+export function sendMessage(ctx: TxMessage, req: MsgSendMessage): void {
+    const msg = new ChatMessage(req.roomId, req.message, new Date(Date.now()), ctx.sender)
     const contract = wasmxw.getAddress()
     p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, req.message, contract, req.roomId))
     appendMessage(req.roomId, msg)
