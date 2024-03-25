@@ -53,6 +53,7 @@ export function p2pmsg(): void {
   const block = JSON.parse<ChatBlock>(req.message)
   const ctx = parseTx(block.data);
   if (!ctx) return;
+  // TODO: verify tx signature
   const calld = getCallDataInternal(base64ToString(ctx.msg.data));
   actions.receiveMessage(ctx, block, req, calld);
 }

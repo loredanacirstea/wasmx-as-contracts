@@ -17,7 +17,7 @@ export function main(): void {
   if (calld.StoreConversation != null) {
     actions.storeConversation(calld.StoreConversation!);
   } else if (calld.VerifyConversation !== null) {
-    actions.verifyConversation(calld.VerifyConversation!);
+    result = actions.verifyConversation(calld.VerifyConversation!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)
