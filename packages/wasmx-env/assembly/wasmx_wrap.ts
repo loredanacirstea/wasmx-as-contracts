@@ -22,6 +22,7 @@ import {
     StoragePairs,
     StoragePair,
     SignedTransaction,
+    VerifyCosmosTxResponse,
 } from './types';
 
 export function revert(message: string): void {
@@ -238,4 +239,10 @@ export function decodeCosmosTxToJson(data: ArrayBuffer): SignedTransaction {
     let resultstr = String.UTF8.decode(result)
     resultstr = resultstr.replaceAll(`"anytype"`, `"@type"`)
     return JSON.parse<SignedTransaction>(resultstr);
+}
+
+export function verifyCosmosTx(encodedTx: Base64String): VerifyCosmosTxResponse {
+    const data = decodeBase64(encodedTx).buffer;
+    const result = wasmx.verifyCosmosTx(data)
+    return JSON.parse<VerifyCosmosTxResponse>(String.UTF8.decode(result));
 }

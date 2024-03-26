@@ -421,3 +421,14 @@ export class PageResponse {
         this.total = total
     }
 }
+
+// @ts-ignore
+@serializable
+export class VerifyCosmosTxResponse {
+    valid: bool
+    error: string
+    constructor(valid: bool, error: string) {
+        this.valid = valid
+        this.error = error
+    }
+}

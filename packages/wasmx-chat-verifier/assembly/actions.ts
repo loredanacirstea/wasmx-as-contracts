@@ -3,6 +3,7 @@ import { validateBlock, validateConsecutiveBlocks } from "wasmx-chat/assembly/bl
 import { MsgStoreConversation, QueryVerifyConversation } from "./types";
 import { revert } from "./utils";
 import { ChatBlock } from "wasmx-chat/assembly/types";
+import { VerifyCosmosTxResponse } from "wasmx-env/assembly/types";
 
 export function storeConversation(req: MsgStoreConversation): void {
     const valid = verifyConversationInternal(req.blocks);
@@ -22,16 +23,22 @@ export function verifyConversation(req: QueryVerifyConversation): ArrayBuffer {
     return arr.buffer;
 }
 
-export function verifyConversationInternal(blocks: ChatBlock[]): bool {
-    if (blocks.length == 0) return true;
+export function verifyConversationInternal(blocks: ChatBlock[]): VerifyCosmosTxResponse {
+    if (blocks.length == 0) {
+        return new VerifyCosmosTxResponse(true, "");
+    }
     let previousBlock = blocks[0]
-    if (!validateBlock(previousBlock)) return false;
+    const validResp = validateBlock(previousBlock)
+    if (!validResp.valid) {
+        return validResp
+    }
     for (let i = 1; i < blocks.length; i++) {
-        const valid = validateBlock(blocks[i])
-        if (!valid) return false;
-        if (!validateConsecutiveBlocks(previousBlock, blocks[i])) return false;
+        const validResp = validateBlock(blocks[i])
+        if (!validResp.valid) return validResp;
+        const validCR = validateConsecutiveBlocks(previousBlock, blocks[i]);
+        if (!validCR.valid) return validCR;
         previousBlock = blocks[i];
     }
-    return true;
+    return new VerifyCosmosTxResponse(true, "");
 }
 

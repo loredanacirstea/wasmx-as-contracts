@@ -1,5 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { base64ToString } from "wasmx-utils/assembly/utils";
 import { Base64String, TxMessage, WasmxExecutionMessage } from "wasmx-env/assembly/types";
 import { CallDataInternal, getCallDataInternal, getCallDataWrap } from './calldata';
@@ -53,7 +54,11 @@ export function p2pmsg(): void {
   const block = JSON.parse<ChatBlock>(req.message)
   const ctx = parseTx(block.data);
   if (!ctx) return;
-  // TODO: verify tx signature
+  // verify tx signature
+  const resp = wasmxw.verifyCosmosTx(block.data)
+  if (!resp.valid) {
+    revert(`invalid transaction signature: ${resp.error}`);
+  }
   const calld = getCallDataInternal(base64ToString(ctx.msg.data));
   actions.receiveMessage(ctx, block, req, calld);
 }

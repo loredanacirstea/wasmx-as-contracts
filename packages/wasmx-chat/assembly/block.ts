@@ -2,28 +2,38 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as base64decode } from "as-base64/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { ChatBlock, ChatHeader, ChatMessage, ChatRoom, MODULE_NAME } from './types';
-import { Base64String, SignedTransaction, TxMessage } from 'wasmx-env/assembly/types';
+import { Base64String, SignedTransaction, TxMessage, VerifyCosmosTxResponse } from 'wasmx-env/assembly/types';
 import { base64ToString, i64ToUint8ArrayBE } from "wasmx-utils/assembly/utils";
 import { revert } from "./utils";
 import { getCallDataInternal } from "./calldata";
 
-export function validateBlock(block: ChatBlock): bool {
+export function validateBlock(block: ChatBlock): VerifyCosmosTxResponse {
     const dataHash = getTxHash(block.data);
-    if (dataHash != block.header.data_hash) return false;
+    if (dataHash != block.header.data_hash) {
+        return new VerifyCosmosTxResponse(false, "invalid data_hash");
+    }
 
-    // verify tx signature
     const tx = decodeTx(block.data)
-    if (tx.signatures.length == 0) return false;
-    // TODO verify tx signature
-    return true;
+    if (tx.signatures.length == 0) {
+        return new VerifyCosmosTxResponse(false, "no signatures");
+    }
+    // verify tx signature
+    const resp = wasmxw.verifyCosmosTx(block.data)
+    return resp;
 }
 
-export function validateConsecutiveBlocks(block: ChatBlock, blockNext: ChatBlock): bool {
+export function validateConsecutiveBlocks(block: ChatBlock, blockNext: ChatBlock): VerifyCosmosTxResponse {
     const blockHash = getBlockHeaderHash(block.header)
-    if (blockHash != blockNext.header.parent_hash) return false;
-    if ((block.header.height + 1) != blockNext.header.height) return false;
-    if (block.header.time.getTime() > blockNext.header.time.getTime()) return false;
-    return true;
+    if (blockHash != blockNext.header.parent_hash) {
+        return new VerifyCosmosTxResponse(false, `parent_hash mismatch: expected ${blockHash}, received ${blockNext.header.parent_hash}`)
+    }
+    if ((block.header.height + 1) != blockNext.header.height) {
+        return new VerifyCosmosTxResponse(false, `height mismatch: expected ${block.header.height + 1}, received ${blockNext.header.height}`)
+    }
+    if (block.header.time.getTime() > blockNext.header.time.getTime()) {
+        return new VerifyCosmosTxResponse(false, `timestamp mismatch: expected ${block.header.time.getTime()} < ${blockNext.header.time.getTime()}`)
+    }
+    return new VerifyCosmosTxResponse(true, "");
 }
 
 export function buildBlock(room: ChatRoom, tx: Base64String): ChatBlock {
