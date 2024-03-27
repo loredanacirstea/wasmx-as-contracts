@@ -1,6 +1,31 @@
 import { JSON } from "json-as/assembly";
 import {HexString, Base64String, Bech32String} from 'wasmx-env/assembly/types';
 import { Version, BlockID } from 'wasmx-consensus/assembly/types_tendermint';
+import { BigInt } from "wasmx-env/assembly/bn";
+
+// @ts-ignore
+@serializable
+export class ValidatorQueueEntry {
+    address: Bech32String
+    index: i32
+    value: BigInt
+    constructor(address: Bech32String, index: i32, value: BigInt) {
+        this.address = address
+        this.index = index
+        this.value = value
+    }
+}
+
+// @ts-ignore
+@serializable
+export class GetProposerResponse {
+    proposerQueue: ValidatorQueueEntry[]
+    proposerIndex: i32
+    constructor(proposerQueue: ValidatorQueueEntry[], proposerIndex: i32) {
+        this.proposerQueue = proposerQueue
+        this.proposerIndex = proposerIndex
+    }
+}
 
 // @ts-ignore
 @serializable
@@ -25,6 +50,9 @@ export class CurrentState {
     lockedRound: i64
     validValue: i64
     validRound: i64
+    proposerQueue: ValidatorQueueEntry[]
+    proposerQueueTermId: i64
+    proposerIndex: i32
 
     constructor(chain_id: string, version: Version, app_hash: string, last_block_id: BlockID, last_commit_hash: string, last_results_hash: string, validator_address: HexString, validator_privkey: Base64String, validator_pubkey: Base64String,
     nextHeight: i64,
@@ -33,6 +61,9 @@ export class CurrentState {
     lockedRound: i64,
     validValue: i64,
     validRound: i64,
+    proposerQueue: ValidatorQueueEntry[],
+    proposerQueueTermId: i64,
+    proposerIndex: i32,
     ) {
         this.chain_id = chain_id
         this.version = version
@@ -49,6 +80,9 @@ export class CurrentState {
         this.lockedRound = lockedRound
         this.validValue = validValue
         this.validRound = validRound
+        this.proposerQueue = proposerQueue
+        this.proposerQueueTermId = proposerQueueTermId
+        this.proposerIndex = proposerIndex
     }
 }
 

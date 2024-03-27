@@ -22,18 +22,17 @@ import {
     EventObject,
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
-import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, base64ToHex, hex64ToBase64, stringToBase64, base64ToString } from "wasmx-utils/assembly/utils";
+import { parseInt32, stringToBase64, base64ToString } from "wasmx-utils/assembly/utils";
 import { BigInt } from "wasmx-env/assembly/bn";
-import { NodesSyncResponse, StateSyncRequest, StateSyncResponse } from "./sync_types";
+import { StateSyncRequest, StateSyncResponse } from "./sync_types";
 import { PROTOCOL_ID } from "./config";
-import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
-import { getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLog, getPrevoteArray, setPrevoteArray, getPrecommitArray, setPrecommitArray, getValidatorNodesInfo, setValidatorNodesInfo, setTermId, setCurrentProposer, getCurrentProposer, appendLogEntry, setLogEntryAggregate, setCurrentState, setLastLogIndex, getValidatorNodeCount, getLogEntryObj } from "./storage";
+import { getCurrentNodeId, getCurrentState, getPrevoteArray, setPrevoteArray, getPrecommitArray, setPrecommitArray, getValidatorNodesInfo, setValidatorNodesInfo, setTermId, appendLogEntry, setLogEntryAggregate, setCurrentState, setLastLogIndex, getValidatorNodeCount, getLogEntryObj } from "./storage";
 import { getP2PAddress } from "wasmx-raft-p2p/assembly/actions"
 import { callHookContract, setMempool, signMessage } from "wasmx-tendermint/assembly/actions"
 import { Mempool } from "wasmx-tendermint/assembly/types_blockchain";
 import * as cfg from "./config";
 import { AppendEntry, AppendEntryResponse, LogEntryAggregate, UpdateNodeRequest } from "./types";
-import { calculateCurrentProposer, extractAppendEntry, getFinalBlock, getLastBlockIndex, getLogEntryAggregate, getSelfNodeInfo, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
+import { getCurrentProposer, getFinalBlock, getLastBlockIndex, getLogEntryAggregate, getNextProposer, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
 import { extractUpdateNodeEntryAndVerify, removeNode } from "wasmx-raft/assembly/actions";
 import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembly/storage";
 import { getAllValidators, getNodeByAddress, getNodeIdByAddress, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
@@ -808,9 +807,19 @@ export function setRoundProposer(
     params: ActionParam[],
     event: EventObject,
 ): void {
+    const termId = getTermId();
+    const currentState = getCurrentState();
+
+    // >= ?? (sometimes we update termId from other nodes)
+    if (currentState.proposerQueueTermId == termId) return;
+
     const validators = getAllValidators();
-    const index = calculateCurrentProposer(validators);
-    setCurrentProposer(index);
+    const resp = getNextProposer(validators, currentState.proposerQueue);
+    currentState.proposerIndex = resp.proposerIndex;
+    currentState.proposerQueueTermId = termId;
+    currentState.proposerQueue = resp.proposerQueue;
+    setCurrentState(currentState);
+    LoggerDebug("new proposer set", ["validator_index", resp.proposerIndex.toString(), "termId", termId.toString()])
 }
 
 export function isNextProposer(

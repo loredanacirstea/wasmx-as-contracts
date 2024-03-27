@@ -49,8 +49,6 @@ export const NODE_UPDATE_UPDATE = 2
 
 export const STAKE_REDUCTION: u64 = 1000000000000
 
-export const CURRENT_PROPOSER_KEY = "current_proposer"
-
 // export const CHAT_ROOM_MEMPOOL =  "chat_room_mempool"
 // export const CHAT_ROOM_BLOCK_PROPOSAL =  "chat_room_block_proposal"
 // export const CHAT_ROOM_PREVOTE = "chat_room_prevote"

@@ -9,14 +9,14 @@ import * as staking from "wasmx-stake/assembly/types";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
-import { callContract, callHookContract, getNextProposer, getTotalStaked, updateConsensusParams, updateValidators } from "wasmx-tendermint/assembly/actions";
+import { callContract, callHookContract, getTotalStaked, updateConsensusParams, updateValidators } from "wasmx-tendermint/assembly/actions";
 import * as cfg from "./config";
 import { AppendEntry, LogEntryAggregate } from "./types";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getPrecommitArray, getPrevoteArray, getTermId, getValidatorNodeCount, getValidatorNodesInfo, removeLogEntry, setCurrentState, setPrecommitArray, setPrevoteArray } from "./storage";
 import { getAllValidators, signMessage } from "wasmx-raft/assembly/action_utils";
-import { CurrentState, ValidatorProposalVote } from "./types_blockchain";
+import { CurrentState, GetProposerResponse, ValidatorProposalVote, ValidatorQueueEntry } from "./types_blockchain";
 import { Base64String, Bech32String, CallRequest, CallResponse } from "wasmx-env/assembly/types";
 import { LOG_START } from "./config";
 import { NodeInfo } from "wasmx-raft/assembly/types_raft";
@@ -84,6 +84,7 @@ export function initChain(req: typestnd.InitChainSetup): void {
         req.validator_privkey,
         req.validator_pubkey,
         LOG_START + 1, "", 0, 0, 0, 0,
+        [], 0, 0,
     );
 
     const valuestr = JSON.stringify<CurrentState>(currentState);
@@ -150,13 +151,6 @@ export function prepareAppendEntryMessage(
     const senderaddr = getSelfNodeInfo().address
     const msgstr = `{"run":{"event":{"type":"receiveBlockProposal","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"},{"key": "sender","value":"${senderaddr}"}]}}}`
     return msgstr
-}
-
-export function calculateCurrentProposer(validators: staking.Validator[]): i32 {
-    const currentState = getCurrentState();
-    const totalStaked = getTotalStaked(validators);
-    const proposerIndex = getNextProposer(currentState.last_block_id.hash, totalStaked, validators);
-    return proposerIndex
 }
 
 export function isPrevoteAnyThreshold(): boolean {
@@ -435,4 +429,74 @@ export function getSelfNodeInfo(): NodeInfo {
     const nodeIps = getValidatorNodesInfo();
     const ourId = getCurrentNodeId();
     return nodeIps[ourId];
+}
+
+export function getCurrentProposer(): i32 {
+    const state = getCurrentState();
+    return state.proposerIndex;
+}
+
+export function isValidatorActive(validator: staking.Validator): bool {
+    if (validator.jailed) return false;
+    if (validator.status != staking.BondedS) return false;
+    return true
+}
+
+export function updateProposerQueue(validators: staking.Validator[], queue: ValidatorQueueEntry[]): ValidatorQueueEntry[] {
+    const m = new Map<Bech32String,i32>();
+
+    for (let i = 0; i < queue.length; i++) {
+        m.set(queue[i].address, i)
+    }
+    for (let i = 0; i < validators.length; i++) {
+        const v = validators[i];
+        const active = isValidatorActive(v);
+        // add current stake to this validator
+        if (m.has(v.operator_address)) {
+            const index = m.get(v.operator_address)
+            if (active) {
+                // @ts-ignore
+                queue[index].value += v.tokens
+            } else {
+                queue[index].value = BigInt.zero()
+            }
+            // we now remove this validator from the map
+            m.delete(v.operator_address)
+        } else {
+            // this is a new validator
+            let value = v.tokens;
+            if (!active) value = BigInt.zero();
+            queue.push(new ValidatorQueueEntry(v.operator_address, i, value))
+        }
+    }
+
+    // remaining validators in the map, were removed
+    // sort DESC
+    const indexes = m.values().sort((a: i32, b: i32) => b - a)
+    for (let i = 0; i < indexes.length; i++) {
+        queue.splice(indexes[i], 1);
+    }
+
+    return queue;
+}
+
+export function getNextProposer(validators: staking.Validator[], queue: ValidatorQueueEntry[]): GetProposerResponse {
+
+    const newqueue = updateProposerQueue(validators, queue);
+
+    // select max
+    let maxValue = BigInt.zero();
+    let proposerIndex: i32 = 0;
+    let index: i32 = 0;
+    for (let i = 0; i < newqueue.length; i++) {
+        if (newqueue[i].value > maxValue) {
+            proposerIndex = newqueue[i].index;
+            index = i;
+            maxValue = newqueue[i].value;
+        }
+    }
+
+    // move proposer back in the queue
+    newqueue[index].value = BigInt.zero();
+    return new GetProposerResponse(newqueue, proposerIndex);
 }

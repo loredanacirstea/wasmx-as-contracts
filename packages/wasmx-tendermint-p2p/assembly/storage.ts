@@ -218,13 +218,3 @@ export function getLastLog(): LogEntry {
     const index = getLastLogIndex();
     return getLogEntryObj(index);
 }
-
-export function getCurrentProposer(): i32 {
-    const value = fsm.getContextValue(cfg.CURRENT_PROPOSER_KEY);
-    if (value == "") return 0;
-    return i32(parseInt(value));
-}
-
-export function setCurrentProposer(value: i32): void {
-    fsm.setContextValue(cfg.CURRENT_PROPOSER_KEY, value.toString());
-}
