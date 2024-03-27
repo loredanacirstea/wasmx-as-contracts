@@ -8,6 +8,8 @@ import {
 } from './types';
 import { parseInt32, parseInt64 } from 'wasmx-utils/assembly/utils';
 
+// valid interval Id starts at 1
+
 export function getLastIntervalId(): i64 {
   const value = storage.getContextValue(INTERVAL_ID_KEY);
   if (value === "") return i64(0);
@@ -47,6 +49,8 @@ export function isRegisteredIntervalActive(state: string, delay: string, interva
 
 export function cancelIntervals(state: string, delay: string): void {
   const lastIntervalId = getLastIntervalIdForState(state, delay)
+  // first intervalId is 1
+  if (lastIntervalId == 0) return;
   tryCancelIntervals(state, delay, lastIntervalId);
 }
 
@@ -82,5 +86,7 @@ export function cancelActiveIntervals(
   if (delay === "") {
     revert("no delay found");
   }
+  // we cancel delayed actions for both previous and next state if they have the delay key
+  cancelIntervals(state.previousValue, delay);
   cancelIntervals(state.value, delay);
 }

@@ -166,15 +166,18 @@ export class State {
   value: string;
   actions: Array<ActionObject>;
   changed: boolean;
+  previousValue: string;
 
   constructor(
     value: string,
     actions: Array<ActionObject>,
     changed: boolean,
+    previousValue: string,
   ) {
     this.value = value;
     this.actions = actions;
     this.changed = changed;
+    this.previousValue = previousValue;
   }
 }
 
@@ -184,15 +187,18 @@ export class StateClassExternal {
   value: string;
   actions: Array<ActionObject>;
   changed: boolean;
+  previousValue: string;
 
   constructor(
     value: string,
     actions: Array<ActionObject>,
     changed: boolean,
+    previousValue: string,
   ) {
     this.value = value;
     this.actions = actions;
     this.changed = changed;
+    this.previousValue = previousValue
   }
 
   toInternal(): State {
@@ -201,7 +207,7 @@ export class StateClassExternal {
         const act = this.actions[i];
         stateactions.push(new ActionObject(act.type, act.params, act.event));
     }
-    return new State(this.value, stateactions, this.changed);
+    return new State(this.value, stateactions, this.changed, this.previousValue);
   }
 
   static fromInternal(state: State): StateClassExternal {
@@ -215,6 +221,7 @@ export class StateClassExternal {
         state.value,
         iniactions,
         state.changed,
+        state.previousValue,
     );
   }
 }

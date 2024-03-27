@@ -59,7 +59,7 @@ export function instantiate(
   if (initialState.at(0) != "#") {
     initialState = `#${config.id}.${initialState}`
   }
-  const newstate = new State(initialState, initialActions, false);
+  const newstate = new State(initialState, initialActions, false, "");
   storage.setCurrentState(newstate);
 
   const service = new ServiceExternal(config , InterpreterStatus.NotStarted).toInternal();
@@ -67,8 +67,8 @@ export function instantiate(
   service.start();
 }
 
-function createUnchangedState(value: string): State {
-  return new State(value, [], false);
+function createUnchangedState(value: string, prevState: string): State {
+  return new State(value, [], false, prevState);
   // matches: createMatcher(value)
 }
 
@@ -586,7 +586,7 @@ export class Machine implements StateMachine.Machine {
     }
 
     // No transitions match
-    return createUnchangedState(value);
+    return createUnchangedState(value, state.previousValue);
   }
 
   applyTransition(
@@ -608,7 +608,7 @@ export class Machine implements StateMachine.Machine {
     if (stateConfig.on.has(WILDCARD)) {
       const _trans = stateConfig.on.get(WILDCARD);
       // TODO is this correct?
-      applyTransitions(this, state, _trans, eventObject, 0)
+      return applyTransitions(this, state, _trans, eventObject, 0)
       // transitions.push(_trans);
       // for (let i = 0; i < _trans.length; i++) {
       //   transitions.push(_trans[i]);
@@ -618,7 +618,7 @@ export class Machine implements StateMachine.Machine {
     for (let i = 0; i < transitions.length; i++) {
       const transition = transitions[i];
         if (transition === null) {
-          return createUnchangedState(value);
+          return createUnchangedState(value, state.previousValue);
         }
         const target = transition.target;
         const actions = transition.actions || [];
@@ -724,13 +724,13 @@ export class Machine implements StateMachine.Machine {
         const nonAssignActions = res.actions;
         const assigned = res.assigned;
 
-        return new State(resolvedTarget, nonAssignActions, !isTargetless);
+        return new State(resolvedTarget, nonAssignActions, !isTargetless, state.value);
         // matches: createMatcher(resolvedTarget)
       }
     }
 
     // No transitions match
-    return createUnchangedState(value);
+    return createUnchangedState(value, state.previousValue);
   }
 }
 

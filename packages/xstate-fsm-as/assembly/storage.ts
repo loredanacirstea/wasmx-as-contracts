@@ -37,7 +37,7 @@ export function setCurrentStatus(status: InterpreterStatus): void {
 export function getCurrentState(): State {
     const valuestr = wasmxwrap.sload(STORAGEKEY_STATE);
     if (valuestr == "") {
-        return new State("", [], false);
+        return new State("", [], false, "");
     }
     const value = JSON.parse<StateClassExternal>(valuestr);
     return value.toInternal();
