@@ -62,16 +62,10 @@ export function main(): void {
     actions.sendPrecommitNil(calld.params, calld.event);
   } else if (calld.method === "setupNode") {
     actions.setupNode(calld.params, calld.event);
-  } else if (calld.method === "receivePrevote") {
-    actions.receivePrevote(calld.params, calld.event);
   } else if (calld.method === "addToMempool") {
     tnd.addToMempool(calld.params, calld.event);
   } else if (calld.method === "commitBlock") {
     actions.commitBlock(calld.params, calld.event);
-  } else if (calld.method === "receivePrecommit") {
-    actions.receivePrecommit(calld.params, calld.event);
-  } else if (calld.method === "receiveBlockProposal") {
-    actions.receiveBlockProposal(calld.params, calld.event);
   } else if (calld.method === "sendNewTransactionResponse") {
     tnd.sendNewTransactionResponse(calld.params, calld.event);
   } else if (calld.method === "incrementCurrentTerm") {
@@ -104,8 +98,6 @@ export function main(): void {
     actions.resetPrecommits(calld.params, calld.event);
   } else if (calld.method === "sendCommit") {
     actions.sendCommit(calld.params, calld.event);
-  } else if (calld.method === "receiveCommit") {
-    actions.receiveCommit(calld.params, calld.event);
   } else if (calld.method === "setup") {
     actions.setup(calld.params, calld.event);
   } else if (calld.method === "forwardMsgToChat") {
@@ -118,18 +110,26 @@ export function main(): void {
     actions.requestBlockSync(calld.params, calld.event);
   } else if (calld.method === "requestValidatorNodeInfoIfSynced") {
     actions.requestValidatorNodeInfoIfSynced(calld.params, calld.event);
-  } else if (calld.method === "receiveUpdateNodeRequest") {
-    actions.receiveUpdateNodeRequest(calld.params, calld.event);
   } else if (calld.method === "registerValidatorWithNetwork") {
     actions.registerValidatorWithNetwork(calld.params, calld.event);
+  } else if (calld.method === "transitionNodeToValidator") {
+    actions.transitionNodeToValidator(calld.params, calld.event);
+  } else if (calld.method === "receivePrevote") {
+    actions.receivePrevote(calld.params, calld.event);
+  } else if (calld.method === "receivePrecommit") {
+    actions.receivePrecommit(calld.params, calld.event);
+  } else if (calld.method === "receiveBlockProposal") {
+    actions.receiveBlockProposal(calld.params, calld.event);
+  } else if (calld.method === "receiveCommit") {
+    actions.receiveCommit(calld.params, calld.event);
+  } else if (calld.method === "receiveUpdateNodeRequest") {
+    actions.receiveUpdateNodeRequest(calld.params, calld.event);
   } else if (calld.method === "receiveStateSyncRequest") {
     actions.receiveStateSyncRequest(calld.params, calld.event);
   } else if (calld.method === "receiveStateSyncResponse") {
     actions.receiveStateSyncResponse(calld.params, calld.event);
   } else if (calld.method === "receiveUpdateNodeResponse") {
     actions.receiveUpdateNodeResponse(calld.params, calld.event);
-  } else if (calld.method === "transitionNodeToValidator") {
-    actions.transitionNodeToValidator(calld.params, calld.event);
   }
   else {
     revert(`invalid function call data: ${calld.method}`);
@@ -137,4 +137,26 @@ export function main(): void {
   // we may have set the return data during execution
   result = wasmx.getFinishData();
   wasmx.finish(result);
+}
+
+export function p2pmsg(): void {
+  let result: ArrayBuffer = new ArrayBuffer(0);
+  const calld = getCallDataWrap();
+  if (calld.method === "receivePrevote") {
+    actions.receivePrevote(calld.params, calld.event);
+  } else if (calld.method === "receivePrecommit") {
+    actions.receivePrecommit(calld.params, calld.event);
+  } else if (calld.method === "receiveBlockProposal") {
+    actions.receiveBlockProposal(calld.params, calld.event);
+  } else if (calld.method === "receiveCommit") {
+    actions.receiveCommit(calld.params, calld.event);
+  } else if (calld.method === "receiveUpdateNodeRequest") {
+    actions.receiveUpdateNodeRequest(calld.params, calld.event);
+  } else if (calld.method === "receiveStateSyncRequest") {
+    actions.receiveStateSyncRequest(calld.params, calld.event);
+  } else if (calld.method === "receiveStateSyncResponse") {
+    actions.receiveStateSyncResponse(calld.params, calld.event);
+  } else if (calld.method === "receiveUpdateNodeResponse") {
+    actions.receiveUpdateNodeResponse(calld.params, calld.event);
+  }
 }

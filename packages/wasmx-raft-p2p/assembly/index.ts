@@ -22,8 +22,6 @@ export function main(): void {
     setupNode(calld.params, calld.event);
   } else if (calld.method === "processAppendEntries") {
     actions.processAppendEntries(calld.params, calld.event);
-  } else if (calld.method === "receiveAppendEntryResponse") {
-    receiveAppendEntryResponse(calld.params, calld.event);
   } else if (calld.method === "sendHeartbeatResponse") {
     sendHeartbeatResponse(calld.params, calld.event);
   } else if (calld.method === "sendAppendEntries") {
@@ -58,6 +56,10 @@ export function main(): void {
     actions.proposeBlock(calld.params, calld.event);
   } else if (calld.method === "setup") {
     actions.setup(calld.params, calld.event);
+  } else if (calld.method === "requestNetworkSync") {
+    requestNetworkSync(calld.params, calld.event);
+  } else if (calld.method === "receiveAppendEntryResponse") {
+    receiveAppendEntryResponse(calld.params, calld.event);
   } else if (calld.method === "receiveVoteResponse") {
     receiveVoteResponse(calld.params, calld.event);
   } else if (calld.method === "receiveUpdateNodeResponse") {
@@ -66,8 +68,6 @@ export function main(): void {
     receiveStateSyncRequest(calld.params, calld.event);
   } else if (calld.method === "receiveStateSyncResponse") {
     receiveStateSyncResponse(calld.params, calld.event);
-  } else if (calld.method === "requestNetworkSync") {
-    requestNetworkSync(calld.params, calld.event);
   }
   else {
     revert(`invalid function call data: ${calld.method}`);
@@ -75,4 +75,20 @@ export function main(): void {
   // we may have set the return data during execution
   result = wasmx.getFinishData();
   wasmx.finish(result);
+}
+
+export function p2pmsg(): void {
+  let result: ArrayBuffer = new ArrayBuffer(0);
+  const calld = getCallDataWrap();
+  if (calld.method === "receiveAppendEntryResponse") {
+    receiveAppendEntryResponse(calld.params, calld.event);
+  } else if (calld.method === "receiveVoteResponse") {
+    receiveVoteResponse(calld.params, calld.event);
+  } else if (calld.method === "receiveUpdateNodeResponse") {
+    receiveUpdateNodeResponse(calld.params, calld.event);
+  } else if (calld.method === "receiveStateSyncRequest") {
+    receiveStateSyncRequest(calld.params, calld.event);
+  } else if (calld.method === "receiveStateSyncResponse") {
+    receiveStateSyncResponse(calld.params, calld.event);
+  }
 }

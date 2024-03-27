@@ -14,13 +14,8 @@ export function storeConversation(req: MsgStoreConversation): void {
 }
 
 export function verifyConversation(req: QueryVerifyConversation): ArrayBuffer {
-    const valid = verifyConversationInternal(req.blocks);
-    const arr = new Uint8Array(1);
-    arr.set([0], 0);
-    if (valid) {
-        arr.set([1], 0);
-    }
-    return arr.buffer;
+    const resp = verifyConversationInternal(req.blocks);
+    return String.UTF8.encode(JSON.stringify<VerifyCosmosTxResponse>(resp))
 }
 
 export function verifyConversationInternal(blocks: ChatBlock[]): VerifyCosmosTxResponse {
