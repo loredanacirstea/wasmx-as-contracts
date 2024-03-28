@@ -630,7 +630,7 @@ export function receiveStateSyncRequest(
     let startIndex = resp.start_index;
     let lastIndexToSend = startIndex;
     for (let i = 0; i < batches - 1; i++) {
-        lastIndexToSend = startIndex + cfg.STATE_SYNC_BATCH
+        lastIndexToSend = startIndex + cfg.STATE_SYNC_BATCH - 1
         sendStateSyncBatch(startIndex, lastIndexToSend, lastIndex, termId, peers);
         startIndex += cfg.STATE_SYNC_BATCH
     }
@@ -771,6 +771,9 @@ export function receiveBlockProposal(
         // revert(`Round index mismatch; expected ${termId}, received ${entry.termId}`)
         // TDODO fixme - how do we sync termId???
         setTermId(entry.termId)
+
+        // TODO catch up nextProposer queue ?
+        // no new blocks were produced, so the same stake will be used
     }
 
     // now we check the new block

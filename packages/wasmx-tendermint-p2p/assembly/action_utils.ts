@@ -178,6 +178,7 @@ export function calculateVote(votePerNode: Array<ValidatorProposalVote>, hash: s
     let totalStake = getTotalStaked(validators)
     const threshold = getBFTThreshold(totalStake);
     // calculate voting stake for the proposed block
+    // TODO exclude jailed validators
     let count: BigInt = BigInt.zero();
     for (let i = 0; i < votePerNode.length; i++) {
         if (hash == "") { // any vote
