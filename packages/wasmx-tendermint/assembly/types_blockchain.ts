@@ -1,6 +1,20 @@
 import { JSON } from "json-as/assembly";
 import {HexString, Base64String, Bech32String} from 'wasmx-env/assembly/types';
-import { Version, BlockID } from 'wasmx-consensus/assembly/types_tendermint';
+import { Version, BlockID, CommitSig, BlockIDFlag } from 'wasmx-consensus/assembly/types_tendermint';
+import { BigInt } from "wasmx-env/assembly/bn";
+
+// @ts-ignore
+@serializable
+export class ValidatorQueueEntry {
+    address: Bech32String
+    index: i32
+    value: BigInt
+    constructor(address: Bech32String, index: i32, value: BigInt) {
+        this.address = address
+        this.index = index
+        this.value = value
+    }
+}
 
 // @ts-ignore
 @serializable
@@ -14,20 +28,55 @@ export class CurrentState {
     last_commit_hash: string // base64
     // tx results hash
     last_results_hash: string // base64
+    last_round: i64
+    last_block_signatures: CommitSig[]
+
     validator_address: HexString
     validator_privkey: Base64String
     validator_pubkey: Base64String
 
-    constructor(chain_id: string, version: Version, app_hash: string, last_block_id: BlockID, last_commit_hash: string, last_results_hash: string, validator_address: HexString, validator_privkey: Base64String, validator_pubkey: Base64String) {
+    nextHeight: i64
+    nextHash: Base64String
+
+    lockedValue: i64
+    lockedRound: i64
+    validValue: i64
+    validRound: i64
+    proposerQueue: ValidatorQueueEntry[]
+    proposerQueueTermId: i64
+    proposerIndex: i32
+
+    constructor(chain_id: string, version: Version, app_hash: string, last_block_id: BlockID, last_commit_hash: string, last_results_hash: string, last_round: i64, last_block_signatures: CommitSig[], validator_address: HexString, validator_privkey: Base64String, validator_pubkey: Base64String,
+    nextHeight: i64,
+    nextHash: Base64String,
+    lockedValue: i64,
+    lockedRound: i64,
+    validValue: i64,
+    validRound: i64,
+    proposerQueue: ValidatorQueueEntry[],
+    proposerQueueTermId: i64,
+    proposerIndex: i32,
+    ) {
         this.chain_id = chain_id
         this.version = version
         this.app_hash = app_hash
         this.last_block_id = last_block_id
         this.last_commit_hash = last_commit_hash
+        this.last_round = last_round
+        this.last_block_signatures = last_block_signatures
         this.last_results_hash = last_results_hash
         this.validator_address = validator_address
         this.validator_privkey = validator_privkey
         this.validator_pubkey = validator_pubkey
+        this.nextHeight = nextHeight
+        this.nextHash = nextHash
+        this.lockedValue = lockedValue
+        this.lockedRound = lockedRound
+        this.validValue = validValue
+        this.validRound = validRound
+        this.proposerQueue = proposerQueue
+        this.proposerQueueTermId = proposerQueueTermId
+        this.proposerIndex = proposerIndex
     }
 }
 

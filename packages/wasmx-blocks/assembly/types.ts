@@ -10,17 +10,20 @@ export class BlockEntry {
     // TODO hash: string
     readerContract: Base64String
     writerContract: Base64String
-    data: string; // base64-encoded RequestFinalizeBlock
-    header: string // base64-encoded Header
-    commit: string // base64-encoded BlockCommit
+    // in tendermint, data is {txs: tx[]}
+    data: Base64String; // base64-encoded RequestFinalizeBlock
+    header: Base64String // base64-encoded Header
+    last_commit: Base64String // base64-encoded BlockCommit
+    evidence: Base64String // base64-encoded EvidenceData
     result: string // base64-encoded BlockFinalizeResult - same as ResponseFinalizeBlock
-    constructor(index: i64, readerContract: Bech32String, writerContract: Bech32String, data: string, header: string, commit: string, result: string) {
+    constructor(index: i64, readerContract: Bech32String, writerContract: Bech32String, data: Base64String, header: Base64String, last_commit: Base64String, evidence: Base64String, result: string) {
         this.index = index;
         this.readerContract = readerContract;
         this.writerContract = writerContract;
         this.data = data;
         this.header = header;
-        this.commit = commit;
+        this.last_commit = last_commit;
+        this.evidence = evidence;
         this.result = result;
     }
 }

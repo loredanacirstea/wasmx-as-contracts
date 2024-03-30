@@ -13,13 +13,14 @@ import {
 import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as staking from "wasmx-stake/assembly/types";
+import { getPower } from "wasmx-stake/assembly/actions";
 import { CurrentState, Mempool } from "./types_blockchain";
 import * as fsm from 'xstate-fsm-as/assembly/storage';
 import {
     EventObject,
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
-import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, parseUint8ArrayToU32BigEndian, base64ToHex, hex64ToBase64 } from "wasmx-utils/assembly/utils";
+import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, parseUint8ArrayToU32BigEndian, base64ToHex, hex64ToBase64, stringToBase64 } from "wasmx-utils/assembly/utils";
 import { extractUpdateNodeEntryAndVerify, registeredCheckMessage, registeredCheckNeeded, removeNode } from "wasmx-raft/assembly/actions";
 import { LogEntry, LogEntryAggregate, AppendEntry, AppendEntryResponse, TransactionResponse, Precommit, MODULE_NAME, BuildProposal } from "./types";
 import * as cfg from "./config";
@@ -82,10 +83,13 @@ export function proposeBlock(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    proposeBlockInternalAndStore();
+    const height = getLastLogIndex();
+    const currentState = getCurrentState();
+    const lastBlockCommit = new typestnd.BlockCommit(height, 0, currentState.last_block_id, []); // TODO
+    proposeBlockInternalAndStore(lastBlockCommit);
 }
 
-export function proposeBlockInternalAndStore(): BuildProposal | null {
+export function proposeBlockInternalAndStore(lastBlockCommit: typestnd.BlockCommit): BuildProposal | null {
     // if last block is not commited, we return; Cosmos SDK can only commit one block at a time.
     const height = getLastLogIndex();
     const lastCommitIndex = getLastBlockIndex();
@@ -108,7 +112,7 @@ export function proposeBlockInternalAndStore(): BuildProposal | null {
     const maxDataBytes = maxbytes;
 
     // start proposal protocol
-    const result = buildBlockProposal(batch.txs, batch.cummulatedGas, maxDataBytes);
+    const result = buildBlockProposal(batch.txs, batch.cummulatedGas, maxDataBytes, lastBlockCommit);
     if (result == null) return null;
 
     // we just save this as a temporary block
@@ -786,7 +790,7 @@ export function initChain(req: typestnd.InitChainSetup): void {
 
     // TODO what are the correct empty valuew?
     // we need a non-empty string value, because we use this to compute next proposer
-    const emptyBlockId = new typestnd.BlockID(req.app_hash, new typestnd.PartSetHeader(0, ""))
+    const emptyBlockId = new typestnd.BlockID(base64ToHex(req.app_hash), new typestnd.PartSetHeader(0, ""))
     const last_commit_hash = ""
     const currentState = new CurrentState(
         req.chain_id,
@@ -795,9 +799,12 @@ export function initChain(req: typestnd.InitChainSetup): void {
         emptyBlockId,
         last_commit_hash,
         req.last_results_hash,
+        0, [],
         req.validator_address,
         req.validator_privkey,
         req.validator_pubkey,
+        cfg.LOG_START + 1, "", 0, 0, 0, 0,
+        [], 0, 0,
     );
 
     const valuestr = JSON.stringify<CurrentState>(currentState);
@@ -942,13 +949,23 @@ export function getNextProposer(blockHash: Base64String, totalStaked: BigInt, va
     return closestVal;
 }
 
-export function buildBlockProposal(txs: string[], cummulatedGas: i64, maxDataBytes: i64): BuildProposal | null {
+export function buildBlockProposal(txs: string[], cummulatedGas: i64, maxDataBytes: i64, lastBlockCommit: typestnd.BlockCommit): BuildProposal | null {
     // PrepareProposal TODO finish
     const height = getLastLogIndex() + 1;
     LoggerDebug("start block proposal", ["height", height.toString()])
 
     const currentState = getCurrentState();
     const validators = getAllValidators();
+    const lastCommit = new typestnd.CommitInfo(0, []); // TODO for the last block
+    for (let i = 0; i < lastBlockCommit.signatures.length; i++) {
+        const commitSig = lastBlockCommit.signatures[i]
+        const val = validators[i]
+        const power = getPower(val.tokens)
+        const vaddress = encodeBase64(Uint8Array.wrap(wasmxw.addr_canonicalize(commitSig.validator_address)))
+        const voteInfo = new typestnd.VoteInfo(new typestnd.Validator(vaddress, power), commitSig.block_id_flag)
+        lastCommit.votes.push(voteInfo)
+    }
+    const evidence = new typestnd.Evidence(); // TODO
 
     // TODO correct votes?
     // lastExtCommit *types.ExtendedCommit
@@ -972,9 +989,7 @@ export function buildBlockProposal(txs: string[], cummulatedGas: i64, maxDataByt
     const prepareResp = consensuswrap.PrepareProposal(prepareReq);
 
     // ProcessProposal: now check block is valid
-    const lastCommit = new typestnd.CommitInfo(0, []); // TODO
-    const lastBlockCommit = new typestnd.BlockCommit(prepareReq.height -1, 0, currentState.last_block_id, []); // TODO
-    const evidence = new typestnd.Evidence(); // TODO
+
     // TODO load app version from storage or Info()?
 
     const header = new typestnd.Header(
@@ -1035,6 +1050,7 @@ export function buildLogEntryAggregate(processReq: typestnd.RequestProcessPropos
         blockDataBase64,
         blockHeaderBase64,
         commitBase64,
+        stringToBase64(`{"evidence":[]}`),
         "",
     )
     const entry = new LogEntryAggregate(processReq.height, termId, leaderId, blockEntry);
@@ -1218,7 +1234,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
 
     entryobj.data.result = resultBase64;
 
-    const commitBz = String.UTF8.decode(decodeBase64(entryobj.data.commit).buffer);
+    const commitBz = String.UTF8.decode(decodeBase64(entryobj.data.last_commit).buffer);
     const commit = JSON.parse<typestnd.BlockCommit>(commitBz);
 
     const last_commit_hash = getCommitHash(commit);

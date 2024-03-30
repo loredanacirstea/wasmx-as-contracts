@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 import {HexString, Base64String, Bech32String} from 'wasmx-env/assembly/types';
-import { Version, BlockID } from 'wasmx-consensus/assembly/types_tendermint';
+import { Version, BlockID, CommitSig, BlockIDFlag } from 'wasmx-consensus/assembly/types_tendermint';
 import { BigInt } from "wasmx-env/assembly/bn";
 
 // @ts-ignore
@@ -39,6 +39,9 @@ export class CurrentState {
     last_commit_hash: string // base64
     // tx results hash
     last_results_hash: string // base64
+    last_round: i64
+    last_block_signatures: CommitSig[]
+
     validator_address: HexString
     validator_privkey: Base64String
     validator_pubkey: Base64String
@@ -54,7 +57,7 @@ export class CurrentState {
     proposerQueueTermId: i64
     proposerIndex: i32
 
-    constructor(chain_id: string, version: Version, app_hash: string, last_block_id: BlockID, last_commit_hash: string, last_results_hash: string, validator_address: HexString, validator_privkey: Base64String, validator_pubkey: Base64String,
+    constructor(chain_id: string, version: Version, app_hash: string, last_block_id: BlockID, last_commit_hash: string, last_results_hash: string, last_round: i64, last_block_signatures: CommitSig[], validator_address: HexString, validator_privkey: Base64String, validator_pubkey: Base64String,
     nextHeight: i64,
     nextHash: Base64String,
     lockedValue: i64,
@@ -70,6 +73,8 @@ export class CurrentState {
         this.app_hash = app_hash
         this.last_block_id = last_block_id
         this.last_commit_hash = last_commit_hash
+        this.last_round = last_round
+        this.last_block_signatures = last_block_signatures
         this.last_results_hash = last_results_hash
         this.validator_address = validator_address
         this.validator_privkey = validator_privkey
@@ -166,6 +171,19 @@ export class ValidatorProposalVote {
         this.hash = hash
         this.timestamp = timestamp
         this.chainId = chainId
+    }
+}
+
+// @ts-ignore
+@serializable
+export class ValidatorCommitVote {
+    vote: ValidatorProposalVote
+    block_id_flag: BlockIDFlag
+    signature: Base64String
+    constructor(vote: ValidatorProposalVote, block_id_flag: BlockIDFlag, signature: Base64String) {
+        this.vote = vote
+        this.block_id_flag = block_id_flag
+        this.signature = signature
     }
 }
 

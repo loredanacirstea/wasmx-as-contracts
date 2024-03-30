@@ -9,19 +9,20 @@ import * as staking from "wasmx-stake/assembly/types";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
-import { callContract, callHookContract, getTotalStaked, updateConsensusParams, updateValidators } from "wasmx-tendermint/assembly/actions";
+import { buildLogEntryAggregate, callContract, callHookContract, getMempool, getTotalStaked, setMempool, updateConsensusParams, updateValidators } from "wasmx-tendermint/assembly/actions";
 import * as cfg from "./config";
 import { AppendEntry, LogEntryAggregate } from "./types";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
-import { getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getPrecommitArray, getPrevoteArray, getTermId, getValidatorNodeCount, getValidatorNodesInfo, removeLogEntry, setCurrentState, setPrecommitArray, setPrevoteArray } from "./storage";
+import { appendLogEntry, getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getPrecommitArray, getPrevoteArray, getTermId, getValidatorNodeCount, getValidatorNodesInfo, removeLogEntry, setCurrentState, setLogEntryAggregate, setPrecommitArray, setPrevoteArray } from "./storage";
 import { getAllValidators, signMessage } from "wasmx-raft/assembly/action_utils";
-import { CurrentState, GetProposerResponse, ValidatorProposalVote, ValidatorQueueEntry } from "./types_blockchain";
+import { CurrentState, GetProposerResponse, SignedMsgType, ValidatorCommitVote, ValidatorProposalVote, ValidatorQueueEntry } from "./types_blockchain";
 import { Base64String, Bech32String, CallRequest, CallResponse } from "wasmx-env/assembly/types";
 import { LOG_START } from "./config";
 import { NodeInfo } from "wasmx-raft/assembly/types_raft";
 import { base64ToHex, parseUint8ArrayToU32BigEndian, uint8ArrayToHex } from "wasmx-utils/assembly/utils";
-import { extractIndexedTopics, getCommitHash, getResultsHash } from "wasmx-consensus-utils/assembly/utils";
+import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils";
+import { BuildProposal } from "wasmx-tendermint/assembly/types";
 
 export function wrapGuard(value: boolean): ArrayBuffer {
     if (value) return String.UTF8.encode("1");
@@ -71,7 +72,7 @@ export function initChain(req: typestnd.InitChainSetup): void {
 
     // TODO what are the correct empty valuew?
     // we need a non-empty string value, because we use this to compute next proposer
-    const emptyBlockId = new typestnd.BlockID(req.app_hash, new typestnd.PartSetHeader(0, ""))
+    const emptyBlockId = new typestnd.BlockID(base64ToHex(req.app_hash), new typestnd.PartSetHeader(0, ""))
     const last_commit_hash = ""
     const currentState = new CurrentState(
         req.chain_id,
@@ -80,6 +81,7 @@ export function initChain(req: typestnd.InitChainSetup): void {
         emptyBlockId,
         last_commit_hash,
         req.last_results_hash,
+        0, [],
         req.validator_address,
         req.validator_privkey,
         req.validator_pubkey,
@@ -165,12 +167,20 @@ export function isPrevoteAcceptThreshold(hash: string): boolean {
 
 export function isPrecommitAnyThreshold(): boolean {
     const precommitArr = getPrecommitArray();
-    return calculateVote(precommitArr, "")
+    const votes = new Array<ValidatorProposalVote>(precommitArr.length);
+    for (let i = 0; i < precommitArr.length; i++) {
+        votes[i] = precommitArr[i].vote;
+    }
+    return calculateVote(votes, "")
 }
 
 export function isPrecommitAcceptThreshold(hash: string): boolean {
     const precommitArr = getPrecommitArray();
-    return calculateVote(precommitArr, hash)
+    const votes = new Array<ValidatorProposalVote>(precommitArr.length);
+    for (let i = 0; i < precommitArr.length; i++) {
+        votes[i] = precommitArr[i].vote;
+    }
+    return calculateVote(votes, hash)
 }
 
 export function calculateVote(votePerNode: Array<ValidatorProposalVote>, hash: string): boolean {
@@ -218,7 +228,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     const processReq = JSON.parse<typestnd.RequestProcessProposal>(processReqStr);
     const finalizeReq = new typestnd.RequestFinalizeBlock(
         processReq.txs,
-        processReq.proposed_last_commit,
+        processReq.proposed_last_commit, // TODO we retrieve the signatures
         processReq.misbehavior,
         processReq.hash,
         processReq.height,
@@ -256,7 +266,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
 
     entryobj.data.result = resultBase64;
 
-    const commitBz = String.UTF8.decode(decodeBase64(entryobj.data.commit).buffer);
+    const commitBz = String.UTF8.decode(decodeBase64(entryobj.data.last_commit).buffer);
     const commit = JSON.parse<typestnd.BlockCommit>(commitBz);
 
     const last_commit_hash = getCommitHash(commit);
@@ -273,6 +283,8 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     state.last_commit_hash = last_commit_hash
     state.last_results_hash = last_results_hash
     state.nextHeight = finalizeReq.height + 1
+    // we move precommit votes for this block to current state, so it is included in the next block proposal
+    state.last_block_signatures = getCommitSigsFromPrecommitArray();
     setCurrentState(state);
     // update consensus params
     LoggerDebug("updating consensus parameters...", [])
@@ -500,4 +512,40 @@ export function getNextProposer(validators: staking.Validator[], queue: Validato
     // move proposer back in the queue
     newqueue[index].value = BigInt.zero();
     return new GetProposerResponse(newqueue, proposerIndex);
+}
+
+export function getEmptyValidatorProposalVoteArray(len: i32, type: SignedMsgType): Array<ValidatorProposalVote> {
+    const emptyPrevotes = new Array<ValidatorProposalVote>(len);
+    const termId = getTermId()
+    const nextIndex = getCurrentState().nextHeight;
+    for (let i = 0; i < len; i++) {
+        emptyPrevotes[i] = new ValidatorProposalVote(type, termId, "", 0, nextIndex, "", new Date(Date.now()), "");
+    }
+    return emptyPrevotes
+}
+
+export function getEmptyPrecommitArray(len: i32, type: SignedMsgType): Array<ValidatorCommitVote> {
+    const emptyCommits = new Array<ValidatorCommitVote>(len);
+    const termId = getTermId()
+    const nextIndex = getCurrentState().nextHeight;
+    for (let i = 0; i < len; i++) {
+        const vote = new ValidatorProposalVote(type, termId, "", 0, nextIndex, "", new Date(Date.now()), "");
+        emptyCommits[i] = new ValidatorCommitVote(vote, typestnd.BlockIDFlag.Unknown, "");
+    }
+    return emptyCommits
+}
+
+export function getLastBlockCommit(height: i64, state: CurrentState): typestnd.BlockCommit {
+    const bcommit = new typestnd.BlockCommit(height, state.last_round, state.last_block_id, state.last_block_signatures)
+    return bcommit
+}
+
+export function getCommitSigsFromPrecommitArray(): typestnd.CommitSig[] {
+    const precommitArr = getPrecommitArray();
+    const sigs = new Array<typestnd.CommitSig>(precommitArr.length)
+    for (let i = 0; i < precommitArr.length; i++) {
+        const comm = precommitArr[i]
+        sigs[i] = new typestnd.CommitSig(comm.block_id_flag, comm.vote.validatorAddress, comm.vote.timestamp, comm.signature);
+    }
+    return sigs;
 }
