@@ -226,6 +226,12 @@ export function getAddressByRole(value: string): Bech32String {
     return addr_humanize(addr);
 }
 
+export function getRoleByAddress(value: Bech32String): string {
+    const addr = addr_canonicalize(value)
+    const role = wasmx.getRoleByAddress(addr)
+    return String.UTF8.decode(role)
+}
+
 export function executeCosmosMsg(msg: string, moduleName: string = ""): CallResponse {
     LoggerDebug(`${moduleName}:wasmx_env`, "executeCosmosMsg", ["msg", msg])
     const responsebz = wasmx.executeCosmosMsg(String.UTF8.encode(msg));
