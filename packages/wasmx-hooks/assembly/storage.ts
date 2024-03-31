@@ -1,11 +1,11 @@
 import { JSON } from "json-as/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
-import { Params } from "./types";
+import { Hook, Params } from "./types";
 
 export const SPLIT = "."
 export const PARAMS_KEY = "params"
 // moduleOrContract[]
-export const HOOKS_KEY = "hooks"
+export const HOOKS_KEY = "hooknames"
 // hook => module[]
 export const HOOK_TO_MODULES_KEY = "hook."
 
@@ -13,43 +13,36 @@ export function getHookKey(hook: string): string {
     return HOOK_TO_MODULES_KEY + hook
 }
 
-export function getModulesByHook(hook: string): string[] {
+export function getHookByName(hook: string): Hook | null {
     const value = wasmxw.sload(getHookKey(hook));
-    if (value == "") return []
-    return JSON.parse<string[]>(value);
+    if (value == "") return null;
+    return JSON.parse<Hook>(value);
 }
 
-export function addModuleByHook(hook: string, moduleName: string): void {
-    const emodules = getModulesByHook(hook)
-    if (!emodules.includes(moduleName)) {
-        emodules.push(moduleName)
-        setModulesByHook(hook, emodules);
-    }
-}
-
-export function addModulesByHook(hook: string, modules: string[]): void {
-    const emodules = getModulesByHook(hook)
+export function addModulesByHookName(hookName: string, modules: string[]): void {
+    const hook = getHookByName(hookName)
+    if (!hook) return;
     for (let i = 0; i < modules.length; i++) {
-        if (!emodules.includes(modules[i])) {
-            emodules.push(modules[i])
+        if (!hook.targetModules.includes(modules[i])) {
+            hook.targetModules.push(modules[i])
         }
     }
-    setModulesByHook(hook, emodules);
+    setHookByName(hook);
 }
 
-export function setModulesByHook(hook: string, hooks: string[]): void {
-    return wasmxw.sstore(getHookKey(hook), JSON.stringify<string[]>(hooks));
+export function setHookByName(hook: Hook): void {
+    return wasmxw.sstore(getHookKey(hook.name), JSON.stringify<Hook>(hook));
 }
 
 export function addHook(hook: string): void {
-    const hooks = getHooks()
+    const hooks = getHookNames()
     if (!hooks.includes(hook)) {
         hooks.push(hook)
         setHooks(hooks);
     }
 }
 
-export function getHooks(): string[] {
+export function getHookNames(): string[] {
     const value = wasmxw.sload(HOOKS_KEY);
     if (value == "") return []
     return JSON.parse<string[]>(value);
@@ -61,7 +54,7 @@ export function setHooks(hooks: string[]): void {
 
 export function getParams(): Params {
     const value = wasmxw.sload(PARAMS_KEY);
-    if (value == "") return new Params([])
+    if (value == "") return new Params()
     return JSON.parse<Params>(value);
 }
 
