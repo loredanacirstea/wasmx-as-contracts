@@ -5,7 +5,7 @@ import { BigInt } from "wasmx-env/assembly/bn"
 import * as banktypes from "wasmx-bank/assembly/types"
 import * as derc20types from "wasmx-derc20/assembly/types"
 import * as erc20types from "wasmx-erc20/assembly/types"
-import { getParamsInternal, setParams, setNewValidator, getParams, getValidator, getValidatorsAddresses } from './storage';
+import { getParamsInternal, setParams, setNewValidator, getParams, getValidator, getValidatorsAddresses, getValidatorAddrByConsAddr } from './storage';
 import { MsgInitGenesis, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool, BondedS } from './types';
 import { LoggerDebug, revert } from './utils';
 import { parseInt64 } from "wasmx-utils/assembly/utils";
@@ -162,6 +162,22 @@ export function GetPool(req: QueryPoolRequest): ArrayBuffer {
 
     const res = new QueryPoolResponse(new Pool(unbonded.amount.amount, bonded.amount.amount))
     return String.UTF8.encode(JSON.stringify<QueryPoolResponse>(res))
+}
+
+export function ValidatorByConsAddr(req: QueryValidatorRequest): ArrayBuffer {
+    const addr = getValidatorAddrByConsAddr(req.validator_addr)
+    if (addr == "") {
+        revert(`validator not found: ${req.validator_addr}`)
+        return new ArrayBuffer(0)
+    }
+    const validator = getValidatorWithBalance(addr)
+    if (validator == null) {
+        revert(`validator not found: ${addr}`)
+        return new ArrayBuffer(0)
+    }
+    let data = JSON.stringify<QueryValidatorResponse>(new QueryValidatorResponse(validator))
+    data = data.replaceAll(`"anytype"`, `"@type"`)
+    return String.UTF8.encode(data)
 }
 
 export function getValidatorWithBalance(validatorAddr: Bech32String): Validator | null {

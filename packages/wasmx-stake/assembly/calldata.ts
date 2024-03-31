@@ -14,6 +14,7 @@ export class CallData {
     GetValidator: QueryValidatorRequest | null = null;
     GetDelegation: QueryDelegationRequest | null = null;
     GetPool: QueryPoolRequest | null = null;
+    ValidatorByConsAddr: QueryValidatorRequest | null = null;
 }
 
 export function getCallDataWrap(): CallData {

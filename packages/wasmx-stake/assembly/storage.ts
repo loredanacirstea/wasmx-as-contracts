@@ -2,10 +2,11 @@ import { JSON } from "json-as/assembly";
 import * as wasmx from "wasmx-env/assembly/wasmx_wrap";
 import {ValidatorInfo, Params, Validator} from "./types";
 import { Bech32String } from "wasmx-env/assembly/types";
-import { parseInt32, parseInt64 } from "wasmx-utils/assembly/utils";
+import { decode as decodeBase64 } from "as-base64/assembly";
 
 const VALIDATOR_ADDRESSES = "validators_addresses"
 const VALIDATOR_KEY = "validator_"
+const VALIDATOR_ALIAS_KEY = "validatoralias_"
 const PARAM_KEY = "params"
 
 export function setNewValidator(value: Validator): void {
@@ -34,6 +35,16 @@ export function getValidator(address: Bech32String): Validator | null {
 export function setValidator(value: Validator): void {
     const data = JSON.stringify<Validator>(value);
     wasmx.sstore(VALIDATOR_KEY + value.operator_address, data);
+    const consaddr = wasmx.addr_humanize(decodeBase64(value.consensus_pubkey.key).buffer)
+    setValidatorAddrByConsAddr(value.operator_address, consaddr)
+}
+
+export function getValidatorAddrByConsAddr(addr: Bech32String): string {
+    return wasmx.sload(VALIDATOR_ALIAS_KEY + addr);
+}
+
+export function setValidatorAddrByConsAddr(addr: Bech32String, consaddr: Bech32String): void {
+    wasmx.sstore(VALIDATOR_ALIAS_KEY + consaddr, addr);
 }
 
 export function getParams(): Params {
