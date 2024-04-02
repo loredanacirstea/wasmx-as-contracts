@@ -5,13 +5,13 @@ import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as staking from "wasmx-stake/assembly/types";
-import { hexToUint8Array, uint8ArrayToHex, i64ToUint8ArrayBE, hex64ToBase64 } from "wasmx-utils/assembly/utils";
+import { hexToUint8Array32, uint8ArrayToHex, i64ToUint8ArrayBE, hex64ToBase64 } from "wasmx-utils/assembly/utils";
 
 export function getValidatorsHash(validators: staking.Validator[]): string {
     let data = new Array<string>(validators.length);
     for (let i = 0; i < validators.length; i++) {
         // hex
-        const pub_key = hexToUint8Array(validators[i].consensus_pubkey.key);
+        const pub_key = hexToUint8Array32(validators[i].consensus_pubkey.key);
         const tokens = validators[i].tokens.toU8ArrayBe()
         const newdata = new Uint8Array(pub_key.length + tokens.length);
         newdata.set(pub_key, 0);
@@ -91,7 +91,7 @@ export function getValidatorsHash1(validators: typestnd.ValidatorInfo[]): string
     let data = new Array<string>(validators.length);
     for (let i = 0; i < validators.length; i++) {
         // hex
-        const pub_key = hexToUint8Array(validators[i].pub_key);
+        const pub_key = hexToUint8Array32(validators[i].pub_key);
         const power = i64ToUint8ArrayBE(validators[i].voting_power);
         const newdata = new Uint8Array(pub_key.length + power.length);
         newdata.set(pub_key, 0);

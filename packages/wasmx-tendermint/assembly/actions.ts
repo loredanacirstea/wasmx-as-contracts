@@ -20,7 +20,7 @@ import {
     EventObject,
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
-import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, parseUint8ArrayToU32BigEndian, base64ToHex, hex64ToBase64, stringToBase64 } from "wasmx-utils/assembly/utils";
+import { parseInt32, parseInt64, uint8ArrayToHex, parseUint8ArrayToU32BigEndian, base64ToHex, stringToBase64 } from "wasmx-utils/assembly/utils";
 import { extractUpdateNodeEntryAndVerify, registeredCheckMessage, registeredCheckNeeded, removeNode } from "wasmx-raft/assembly/actions";
 import { LogEntry, LogEntryAggregate, AppendEntry, AppendEntryResponse, TransactionResponse, Precommit, MODULE_NAME, BuildProposal } from "./types";
 import * as cfg from "./config";
@@ -31,6 +31,7 @@ import { appendLogEntry, getCurrentNodeId, getCurrentState, getCurrentValidator,
 import { NodeInfo, NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft";
 import { verifyMessage } from "wasmx-raft/assembly/action_utils";
 import { NetworkNode } from "wasmx-p2p/assembly/types";
+import { hexToUint8Array } from "as-tally/assembly/tally";
 
 // guards
 

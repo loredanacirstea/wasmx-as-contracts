@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { getAddressHex, hexToUint8Array } from 'wasmx-utils/assembly/utils';
+import { getAddressHex, hexToUint8Array32 } from 'wasmx-utils/assembly/utils';
 import * as storage from './storage';
 import { revert } from './utils';
 
@@ -238,8 +238,8 @@ export function logTransfer(
         return;
     }
     const topic0str = `Transfer(address,address,uint256)`
-    const topic1 = hexToUint8Array(from);
-    const topic2 = hexToUint8Array(to);
-    const topic3 = hexToUint8Array(amount.toString(16));
+    const topic1 = hexToUint8Array32(from);
+    const topic2 = hexToUint8Array32(to);
+    const topic3 = hexToUint8Array32(amount.toString(16));
     wasmxw.logWithMsgTopic(topic0str, new Uint8Array(0), [topic1, topic2, topic3]);
 }

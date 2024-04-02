@@ -4,7 +4,7 @@ import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { isAuthorized } from "wasmx-env/assembly/utils";
 import { Bech32String, Coin } from "wasmx-env/assembly/types";
 import { BigInt } from "wasmx-env/assembly/bn";
-import { hexToUint8Array } from "wasmx-utils/assembly/utils";
+import { hexToUint8Array32 } from "wasmx-utils/assembly/utils";
 import { setInfo, getInfo, getBalance, setBalance, getAllowance, setAllowance, getTotalSupply, setTotalSupply, getAdmins, getMinters, setMinters, setAdmins } from "./storage";
 import { MsgAllowance, MsgAllowanceResponse, MsgApprove, MsgBalanceOf, MsgBalanceOfResponse, MsgDecimalsResponse, MsgMint, MsgNameResponse, MsgSymbolResponse, MsgTotalSupplyResponse, MsgTransfer, MsgTransferFrom, MsgTransferFromResponse, MsgTransferResponse } from "./types";
 import { LoggerDebug, revert } from "./utils";
@@ -128,17 +128,17 @@ export function move(from: Bech32String, to: Bech32String, amount: BigInt): void
 
 export function logTransfer(from: Bech32String, to: Bech32String, amount: BigInt): void {
     const topic0str = `Transfer(address,address,uint256)`
-    const topic1 = hexToUint8Array(from);
-    const topic2 = hexToUint8Array(to);
-    const topic3 = hexToUint8Array(amount.toString(16));
+    const topic1 = hexToUint8Array32(from);
+    const topic2 = hexToUint8Array32(to);
+    const topic3 = hexToUint8Array32(amount.toString(16));
     wasmxw.logWithMsgTopic(topic0str, new Uint8Array(0), [topic1, topic2, topic3]);
 }
 
 export function logApproval(owner: Bech32String, spender: Bech32String, amount: BigInt): void {
     const topic0str = `Approval(address,address,uint256)`
-    const topic1 = hexToUint8Array(owner);
-    const topic2 = hexToUint8Array(spender);
-    const topic3 = hexToUint8Array(amount.toString(16));
+    const topic1 = hexToUint8Array32(owner);
+    const topic2 = hexToUint8Array32(spender);
+    const topic3 = hexToUint8Array32(amount.toString(16));
     wasmxw.logWithMsgTopic(topic0str, new Uint8Array(0), [topic1, topic2, topic3]);
 }
 

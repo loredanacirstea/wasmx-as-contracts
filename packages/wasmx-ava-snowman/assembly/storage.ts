@@ -1,12 +1,11 @@
 import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
-import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import { CurrentState, Mempool } from "./types_blockchain";
 import * as fsm from 'xstate-fsm-as/assembly/storage';
-import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, parseUint8ArrayToU32BigEndian } from "wasmx-utils/assembly/utils";
-import { LogEntry, LogEntryAggregate, AppendEntry, NodeUpdate, UpdateNodeResponse, AppendEntryResponse, TransactionResponse, Precommit, TempBlock, NodeInfo } from "./types";
-import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
+import { parseInt32, parseInt64 } from "wasmx-utils/assembly/utils";
+import { LogEntry, LogEntryAggregate, TempBlock, NodeInfo } from "./types";
+import { LoggerDebug, revert } from "./utils";
 import {
     NODE_IPS,
     MAX_LOGGED,

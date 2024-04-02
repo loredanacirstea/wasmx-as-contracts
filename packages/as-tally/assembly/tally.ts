@@ -1063,6 +1063,17 @@ export function hexToU8(value: string): u8[] {
     return arr;
 }
 
+export function hexToUint8Array(value: string): Uint8Array {
+    if (value.substr(0, 2) == "0x") value = value.substr(2);
+    if (value.length % 2 == 1) value = "0" + value;
+
+    const arr = new Uint8Array(value.length / 2);
+    for (let i = 0; i < value.length / 2; i++) {
+        arr[i] = u8(parseInt(value.substr(2*i, 2), 16))
+    }
+    return arr;
+}
+
 function processZeros(value: string, byteLength: i32): string {
     if (byteLength == 0) return value;
     const hexlen = byteLength * 2

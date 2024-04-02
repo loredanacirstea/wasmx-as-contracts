@@ -14,24 +14,19 @@ import {
   CallRequest,
   CallResponse,
 } from 'wasmx-env/assembly/types';
-import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
-import * as staking from "wasmx-stake/assembly/types";
-import { CurrentState, Mempool } from "wasmx-raft/assembly/types_blockchain";
 import * as fsm from 'xstate-fsm-as/assembly/storage';
 import {
     EventObject,
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
-import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, base64ToHex, hex64ToBase64 } from "wasmx-utils/assembly/utils";
 import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse, NodeInfo, MODULE_NAME, AppendEntryResponse } from "wasmx-raft/assembly/types_raft";
 import { BigInt } from "wasmx-env/assembly/bn";
-import { appendLogEntry, getCommitIndex, getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getMatchIndexArray, getMempool, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, getVoteIndexArray, hasVotedFor, removeLogEntry, setCommitIndex, setCurrentNodeId, setCurrentState, setElectionTimeout, setLastApplied, setLastLogIndex, setMatchIndexArray, setMempool, setNextIndexArray, setNodeIPs, setTermId, setVoteIndexArray, setVotedFor } from "wasmx-raft/assembly/storage";
+import { getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getMatchIndexArray, getMempool, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, getVoteIndexArray, hasVotedFor, removeLogEntry, setCommitIndex, setCurrentNodeId, setLastApplied, setLastLogIndex, setMatchIndexArray, setMempool, setNextIndexArray, setNodeIPs, setTermId, setVoteIndexArray, setVotedFor } from "wasmx-raft/assembly/storage";
 import * as cfg from "wasmx-raft/assembly/config";
-import { callHookContract, checkValidatorsUpdate, getAllValidators, getConsensusParams, getCurrentValidator, getFinalBlock, getLastBlockIndex, getLastLog, getMajority, getNodeByAddress, getRandomInRange, getRandomInRangeI32, getRandomInRangeI64, initChain, initializeIndexArrays, setConsensusParams, setFinalizedBlock, signMessage, updateConsensusParams, updateValidators, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
+import { getLastLog, getMajority, getNodeByAddress, getRandomInRange, getRandomInRangeI32, getRandomInRangeI64, initChain, initializeIndexArrays, signMessage, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
 import { PROTOCOL_ID, StateSyncRequest, StateSyncResponse } from "./types";
-import { checkCommits, extractAppendEntry, extractUpdateNodeEntryAndVerify, getLogEntryAggregate, isNodeActive, prepareAppendEntry, prepareAppendEntryMessage, prepareHeartbeatResponse, processAppendEntry, registeredCheckMessage, registeredCheckNeeded, updateNodeEntry, voteInternal } from "wasmx-raft/assembly/actions";
-import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
+import { checkCommits, extractAppendEntry, extractUpdateNodeEntryAndVerify, getLogEntryAggregate, isNodeActive, prepareAppendEntry, prepareAppendEntryMessage, prepareHeartbeatResponse, processAppendEntry, registeredCheckMessage, updateNodeEntry, voteInternal } from "wasmx-raft/assembly/actions";
 
 export function connectPeers(
     params: ActionParam[],

@@ -27,7 +27,7 @@ export function hexToU8(value: string): u8[] {
     return arr;
 }
 
-export function hexToUint8Array(value: string): Uint8Array {
+export function hexToUint8Array32(value: string): Uint8Array {
     if (value.length % 2 == 1) value = "0" + value;
     value = value.padStart(64, '0');
     const arr: Uint8Array = new Uint8Array(value.length / 2);
@@ -85,7 +85,7 @@ export function base64ToHex(value: Base64String): HexString {
 }
 
 export function hex64ToBase64(value: HexString): Base64String {
-    return encodeBase64(hexToUint8Array(value))
+    return encodeBase64(hexToUint8Array32(value))
 }
 
 export function base64ToString(value: Base64String): string {

@@ -18,7 +18,7 @@ import {
   import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as fsm from 'xstate-fsm-as/assembly/storage';
-import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, parseUint8ArrayToU32BigEndian, base64ToHex, hex64ToBase64, stringToBase64 } from "wasmx-utils/assembly/utils";
+import { parseInt32, parseUint8ArrayToU32BigEndian, base64ToHex, stringToBase64 } from "wasmx-utils/assembly/utils";
 import { getParamsOrEventParams, actionParamsToMap } from 'xstate-fsm-as/assembly/utils';
 import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
 import {
