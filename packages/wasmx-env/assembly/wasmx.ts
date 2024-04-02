@@ -3,6 +3,7 @@ export declare function getCallData(): ArrayBuffer
 export declare function getCaller(): ArrayBuffer
 export declare function getAddress(): ArrayBuffer
 export declare function getBalance(address: ArrayBuffer): ArrayBuffer
+export declare function getCurrentBlock(): ArrayBuffer
 
 export declare function storageStore(key: ArrayBuffer, value: ArrayBuffer): void
 export declare function storageLoad(key: ArrayBuffer): ArrayBuffer
@@ -39,11 +40,13 @@ export declare function LoggerDebug(value: ArrayBuffer): void
 
 export declare function ed25519Sign(privKey: ArrayBuffer, msgbz: ArrayBuffer): ArrayBuffer
 export declare function ed25519Verify(pubKey: ArrayBuffer, signature: ArrayBuffer, msgbz: ArrayBuffer): i32
+export declare function ed25519PubToHex(pubKey: ArrayBuffer): ArrayBuffer
 
 export declare function addr_humanize(value: ArrayBuffer): ArrayBuffer
 export declare function addr_canonicalize(value: ArrayBuffer): ArrayBuffer
 
 export declare function getAddressByRole(value: ArrayBuffer): ArrayBuffer
+export declare function getRoleByAddress(value: ArrayBuffer): ArrayBuffer
 
 export declare function executeCosmosMsg(value: ArrayBuffer): ArrayBuffer
 

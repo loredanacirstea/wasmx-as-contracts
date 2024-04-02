@@ -32,12 +32,12 @@ import { callHookContract, setMempool, signMessage } from "wasmx-tendermint/asse
 import { Mempool } from "wasmx-tendermint/assembly/types_blockchain";
 import * as cfg from "./config";
 import { AppendEntry, AppendEntryResponse, LogEntryAggregate, UpdateNodeRequest } from "./types";
-import { getCurrentProposer, getFinalBlock, getLastBlockIndex, getLogEntryAggregate, getNextProposer, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
+import { getCurrentProposer, getEmptyPrecommitArray, getEmptyValidatorProposalVoteArray, getFinalBlock, getLastBlockCommit, getLastBlockIndex, getLogEntryAggregate, getNextProposer, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
 import { extractUpdateNodeEntryAndVerify, removeNode } from "wasmx-raft/assembly/actions";
 import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembly/storage";
 import { getAllValidators, getNodeByAddress, getNodeIdByAddress, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
 import { NodeInfo, NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft"
-import { Commit, CurrentState, SignedMsgType, ValidatorProposalVote } from "./types_blockchain";
+import { Commit, CurrentState, SignedMsgType, ValidatorCommitVote, ValidatorProposalVote } from "./types_blockchain";
 
 // TODO add delta to timeouts each failed round
 // and reset after a successful round
@@ -566,16 +566,20 @@ export function proposeBlock(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    const state = getCurrentState()
+    const height = getLastLogIndex();
+    let state = getCurrentState()
     if (state.validValue > 0) {
         // we already have this proposal stored
         // so we can return
         return
     }
     // we propose a new block or overwrite any other past proposal
-    const result = tnd.proposeBlockInternalAndStore()
+    // we take the last block signed precommits from the current state
+    const lastBlockCommit = getLastBlockCommit(height, state);
+    const result = tnd.proposeBlockInternalAndStore(lastBlockCommit)
     if (result == null) return;
 
+    state = getCurrentState()
     state.nextHash = result.proposal.hash;
     setCurrentState(state);
 }
@@ -791,6 +795,10 @@ export function processAppendEntry(entry: LogEntryAggregate): void {
     const data = decodeBase64(entry.data.data);
     const processReq = JSON.parse<typestnd.RequestProcessProposal>(String.UTF8.decode(data.buffer));
 
+    // TODO check all the validator signatures on the previous block, for correctness
+    // TODO do we compare with our own signatures?
+    // entry.data.last_commit
+
     const processResp = consensuswrap.ProcessProposal(processReq);
     if (processResp.status === typestnd.ProposalStatus.REJECT) {
         // TODO - what to do here? returning just discards the block and does not return a response to the leader
@@ -903,13 +911,16 @@ export function sendPrevoteNil(
     event: EventObject,
 ): void {
     const termId = getTermId()
-    const nextIndex = getCurrentState().nextHeight;
+    const state = getCurrentState()
+    const nextIndex = state.nextHeight;
     const nodeIps = getValidatorNodesInfo();
     const ourId = getCurrentNodeId();
     const getOurInfo = nodeIps[ourId];
 
+    const vaddr = wasmxw.addr_humanize(decodeBase64(state.validator_pubkey).buffer)
+    const consAddr = getOurInfo.address
     // TODO chainId
-    const data = new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PREVOTE, termId, getOurInfo.address, ourId, nextIndex, "nil", new Date(Date.now()), "")
+    const data = new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PREVOTE, termId, consAddr, ourId, nextIndex, "nil", new Date(Date.now()), "")
 
     const prevoteArr = getPrevoteArray();
     prevoteArr[getCurrentNodeId()] = data;
@@ -927,8 +938,10 @@ export function buildPrevoteMessage(): ValidatorProposalVote {
     const ourId = getCurrentNodeId();
     const nodeInfo = nodeIps[ourId];
     const state = getCurrentState();
+    const vaddr = wasmxw.addr_humanize(decodeBase64(state.validator_pubkey).buffer)
+    const consAddr = nodeInfo.address
      // TODO chainId
-    return new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PREVOTE, getTermId(), nodeInfo.address, ourId, state.nextHeight, state.nextHash, new Date(Date.now()), "");
+    return new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PREVOTE, getTermId(), consAddr, ourId, state.nextHeight, state.nextHash, new Date(Date.now()), "");
 }
 
 export function preparePrevoteMessage(data: ValidatorProposalVote): string {
@@ -945,13 +958,14 @@ export function sendPrecommit(
 ): void {
     // get the current proposal & vote on the block hash
     const data = buildPrecommitMessage();
+    const resp = preparePrecommitMessage(data);
+    const msgstr = resp[0]
+    const signature = resp[1]
+    LoggerDebug("sending precommit", ["index", data.index.toString(), "hash", data.hash])
 
     const arr = getPrecommitArray();
-    arr[getCurrentNodeId()] = data;
+    arr[getCurrentNodeId()] = new ValidatorCommitVote(data, typestnd.BlockIDFlag.Commit, signature)
     setPrecommitArray(arr);
-
-    const msgstr = preparePrecommitMessage(data);
-    LoggerDebug("sending precommit", ["index", data.index.toString(), "hash", data.hash])
 
     const contract = wasmxw.getAddress();
     p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, PROTOCOL_ID, cfg.CHAT_ROOM_PRECOMMIT))
@@ -962,19 +976,24 @@ export function sendPrecommitNil(
     event: EventObject,
 ): void {
     const termId = getTermId()
-    const nextIndex = getCurrentState().nextHeight;
+    const state = getCurrentState()
+    const nextIndex = state.nextHeight;
     const nodeIps = getValidatorNodesInfo();
     const ourId = getCurrentNodeId();
     const getOurInfo = nodeIps[ourId];
+    const vaddr = wasmxw.addr_humanize(decodeBase64(state.validator_pubkey).buffer)
+    const consAddr = getOurInfo.address
     // TODO chainId
-    const data = new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT, termId, getOurInfo.address, ourId, nextIndex, "nil", new Date(Date.now()), "")
+    const data = new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT, termId, consAddr, ourId, nextIndex, "nil", new Date(Date.now()), "")
+
+    const resp = preparePrecommitMessage(data);
+    const msgstr = resp[0]
+    const signature = resp[1]
+    LoggerDebug("sending precommit nil", ["index", data.index.toString()])
 
     const arr = getPrecommitArray();
-    arr[getCurrentNodeId()] = data;
+    arr[getCurrentNodeId()] = new ValidatorCommitVote(data, typestnd.BlockIDFlag.Nil, signature)
     setPrecommitArray(arr);
-
-    const msgstr = preparePrecommitMessage(data);
-    LoggerDebug("sending precommit nil", ["index", data.index.toString()])
 
     const contract = wasmxw.getAddress();
     p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, PROTOCOL_ID, cfg.CHAT_ROOM_PREVOTE))
@@ -985,16 +1004,18 @@ export function buildPrecommitMessage(): ValidatorProposalVote {
     const ourId = getCurrentNodeId();
     const nodeInfo = nodeIps[ourId];
     const state = getCurrentState();
-     // TODO chainId
-    return new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT, getTermId(), nodeInfo.address, ourId, state.nextHeight, state.nextHash, new Date(Date.now()), "");
+    const vaddr = wasmxw.addr_humanize(decodeBase64(state.validator_pubkey).buffer)
+    const consAddr = nodeInfo.address
+    // TODO chainId
+    return new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT, getTermId(), consAddr, ourId, state.nextHeight, state.nextHash, new Date(Date.now()), "");
 }
 
-export function preparePrecommitMessage(data: ValidatorProposalVote): string {
+export function preparePrecommitMessage(data: ValidatorProposalVote): string[] {
     const datastr = JSON.stringify<ValidatorProposalVote>(data);
     const signature = signMessage(datastr);
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
     const msgstr = `{"run":{"event":{"type":"receivePrecommit","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
-    return msgstr
+    return [msgstr, signature]
 }
 
 export function receivePrevote(
@@ -1077,7 +1098,13 @@ export function receivePrecommit(
         LoggerError("precommit sender node not found", ["sender", data.validatorAddress]);
         return;
     }
-    precommitArr[nodeIndex] = data;
+    precommitArr[nodeIndex].vote = data;
+    precommitArr[nodeIndex].signature = signature;
+    if (data.hash != "" && data.hash != "nil") {
+        precommitArr[nodeIndex].block_id_flag = typestnd.BlockIDFlag.Commit
+    } else {
+        precommitArr[nodeIndex].block_id_flag = typestnd.BlockIDFlag.Nil
+    }
     setPrecommitArray(precommitArr);
 }
 
@@ -1125,6 +1152,9 @@ export function commitBlock(
     const state = getCurrentState();
     const lastFinalizedIndex = getLastBlockIndex();
     if (state.nextHeight > lastFinalizedIndex) {
+        const state = getCurrentState();
+        state.last_round = getTermId();
+        setCurrentState(state);
         startBlockFinalizationFollower(state.nextHeight);
     }
 }
@@ -1142,19 +1172,10 @@ export function resetPrecommits(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    const count = getValidatorNodeCount();
-    const emptyarr = getEmptyValidatorProposalVoteArray(count, SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT);
+    // TODO all validators, only bonded validators???
+    const validators = getAllValidators();
+    const emptyarr = getEmptyPrecommitArray(validators.length, SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT);
     setPrecommitArray(emptyarr);
-}
-
-export function getEmptyValidatorProposalVoteArray(len: i32, type: SignedMsgType): Array<ValidatorProposalVote> {
-    const emptyPrevotes = new Array<ValidatorProposalVote>(len);
-    const termId = getTermId()
-    const nextIndex = getCurrentState().nextHeight;
-    for (let i = 0; i < len; i++) {
-        emptyPrevotes[i] = new ValidatorProposalVote(type, termId, "", 0, nextIndex, "", new Date(Date.now()), "");
-    }
-    return emptyPrevotes
 }
 
 export function setLockedValue(

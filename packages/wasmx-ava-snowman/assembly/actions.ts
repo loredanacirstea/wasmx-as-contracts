@@ -18,7 +18,7 @@ import {
   import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as fsm from 'xstate-fsm-as/assembly/storage';
-import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, parseUint8ArrayToU32BigEndian, base64ToHex, hex64ToBase64 } from "wasmx-utils/assembly/utils";
+import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, parseUint8ArrayToU32BigEndian, base64ToHex, hex64ToBase64, stringToBase64 } from "wasmx-utils/assembly/utils";
 import { getParamsOrEventParams, actionParamsToMap } from 'xstate-fsm-as/assembly/utils';
 import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
 import {
@@ -618,6 +618,7 @@ function appendLogInternalVerified2(processReq: typestnd.RequestProcessProposal,
         blockDataBase64,
         blockHeaderBase64,
         commitBase64,
+        stringToBase64(`{"evidence":[]}`),
         "",
     )
     const blockEntryBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(JSON.stringify<wblocks.BlockEntry>(blockEntry))))
@@ -646,6 +647,7 @@ function appendLogInternalVerified(processReq: typestnd.RequestProcessProposal, 
         blockDataBase64,
         blockHeaderBase64,
         commitBase64,
+        stringToBase64(`{"evidence":[]}`),
         "",
     )
     const entry = new LogEntryAggregate(processReq.height, 0, leaderId, blockEntry);
@@ -752,7 +754,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
 
     entryobj.data.result = resultBase64;
 
-    const commitBz = String.UTF8.decode(decodeBase64(entryobj.data.commit).buffer);
+    const commitBz = String.UTF8.decode(decodeBase64(entryobj.data.last_commit).buffer);
     const commit = JSON.parse<typestnd.BlockCommit>(commitBz);
 
     const last_commit_hash = getCommitHash(commit);

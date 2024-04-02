@@ -5,21 +5,30 @@ export const MODULE_NAME = "hooks"
 
 // @ts-ignore
 @serializable
+export class Hook {
+    name: string
+    sourceModule: string
+    targetModules: string[]
+    constructor(name: string, sourceModule: string, targetModules: string[]) {
+        this.name = name
+        this.sourceModule = sourceModule
+        this.targetModules = targetModules
+    }
+}
+
+// @ts-ignore
+@serializable
 export class MsgInitialize {
-    authorities: string[]
-    registrations: MsgSetHook[]
-    constructor(authorities: string[], registrations: MsgSetHook[]) {
-        this.authorities = authorities
-        this.registrations = registrations
+    hooks: Hook[]
+    constructor(hooks: Hook[]) {
+        this.hooks = hooks
     }
 }
 
 // @ts-ignore
 @serializable
 export class Params {
-    authorities: string[]
-    constructor(authorities: string[]) {
-        this.authorities = authorities
+    constructor() {
     }
 }
 

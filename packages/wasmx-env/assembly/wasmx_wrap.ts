@@ -23,7 +23,10 @@ import {
     StoragePair,
     SignedTransaction,
     VerifyCosmosTxResponse,
+    BlockInfo,
+    HexString,
 } from './types';
+import { u8ArrayToHex, uint8ArrayToHex } from "as-tally/assembly/tally";
 
 export function revert(message: string): void {
     // console.debug(`Error: ${message}`);
@@ -226,6 +229,12 @@ export function getAddressByRole(value: string): Bech32String {
     return addr_humanize(addr);
 }
 
+export function getRoleByAddress(value: Bech32String): string {
+    const addr = addr_canonicalize(value)
+    const role = wasmx.getRoleByAddress(addr)
+    return String.UTF8.decode(role)
+}
+
 export function executeCosmosMsg(msg: string, moduleName: string = ""): CallResponse {
     LoggerDebug(`${moduleName}:wasmx_env`, "executeCosmosMsg", ["msg", msg])
     const responsebz = wasmx.executeCosmosMsg(String.UTF8.encode(msg));
@@ -245,4 +254,15 @@ export function verifyCosmosTx(encodedTx: Base64String): VerifyCosmosTxResponse 
     const data = decodeBase64(encodedTx).buffer;
     const result = wasmx.verifyCosmosTx(data)
     return JSON.parse<VerifyCosmosTxResponse>(String.UTF8.decode(result));
+}
+
+export function getCurrentBlock(): BlockInfo {
+    const data = wasmx.getCurrentBlock();
+    return JSON.parse<BlockInfo>( String.UTF8.decode(data));
+}
+
+export function ed25519PubToHex(pubKey: Base64String): HexString {
+    const data = decodeBase64(pubKey).buffer;
+    const bz = wasmx.ed25519PubToHex(data);
+    return uint8ArrayToHex(Uint8Array.wrap(bz));
 }

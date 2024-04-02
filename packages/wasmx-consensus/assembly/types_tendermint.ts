@@ -153,9 +153,9 @@ export class ExtendedCommitInfo {
 export class CommitSig {
     block_id_flag: BlockIDFlag
     validator_address: HexString
-    timestamp: string
+    timestamp: Date
     signature: Base64String
-    constructor(block_id_flag: BlockIDFlag, validator_address: HexString, timestamp: string, signature: Base64String) {
+    constructor(block_id_flag: BlockIDFlag, validator_address: HexString, timestamp: Date, signature: Base64String) {
         this.block_id_flag = block_id_flag;
         this.validator_address = validator_address;
         this.timestamp = timestamp;
@@ -171,10 +171,10 @@ export class BlockCommit {
     // Any peer with a block can gossip signatures by index with a peer without
     // recalculating the active ValidatorSet.
     height: i64
-    round: i32
+    round: i64
     block_id: BlockID
     signatures: CommitSig[]
-    constructor(height: i64, round: i32, block_id: BlockID, signatures: CommitSig[]) {
+    constructor(height: i64, round: i64, block_id: BlockID, signatures: CommitSig[]) {
         this.height = height;
         this.round = round;
         this.block_id = block_id;
@@ -190,8 +190,17 @@ export class Misbehavior {
 
 // @ts-ignore
 @serializable
+export class EvidenceData {
+    evidence: Evidence[]
+    constructor(evidence: Evidence[]) {
+        this.evidence = evidence
+    }
+}
+
+// @ts-ignore
+@serializable
 export class Evidence {
-     // TODO
+    // TODO
 }
 
 // @ts-ignore
@@ -239,7 +248,7 @@ export enum BlockIDFlag {
 // @ts-ignore
 @serializable
 export class Validator {
-	address: Bech32String
+	address: Base64String
 	power: i64
     constructor(address: Bech32String, power: i64) {
         this.address = address
@@ -634,4 +643,3 @@ export class InitChainSetup {
         this.peers = peers
     }
 }
-

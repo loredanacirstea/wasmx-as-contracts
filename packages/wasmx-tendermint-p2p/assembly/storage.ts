@@ -3,7 +3,7 @@ import * as fsm from 'xstate-fsm-as/assembly/storage';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
-import { CurrentState, ValidatorProposalVote } from "./types_blockchain";
+import { CurrentState, ValidatorCommitVote, ValidatorProposalVote } from "./types_blockchain";
 import { parseInt32 } from "wasmx-utils/assembly/utils";
 import { LogEntry, LogEntryAggregate } from "./types";
 import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
@@ -201,16 +201,16 @@ export function setPrevoteArray(arr: Array<ValidatorProposalVote>): void {
     fsm.setContextValue(cfg.PREVOTE_ARRAY, JSON.stringify<Array<ValidatorProposalVote>>(arr));
 }
 
-export function getPrecommitArray(): Array<ValidatorProposalVote> {
+export function getPrecommitArray(): Array<ValidatorCommitVote> {
     const valuestr = fsm.getContextValue(cfg.PRECOMMIT_ARRAY);
-    let value: Array<ValidatorProposalVote> = [];
+    let value: Array<ValidatorCommitVote> = [];
     if (valuestr === "") return value;
-    value = JSON.parse<Array<ValidatorProposalVote>>(valuestr);
+    value = JSON.parse<Array<ValidatorCommitVote>>(valuestr);
     return value;
 }
 
-export function setPrecommitArray(arr: Array<ValidatorProposalVote>): void {
-    fsm.setContextValue(cfg.PRECOMMIT_ARRAY, JSON.stringify<Array<ValidatorProposalVote>>(arr));
+export function setPrecommitArray(arr: Array<ValidatorCommitVote>): void {
+    fsm.setContextValue(cfg.PRECOMMIT_ARRAY, JSON.stringify<Array<ValidatorCommitVote>>(arr));
 }
 
 // last log may be an uncommited one or a final one

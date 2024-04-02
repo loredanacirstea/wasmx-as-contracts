@@ -2,62 +2,74 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap"
 import { BigInt } from "wasmx-env/assembly/bn"
-import { isAuthorized } from "wasmx-env/assembly/utils";
-import { MODULE_NAME, MsgInitialize, MsgRunHook, MsgSetHook, Params, QueryHookModulesRequest, QueryHookModulesResponse, QueryHooksRequest, QueryHooksResponse } from "./types";
+import { Hook, MODULE_NAME, MsgInitialize, MsgRunHook, MsgSetHook, Params, QueryHookModulesRequest, QueryHookModulesResponse, QueryHooksRequest, QueryHooksResponse } from "./types";
 import { LoggerDebug, LoggerError, revert } from "./utils";
-import { addModulesByHook, getHooks, getModulesByHook, getParams, setHooks, setParams } from "./storage";
+import { getHookNames, getHookByName, setHooks, setHookByName } from "./storage";
 import { Base64String, CallRequest } from "wasmx-env/assembly/types";
 
 export function Initialize(req: MsgInitialize): ArrayBuffer {
-    setParams(new Params(req.authorities))
-    const hooks: string[] = []
-    for (let i = 0; i < req.registrations.length; i++) {
-        const reg = req.registrations[i]
-        if (!hooks.includes(reg.hook)) {
-            hooks.push(reg.hook)
+    const names: string[] = []
+    for (let i = 0; i < req.hooks.length; i++) {
+        const name = req.hooks[i].name
+        if (names.includes(name)) {
+            revert(`duplicate hook definition: ${name}`)
         }
-        addModulesByHook(reg.hook, reg.modules)
+        names.push(name)
+        setHookByName(req.hooks[i])
     }
-    setHooks(hooks)
+    setHooks(names)
     return new ArrayBuffer(0)
 }
 
 export function SetHook(req: MsgSetHook): ArrayBuffer {
-    requireAuthorization()
-    setHookInternal(req)
+    const caller = wasmxw.getCaller()
+    const role = wasmxw.getRoleByAddress(caller);
+    if (role == "") {
+        revert(`unauthorized hook action: SetHook: caller ${caller}`)
+    }
+
+    setHookInternal(req.hook, role, req.modules)
     return new ArrayBuffer(0)
 }
 
 export function RunHook(req: MsgRunHook): ArrayBuffer {
-    requireAuthorization()
-    const modules = getModulesByHook(req.hook)
-    LoggerDebug("run hooks", ["modules", modules.join(",")])
-    for (let i = 0; i < modules.length; i++) {
-        const moduleOrContract = modules[i]
+    const hook = getHookByName(req.hook)
+    if (!hook) return new ArrayBuffer(0)
+
+    requireSource(hook, "RunHook")
+    if (!hook) return new ArrayBuffer(0)
+    LoggerDebug("run hooks", ["modules", hook.targetModules.join(",")])
+    for (let i = 0; i < hook.targetModules.length; i++) {
+        const moduleOrContract = hook.targetModules[i]
         makeHookCall(req.hook, moduleOrContract, req.data);
     }
     return new ArrayBuffer(0)
 }
 
 export function GetHooks(req: QueryHooksRequest): ArrayBuffer {
-    const hooks = getHooks()
+    const hooks = getHookNames()
     const resp = new QueryHooksResponse(hooks)
     return String.UTF8.encode(JSON.stringify<QueryHooksResponse>(resp))
 }
 
 export function GetHookModules(req: QueryHookModulesRequest): ArrayBuffer {
-    const modules = getModulesByHook(req.hook)
+    const hook = getHookByName(req.hook)
+    let modules: string[] = []
+    if (hook) {
+        modules = hook.targetModules;
+    }
     const resp = new QueryHookModulesResponse(modules)
     return String.UTF8.encode(JSON.stringify<QueryHookModulesResponse>(resp))
 }
 
-function setHookInternal(req: MsgSetHook): void {
-    const hooks = getHooks()
-    if (!hooks.includes(req.hook)) {
-        hooks.push(req.hook)
+function setHookInternal(hookName: string, sourceModule: string, targetModules: string[]): void {
+    const hooks = getHookNames()
+    if (!hooks.includes(hookName)) {
+        hooks.push(hookName)
         setHooks(hooks)
     }
-    addModulesByHook(req.hook, req.modules)
+    const hook = new Hook(hookName, sourceModule, targetModules);
+    setHookByName(hook);
 }
 
 function makeHookCall(hook: string, moduleOrContract: string, data: Base64String): void {
@@ -72,10 +84,13 @@ function makeHookCall(hook: string, moduleOrContract: string, data: Base64String
     }
 }
 
-function requireAuthorization(): void {
+function requireSource(hook: Hook, message: string): void {
     const caller = wasmxw.getCaller()
-    const params = getParams()
-    if(!isAuthorized(caller, params.authorities)) {
-        revert(`unauthorized hooks action: caller ${caller}`)
+    const role = wasmxw.getRoleByAddress(caller);
+    if (role == "") {
+        revert(`unauthorized hook action: ${message}: caller ${caller}`)
+    }
+    if (role != hook.sourceModule) {
+        revert(`unauthorized hook action: ${message}: caller ${caller} is not ${hook.sourceModule}`)
     }
 }

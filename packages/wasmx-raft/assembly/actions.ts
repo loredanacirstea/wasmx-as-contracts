@@ -20,7 +20,7 @@ import {
     EventObject,
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
-import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, base64ToHex, hex64ToBase64 } from "wasmx-utils/assembly/utils";
+import { hexToUint8Array, parseInt32, parseInt64, uint8ArrayToHex, i64ToUint8ArrayBE, base64ToHex, hex64ToBase64, stringToBase64 } from "wasmx-utils/assembly/utils";
 import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, AppendEntryResponse, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse, NodeInfo, MODULE_NAME } from "./types_raft";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { appendLogEntry, getCommitIndex, getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getMatchIndexArray, getMempool, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, getVoteIndexArray, hasVotedFor, removeLogEntry, setCommitIndex, setCurrentNodeId, setCurrentState, setElectionTimeout, setLastApplied, setLastLogIndex, setMatchIndexArray, setMempool, setNextIndexArray, setNodeIPs, setTermId, setVoteIndexArray, setVotedFor } from "./storage";
@@ -1088,7 +1088,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
 
     entryobj.data.result = resultBase64;
 
-    const commitBz = String.UTF8.decode(decodeBase64(entryobj.data.commit).buffer);
+    const commitBz = String.UTF8.decode(decodeBase64(entryobj.data.last_commit).buffer);
     const commit = JSON.parse<typestnd.BlockCommit>(commitBz);
 
     const last_commit_hash = getCommitHash(commit);
@@ -1360,6 +1360,7 @@ function appendLogInternalVerified(processReq: typestnd.RequestProcessProposal, 
         blockDataBase64,
         blockHeaderBase64,
         commitBase64,
+        stringToBase64(`{"evidence":[]}`),
         "",
     )
     const entry = new LogEntryAggregate(processReq.height, termId, leaderId, blockEntry);

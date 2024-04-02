@@ -5,9 +5,9 @@ import { BigInt } from "wasmx-env/assembly/bn"
 import * as banktypes from "wasmx-bank/assembly/types"
 import * as derc20types from "wasmx-derc20/assembly/types"
 import * as erc20types from "wasmx-erc20/assembly/types"
-import { getParamsInternal, setParams, setNewValidator, getParams, getValidator, getValidatorsAddresses } from './storage';
-import { MsgInitGenesis, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool, BondedS } from './types';
-import { LoggerDebug, revert } from './utils';
+import { getParamsInternal, setParams, setNewValidator, getParams, getValidator, getValidatorsAddresses, getValidatorAddrByConsAddr, setValidator } from './storage';
+import { MsgInitGenesis, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool, BondedS, AfterValidatorCreated, AfterValidatorBonded } from './types';
+import { LoggerDebug, LoggerError, revert } from './utils';
 import { parseInt64 } from "wasmx-utils/assembly/utils";
 import { Bech32String, CallRequest, CallResponse, Coin } from "wasmx-env/assembly/types";
 
@@ -26,7 +26,7 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
     const vupdates: ValidatorUpdate[] = [];
     for (let i = 0; i < genesis.validators.length; i++) {
         const validator = genesis.validators[i];
-        setNewValidator(validator);
+        setNewValidatorAndCallHook(validator);
         const power = getPower(validator.tokens);
         vupdates.push(new ValidatorUpdate(validator.consensus_pubkey, power))
     }
@@ -34,6 +34,12 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
         const delegation = genesis.delegations[i]
         const tokenAddr = getTokenAddress()
         callDelegate(tokenAddr, delegation.delegator_address, delegation.validator_address, delegation.amount)
+    }
+    // we do this here, instead of ApplyAndReturnValidatorSetUpdates
+    // TODO - is this good enough?
+    for (let i = 0; i < genesis.validators.length; i++) {
+        const validator = genesis.validators[i];
+        bondValidatorAndCallHook(validator);
     }
     let data = JSON.stringify<InitGenesisResponse>(new InitGenesisResponse(vupdates))
     data = data.replaceAll(`"anytype"`, `"@type"`)
@@ -65,11 +71,15 @@ export function CreateValidator(req: MsgCreateValidator): void {
     if (req.value.denom != DENOM_BASE) {
         revert(`cannot create validator with ${req.value.denom}; need ${DENOM_BASE}`)
     }
-    setNewValidator(validator);
+    setNewValidatorAndCallHook(validator);
 
     // delegate with token contract
     const tokenAddr = getTokenAddress()
     callDelegate(tokenAddr, req.validator_address, req.validator_address, req.value.amount)
+
+    // we do this here, instead of ApplyAndReturnValidatorSetUpdates
+    // TODO - is this good enough?
+    bondValidatorAndCallHook(validator);
 }
 
 export function EditValidator(): void {
@@ -79,6 +89,7 @@ export function EditValidator(): void {
 export function Delegate (): void {
     // TODO check validator exists
     // call delegated token directly
+    // bondValidator
 }
 
 export function BeginRedelegate(): void {
@@ -164,6 +175,22 @@ export function GetPool(req: QueryPoolRequest): ArrayBuffer {
     return String.UTF8.encode(JSON.stringify<QueryPoolResponse>(res))
 }
 
+export function ValidatorByConsAddr(req: QueryValidatorRequest): ArrayBuffer {
+    const addr = getValidatorAddrByConsAddr(req.validator_addr)
+    if (addr == "") {
+        revert(`validator not found: ${req.validator_addr}`)
+        return new ArrayBuffer(0)
+    }
+    const validator = getValidatorWithBalance(addr)
+    if (validator == null) {
+        revert(`validator not found: ${addr}`)
+        return new ArrayBuffer(0)
+    }
+    let data = JSON.stringify<QueryValidatorResponse>(new QueryValidatorResponse(validator))
+    data = data.replaceAll(`"anytype"`, `"@type"`)
+    return String.UTF8.encode(data)
+}
+
 export function getValidatorWithBalance(validatorAddr: Bech32String): Validator | null {
     const validator = getValidator(validatorAddr)
     if (validator == null) {
@@ -239,4 +266,28 @@ export function getPower(tokens: BigInt): i64 {
     // @ts-ignore
     const v: BigInt = tokens / BigInt.fromU32(POWER_REDUCTION);
     return v.toI64()
+}
+
+export function setNewValidatorAndCallHook(value: Validator): void {
+    setNewValidator(value)
+    runHookContract(AfterValidatorCreated, JSON.stringify<Validator>(value));
+}
+
+// perform all the store operations for when a validator status becomes bonded
+// unbondingToBonded
+// unbondedToBonded - ApplyAndReturnValidatorSetUpdates
+export function bondValidatorAndCallHook(value: Validator): void {
+    value.status = BondedS
+    setValidator(value)
+    runHookContract(AfterValidatorBonded, JSON.stringify<Validator>(value));
+}
+
+export function runHookContract(hookName: string, data: string): void {
+    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(data)))
+    const calldatastr = `{"RunHook":{"hook":"${hookName}","data":"${dataBase64}"}}`;
+    const resp = callContract("hooks", calldatastr, false)
+    if (resp.success > 0) {
+        // we do not fail, we want the chain to continue
+        LoggerError(`hooks failed`, ["error", resp.data])
+    }
 }
