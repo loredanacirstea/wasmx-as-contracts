@@ -963,8 +963,12 @@ export function buildBlockProposal(txs: string[], cummulatedGas: i64, maxDataByt
         const val = validators[i]
         const power = getPower(val.tokens)
 
+        // TODO VoteInfo should be hex
+        // but then we need a mapping hex => pubkey or hex => operator_address
+
         // hex format -> bytes -> base64
-        const vaddress = encodeBase64(hexToUint8Array(commitSig.validator_address))
+        // const vaddress = encodeBase64(hexToUint8Array(commitSig.validator_address))
+        const vaddress = encodeBase64(Uint8Array.wrap(wasmxw.addr_canonicalize(val.operator_address)))
 
         const voteInfo = new typestnd.VoteInfo(new typestnd.Validator(vaddress, power), commitSig.block_id_flag)
         lastCommit.votes.push(voteInfo)
