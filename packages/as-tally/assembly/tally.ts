@@ -1048,6 +1048,10 @@ export function u8ArrayToHex(arr: u8[]): string {
     return arr.reduce((accum: string, v: u8) => accum + v.toString(16).padStart(2, '0'), "");
 }
 
+export function uint8ArrayToHex(arr: Uint8Array): string {
+    return arr.reduce((accum: string, v: u8) => accum + v.toString(16).padStart(2, '0'), "");
+}
+
 export function hexToU8(value: string): u8[] {
     const arr: u8[] = [];
     if (value.substr(0, 2) == "0x") value = value.substr(2);

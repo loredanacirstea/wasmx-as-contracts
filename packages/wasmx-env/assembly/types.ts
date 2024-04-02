@@ -12,6 +12,9 @@ export type Base64String = string;
 // @ts-ignore
 @serializable
 export type Bech32String = string;
+// @ts-ignore
+@serializable
+export type ConsensusAddressString = string;
 
 // @ts-ignore
 @serializable
@@ -430,5 +433,23 @@ export class VerifyCosmosTxResponse {
     constructor(valid: bool, error: string) {
         this.valid = valid
         this.error = error
+    }
+}
+
+// @ts-ignore
+@serializable
+export class BlockInfo {
+    height: BigInt;
+    timestamp: BigInt;
+    gasLimit: BigInt;
+    hash: BigInt;
+    difficulty: BigInt = BigInt.empty();
+    proposer: BigInt;
+    constructor(height: BigInt, timestamp: BigInt, gasLimit: BigInt, hash: BigInt, proposer: BigInt) {
+        this.height = height;
+        this.timestamp = timestamp;
+        this.gasLimit = gasLimit;
+        this.hash = hash;
+        this.proposer = proposer;
     }
 }
