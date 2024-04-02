@@ -72,9 +72,9 @@ export function AfterValidatorRemoved(req: MsgRunHook): void {
 }
 
 export function BeginBlock(req: MsgRunHook): void {
-    console.log("--BeginBlock--" + req.data)
-    console.log("--BeginBlock--" + String.UTF8.decode(decodeBase64(req.data).buffer))
-    const block = JSON.parse<typestnd.RequestFinalizeBlock>(String.UTF8.decode(decodeBase64(req.data).buffer))
+    const data = String.UTF8.decode(decodeBase64(req.data).buffer)
+    LoggerDebug("BeginBlock", ["data", data])
+    const block = JSON.parse<typestnd.RequestFinalizeBlock>(data)
 
     const params = getParams();
 
@@ -99,8 +99,6 @@ export function BeginBlock(req: MsgRunHook): void {
             }
             continue;
         }
-
-        console.log("--BeginBlock--valid" + vaddr + "--" + consaddr)
 
         // don't update missed blocks when validator's jailed
         if (validator.jailed) {
