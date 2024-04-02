@@ -6,7 +6,8 @@ import { decode as decodeBase64 } from "as-base64/assembly";
 
 const VALIDATOR_ADDRESSES = "validators_addresses"
 const VALIDATOR_KEY = "validator_"
-const VALIDATOR_ALIAS_KEY = "validatoralias_"
+const VALIDATOR_CONSADDR_TO_OPERATOR_KEY = "validatorconsaddrtooperator_"
+const VALIDATOR_OPERATOR_TO_CONSADDR_KEY = "validatoroperatortoconsaddr_"
 const PARAM_KEY = "params"
 
 export function setNewValidator(value: Validator): void {
@@ -37,14 +38,23 @@ export function setValidator(value: Validator): void {
     wasmx.sstore(VALIDATOR_KEY + value.operator_address, data);
     const consaddr = wasmx.addr_humanize(decodeBase64(value.consensus_pubkey.key).buffer)
     setValidatorAddrByConsAddr(value.operator_address, consaddr)
+    setValidatorConsAddrByOperator(value.operator_address, consaddr)
 }
 
-export function getValidatorAddrByConsAddr(addr: Bech32String): string {
-    return wasmx.sload(VALIDATOR_ALIAS_KEY + addr);
+export function getValidatorConsAddrByOperator(addr: Bech32String): string {
+    return wasmx.sload(VALIDATOR_OPERATOR_TO_CONSADDR_KEY + addr);
+}
+
+export function setValidatorConsAddrByOperator(addr: Bech32String, consaddr: Bech32String): void {
+    wasmx.sstore(VALIDATOR_OPERATOR_TO_CONSADDR_KEY + addr, consaddr);
+}
+
+export function getValidatorAddrByConsAddr(consaddr: Bech32String): string {
+    return wasmx.sload(VALIDATOR_CONSADDR_TO_OPERATOR_KEY + consaddr);
 }
 
 export function setValidatorAddrByConsAddr(addr: Bech32String, consaddr: Bech32String): void {
-    wasmx.sstore(VALIDATOR_ALIAS_KEY + consaddr, addr);
+    wasmx.sstore(VALIDATOR_CONSADDR_TO_OPERATOR_KEY + consaddr, addr);
 }
 
 export function getParams(): Params {

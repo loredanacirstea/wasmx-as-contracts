@@ -961,7 +961,10 @@ export function buildBlockProposal(txs: string[], cummulatedGas: i64, maxDataByt
         const commitSig = lastBlockCommit.signatures[i]
         const val = validators[i]
         const power = getPower(val.tokens)
-        const vaddress = encodeBase64(Uint8Array.wrap(wasmxw.addr_canonicalize(commitSig.validator_address)))
+
+        // hex format -> bytes -> base64
+        const vaddress = encodeBase64(hexToUint8Array(commitSig.validator_address))
+
         const voteInfo = new typestnd.VoteInfo(new typestnd.Validator(vaddress, power), commitSig.block_id_flag)
         lastCommit.votes.push(voteInfo)
     }
@@ -1427,7 +1430,7 @@ function callStorage(calldata: string, isQuery: boolean): CallResponse {
     return resp;
 }
 
-function callStaking(calldata: string, isQuery: boolean): CallResponse {
+export function callStaking(calldata: string, isQuery: boolean): CallResponse {
     const req = new CallRequest("staking", calldata, BigInt.zero(), 100000000, isQuery);
     const resp = wasmxw.call(req, MODULE_NAME);
     // result or error

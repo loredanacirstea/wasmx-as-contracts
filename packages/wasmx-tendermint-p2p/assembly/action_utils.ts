@@ -9,6 +9,7 @@ import * as staking from "wasmx-stake/assembly/types";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
+import * as tnd from "wasmx-tendermint/assembly/actions";
 import { buildLogEntryAggregate, callContract, callHookContract, getMempool, getTotalStaked, setMempool, updateConsensusParams, updateValidators } from "wasmx-tendermint/assembly/actions";
 import * as cfg from "./config";
 import { AppendEntry, LogEntryAggregate } from "./types";
@@ -236,6 +237,10 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         processReq.next_validators_hash,
         processReq.proposer_address,
     )
+
+    const blockDataBeginBlock = JSON.stringify<typestnd.RequestFinalizeBlock>(finalizeReq)
+    callHookContract("BeginBlock", blockDataBeginBlock);
+
     let respWrap = consensuswrap.FinalizeBlock(finalizeReq);
     if (respWrap.error.length > 0 && !retry) {
         // ERR invalid height: 3232; expected: 3233
@@ -545,7 +550,22 @@ export function getCommitSigsFromPrecommitArray(): typestnd.CommitSig[] {
     const sigs = new Array<typestnd.CommitSig>(precommitArr.length)
     for (let i = 0; i < precommitArr.length; i++) {
         const comm = precommitArr[i]
-        sigs[i] = new typestnd.CommitSig(comm.block_id_flag, comm.vote.validatorAddress, comm.vote.timestamp, comm.signature);
+        // TODO vote.validatorAddress make it hex; now is bech32
+        // we need the consensus key
+        const validator = getValidator(comm.vote.validatorAddress);
+        const addrhex = wasmxw.ed25519PubToHex(validator.consensus_pubkey.key)
+        sigs[i] = new typestnd.CommitSig(comm.block_id_flag, addrhex, comm.vote.timestamp, comm.signature);
     }
     return sigs;
+}
+
+export function getValidator(addr: Bech32String): staking.Validator {
+    const calldata = `{"GetValidator":{"validator_addr":"${addr}"}}`
+    const resp = tnd.callStaking(calldata, true);
+    if (resp.success > 0 || resp.data === "") {
+        revert(`could not get validator: ${addr}`);
+    }
+    LoggerDebug("GetValidator", ["address", addr, "data", resp.data])
+    const result = JSON.parse<staking.QueryValidatorResponse>(resp.data);
+    return result.validator;
 }

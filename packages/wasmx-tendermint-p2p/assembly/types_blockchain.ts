@@ -6,7 +6,7 @@ import { BigInt } from "wasmx-env/assembly/bn";
 // @ts-ignore
 @serializable
 export class ValidatorQueueEntry {
-    address: Bech32String
+    address: Bech32String // operator_address
     index: i32
     value: BigInt
     constructor(address: Bech32String, index: i32, value: BigInt) {

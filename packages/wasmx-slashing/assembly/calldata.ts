@@ -1,11 +1,21 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { MsgInitGenesis } from './types';
+import * as stakingtypes from "wasmx-stake/assembly/types"
+import { MsgInitGenesis, MsgRunHook, QuerySigningInfoRequest, QuerySigningInfosRequest } from './types';
 
 // @ts-ignore
 @serializable
 export class CallData {
     InitGenesis: MsgInitGenesis | null = null;
+
+    // query
+    SigningInfo: QuerySigningInfoRequest | null = null;
+    SigningInfos: QuerySigningInfosRequest | null = null;
+
+    // hook
+    BeginBlock: MsgRunHook | null = null;
+    AfterValidatorCreated: MsgRunHook | null = null;
+    AfterValidatorBonded: MsgRunHook | null = null;
 }
 
 export function getCallDataWrap(): CallData {

@@ -4,6 +4,10 @@ import { BigInt } from "wasmx-env/assembly/bn"
 
 export const MODULE_NAME = "staking"
 
+// hooks
+export const AfterValidatorCreated = "AfterValidatorCreated"
+export const AfterValidatorBonded = "AfterValidatorBonded"
+
 // @ts-ignore
 @serializable
 export type BondStatusNumber = i32

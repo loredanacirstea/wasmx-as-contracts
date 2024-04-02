@@ -911,13 +911,16 @@ export function sendPrevoteNil(
     event: EventObject,
 ): void {
     const termId = getTermId()
-    const nextIndex = getCurrentState().nextHeight;
+    const state = getCurrentState()
+    const nextIndex = state.nextHeight;
     const nodeIps = getValidatorNodesInfo();
     const ourId = getCurrentNodeId();
     const getOurInfo = nodeIps[ourId];
 
+    const vaddr = wasmxw.addr_humanize(decodeBase64(state.validator_pubkey).buffer)
+    const consAddr = getOurInfo.address
     // TODO chainId
-    const data = new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PREVOTE, termId, getOurInfo.address, ourId, nextIndex, "nil", new Date(Date.now()), "")
+    const data = new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PREVOTE, termId, consAddr, ourId, nextIndex, "nil", new Date(Date.now()), "")
 
     const prevoteArr = getPrevoteArray();
     prevoteArr[getCurrentNodeId()] = data;
@@ -935,8 +938,10 @@ export function buildPrevoteMessage(): ValidatorProposalVote {
     const ourId = getCurrentNodeId();
     const nodeInfo = nodeIps[ourId];
     const state = getCurrentState();
+    const vaddr = wasmxw.addr_humanize(decodeBase64(state.validator_pubkey).buffer)
+    const consAddr = nodeInfo.address
      // TODO chainId
-    return new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PREVOTE, getTermId(), nodeInfo.address, ourId, state.nextHeight, state.nextHash, new Date(Date.now()), "");
+    return new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PREVOTE, getTermId(), consAddr, ourId, state.nextHeight, state.nextHash, new Date(Date.now()), "");
 }
 
 export function preparePrevoteMessage(data: ValidatorProposalVote): string {
@@ -971,12 +976,15 @@ export function sendPrecommitNil(
     event: EventObject,
 ): void {
     const termId = getTermId()
-    const nextIndex = getCurrentState().nextHeight;
+    const state = getCurrentState()
+    const nextIndex = state.nextHeight;
     const nodeIps = getValidatorNodesInfo();
     const ourId = getCurrentNodeId();
     const getOurInfo = nodeIps[ourId];
+    const vaddr = wasmxw.addr_humanize(decodeBase64(state.validator_pubkey).buffer)
+    const consAddr = getOurInfo.address
     // TODO chainId
-    const data = new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT, termId, getOurInfo.address, ourId, nextIndex, "nil", new Date(Date.now()), "")
+    const data = new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT, termId, consAddr, ourId, nextIndex, "nil", new Date(Date.now()), "")
 
     const resp = preparePrecommitMessage(data);
     const msgstr = resp[0]
@@ -996,8 +1004,10 @@ export function buildPrecommitMessage(): ValidatorProposalVote {
     const ourId = getCurrentNodeId();
     const nodeInfo = nodeIps[ourId];
     const state = getCurrentState();
-     // TODO chainId
-    return new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT, getTermId(), nodeInfo.address, ourId, state.nextHeight, state.nextHash, new Date(Date.now()), "");
+    const vaddr = wasmxw.addr_humanize(decodeBase64(state.validator_pubkey).buffer)
+    const consAddr = nodeInfo.address
+    // TODO chainId
+    return new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT, getTermId(), consAddr, ourId, state.nextHeight, state.nextHash, new Date(Date.now()), "");
 }
 
 export function preparePrecommitMessage(data: ValidatorProposalVote): string[] {
@@ -1142,6 +1152,7 @@ export function commitBlock(
     const state = getCurrentState();
     const lastFinalizedIndex = getLastBlockIndex();
     if (state.nextHeight > lastFinalizedIndex) {
+        const state = getCurrentState();
         state.last_round = getTermId();
         setCurrentState(state);
         startBlockFinalizationFollower(state.nextHeight);
