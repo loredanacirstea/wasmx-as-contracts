@@ -15,6 +15,9 @@ export type Bech32String = string;
 // @ts-ignore
 @serializable
 export type ConsensusAddressString = string;
+// @ts-ignore
+@serializable
+export type ValidatorAddressString = string;
 
 // @ts-ignore
 @serializable
@@ -62,6 +65,17 @@ export class CallResponse {
 // @ts-ignore
 @serializable
 export class Coin {
+    denom: string
+    amount: BigInt
+    constructor(denom: string, amount: BigInt) {
+        this.denom = denom
+        this.amount = amount
+    }
+}
+
+// @ts-ignore
+@serializable
+export class DecCoin {
     denom: string
     amount: BigInt
     constructor(denom: string, amount: BigInt) {
