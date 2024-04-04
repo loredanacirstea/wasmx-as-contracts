@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getName, getSymbol, getDecimals, totalSupply, balanceOf, transfer, transferFrom, approve, allowance, instantiateToken } from "wasmx-erc20/assembly/actions";
 import { CallData, getCallDataWrap } from './calldata';
-import { delegate, redelegate, undelegate, GetAllSDKDelegations, GetDelegation, balanceOfValidator } from "./actions";
+import { delegate, redelegate, undelegate, GetAllSDKDelegations, GetDelegation, balanceOfValidator, GetValidatorDelegations } from "./actions";
 import { revert } from "./utils";
 
 export function wasmx_env_2(): void {}
@@ -36,6 +36,8 @@ export function main(): void {
     result = GetDelegation(calld.GetDelegation!);
   } else if (calld.GetAllSDKDelegations !== null) {
     result = GetAllSDKDelegations(calld.GetAllSDKDelegations!);
+  } else if (calld.GetValidatorDelegations !== null) {
+    result = GetValidatorDelegations(calld.GetValidatorDelegations!);
   } else if (calld.approve !== null) {
     result = approve(calld.approve!);
   } else if (calld.allowance !== null) {

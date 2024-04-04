@@ -69,15 +69,15 @@ export class MsgGetAllSDKDelegations {}
 // @ts-ignore
 @serializable
 export class MsgGetAllSDKDelegationsResponse {
-    delegations: SDKDelegations[]
-    constructor(delegations: SDKDelegations[]) {
+    delegations: SDKDelegation[]
+    constructor(delegations: SDKDelegation[]) {
         this.delegations = delegations
     }
 }
 
 // @ts-ignore
 @serializable
-export class SDKDelegations {
+export class SDKDelegation {
     delegator_address: Bech32String
     validator_address: Bech32String
     shares: BigInt
