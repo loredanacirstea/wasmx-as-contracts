@@ -4,6 +4,9 @@ import { BigInt } from "wasmx-env/assembly/bn";
 
 export const MODULE_NAME = "erc20"
 
+export const ZERO_ADDRESS = "mythos1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqvvnu6d"
+export const ZERO_ADDRESS_HEX = "0x0000000000000000000000000000000000000000"
+
 // @ts-ignore
 @serializable
 export class CallDataInstantiate {
@@ -170,6 +173,17 @@ export class MsgMint {
     value: BigInt
     constructor(to: Bech32String, value: BigInt) {
         this.to = to
+        this.value = value
+    }
+}
+
+// @ts-ignore
+@serializable
+export class MsgBurn {
+    from: Bech32String
+    value: BigInt
+    constructor(from: Bech32String, value: BigInt) {
+        this.from = from
         this.value = value
     }
 }

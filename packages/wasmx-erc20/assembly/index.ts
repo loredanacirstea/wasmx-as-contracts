@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap } from './calldata';
-import { getName, getSymbol, getDecimals, totalSupply, balanceOf, transfer, transferFrom, approve, allowance, instantiateToken, mint } from "./actions";
+import { getName, getSymbol, getDecimals, totalSupply, balanceOf, transfer, transferFrom, approve, allowance, instantiateToken, mint, burn } from "./actions";
 import { revert } from "./utils";
 
 export function wasmx_env_2(): void {}
@@ -33,6 +33,8 @@ export function main(): void {
     result = allowance(calld.allowance!);
   } else if (calld.mint !== null) {
     result = mint(calld.mint!);
+  } else if (calld.burn !== null) {
+    result = burn(calld.burn!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)

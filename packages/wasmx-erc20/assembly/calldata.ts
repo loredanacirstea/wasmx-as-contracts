@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { MsgName, MsgSymbol, MsgDecimals, MsgTotalSupply, MsgBalanceOf, MsgTransfer, MsgTransferFrom, MsgApprove, MsgAllowance, MsgMint } from './types';
+import { MsgName, MsgSymbol, MsgDecimals, MsgTotalSupply, MsgBalanceOf, MsgTransfer, MsgTransferFrom, MsgApprove, MsgAllowance, MsgMint, MsgBurn } from './types';
 
 // @ts-ignore
 @serializable
@@ -15,6 +15,7 @@ export class CallData {
     approve: MsgApprove | null = null;
     allowance: MsgAllowance | null = null;
     mint: MsgMint | null = null;
+    burn: MsgBurn | null = null;
 }
 
 export function getCallDataWrap(): CallData {

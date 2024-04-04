@@ -6,7 +6,7 @@ import { Bech32String, Coin } from "wasmx-env/assembly/types";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { hexToUint8Array32 } from "wasmx-utils/assembly/utils";
 import { setInfo, getInfo, getBalance, setBalance, getAllowance, setAllowance, getTotalSupply, setTotalSupply, getAdmins, getMinters, setMinters, setAdmins } from "./storage";
-import { MsgAllowance, MsgAllowanceResponse, MsgApprove, MsgBalanceOf, MsgBalanceOfResponse, MsgDecimalsResponse, MsgMint, MsgNameResponse, MsgSymbolResponse, MsgTotalSupplyResponse, MsgTransfer, MsgTransferFrom, MsgTransferFromResponse, MsgTransferResponse } from "./types";
+import { MsgAllowance, MsgAllowanceResponse, MsgApprove, MsgBalanceOf, MsgBalanceOfResponse, MsgBurn, MsgDecimalsResponse, MsgMint, MsgNameResponse, MsgSymbolResponse, MsgTotalSupplyResponse, MsgTransfer, MsgTransferFrom, MsgTransferFromResponse, MsgTransferResponse, ZERO_ADDRESS } from "./types";
 import { LoggerDebug, revert } from "./utils";
 import { CallDataInstantiate, TokenInfo } from "./types";
 
@@ -79,10 +79,7 @@ export function transferFrom(req: MsgTransferFrom): ArrayBuffer {
 
 export function approve(req: MsgApprove): ArrayBuffer {
     const owner = wasmxw.getCaller();
-    let allowance = getAllowance(owner, req.spender);
-    // @ts-ignore
-    allowance += req.value;
-    setAllowance(owner, req.spender, allowance);
+    setAllowance(owner, req.spender, req.value);
     logApproval(owner, req.spender, req.value)
     return new ArrayBuffer(0);
 }
@@ -108,6 +105,34 @@ export function mint(req: MsgMint): ArrayBuffer {
     // @ts-ignore
     supply += req.value;
     setTotalSupply(supply);
+
+    logTransfer(ZERO_ADDRESS, req.to, req.value);
+
+    return new ArrayBuffer(0);
+}
+
+export function burn(req: MsgBurn): ArrayBuffer {
+    const caller = wasmxw.getCaller();
+    const minters = getMinters();
+    let authorized = isAuthorized(caller, minters);
+    if (!authorized) {
+        revert(`caller cannot burn: ${caller}`);
+    }
+    LoggerDebug("burn", ["from", req.from, "value", req.value.toString(), "authorized", authorized.toString()])
+    let balance = getBalance(req.from);
+    if (balance < req.value) {
+        revert(`balance not enough for burning: ${balance.toString()}; burning ${req.value.toString()}`);
+    }
+    // @ts-ignore
+    balance -= req.value;
+    setBalance(req.from, balance);
+    let supply = getTotalSupply();
+    // @ts-ignore
+    supply -= req.value;
+    setTotalSupply(supply);
+
+    logTransfer(req.from, ZERO_ADDRESS, req.value);
+
     return new ArrayBuffer(0);
 }
 
