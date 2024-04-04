@@ -1,48 +1,81 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { MsgCommunityPoolSpend, MsgCommunityPoolSpendResponse, MsgDepositValidatorRewardsPool, MsgDepositValidatorRewardsPoolResponse, MsgFundCommunityPool, MsgFundCommunityPoolResponse, MsgInitGenesis, MsgSetWithdrawAddress, MsgSetWithdrawAddressResponse, MsgUpdateParams, MsgUpdateParamsResponse, MsgWithdrawDelegatorReward, MsgWithdrawDelegatorRewardResponse, MsgWithdrawValidatorCommission, MsgWithdrawValidatorCommissionResponse, QueryCommunityPoolRequest, QueryCommunityPoolResponse, QueryDelegationRewardsRequest, QueryDelegationRewardsResponse, QueryDelegationTotalRewardsRequest, QueryDelegationTotalRewardsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryDelegatorWithdrawAddressRequest, QueryDelegatorWithdrawAddressResponse, QueryParamsRequest, QueryParamsResponse, QueryValidatorCommissionRequest, QueryValidatorCommissionResponse, QueryValidatorDistributionInfoRequest, QueryValidatorDistributionInfoResponse, QueryValidatorOutstandingRewardsRequest, QueryValidatorOutstandingRewardsResponse, QueryValidatorSlashesRequest, QueryValidatorSlashesResponse } from './types';
-import { revert } from "./utils";
+import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
+import { MsgRunHook } from "wasmx-hooks/assembly/types";
+import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
+import * as banktypes from "wasmx-bank/assembly/types"
+import * as stakingtypes from "wasmx-stake/assembly/types"
+import * as blocktypes from "wasmx-blocks/assembly/types"
+import * as erc20types from "wasmx-erc20/assembly/types"
+import { DENOM_BASE, callContract } from "wasmx-stake/assembly/actions"
+import { decode as decodeBase64, encode as encodeBase64 } from "as-base64/assembly";
+import { Bech32String, CallRequest, CallResponse, Coin, PageRequest, ValidatorAddressString } from "wasmx-env/assembly/types";
+import { BigInt } from "wasmx-env/assembly/bn";
+import { FEE_COLLECTOR_ROLE, MODULE_NAME, MsgCommunityPoolSpend, MsgCommunityPoolSpendResponse, MsgDepositValidatorRewardsPool, MsgDepositValidatorRewardsPoolResponse, MsgFundCommunityPool, MsgFundCommunityPoolResponse, MsgInitGenesis, MsgSetWithdrawAddress, MsgSetWithdrawAddressResponse, MsgUpdateParams, MsgUpdateParamsResponse, MsgWithdrawDelegatorReward, MsgWithdrawDelegatorRewardResponse, MsgWithdrawValidatorCommission, MsgWithdrawValidatorCommissionResponse, QueryCommunityPoolRequest, QueryCommunityPoolResponse, QueryDelegationRewardsRequest, QueryDelegationRewardsResponse, QueryDelegationTotalRewardsRequest, QueryDelegationTotalRewardsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryDelegatorWithdrawAddressRequest, QueryDelegatorWithdrawAddressResponse, QueryParamsRequest, QueryParamsResponse, QueryValidatorCommissionRequest, QueryValidatorCommissionResponse, QueryValidatorDistributionInfoRequest, QueryValidatorDistributionInfoResponse, QueryValidatorOutstandingRewardsRequest, QueryValidatorOutstandingRewardsResponse, QueryValidatorSlashesRequest, QueryValidatorSlashesResponse, REWARDS_TOKEN_SYMBOL } from './types';
+import { LoggerDebug, LoggerError, revert } from "./utils";
+import { getParams, setParams } from "./storage";
 
 export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
+    setParams(req.params);
+    // TODO rest of genesis
     return new ArrayBuffer(0);
 }
 
+export function EndBlock(req: MsgRunHook): void {
+    LoggerDebug("BeginBlock", [])
+    const block = JSON.parse<blocktypes.BlockEntry>(String.UTF8.decode(decodeBase64(req.data).buffer))
+
+    // get fee collector balance
+    const feeCollectorAddress = wasmxw.getAddressByRole(FEE_COLLECTOR_ROLE)
+    const fees = getBalance(feeCollectorAddress, DENOM_BASE);
+    // burn fee collector balance
+    callBurnToken(DENOM_BASE, feeCollectorAddress, fees.amount);
+
+    // TODO community_tax * fees to CommunityPool
+
+    const proposer = block.proposer_address;
+    distributeFees(proposer, fees);
+}
+
 export function SetWithdrawAddress(req: MsgSetWithdrawAddress): ArrayBuffer {
+    LoggerError("SetWithdrawAddress not implemented", [])
     return String.UTF8.encode(JSON.stringify<MsgSetWithdrawAddressResponse>(new MsgSetWithdrawAddressResponse()))
 }
 
 export function WithdrawDelegatorReward(req: MsgWithdrawDelegatorReward): ArrayBuffer {
-    revert(`WithdrawDelegatorReward not implemented`);
-    return new ArrayBuffer(0)
-    // return String.UTF8.encode(JSON.stringify<MsgWithdrawDelegatorRewardResponse>(new MsgWithdrawDelegatorRewardResponse()))
+    const reward = withdrawRewards(req.delegator_address);
+    return String.UTF8.encode(JSON.stringify<MsgWithdrawDelegatorRewardResponse>(new MsgWithdrawDelegatorRewardResponse([new Coin(DENOM_BASE, reward)])))
 }
 
 export function WithdrawValidatorCommission(req: MsgWithdrawValidatorCommission): ArrayBuffer {
-    revert(`WithdrawValidatorCommission not implemented`);
-    return new ArrayBuffer(0)
-    // return String.UTF8.encode(JSON.stringify<MsgWithdrawValidatorCommissionResponse>(new MsgWithdrawValidatorCommissionResponse()))
+    const validator = getValidatorByConsAddr(req.validator_address);
+    const reward = withdrawRewards(validator.operator_address);
+    return String.UTF8.encode(JSON.stringify<MsgWithdrawValidatorCommissionResponse>(new MsgWithdrawValidatorCommissionResponse([new Coin(DENOM_BASE, reward)])))
 }
 
 export function FundCommunityPool(req: MsgFundCommunityPool): ArrayBuffer {
+    LoggerError("FundCommunityPool not implemented", [])
     return String.UTF8.encode(JSON.stringify<MsgFundCommunityPoolResponse>(new MsgFundCommunityPoolResponse()))
 }
 
 export function UpdateParams(req: MsgUpdateParams): ArrayBuffer {
+    setParams(req.params)
     return String.UTF8.encode(JSON.stringify<MsgUpdateParamsResponse>(new MsgUpdateParamsResponse()))
 }
 
 export function CommunityPoolSpend(req: MsgCommunityPoolSpend): ArrayBuffer {
+    LoggerError("CommunityPoolSpend not implemented", [])
     return String.UTF8.encode(JSON.stringify<MsgCommunityPoolSpendResponse>(new MsgCommunityPoolSpendResponse()))
 }
 
 export function DepositValidatorRewardsPool(req: MsgDepositValidatorRewardsPool): ArrayBuffer {
+    LoggerError("DepositValidatorRewardsPool not implemented", [])
     return String.UTF8.encode(JSON.stringify<MsgDepositValidatorRewardsPoolResponse>(new MsgDepositValidatorRewardsPoolResponse()))
 }
 
 export function Params(req: QueryParamsRequest): ArrayBuffer {
-    revert(`Params not implemented`);
-    return new ArrayBuffer(0)
-    // return String.UTF8.encode(JSON.stringify<QueryParamsResponse>(new QueryParamsResponse()))
+    const params = getParams()
+    return String.UTF8.encode(JSON.stringify<QueryParamsResponse>(new QueryParamsResponse(params)))
 }
 
 export function ValidatorDistributionInfo(req: QueryValidatorDistributionInfoRequest): ArrayBuffer {
@@ -72,6 +105,9 @@ export function ValidatorSlashes(req: QueryValidatorSlashesRequest): ArrayBuffer
 export function DelegationRewards(req: QueryDelegationRewardsRequest): ArrayBuffer {
     revert(`DelegationRewards not implemented`);
     return new ArrayBuffer(0)
+
+    // getValidatorDelegations
+
     // return String.UTF8.encode(JSON.stringify<QueryDelegationRewardsResponse>(new QueryDelegationRewardsResponse()))
 }
 
@@ -97,4 +133,185 @@ export function CommunityPool(req: QueryCommunityPoolRequest): ArrayBuffer {
     revert(`CommunityPool not implemented`);
     return new ArrayBuffer(0)
     // return String.UTF8.encode(JSON.stringify<QueryCommunityPoolResponse>(new QueryCommunityPoolResponse()))
+}
+
+export function withdrawRewards(delegatorAddress: Bech32String): BigInt {
+    const tokenAddress = getTokenAddress(REWARDS_TOKEN_SYMBOL);
+    const reward = getTokenAmount(tokenAddress, delegatorAddress);
+    callBurnToken(tokenAddress, delegatorAddress, reward);
+
+    // now mint amyt
+    const gasTokenAddress = getTokenAddress(DENOM_BASE);
+    callMintToken(gasTokenAddress, delegatorAddress, reward);
+    return reward
+}
+
+export function distributeFees(proposer: Bech32String, fees: Coin): void {
+    const validator = getValidator(proposer);
+    const delegators = getValidatorDelegations(proposer);
+    const commission = validator.commission.commission_rates.rate;
+    const bigf = parseBigFloat(commission);
+
+    const validAmount = fees.amount.mul(bigf.num).div(bigf.denom)
+    const delegAmount = fees.amount.sub(validAmount);
+    // store validator commission
+    const tokenAddress = getTokenAddress(REWARDS_TOKEN_SYMBOL)
+    callMintToken(tokenAddress, validator.operator_address, validAmount)
+
+    for (let i = 0; i < delegators.length; i++) {
+        const d = delegators[i]
+        const dAmount = d.balance.amount.mul(delegAmount).div(validator.tokens)
+        callMintToken(tokenAddress, d.delegation.delegator_address, dAmount)
+    }
+}
+
+export function getValidatorDelegations(addr: Bech32String): stakingtypes.DelegationResponse[] {
+    const msg = JSON.stringify<stakingtypes.QueryValidatorDelegationsRequest>(new stakingtypes.QueryValidatorDelegationsRequest(addr, new PageRequest(0, 0, 0, true, false)))
+    const calldata = `{"GetValidatorDelegations":${msg}}`
+    const resp = callStaking(calldata, true);
+    if (resp.success > 0 || resp.data === "") {
+        revert(`could not get validator delegations: ${addr}`);
+    }
+    LoggerDebug("GetValidatorDelegations", ["address", addr, "data", resp.data])
+    const result = JSON.parse<stakingtypes.QueryValidatorDelegationsResponse>(resp.data);
+    return result.delegation_responses;
+}
+
+export function getValidator(addr: Bech32String): stakingtypes.Validator {
+    const msg = JSON.stringify<stakingtypes.QueryValidatorRequest>(new stakingtypes.QueryValidatorRequest(addr))
+    const calldata = `{"GetValidator":${msg}}`
+    const resp = callStaking(calldata, true);
+    if (resp.success > 0 || resp.data === "") {
+        revert(`could not get validator: ${addr}`);
+    }
+    LoggerDebug("GetValidator", ["address", addr, "data", resp.data])
+    const result = JSON.parse<stakingtypes.QueryValidatorResponse>(resp.data);
+    return result.validator;
+}
+
+export function getValidatorByConsAddr(addr: ValidatorAddressString): stakingtypes.Validator {
+    const msg = JSON.stringify<stakingtypes.QueryValidatorRequest>(new stakingtypes.QueryValidatorRequest(addr))
+    const calldata = `{"ValidatorByConsAddr":${msg}}`
+    const resp = callStaking(calldata, true);
+    if (resp.success > 0 || resp.data === "") {
+        revert(`could not get validator: ${addr}`);
+    }
+    LoggerDebug("GetValidator", ["address", addr, "data", resp.data])
+    const result = JSON.parse<stakingtypes.QueryValidatorResponse>(resp.data);
+    return result.validator;
+}
+
+export function getBalance(address: Bech32String, denom: string): Coin {
+    let calldata = new banktypes.QueryBalanceRequest(address, denom);
+    let calldatastr = `{"GetBalance":${JSON.stringify<banktypes.QueryBalanceRequest>(calldata)}}`;
+    let resp = callBank(calldatastr, true)
+    if (resp.success > 0) {
+        revert(`could not get balance for address: ${address}, denom: ${denom}: ${resp.data}`)
+    }
+    const balance = JSON.parse<banktypes.QueryBalanceResponse>(resp.data)
+    return balance.balance;
+}
+
+export function callBank(calldata: string, isQuery: boolean): CallResponse {
+    // TODO denom as alias! when we have alias contract
+    const req = new CallRequest("bank", calldata, BigInt.zero(), 100000000, isQuery);
+    const resp = wasmxw.call(req, MODULE_NAME);
+    // result or error
+    resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    return resp;
+}
+
+export function callStaking(calldata: string, isQuery: boolean): CallResponse {
+    const req = new CallRequest("staking", calldata, BigInt.zero(), 100000000, isQuery);
+    const resp = wasmxw.call(req, MODULE_NAME);
+    // result or error
+    resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    return resp;
+}
+
+// @ts-ignore
+@serializable
+export class BigFloat {
+    num: BigInt
+    denom: BigInt
+    constructor( num: BigInt, denom: BigInt) {
+        this.num = num
+        this.denom = denom
+    }
+}
+
+export function trimZerosEnd(value: string): string {
+    let ndx = value.length - 1
+    for (let i = value.length - 1; i >= 0; i--) {
+        if (value.substring(i, i+1) != "0") {
+            ndx = i;
+            break;
+        }
+    }
+    return value.substring(0, ndx + 1);
+}
+
+export function parseBigFloat(value: string): BigFloat {
+    const parts = value.split(".");
+    const integ = BigInt.fromString(parts[0])
+    let num = BigInt.one()
+    let denom = BigInt.one()
+    if (parts.length > 1) {
+        const trimmed = trimZerosEnd(parts[1])
+        let ndx = 0;
+        for (let i = 0; i < trimmed.length; i++) {
+            if (trimmed.substring(i, i + 1) != "0") {
+                ndx = i;
+                break;
+            }
+        }
+        const dec = trimmed.substring(ndx);
+        num = BigInt.fromString(dec)
+        denom = BigInt.fromU32(10).pown(trimmed.length);
+    }
+    num = num.add(integ.mul(denom))
+    return new BigFloat(num, denom)
+}
+
+export function getTokenAddress(denom: string): Bech32String {
+    const calldata = new banktypes.QueryAddressByDenom(denom);
+    const calldatastr = `{"GetAddressByDenom":${JSON.stringify<banktypes.QueryAddressByDenom>(calldata)}}`;
+    const resp = callBank(calldatastr, true)
+    if (resp.success > 0) {
+        revert(`could not get staking token address: ${resp.data}`)
+    }
+    const result = JSON.parse<banktypes.QueryAddressByDenomResponse>(resp.data)
+    if (result.address == "") {
+        revert(`could not find rewards token address`)
+    }
+    return result.address
+}
+
+export function callMintToken(tokenAddress: Bech32String, to: Bech32String, value: BigInt): void {
+    const calldata = new erc20types.MsgMint(to, value);
+    const calldatastr = `{"mint":${JSON.stringify<erc20types.MsgMint>(calldata)}}`;
+    const resp = callContract(tokenAddress, calldatastr, false)
+    if (resp.success > 0) {
+        revert(`could not mint token: ${tokenAddress}`)
+    }
+}
+
+export function callBurnToken(tokenAddress: Bech32String, from: Bech32String, value: BigInt): void {
+    const calldata = new erc20types.MsgBurn(from, value);
+    const calldatastr = `{"burn":${JSON.stringify<erc20types.MsgBurn>(calldata)}}`;
+    const resp = callContract(tokenAddress, calldatastr, false)
+    if (resp.success > 0) {
+        revert(`could not burn token: ${tokenAddress}`)
+    }
+}
+
+export function getTokenAmount(tokenAddress: Bech32String, addr: Bech32String): BigInt {
+    const calldata = new erc20types.MsgBalanceOf(addr);
+    const calldatastr = `{"balanceOf":${JSON.stringify<erc20types.MsgBalanceOf>(calldata)}}`;
+    const resp = callContract(tokenAddress, calldatastr, true)
+    if (resp.success > 0) {
+        revert(`could not burn rewards`)
+    }
+    const result = JSON.parse<erc20types.MsgBalanceOfResponse>(resp.data);
+    return result.balance.amount
 }

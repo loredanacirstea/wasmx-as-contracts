@@ -1,11 +1,14 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { MsgCommunityPoolSpend, MsgDepositValidatorRewardsPool, MsgFundCommunityPool, MsgInitGenesis, MsgSetWithdrawAddress, MsgUpdateParams, MsgWithdrawDelegatorReward, MsgWithdrawValidatorCommission, QueryCommunityPoolRequest, QueryDelegationRewardsRequest, QueryDelegationTotalRewardsRequest, QueryDelegatorValidatorsRequest, QueryDelegatorWithdrawAddressRequest, QueryParamsRequest, QueryValidatorCommissionRequest, QueryValidatorDistributionInfoRequest, QueryValidatorOutstandingRewardsRequest, QueryValidatorSlashesRequest } from './types';
+import { MsgRunHook } from "wasmx-hooks/assembly/types";
 
 // @ts-ignore
 @serializable
 export class CallData {
     InitGenesis: MsgInitGenesis | null = null;
+
+    // msg
     SetWithdrawAddress: MsgSetWithdrawAddress | null = null;
     WithdrawDelegatorReward: MsgWithdrawDelegatorReward | null = null;
     WithdrawValidatorCommission: MsgWithdrawValidatorCommission | null = null;
@@ -25,6 +28,9 @@ export class CallData {
     DelegatorValidators: QueryDelegatorValidatorsRequest | null = null;
     DelegatorWithdrawAddress: QueryDelegatorWithdrawAddressRequest | null = null;
     CommunityPool: QueryCommunityPoolRequest | null = null;
+
+    // hook
+    EndBlock: MsgRunHook | null = null;
 }
 
 export function getCallDataWrap(): CallData {

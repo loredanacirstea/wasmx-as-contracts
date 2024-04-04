@@ -11,3 +11,16 @@ export function isAuthorized(caller: Bech32String, authorities: Bech32String[]):
     }
     return false;
 }
+
+export function toUpperCase(str: string): string {
+    let result: string = "";
+    for (let i: i32 = 0; i < str.length; i++) {
+        let charCode: i32 = str.charCodeAt(i);
+        // Convert lowercase ASCII letters to uppercase
+        if (charCode >= 97 && charCode <= 122) { // 'a' to 'z'
+            charCode -= 32;
+        }
+        result += String.fromCharCode(charCode);
+    }
+    return result;
+}

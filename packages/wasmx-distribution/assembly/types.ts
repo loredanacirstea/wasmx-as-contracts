@@ -3,6 +3,9 @@ import { Bech32String, Coin, DecCoin, PageRequest, PageResponse, ValidatorAddres
 
 export const MODULE_NAME = "distribution"
 
+export const FEE_COLLECTOR_ROLE = "fee_collector"
+export const REWARDS_TOKEN_SYMBOL = "armyt"
+
 // @ts-ignore
 @serializable
 export class Params {

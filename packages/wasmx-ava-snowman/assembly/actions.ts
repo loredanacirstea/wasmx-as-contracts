@@ -14,6 +14,7 @@ import {
     Bech32String,
     CallRequest,
     CallResponse,
+    HexString,
   } from 'wasmx-env/assembly/types';
   import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
@@ -611,12 +612,14 @@ function appendLogInternalVerified2(processReq: typestnd.RequestProcessProposal,
     const commit = JSON.stringify<typestnd.BlockCommit>(blockCommit);
     const commitBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(commit)))
     const contractAddress = encodeBase64(Uint8Array.wrap(wasmx.getAddress()));
+    const validator = getValidatorByHexAddr(processReq.proposer_address);
     const blockEntry = new wblocks.BlockEntry(
         processReq.height,
         contractAddress,
         contractAddress,
         blockDataBase64,
         blockHeaderBase64,
+        validator.operator_address,
         commitBase64,
         stringToBase64(`{"evidence":[]}`),
         "",
@@ -637,7 +640,7 @@ function appendLogInternalVerified(processReq: typestnd.RequestProcessProposal, 
     const commit = JSON.stringify<typestnd.BlockCommit>(blockCommit);
     const commitBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(commit)))
     const leaderId = getCurrentNodeId();
-
+    const validator = getValidatorByHexAddr(processReq.proposer_address);
     const contractAddress = encodeBase64(Uint8Array.wrap(wasmx.getAddress()));
 
     const blockEntry = new wblocks.BlockEntry(
@@ -646,6 +649,7 @@ function appendLogInternalVerified(processReq: typestnd.RequestProcessProposal, 
         contractAddress,
         blockDataBase64,
         blockHeaderBase64,
+        validator.operator_address,
         commitBase64,
         stringToBase64(`{"evidence":[]}`),
         "",
@@ -984,6 +988,20 @@ function updateValidators(updates: typestnd.ValidatorUpdate[]): void {
     if (resp.success > 0) {
         revert("could not update validators");
     }
+}
+
+function getValidatorByHexAddr(addr: HexString): staking.Validator {
+    const calldata = `{"ValidatorByHexAddr":{"validator_addr":"${addr}"}}`
+    const resp = callStaking(calldata, true);
+    if (resp.success > 0) {
+        revert(resp.data);
+    }
+    if (resp.data === "") {
+        revert(`validator not found: ${addr}`)
+    }
+    LoggerDebug("ValidatorByHexAddr", ["addr", addr, "data", resp.data])
+    const result = JSON.parse<staking.QueryValidatorResponse>(resp.data);
+    return result.validator;
 }
 
 function getAllValidators(): staking.Validator[] {

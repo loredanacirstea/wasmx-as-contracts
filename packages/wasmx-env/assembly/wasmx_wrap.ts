@@ -27,6 +27,7 @@ import {
     HexString,
 } from './types';
 import { u8ArrayToHex, uint8ArrayToHex } from "as-tally/assembly/tally";
+import { toUpperCase } from "./utils";
 
 export function revert(message: string): void {
     // console.debug(`Error: ${message}`);
@@ -261,8 +262,10 @@ export function getCurrentBlock(): BlockInfo {
     return JSON.parse<BlockInfo>( String.UTF8.decode(data));
 }
 
+// TODO replace this with sha256.Sum256(bz)[:20]
 export function ed25519PubToHex(pubKey: Base64String): HexString {
     const data = decodeBase64(pubKey).buffer;
     const bz = wasmx.ed25519PubToHex(data);
-    return uint8ArrayToHex(Uint8Array.wrap(bz));
+    const hexstr = uint8ArrayToHex(Uint8Array.wrap(bz));
+    return toUpperCase(hexstr);
 }

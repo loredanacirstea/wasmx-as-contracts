@@ -95,9 +95,9 @@ export class Header {
     // consensus info
     // evidence included in the block
     evidence_hash: HexString
-    // original proposer of the block
-    proposer_address: string // hex
-    constructor(version: VersionConsensus, chain_id: string, height: i64, time: string, last_block_id: BlockID, last_commit_hash: HexString, data_hash: HexString, validators_hash: HexString, next_validators_hash: HexString, consensus_hash: HexString, app_hash: HexString, last_results_hash: HexString, evidence_hash: HexString, proposer_address: string) {
+    // address of the public key of the original proposer of the block.
+    proposer_address: HexString // hex
+    constructor(version: VersionConsensus, chain_id: string, height: i64, time: string, last_block_id: BlockID, last_commit_hash: HexString, data_hash: HexString, validators_hash: HexString, next_validators_hash: HexString, consensus_hash: HexString, app_hash: HexString, last_results_hash: HexString, evidence_hash: HexString, proposer_address: HexString) {
         this.version = version;
         this.chain_id = chain_id;
         this.height = height;
@@ -214,8 +214,8 @@ export class RequestPrepareProposal {
 	height: i64;
 	time: string;
 	next_validators_hash: Base64String;
-	proposer_address: Base64String;
-    constructor(maxTxBytes: i64, txs: Array<Base64String>, localLastCommit: ExtendedCommitInfo, misbehavior: Misbehavior[], height: i64, time: string, nextValidatorsHash: Base64String, proposerAddress: Base64String) {
+	proposer_address: HexString;
+    constructor(maxTxBytes: i64, txs: Array<Base64String>, localLastCommit: ExtendedCommitInfo, misbehavior: Misbehavior[], height: i64, time: string, nextValidatorsHash: Base64String, proposerAddress: HexString) {
         this.max_tx_bytes = maxTxBytes;
         this.txs = txs;
         this.local_last_commit = localLastCommit;
@@ -291,8 +291,8 @@ export class RequestProcessProposal {
 	time: string
 	next_validators_hash: Base64String
     // address of the public key of the original proposer of the block.
-	proposer_address: Base64String
-    constructor(txs: Array<Base64String>, proposedLastCommit: CommitInfo, misbehavior: Misbehavior[], hash: Base64String, height: i64, time: string, nextValidatorsHash: Base64String, proposerAddress: Base64String) {
+	proposer_address: HexString
+    constructor(txs: Array<Base64String>, proposedLastCommit: CommitInfo, misbehavior: Misbehavior[], hash: Base64String, height: i64, time: string, nextValidatorsHash: Base64String, proposerAddress: HexString) {
         this.txs = txs;
         this.proposed_last_commit = proposedLastCommit;
         this.misbehavior = misbehavior;
@@ -331,8 +331,8 @@ export class RequestFinalizeBlock {
 	height: i64
 	time: string
 	next_validators_hash: Base64String
-	proposer_address: Base64String
-    constructor(txs: Array<Base64String>, decidedLastCommit: CommitInfo, misbehavior: Misbehavior[], hash: Base64String, height: i64, time: string, nextValidatorsHash: Base64String, proposerAddress: Base64String) {
+	proposer_address: HexString
+    constructor(txs: Array<Base64String>, decidedLastCommit: CommitInfo, misbehavior: Misbehavior[], hash: Base64String, height: i64, time: string, nextValidatorsHash: Base64String, proposerAddress: HexString) {
         this.txs = txs;
         this.decided_last_commit = decidedLastCommit;
         this.misbehavior = misbehavior;

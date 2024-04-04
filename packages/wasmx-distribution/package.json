@@ -26,7 +26,14 @@
     "as-base64": "^0.2.0",
     "json-as": "file:../../../as-json",
     "visitor-as": "^0.11.4",
+    "wasmx-bank": "file:../wasmx-bank",
+    "wasmx-blocks": "file:../wasmx-blocks",
+    "wasmx-consensus": "file:../wasmx-consensus",
+    "wasmx-erc20": "file:../wasmx-erc20",
+    "wasmx-derc20": "file:../wasmx-derc20",
     "wasmx-env": "file:../wasmx-env",
+    "wasmx-hooks": "file:../wasmx-hooks",
+    "wasmx-stake": "file:../wasmx-stake",
     "wasmx-utils": "file:../wasmx-utils"
   }
 }

@@ -9,6 +9,7 @@ import {
   Bech32String,
   CallRequest,
   CallResponse,
+  HexString,
 } from 'wasmx-env/assembly/types';
 import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
@@ -1048,7 +1049,7 @@ export function buildLogEntryAggregate(processReq: typestnd.RequestProcessPropos
     const commitBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(commit)))
     const termId = getTermId();
     const leaderId = getCurrentNodeId();
-
+    const validator = getValidatorByHexAddr(processReq.proposer_address);
     const contractAddress = encodeBase64(Uint8Array.wrap(wasmx.getAddress()));
 
     const blockEntry = new wblocks.BlockEntry(
@@ -1057,6 +1058,7 @@ export function buildLogEntryAggregate(processReq: typestnd.RequestProcessPropos
         contractAddress,
         blockDataBase64,
         blockHeaderBase64,
+        validator.operator_address,
         commitBase64,
         stringToBase64(`{"evidence":[]}`),
         "",
@@ -1413,6 +1415,20 @@ export function setFinalizedBlock(blockData: string, hash: string, txhashes: str
     if (resp.success > 0) {
         revert(`could not set finalized block: ${resp.data}`);
     }
+}
+
+function getValidatorByHexAddr(addr: HexString): staking.Validator {
+    const calldata = `{"ValidatorByHexAddr":{"validator_addr":"${addr}"}}`
+    const resp = callStaking(calldata, true);
+    if (resp.success > 0) {
+        revert(resp.data);
+    }
+    if (resp.data === "") {
+        revert(`validator not found: ${addr}`)
+    }
+    LoggerDebug("ValidatorByHexAddr", ["addr", addr, "data", resp.data])
+    const result = JSON.parse<staking.QueryValidatorResponse>(resp.data);
+    return result.validator;
 }
 
 function getAllValidators(): staking.Validator[] {

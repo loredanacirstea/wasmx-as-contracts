@@ -1,17 +1,21 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, getCallDataWrap } from './calldata';
-import { CommunityPool, CommunityPoolSpend, DelegationRewards, DelegationTotalRewards, DelegatorValidators, DelegatorWithdrawAddress, DepositValidatorRewardsPool, FundCommunityPool, InitGenesis, Params, SetWithdrawAddress, UpdateParams, ValidatorCommission, ValidatorDistributionInfo, ValidatorOutstandingRewards, ValidatorSlashes, WithdrawDelegatorReward, WithdrawValidatorCommission } from "./actions";
+import { CommunityPool, CommunityPoolSpend, DelegationRewards, DelegationTotalRewards, DelegatorValidators, DelegatorWithdrawAddress, DepositValidatorRewardsPool, FundCommunityPool, InitGenesis, Params, SetWithdrawAddress, UpdateParams, ValidatorCommission, ValidatorDistributionInfo, ValidatorOutstandingRewards, ValidatorSlashes, WithdrawDelegatorReward, WithdrawValidatorCommission, EndBlock as EndBlockInternal } from "./actions";
 import { revert } from "./utils";
 
 export function wasmx_env_2(): void {}
 
 export function instantiate(): void {}
 
+// TODO register invariants
+
 export function main(): void {
   let result: ArrayBuffer = new ArrayBuffer(0)
   const calld = getCallDataWrap();
-  if (calld.SetWithdrawAddress !== null) {
+  if (calld.EndBlock !== null) {
+    EndBlockInternal(calld.EndBlock!);
+  } else if (calld.SetWithdrawAddress !== null) {
     result = SetWithdrawAddress(calld.SetWithdrawAddress!);
   } else if (calld.WithdrawDelegatorReward !== null) {
     result = WithdrawDelegatorReward(calld.WithdrawDelegatorReward!);
@@ -53,4 +57,9 @@ export function main(): void {
     revert(`invalid function call data: ${calldstr}`);
   }
   wasmx.finish(result);
+}
+
+// TODO when we can call the endopoint from the hooks contract
+export function EndBlock(): void {
+  // call EndBlock
 }
