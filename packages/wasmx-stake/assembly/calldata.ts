@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { MsgCreateValidator, MsgInitGenesis, MsgGetAllValidators, MsgUpdateValidators, QueryValidatorRequest, QueryDelegationRequest, QueryPoolRequest } from './types';
+import { MsgCreateValidator, MsgInitGenesis, MsgGetAllValidators, MsgUpdateValidators, QueryValidatorRequest, QueryDelegationRequest, QueryPoolRequest, QueryValidatorDelegationsRequest } from './types';
 
 // @ts-ignore
 @serializable
@@ -15,6 +15,8 @@ export class CallData {
     GetDelegation: QueryDelegationRequest | null = null;
     GetPool: QueryPoolRequest | null = null;
     ValidatorByConsAddr: QueryValidatorRequest | null = null;
+    ValidatorByHexAddr: QueryValidatorRequest | null = null;
+    GetValidatorDelegations: QueryValidatorDelegationsRequest | null = null;
 }
 
 export function getCallDataWrap(): CallData {

@@ -5,16 +5,16 @@ import { BigInt } from "wasmx-env/assembly/bn"
 import * as banktypes from "wasmx-bank/assembly/types"
 import * as derc20types from "wasmx-derc20/assembly/types"
 import * as erc20types from "wasmx-erc20/assembly/types"
-import { getParamsInternal, setParams, setNewValidator, getParams, getValidator, getValidatorsAddresses, getValidatorAddrByConsAddr, setValidator } from './storage';
-import { MsgInitGenesis, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool, BondedS, AfterValidatorCreated, AfterValidatorBonded } from './types';
+import { getParamsInternal, setParams, setNewValidator, getParams, getValidator, getValidatorsAddresses, getValidatorAddrByConsAddr, setValidator, getValidatorOperatorByHexAddr } from './storage';
+import { MsgInitGenesis, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool, BondedS, AfterValidatorCreated, AfterValidatorBonded, QueryValidatorDelegationsRequest, QueryValidatorDelegationsResponse } from './types';
 import { LoggerDebug, LoggerError, revert } from './utils';
 import { parseInt64 } from "wasmx-utils/assembly/utils";
-import { Bech32String, CallRequest, CallResponse, Coin } from "wasmx-env/assembly/types";
+import { Bech32String, CallRequest, CallResponse, Coin, PageRequest, PageResponse } from "wasmx-env/assembly/types";
 
-const POWER_REDUCTION: u32 = 1000000
+export const POWER_REDUCTION: u32 = 1000000
 
 // TODO this must be in initialization
-const DENOM_BASE = "amyt"
+export const DENOM_BASE = "amyt"
 
 export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
     if (getParamsInternal() != "") {
@@ -129,7 +129,7 @@ export function GetAllValidators(): ArrayBuffer {
             validators[i] = valid;
         }
     }
-    let data = JSON.stringify<QueryValidatorsResponse>(new QueryValidatorsResponse(validators))
+    let data = JSON.stringify<QueryValidatorsResponse>(new QueryValidatorsResponse(validators, new PageResponse(validators.length)))
     data = data.replaceAll(`"anytype"`, `"@type"`)
     return String.UTF8.encode(data)
 }
@@ -151,32 +151,39 @@ export function GetDelegation(req: QueryDelegationRequest): ArrayBuffer {
     return String.UTF8.encode(data)
 }
 
+export function GetValidatorDelegations(req: QueryValidatorDelegationsRequest): ArrayBuffer {
+    const tokenAddr = getTokenAddress()
+    const data = callGetValidatorDelegations(tokenAddr, req)
+    return String.UTF8.encode(data)
+}
+
 export function GetPool(req: QueryPoolRequest): ArrayBuffer {
     // bonded
     const denom = getParams().bond_denom;
-    let calldata = new banktypes.QuerySupplyOfRequest(denom);
-    let calldatastr = `{"GetSupplyOf":${JSON.stringify<banktypes.QuerySupplyOfRequest>(calldata)}}`;
-    let resp = callBank(calldatastr, true)
-    if (resp.success > 0) {
-        revert(`could not get bonded tokens: ${resp.data}`)
-    }
-    const bonded = JSON.parse<banktypes.QuerySupplyOfResponse>(resp.data)
-
-    // unbonded
-    calldata = new banktypes.QuerySupplyOfRequest(DENOM_BASE);
-    calldatastr = `{"GetSupplyOf":${JSON.stringify<banktypes.QuerySupplyOfRequest>(calldata)}}`;
-    resp = callBank(calldatastr, true)
-    if (resp.success > 0) {
-        revert(`could not get unbonded tokens: ${resp.data}`)
-    }
-    const unbonded = JSON.parse<banktypes.QuerySupplyOfResponse>(resp.data)
-
+    const bonded = GetBankSupply(denom);
+    const unbonded = GetBankSupply(DENOM_BASE);
     const res = new QueryPoolResponse(new Pool(unbonded.amount.amount, bonded.amount.amount))
     return String.UTF8.encode(JSON.stringify<QueryPoolResponse>(res))
 }
 
 export function ValidatorByConsAddr(req: QueryValidatorRequest): ArrayBuffer {
     const addr = getValidatorAddrByConsAddr(req.validator_addr)
+    if (addr == "") {
+        revert(`validator not found: ${req.validator_addr}`)
+        return new ArrayBuffer(0)
+    }
+    const validator = getValidatorWithBalance(addr)
+    if (validator == null) {
+        revert(`validator not found: ${addr}`)
+        return new ArrayBuffer(0)
+    }
+    let data = JSON.stringify<QueryValidatorResponse>(new QueryValidatorResponse(validator))
+    data = data.replaceAll(`"anytype"`, `"@type"`)
+    return String.UTF8.encode(data)
+}
+
+export function ValidatorByHexAddr(req: QueryValidatorRequest): ArrayBuffer {
+    const addr = getValidatorOperatorByHexAddr(req.validator_addr)
     if (addr == "") {
         revert(`validator not found: ${req.validator_addr}`)
         return new ArrayBuffer(0)
@@ -213,6 +220,15 @@ export function callGetValidatorBalance(validator: Bech32String): Coin {
     return amount.balance
 }
 
+export function callGetValidatorDelegations(tokenAddress: Bech32String, req: QueryValidatorDelegationsRequest): string {
+    const calldatastr = `{"GetValidatorDelegations":${JSON.stringify<QueryValidatorDelegationsRequest>(req)}}`;
+    const resp = callContract(tokenAddress, calldatastr, false)
+    if (resp.success > 0) {
+        revert(`validator delegations not found for ${req.validator_addr}`)
+    }
+    return resp.data
+}
+
 export function callGetDelegation(tokenAddress: Bech32String, delegator: Bech32String, validator: Bech32String): string {
     const calldata = new QueryDelegationRequest(delegator, validator);
     const calldatastr = `{"GetDelegation":${JSON.stringify<QueryDelegationRequest>(calldata)}}`;
@@ -243,6 +259,16 @@ export function getTokenAddress(): Bech32String {
     }
     const result = JSON.parse<banktypes.QueryAddressByDenomResponse>(resp.data)
     return result.address
+}
+
+export function GetBankSupply(denom: string): banktypes.QuerySupplyOfResponse {
+    let calldata = new banktypes.QuerySupplyOfRequest(denom);
+    let calldatastr = `{"GetSupplyOf":${JSON.stringify<banktypes.QuerySupplyOfRequest>(calldata)}}`;
+    let resp = callBank(calldatastr, true)
+    if (resp.success > 0) {
+        revert(`could not get supply for denom: ${denom}: ${resp.data}`)
+    }
+    return JSON.parse<banktypes.QuerySupplyOfResponse>(resp.data)
 }
 
 export function callBank(calldata: string, isQuery: boolean): CallResponse {

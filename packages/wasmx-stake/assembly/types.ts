@@ -1,6 +1,7 @@
 import { JSON } from "json-as/assembly";
-import { Base64String, Bech32String, HexString, Coin } from 'wasmx-env/assembly/types';
+import { Base64String, Bech32String, HexString, Coin, PageRequest, PageResponse, ValidatorAddressString } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn"
+import * as typestnd from "wasmx-consensus/assembly/types_tendermint"
 
 export const MODULE_NAME = "staking"
 
@@ -57,6 +58,7 @@ export class Description {
 // @ts-ignore
 @serializable
 export class CommissionRates {
+    // TODO
     // rate is the commission rate charged to delegators, as a fraction.
     rate: string // f64
     // max_rate defines the maximum commission rate which validator can ever charge, as a fraction.
@@ -79,10 +81,10 @@ export class MsgCreateValidator {
     // Deprecated: Use of Delegator Address in MsgCreateValidator is deprecated.
     // The validator address bytes and delegator address bytes refer to the same account while creating validator (defer
     // only in bech32 notation).
-    validator_address: string
+    validator_address: ValidatorAddressString
     pubkey: PublicKey
     value: Coin
-    constructor(description: Description, commission: CommissionRates, min_self_delegation: BigInt, validator_address: string, pubkey: PublicKey, value: Coin) {
+    constructor(description: Description, commission: CommissionRates, min_self_delegation: BigInt, validator_address: ValidatorAddressString, pubkey: PublicKey, value: Coin) {
         this.description = description
         this.commission = commission
         this.min_self_delegation = min_self_delegation
@@ -115,9 +117,9 @@ export class ValidatorInfo {
 @serializable
 export class Delegation {
     delegator_address: Bech32String
-    validator_address: Bech32String
+    validator_address: ValidatorAddressString
     amount: BigInt
-    constructor(delegator_address: Bech32String, validator_address: Bech32String, amount: BigInt) {
+    constructor(delegator_address: Bech32String, validator_address: ValidatorAddressString, amount: BigInt) {
         this.delegator_address = delegator_address
         this.validator_address = validator_address
         this.amount = amount
@@ -168,10 +170,10 @@ export class UnbondingDelegation {
     // delegator_address is the encoded address of the delegator.
     delegator_address: string
     // validator_address is the encoded address of the validator.
-    validator_address: string
+    validator_address: ValidatorAddressString
     // entries are the unbonding delegation entries.
     entries: UnbondingDelegationEntry[]
-    constructor(delegator_address: string, validator_address: string,  entries: UnbondingDelegationEntry[]) {
+    constructor(delegator_address: string, validator_address: ValidatorAddressString,  entries: UnbondingDelegationEntry[]) {
         this.delegator_address = delegator_address
         this.validator_address = validator_address
         this.entries = entries
@@ -190,12 +192,12 @@ export class Redelegation {
 	// delegator_address is the bech32-encoded address of the delegator.
 	delegator_address: string
 	// validator_src_address is the validator redelegation source operator address.
-	validator_src_address: string
+	validator_src_address: ValidatorAddressString
 	// validator_dst_address is the validator redelegation destination operator address.
-	validator_dst_address: string
+	validator_dst_address: ValidatorAddressString
 	// entries are the redelegation entries.
 	entries: RedelegationEntry[]
-    constructor(delegator_address: string, validator_src_address: string, validator_dst_address: string, entries: RedelegationEntry[]) {
+    constructor(delegator_address: string, validator_src_address: ValidatorAddressString, validator_dst_address: ValidatorAddressString, entries: RedelegationEntry[]) {
         this.delegator_address = delegator_address
         this.validator_src_address = validator_src_address
         this.validator_dst_address = validator_dst_address
@@ -345,11 +347,50 @@ export class Validator {
 
 // @ts-ignore
 @serializable
+export class RedelegationEntryResponse {
+    redelegation_entry: RedelegationEntry
+    balance: BigInt
+    constructor(redelegation_entry: RedelegationEntry, balance: BigInt) {
+        this.redelegation_entry = redelegation_entry
+        this.balance = balance
+    }
+}
+
+// @ts-ignore
+@serializable
+export class RedelegationResponse {
+    redelegation: Redelegation
+    entries: RedelegationEntryResponse[]
+    constructor(
+        redelegation: Redelegation,
+        entries: RedelegationEntryResponse[],
+    ) {
+        this.redelegation = redelegation
+        this.entries = entries
+    }
+}
+
+// @ts-ignore
+@serializable
+export class HistoricalInfo {
+    header: typestnd.Header
+    valset: Validator[]
+    constructor(
+        header: typestnd.Header,
+        valset: Validator[],
+    ) {
+        this.header = header
+        this.valset = valset
+    }
+}
+
+// @ts-ignore
+@serializable
 export class MsgDelegate {
     delegator_address: string
-    validator_address: string
+    validator_address: ValidatorAddressString
     amount: Coin
-    constructor(delegator_address: string, validator_address: string, amount: Coin) {
+    constructor(delegator_address: string, validator_address: ValidatorAddressString, amount: Coin) {
         this.delegator_address = delegator_address
         this.validator_address = validator_address
         this.amount = amount
@@ -382,18 +423,29 @@ export class MsgUpdateValidators {
 
 // @ts-ignore
 @serializable
+export class QueryValidatorsRequest {
+    pagination: PageRequest
+    constructor(pagination: PageRequest) {
+        this.pagination = pagination
+    }
+}
+
+// @ts-ignore
+@serializable
 export class QueryValidatorsResponse {
     validators: Validator[]
-    constructor(validators: Validator[]) {
+    pagination: PageResponse
+    constructor(validators: Validator[], pagination: PageResponse) {
         this.validators = validators
+        this.pagination = pagination
     }
 }
 
 // @ts-ignore
 @serializable
 export class QueryValidatorRequest {
-    validator_addr: Bech32String
-    constructor(validator_addr: Bech32String) {
+    validator_addr: ValidatorAddressString
+    constructor(validator_addr: ValidatorAddressString) {
         this.validator_addr = validator_addr
     }
 }
@@ -409,10 +461,54 @@ export class QueryValidatorResponse {
 
 // @ts-ignore
 @serializable
+export class QueryValidatorDelegationsRequest {
+    validator_addr: ValidatorAddressString
+    pagination: PageRequest
+    constructor(validator_addr: ValidatorAddressString, pagination: PageRequest) {
+        this.validator_addr = validator_addr
+        this.pagination = pagination
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryValidatorDelegationsResponse {
+    delegation_responses: DelegationResponse[]
+    pagination: PageResponse
+    constructor(delegation_responses: DelegationResponse[], pagination: PageResponse) {
+        this.delegation_responses = delegation_responses
+        this.pagination = pagination
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryValidatorUnbondingDelegationsRequest {
+    validator_addr: ValidatorAddressString
+    pagination: PageRequest
+    constructor(validator_addr: ValidatorAddressString, pagination: PageRequest) {
+        this.validator_addr = validator_addr
+        this.pagination = pagination
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryValidatorUnbondingDelegationsResponse {
+    unbonding_responses: UnbondingDelegation[]
+    pagination: PageResponse
+    constructor(unbonding_responses: UnbondingDelegation[], pagination: PageResponse) {
+        this.unbonding_responses = unbonding_responses
+        this.pagination = pagination
+    }
+}
+
+// @ts-ignore
+@serializable
 export class QueryDelegationRequest {
     delegator_addr: Bech32String
-    validator_addr: Bech32String
-    constructor(delegator_addr: Bech32String, validator_addr: Bech32String) {
+    validator_addr: ValidatorAddressString
+    constructor(delegator_addr: Bech32String, validator_addr: ValidatorAddressString) {
         this.delegator_addr = delegator_addr
         this.validator_addr = validator_addr
     }
@@ -448,6 +544,167 @@ export class QueryDelegationResponse {
     delegation_response: DelegationResponse
     constructor(delegation_response: DelegationResponse) {
         this.delegation_response = delegation_response
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryUnbondingDelegationRequest {
+    delegator_addr: Bech32String
+    validator_addr: ValidatorAddressString
+    constructor(delegator_addr: Bech32String, validator_addr: ValidatorAddressString) {
+        this.delegator_addr = delegator_addr
+        this.validator_addr = validator_addr
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryUnbondingDelegationResponse {
+    unbond: UnbondingDelegation
+    constructor(unbond: UnbondingDelegation) {
+        this.unbond = unbond
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryDelegatorDelegationsRequest {
+    delegator_addr: Bech32String
+    pagination: PageRequest
+    constructor(delegator_addr: Bech32String, pagination: PageRequest) {
+        this.delegator_addr = delegator_addr
+        this.pagination = pagination
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryDelegatorDelegationsResponse {
+    delegation_responses: DelegationResponse[]
+    pagination: PageResponse
+    constructor(delegation_responses: DelegationResponse[], pagination: PageResponse) {
+        this.delegation_responses = delegation_responses
+        this.pagination = pagination
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryDelegatorUnbondingDelegationsRequest {
+    delegator_addr: Bech32String
+    pagination: PageRequest
+    constructor(delegator_addr: Bech32String, pagination: PageRequest) {
+        this.delegator_addr = delegator_addr
+        this.pagination = pagination
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryDelegatorUnbondingDelegationsResponse {
+    unbonding_responses: UnbondingDelegation[]
+    pagination: PageResponse
+    constructor(unbonding_responses: UnbondingDelegation[], pagination: PageResponse) {
+        this.unbonding_responses = unbonding_responses
+        this.pagination = pagination
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryRedelegationsRequest {
+    delegator_addr: Bech32String
+    src_validator_addr: Bech32String
+    dst_validator_addr: Bech32String
+    pagination: PageRequest
+    constructor(
+        delegator_addr: Bech32String,
+        src_validator_addr: Bech32String,
+        dst_validator_addr: Bech32String,
+        pagination: PageRequest,
+    ) {
+        this.delegator_addr = delegator_addr
+        this.src_validator_addr = src_validator_addr
+        this.dst_validator_addr = dst_validator_addr
+        this.pagination = pagination
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryRedelegationsResponse {
+    redelegation_responses: RedelegationResponse[]
+    pagination: PageResponse
+    constructor(redelegation_responses: RedelegationResponse[], pagination: PageResponse) {
+        this.redelegation_responses = redelegation_responses
+        this.pagination = pagination
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryDelegatorValidatorsRequest {
+    delegator_addr: Bech32String
+    pagination: PageRequest
+    constructor(
+        delegator_addr: Bech32String,
+        pagination: PageRequest,
+    ) {
+        this.delegator_addr = delegator_addr
+        this.pagination = pagination
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryDelegatorValidatorsResponse {
+    validators: Validator[]
+    pagination: PageResponse
+    constructor(validators: Validator[], pagination: PageResponse) {
+        this.validators = validators
+        this.pagination = pagination
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryDelegatorValidatorRequest {
+    delegator_addr: Bech32String
+    validator_addr: ValidatorAddressString
+    constructor(
+        delegator_addr: Bech32String,
+        validator_addr: ValidatorAddressString,
+    ) {
+        this.delegator_addr = delegator_addr
+        this.validator_addr = validator_addr
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryDelegatorValidatorResponse {
+    validator: Validator
+    constructor(validator: Validator) {
+        this.validator = validator
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryHistoricalInfoRequest {
+    height: i64
+    constructor(height: i64) {
+        this.height = height
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryHistoricalInfoResponse {
+    hist: HistoricalInfo
+    constructor(hist: HistoricalInfo) {
+        this.hist = hist
     }
 }
 
