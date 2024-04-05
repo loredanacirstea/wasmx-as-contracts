@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as stakingtypes from "wasmx-stake/assembly/types"
-import { MsgInitGenesis, MsgRunHook, QuerySigningInfoRequest, QuerySigningInfosRequest } from './types';
+import { MsgInitGenesis, MsgRunHook, QueryParamsRequest, QuerySigningInfoRequest, QuerySigningInfosRequest } from './types';
 
 // @ts-ignore
 @serializable
@@ -11,6 +11,7 @@ export class CallData {
     // query
     SigningInfo: QuerySigningInfoRequest | null = null;
     SigningInfos: QuerySigningInfosRequest | null = null;
+    Params: QueryParamsRequest | null = null;
 
     // hook
     BeginBlock: MsgRunHook | null = null;

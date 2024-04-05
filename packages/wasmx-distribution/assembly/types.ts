@@ -604,8 +604,8 @@ export class QueryDelegatorValidatorsRequest {
 // @ts-ignore
 @serializable
 export class QueryDelegatorValidatorsResponse {
-    validators: string[]
-    constructor(validators: string[]) {
+    validators: Bech32String[]
+    constructor(validators: Bech32String[]) {
         this.validators = validators
     }
 }

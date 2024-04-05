@@ -75,11 +75,11 @@ export class MissedBlock {
 @serializable
 export class Params {
     signed_blocks_window: i64
-    min_signed_per_window: f64
-    downtime_jail_duration: i64
-    slash_fraction_double_sign: f64
-    slash_fraction_downtime: f64
-    constructor(signed_blocks_window: i64, min_signed_per_window: f64, downtime_jail_duration: i64, slash_fraction_double_sign: f64, slash_fraction_downtime: f64) {
+    min_signed_per_window: string
+    downtime_jail_duration: string
+    slash_fraction_double_sign: string
+    slash_fraction_downtime: string
+    constructor(signed_blocks_window: i64, min_signed_per_window: string, downtime_jail_duration: string, slash_fraction_double_sign: string, slash_fraction_downtime: string) {
         this.signed_blocks_window = signed_blocks_window
         this.min_signed_per_window = min_signed_per_window
         this.downtime_jail_duration = downtime_jail_duration
@@ -116,6 +116,20 @@ export class QuerySigningInfosRequest {
         this.pagination = pagination
     }
 }
+
+// @ts-ignore
+@serializable
+export class QueryParamsRequest {}
+
+// @ts-ignore
+@serializable
+export class QueryParamsResponse {
+    params: Params
+    constructor(params: Params) {
+        this.params = params
+    }
+}
+
 
 // @ts-ignore
 @serializable

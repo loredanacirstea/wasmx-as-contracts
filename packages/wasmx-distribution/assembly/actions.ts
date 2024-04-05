@@ -7,11 +7,13 @@ import * as banktypes from "wasmx-bank/assembly/types"
 import * as stakingtypes from "wasmx-stake/assembly/types"
 import * as blocktypes from "wasmx-blocks/assembly/types"
 import * as erc20types from "wasmx-erc20/assembly/types"
+import * as derc20types from "wasmx-derc20/assembly/types"
 import { DENOM_BASE, callContract } from "wasmx-stake/assembly/actions"
 import { decode as decodeBase64, encode as encodeBase64 } from "as-base64/assembly";
-import { Bech32String, CallRequest, CallResponse, Coin, PageRequest, ValidatorAddressString } from "wasmx-env/assembly/types";
+import { Bech32String, CallRequest, CallResponse, Coin, DecCoin, PageRequest, ValidatorAddressString } from "wasmx-env/assembly/types";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { FEE_COLLECTOR_ROLE, MODULE_NAME, MsgCommunityPoolSpend, MsgCommunityPoolSpendResponse, MsgDepositValidatorRewardsPool, MsgDepositValidatorRewardsPoolResponse, MsgFundCommunityPool, MsgFundCommunityPoolResponse, MsgInitGenesis, MsgSetWithdrawAddress, MsgSetWithdrawAddressResponse, MsgUpdateParams, MsgUpdateParamsResponse, MsgWithdrawDelegatorReward, MsgWithdrawDelegatorRewardResponse, MsgWithdrawValidatorCommission, MsgWithdrawValidatorCommissionResponse, QueryCommunityPoolRequest, QueryCommunityPoolResponse, QueryDelegationRewardsRequest, QueryDelegationRewardsResponse, QueryDelegationTotalRewardsRequest, QueryDelegationTotalRewardsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryDelegatorWithdrawAddressRequest, QueryDelegatorWithdrawAddressResponse, QueryParamsRequest, QueryParamsResponse, QueryValidatorCommissionRequest, QueryValidatorCommissionResponse, QueryValidatorDistributionInfoRequest, QueryValidatorDistributionInfoResponse, QueryValidatorOutstandingRewardsRequest, QueryValidatorOutstandingRewardsResponse, QueryValidatorSlashesRequest, QueryValidatorSlashesResponse, REWARDS_TOKEN_SYMBOL } from './types';
+import * as types from "./types";
 import { LoggerDebug, LoggerError, revert } from "./utils";
 import { getParams, setParams } from "./storage";
 
@@ -28,8 +30,13 @@ export function EndBlock(req: MsgRunHook): void {
     // get fee collector balance
     const feeCollectorAddress = wasmxw.getAddressByRole(FEE_COLLECTOR_ROLE)
     const fees = getBalance(feeCollectorAddress, DENOM_BASE);
+    if (fees.amount.isZero()) {
+        return
+    }
     // burn fee collector balance
-    callBurnToken(DENOM_BASE, feeCollectorAddress, fees.amount);
+    LoggerDebug("burn fee collector tokens", ["denom", DENOM_BASE, "amount", fees.amount.toString()])
+    const gasAddress = getTokenAddress(DENOM_BASE)
+    callBurnToken(gasAddress, feeCollectorAddress, fees.amount);
 
     // TODO community_tax * fees to CommunityPool
 
@@ -85,15 +92,20 @@ export function ValidatorDistributionInfo(req: QueryValidatorDistributionInfoReq
 }
 
 export function ValidatorOutstandingRewards(req: QueryValidatorOutstandingRewardsRequest): ArrayBuffer {
-    revert(`ValidatorOutstandingRewards not implemented`);
-    return new ArrayBuffer(0)
-    // return String.UTF8.encode(JSON.stringify<QueryValidatorOutstandingRewardsResponse>(new QueryValidatorOutstandingRewardsResponse()))
+    const tokenAddress = getTokenAddress(REWARDS_TOKEN_SYMBOL);
+    const reward = getTokenAmount(tokenAddress, req.validator_address);
+
+    return String.UTF8.encode(JSON.stringify<QueryValidatorOutstandingRewardsResponse>(new QueryValidatorOutstandingRewardsResponse(new types.ValidatorOutstandingRewards([new DecCoin(REWARDS_TOKEN_SYMBOL, reward)]))))
 }
 
 export function ValidatorCommission(req: QueryValidatorCommissionRequest): ArrayBuffer {
-    revert(`ValidatorCommission not implemented`);
-    return new ArrayBuffer(0)
-    // return String.UTF8.encode(JSON.stringify<QueryValidatorCommissionResponse>(new QueryValidatorCommissionResponse()))
+    // const validator = getValidatorByConsAddr(req.validator_address)
+    // const commission = validator.commission.commission_rates.rate;
+
+    const tokenAddress = getTokenAddress(REWARDS_TOKEN_SYMBOL);
+    const reward = getTokenAmount(tokenAddress, req.validator_address);
+
+    return String.UTF8.encode(JSON.stringify<QueryValidatorCommissionResponse>(new QueryValidatorCommissionResponse(new types.ValidatorAccumulatedCommission([new DecCoin(REWARDS_TOKEN_SYMBOL, reward)]))))
 }
 
 export function ValidatorSlashes(req: QueryValidatorSlashesRequest): ArrayBuffer {
@@ -102,25 +114,27 @@ export function ValidatorSlashes(req: QueryValidatorSlashesRequest): ArrayBuffer
     // return String.UTF8.encode(JSON.stringify<QueryValidatorSlashesResponse>(new QueryValidatorSlashesResponse()))
 }
 
+// rewards for a delegator-validator pair
 export function DelegationRewards(req: QueryDelegationRewardsRequest): ArrayBuffer {
-    revert(`DelegationRewards not implemented`);
-    return new ArrayBuffer(0)
-
-    // getValidatorDelegations
-
-    // return String.UTF8.encode(JSON.stringify<QueryDelegationRewardsResponse>(new QueryDelegationRewardsResponse()))
+    // const delegation = getDelegation(req.delegator_address, req.validator_address);
+    // const rewards: DecCoin[] = [new DecCoin(delegation.balance.denom, delegation.balance.amount)];
+    // we do not keep rewards per validator
+    const rewards: DecCoin[] = []
+    return String.UTF8.encode(JSON.stringify<QueryDelegationRewardsResponse>(new QueryDelegationRewardsResponse(rewards)))
 }
 
+// all rewards for a delegator, per validator
 export function DelegationTotalRewards(req: QueryDelegationTotalRewardsRequest): ArrayBuffer {
-    revert(`DelegationTotalRewards not implemented`);
-    return new ArrayBuffer(0)
-    // return String.UTF8.encode(JSON.stringify<QueryDelegationTotalRewardsResponse>(new QueryDelegationTotalRewardsResponse()))
+    const tokenAddress = getTokenAddress(REWARDS_TOKEN_SYMBOL);
+    const reward = getTokenAmount(tokenAddress, req.delegator_address);
+
+    return String.UTF8.encode(JSON.stringify<QueryDelegationTotalRewardsResponse>(new QueryDelegationTotalRewardsResponse([], [new DecCoin(REWARDS_TOKEN_SYMBOL, reward)])))
 }
 
 export function DelegatorValidators(req: QueryDelegatorValidatorsRequest): ArrayBuffer {
-    revert(`DelegatorValidators not implemented`);
-    return new ArrayBuffer(0)
-    // return String.UTF8.encode(JSON.stringify<QueryDelegatorValidatorsResponse>(new QueryDelegatorValidatorsResponse()))
+    const validators = getDelegatorValidatorAddresses(req.delegator_address);
+
+    return String.UTF8.encode(JSON.stringify<QueryDelegatorValidatorsResponse>(new QueryDelegatorValidatorsResponse(validators)))
 }
 
 export function DelegatorWithdrawAddress(req: QueryDelegatorWithdrawAddressRequest): ArrayBuffer {
@@ -147,6 +161,7 @@ export function withdrawRewards(delegatorAddress: Bech32String): BigInt {
 }
 
 export function distributeFees(proposer: Bech32String, fees: Coin): void {
+    LoggerDebug("distribute fees to block proposer", ["proposer", proposer, "denom", fees.denom, "amount", fees.amount.toString()])
     const validator = getValidator(proposer);
     const delegators = getValidatorDelegations(proposer);
     const commission = validator.commission.commission_rates.rate;
@@ -175,6 +190,30 @@ export function getValidatorDelegations(addr: Bech32String): stakingtypes.Delega
     LoggerDebug("GetValidatorDelegations", ["address", addr, "data", resp.data])
     const result = JSON.parse<stakingtypes.QueryValidatorDelegationsResponse>(resp.data);
     return result.delegation_responses;
+}
+
+export function getDelegation(delegator: Bech32String, validator: ValidatorAddressString): stakingtypes.DelegationResponse {
+    const msg = JSON.stringify<stakingtypes.QueryDelegationRequest>(new stakingtypes.QueryDelegationRequest(delegator, validator))
+    const calldata = `{"GetDelegation":${msg}}`
+    const resp = callStaking(calldata, true);
+    if (resp.success > 0 || resp.data === "") {
+        revert(`could not get delegation: ${delegator} - ${validator}`);
+    }
+    LoggerDebug("GetDelegation", ["delegator", delegator, "validator", validator])
+    const result = JSON.parse<stakingtypes.QueryDelegationResponse>(resp.data);
+    return result.delegation_response;
+}
+
+export function getDelegatorValidatorAddresses(delegator: Bech32String): Bech32String[] {
+    const msg = JSON.stringify<stakingtypes.QueryDelegatorValidatorsRequest>(new stakingtypes.QueryDelegatorValidatorsRequest(delegator, new PageRequest(0, 0, 0, true, false)))
+    const calldata = `{"GetDelegatorValidatorAddresses":${msg}}`
+    const resp = callStaking(calldata, true);
+    if (resp.success > 0 || resp.data === "") {
+        revert(`could not get validators for: ${delegator}`);
+    }
+    LoggerDebug("GetDelegatorValidatorAddresses", ["delegator", delegator])
+    const result = JSON.parse<derc20types.DelegatorValidatorsResponse>(resp.data);
+    return result.validators;
 }
 
 export function getValidator(addr: Bech32String): stakingtypes.Validator {
@@ -301,7 +340,7 @@ export function callBurnToken(tokenAddress: Bech32String, from: Bech32String, va
     const calldatastr = `{"burn":${JSON.stringify<erc20types.MsgBurn>(calldata)}}`;
     const resp = callContract(tokenAddress, calldatastr, false)
     if (resp.success > 0) {
-        revert(`could not burn token: ${tokenAddress}`)
+        revert(`could not burn token: ${tokenAddress}: ${resp.data}`)
     }
 }
 

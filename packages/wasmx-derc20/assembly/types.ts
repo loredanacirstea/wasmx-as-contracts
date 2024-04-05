@@ -1,5 +1,5 @@
 import { JSON } from "json-as/assembly";
-import { Base64String, Bech32String, Coin, HexString } from 'wasmx-env/assembly/types';
+import { Base64String, Bech32String, Coin, HexString, PageResponse } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn";
 
 export const MODULE_NAME = "derc20"
@@ -85,5 +85,16 @@ export class SDKDelegation {
         this.delegator_address = delegator_address
         this.validator_address = validator_address
         this.shares = shares
+    }
+}
+
+// @ts-ignore
+@serializable
+export class DelegatorValidatorsResponse {
+    validators: Bech32String[]
+    pagination: PageResponse
+    constructor(validators: Bech32String[], pagination: PageResponse) {
+        this.validators = validators
+        this.pagination = pagination
     }
 }

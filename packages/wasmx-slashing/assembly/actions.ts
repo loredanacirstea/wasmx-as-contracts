@@ -6,7 +6,7 @@ import * as blocktypes from "wasmx-blocks/assembly/types";
 import * as constypes from "wasmx-consensus/assembly/types_tendermint";
 import * as stakingtypes from "wasmx-stake/assembly/types";
 import { decode as decodeBase64 } from "as-base64/assembly";
-import { MODULE_NAME, MsgInitGenesis, QuerySigningInfoRequest, QuerySigningInfoResponse, ValidatorSigningInfo, MsgRunHook, QuerySigningInfosRequest, QuerySigningInfosResponse } from './types';
+import { MODULE_NAME, MsgInitGenesis, QuerySigningInfoRequest, QuerySigningInfoResponse, ValidatorSigningInfo, MsgRunHook, QuerySigningInfosRequest, QuerySigningInfosResponse, QueryParamsRequest, Params, QueryParamsResponse } from './types';
 import { getParamsInternal, getParams, getValidatorSigningInfo, setParams, setValidatorSigningInfo, getValidatorSigningInfos } from "./storage";
 import { LoggerDebug, LoggerError, revert } from "./utils";
 import { Bech32String, CallRequest, CallResponse, PageResponse } from "wasmx-env/assembly/types";
@@ -130,6 +130,9 @@ export function BeginBlock(req: MsgRunHook): void {
     }
 }
 
+export function GetParams(req: QueryParamsRequest): ArrayBuffer {
+    return String.UTF8.encode(JSON.stringify<QueryParamsResponse>(new QueryParamsResponse(getParams())))
+}
 
 export function SigningInfo(req: QuerySigningInfoRequest): ArrayBuffer {
     const info = getValidatorSigningInfo(req.consAddress);

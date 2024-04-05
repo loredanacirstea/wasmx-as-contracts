@@ -261,8 +261,8 @@ export class Params {
 	// bond_denom defines the bondable coin denomination.
 	bond_denom: string
 	// min_commission_rate is the chain-wide minimum commission rate that a validator can charge their delegators
-	min_commission_rate: f64
-    constructor(unbonding_time: i64, max_validators: u32, max_entries: u32, historical_entries: u32, bond_denom: string, min_commission_rate: f64) {
+	min_commission_rate: string
+    constructor(unbonding_time: i64, max_validators: u32, max_entries: u32, historical_entries: u32, bond_denom: string, min_commission_rate: string) {
         this.unbonding_time = unbonding_time
         this.max_validators = max_validators
         this.max_entries = max_entries
@@ -711,6 +711,19 @@ export class QueryHistoricalInfoResponse {
 // @ts-ignore
 @serializable
 export class QueryPoolRequest {}
+
+// @ts-ignore
+@serializable
+export class QueryParamsRequest {}
+
+// @ts-ignore
+@serializable
+export class QueryParamsResponse {
+    params: Params
+    constructor(params: Params) {
+        this.params = params
+    }
+}
 
 // @ts-ignore
 @serializable

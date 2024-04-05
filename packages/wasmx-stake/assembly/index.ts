@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, getCallDataWrap } from './calldata';
-import { InitGenesis, CreateValidator, UpdateValidators, GetAllValidators, GetValidator, GetDelegation, GetPool, ValidatorByConsAddr, ValidatorByHexAddr, GetValidatorDelegations } from "./actions";
+import { InitGenesis, CreateValidator, UpdateValidators, GetAllValidators, GetValidator, GetDelegation, GetPool, ValidatorByConsAddr, ValidatorByHexAddr, GetValidatorDelegations, GetDelegatorValidators, GetDelegatorValidatorAddresses, GetParams } from "./actions";
 import { revert } from "./utils";
 
 export function wasmx_env_2(): void {}
@@ -28,8 +28,14 @@ export function main(): void {
     result = ValidatorByConsAddr(calld.ValidatorByConsAddr!);
   } else if (calld.GetValidatorDelegations !== null) {
     result = GetValidatorDelegations(calld.GetValidatorDelegations!);
+  } else if (calld.GetDelegatorValidators !== null) {
+    result = GetDelegatorValidators(calld.GetDelegatorValidators!);
+  } else if (calld.GetDelegatorValidatorAddresses !== null) {
+    result = GetDelegatorValidatorAddresses(calld.GetDelegatorValidatorAddresses!);
   } else if (calld.GetPool !== null) {
     result = GetPool(calld.GetPool!);
+  } else if (calld.Params !== null) {
+    result = GetParams(calld.Params!);
   } else if (calld.UpdateValidators !== null) {
     result = UpdateValidators(calld.UpdateValidators!);
   } else {

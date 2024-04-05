@@ -4,13 +4,13 @@ import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { Bech32String, CallRequest, CallResponse, Coin, PageResponse } from "wasmx-env/assembly/types";
 import { isAuthorized } from "wasmx-env/assembly/utils";
 import { BigInt } from "wasmx-env/assembly/bn";
-import { QueryDelegationRequest, QueryDelegationResponse, Delegation, DelegationResponse, DelegationCosmos, QueryValidatorDelegationsRequest, QueryValidatorDelegationsResponse } from "wasmx-stake/assembly/types";
+import { QueryDelegationRequest, QueryDelegationResponse, Delegation, DelegationResponse, DelegationCosmos, QueryValidatorDelegationsRequest, QueryValidatorDelegationsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, Validator } from "wasmx-stake/assembly/types";
 import { move } from "wasmx-erc20/assembly/actions";
 import { setInfo, getInfo, getBalance, setBalance, getAllowance, setAllowance, getTotalSupply, setTotalSupply, getAdmins, getMinters } from "wasmx-erc20/assembly/storage";
 import * as banktypes from "wasmx-bank/assembly/types";
-import { MODULE_NAME, MsgDelegate, MsgGetAllSDKDelegations, MsgRedelegate, MsgUndelegate, SDKDelegation } from "./types";
+import { DelegatorValidatorsResponse, MODULE_NAME, MsgDelegate, MsgGetAllSDKDelegations, MsgRedelegate, MsgUndelegate, SDKDelegation } from "./types";
 import { LoggerDebug, revert } from "./utils";
-import { addDelegatorToValidator, addValidatorToDelegator, setDelegatorToValidatorDelegation, addTotalDelegationToValidator, removeValidatorFromDelegator, removeDelegatorFromValidator, removeValidatorDelegationFromDelegator, removeDelegationAmountFromValidator, getDelegatorToValidatorDelegation, getBalanceValidator, setBalanceValidator, getValidatorToDelegators } from "./storage";
+import { addDelegatorToValidator, addValidatorToDelegator, setDelegatorToValidatorDelegation, addTotalDelegationToValidator, removeValidatorFromDelegator, removeDelegatorFromValidator, removeValidatorDelegationFromDelegator, removeDelegationAmountFromValidator, getDelegatorToValidatorDelegation, getBalanceValidator, setBalanceValidator, getValidatorToDelegators, getDelegatorToValidators } from "./storage";
 import { MsgBalanceOf, MsgBalanceOfResponse } from "wasmx-erc20/assembly/types";
 
 // TODO this must be in initialization
@@ -173,6 +173,12 @@ export function GetValidatorDelegations(req: QueryValidatorDelegationsRequest): 
         )
     }
     return String.UTF8.encode(JSON.stringify<QueryValidatorDelegationsResponse>(new QueryValidatorDelegationsResponse(delegations, new PageResponse(delegations.length))))
+}
+
+export function GetDelegatorValidators(req: QueryDelegatorValidatorsRequest): ArrayBuffer {
+    // TODO pagination of validators
+    const validatorAddresses = getDelegatorToValidators(req.delegator_addr)
+    return String.UTF8.encode(JSON.stringify<DelegatorValidatorsResponse>(new DelegatorValidatorsResponse(validatorAddresses, new PageResponse(validatorAddresses.length))))
 }
 
 function getCoin(value: BigInt): Coin {

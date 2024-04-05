@@ -6,10 +6,10 @@ import * as banktypes from "wasmx-bank/assembly/types"
 import * as derc20types from "wasmx-derc20/assembly/types"
 import * as erc20types from "wasmx-erc20/assembly/types"
 import { getParamsInternal, setParams, setNewValidator, getParams, getValidator, getValidatorsAddresses, getValidatorAddrByConsAddr, setValidator, getValidatorOperatorByHexAddr } from './storage';
-import { MsgInitGenesis, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool, BondedS, AfterValidatorCreated, AfterValidatorBonded, QueryValidatorDelegationsRequest, QueryValidatorDelegationsResponse } from './types';
+import { MsgInitGenesis, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool, BondedS, AfterValidatorCreated, AfterValidatorBonded, QueryValidatorDelegationsRequest, QueryValidatorDelegationsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryParamsRequest, QueryParamsResponse } from './types';
 import { LoggerDebug, LoggerError, revert } from './utils';
 import { parseInt64 } from "wasmx-utils/assembly/utils";
-import { Bech32String, CallRequest, CallResponse, Coin, PageRequest, PageResponse } from "wasmx-env/assembly/types";
+import { Bech32String, CallRequest, CallResponse, Coin, PageRequest, PageResponse, ValidatorAddressString } from "wasmx-env/assembly/types";
 
 export const POWER_REDUCTION: u32 = 1000000
 
@@ -157,6 +157,35 @@ export function GetValidatorDelegations(req: QueryValidatorDelegationsRequest): 
     return String.UTF8.encode(data)
 }
 
+export function GetDelegatorValidators(req: QueryDelegatorValidatorsRequest): ArrayBuffer {
+    const tokenAddr = getTokenAddress()
+    const validatorAddresses = callGetDelegatorValidators(tokenAddr, req)
+    const validators = new Array<Validator>(validatorAddresses.length)
+    for (let i = 0; i < validatorAddresses.length; i++) {
+        const addr = getValidatorAddrByConsAddr(validatorAddresses[i])
+        const valid = getValidator(addr);
+        if (valid != null) {
+            validators[i] = valid;
+        }
+    }
+    return String.UTF8.encode(JSON.stringify<QueryDelegatorValidatorsResponse>(new QueryDelegatorValidatorsResponse(validators, new PageResponse(validators.length))))
+}
+
+export function GetDelegatorValidatorAddresses(req: QueryDelegatorValidatorsRequest): ArrayBuffer {
+    const tokenAddr = getTokenAddress()
+    const validatorAddresses = callGetDelegatorValidators(tokenAddr, req)
+    const validators = new Array<Bech32String>(validatorAddresses.length)
+    for (let i = 0; i < validatorAddresses.length; i++) {
+        const addr = getValidatorAddrByConsAddr(validatorAddresses[i])
+        validators[i] = addr
+    }
+    return String.UTF8.encode(JSON.stringify<derc20types.DelegatorValidatorsResponse>(new derc20types.DelegatorValidatorsResponse(validators, new PageResponse(validators.length))))
+}
+
+export function GetParams(req: QueryParamsRequest): ArrayBuffer {
+    return String.UTF8.encode(JSON.stringify<QueryParamsResponse>(new QueryParamsResponse(getParams())))
+}
+
 export function GetPool(req: QueryPoolRequest): ArrayBuffer {
     // bonded
     const denom = getParams().bond_denom;
@@ -227,6 +256,16 @@ export function callGetValidatorDelegations(tokenAddress: Bech32String, req: Que
         revert(`validator delegations not found for ${req.validator_addr}`)
     }
     return resp.data
+}
+
+export function callGetDelegatorValidators(tokenAddress: Bech32String, req: QueryDelegatorValidatorsRequest): ValidatorAddressString[] {
+    const calldatastr = `{"GetDelegatorValidators":${JSON.stringify<QueryDelegatorValidatorsRequest>(req)}}`;
+    const resp = callContract(tokenAddress, calldatastr, false)
+    if (resp.success > 0) {
+        revert(`validators not found for delegator ${req.delegator_addr}`)
+    }
+    const validators = JSON.parse<derc20types.DelegatorValidatorsResponse>(resp.data)
+    return validators.validators;
 }
 
 export function callGetDelegation(tokenAddress: Bech32String, delegator: Bech32String, validator: Bech32String): string {
