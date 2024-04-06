@@ -259,7 +259,7 @@ export function verifyCosmosTx(encodedTx: Base64String): VerifyCosmosTxResponse 
 
 export function getCurrentBlock(): BlockInfo {
     const data = wasmx.getCurrentBlock();
-    return JSON.parse<BlockInfo>( String.UTF8.decode(data));
+    return JSON.parse<BlockInfo>(String.UTF8.decode(data));
 }
 
 // TODO replace this with sha256.Sum256(bz)[:20]

@@ -456,10 +456,10 @@ export class BlockInfo {
     height: BigInt;
     timestamp: BigInt;
     gasLimit: BigInt;
-    hash: BigInt;
+    hash: Base64String;
     difficulty: BigInt = BigInt.empty();
     proposer: BigInt;
-    constructor(height: BigInt, timestamp: BigInt, gasLimit: BigInt, hash: BigInt, proposer: BigInt) {
+    constructor(height: BigInt, timestamp: BigInt, gasLimit: BigInt, hash: Base64String, proposer: BigInt) {
         this.height = height;
         this.timestamp = timestamp;
         this.gasLimit = gasLimit;

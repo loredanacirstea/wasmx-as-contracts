@@ -1,7 +1,22 @@
 import assert from "assert";
-import { add, sub, div, mul, exp } from "../build/debug.js";
+import { add, sub, div, mul, exp, toString10, toString16, fromString } from "../build/debug.js";
 
 let result;
+
+let tt = [67,33,88,99]
+// tt = [67,33]
+tt = [1, 8, 5, 9, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 3, 1]
+result = toString10(new Uint8Array(tt).buffer);
+assert.strictEqual(decodeFromUtf8Array(result), "2003526552471282244840952008190569146760252174969915492572205006122668019137294631681");
+
+result = toString16(new Uint8Array(tt).buffer);
+assert.strictEqual(decodeFromUtf8Array(result), "10805090302000000000000000000000000000000000000000000000000000000040301");
+
+let ttstr = "24900552009816332"
+// ttstr = "23"
+// ttstr = "0x5876eb8d41990c"
+result = fromString(encodeToUtf8Array(ttstr).buffer);
+assert.strictEqual(decodeFromUtf8Array(result), ttstr);
 
 // add
 result = add(new Uint8Array([1]).buffer, new Uint8Array([2]).buffer, 0)

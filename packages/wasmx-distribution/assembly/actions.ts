@@ -24,7 +24,7 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
 }
 
 export function EndBlock(req: MsgRunHook): void {
-    LoggerDebug("BeginBlock", [])
+    LoggerDebug("EndBlock", [])
     const block = JSON.parse<blocktypes.BlockEntry>(String.UTF8.decode(decodeBase64(req.data).buffer))
 
     // get fee collector balance
@@ -171,11 +171,14 @@ export function distributeFees(proposer: Bech32String, fees: Coin): void {
     const delegAmount = fees.amount.sub(validAmount);
     // store validator commission
     const tokenAddress = getTokenAddress(REWARDS_TOKEN_SYMBOL)
-    callMintToken(tokenAddress, validator.operator_address, validAmount)
+    if (!validAmount.isZero()) {
+        callMintToken(tokenAddress, validator.operator_address, validAmount)
+    }
 
     for (let i = 0; i < delegators.length; i++) {
         const d = delegators[i]
         const dAmount = d.balance.amount.mul(delegAmount).div(validator.tokens)
+        if (dAmount.isZero()) continue;
         callMintToken(tokenAddress, d.delegation.delegator_address, dAmount)
     }
 }

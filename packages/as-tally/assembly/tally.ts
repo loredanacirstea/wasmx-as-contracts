@@ -360,8 +360,43 @@ export class tally {
         return this.a8.slice(0, size).reverse();
     }
 
-    toString(radix: u32 = 16, byteLength: i32 = 0, littleEndian: bool = false, usePrefix: bool = true): string {
-        return tally.toString(this, radix, byteLength, littleEndian, usePrefix);
+    // this is used by as-json to stringify BigInt
+    toString(radix: i32 = 10, byteLength: i32 = 0, littleEndian: bool = false, usePrefix: bool = false): string {
+        if (radix == 0) return "[" + this.a8.slice(0).reverse().toString() + "]";
+        let res = this.toString_(radix)
+
+        if (radix == 16) {
+            if (byteLength > 0) {
+                res = processZeros(res, byteLength);
+            }
+            if (usePrefix) res = "0x" + res;
+        }
+
+        return res;
+    }
+
+    toString_(radix: i32 = 10): string {
+        if (radix < 2 || radix > 16) {
+          throw new RangeError("BigInt only prints strings in radix 2 through 16");
+        }
+        if (this.isZero()) return "0";
+        let res: string = this.isNeg() ? "-" : "";
+        let t: tally = this.abs();
+        const zero: tally = tally.fromU32(0);
+        const codes: i32[] = [];
+        const radixU: u32 = <u32>radix;
+        while (!t.eq(zero)) {
+          const d: i32 = t.mod(tally.fromU32(radixU)).toI32();
+          t = t.div(tally.fromU32(radixU));
+          if (d < 10) {
+            codes.push(d + 48);
+          } else {
+            codes.push(d + 87);
+          }
+        }
+        codes.reverse();
+        res += String.fromCharCodes(codes);
+        return res;
     }
 
     clone(): tally {
@@ -950,33 +985,57 @@ export class tally {
         return tally.div(tally.mul(a, b), tally.gcd(a, b))
     }
 
-    // this is used by as-json to stringify BigInt
-    static toString(a: tally, radix: u32 = 0, byteLength: i32 = 0, littleEndian: bool = false, usePrefix: bool = true): string {
-        if (radix == 16) {
-            let hex = u8ArrayToHex(a.toU8ArrayBe())
-            if (byteLength > 0) {
-                hex = processZeros(hex, byteLength);
-            }
-            if (usePrefix) return "0x" + hex;
-            return hex;
+    static fromString(value: string, radix: u32 = 10): tally {
+        const hexPrefix = value.slice(0, 2) == "0x"
+        if (hexPrefix) {
+            value = value.slice(2)
+            radix = 16
         }
-        if (radix == 0) return "[" + a.a8.slice(0).reverse().toString() + "]";
-        throw new Error("invalid radix");
+        return tally.fromString_(value, radix);
     }
 
-    static fromString(value: string, radix: u32 = 16): tally {
-        const hexPrefix = value.slice(0, 2) == "0x"
-        if (radix == 16 || hexPrefix) {
-            if (hexPrefix) {
-                value = value.slice(2)
-            }
-            const arr = hexToU8(value);
-            return tally.fromU8Array(arr);
+    static fromString_(value: string, radix: i32 = 10): tally {
+        if (radix < 2 || radix > 16) {
+          throw new RangeError("BigInt only reads strings of radix 2 through 16");
         }
-        if (radix == 10) {
-            return tally.fromStringBase10(value);
+        let i: i32 = 0;
+        let isNegative: boolean = false;
+        if (value.charAt(0) == "-") {
+          i++;
+          isNegative = true;
         }
-        throw new Error("invalid radix");
+        if (
+          (radix == 16 || radix == 10) &&
+          value.charAt(i) == "0" &&
+          value.charAt(i + 1) == "x"
+        ) {
+          i += 2;
+          radix = 16;
+        }
+        let res: tally = tally.fromU32(0);
+        const radixU: u16 = <u16>radix;
+        for (; i < value.length; i++) {
+          const code: i32 = value.charCodeAt(i);
+          let val: u16;
+          if (code >= 48 && code <= 57) {
+            val = <u16>(code - 48);
+          } else if (code >= 65 && code <= 70) {
+            val = <u16>(code - 55);
+          } else if (code >= 97 && code <= 102) {
+            val = <u16>(code - 87);
+          } else {
+            throw new RangeError(
+              "Character " +
+              value.charAt(i) +
+                " is not supported for radix " +
+                radix.toString()
+            );
+          }
+          res = res.mul(tally.fromU32(u32(radixU))).add(tally.fromU32(u32(val)));
+        }
+        // res.isNeg = isNegative;
+        // res.trimLeadingZeros();
+        return res;
     }
 
     static fromStringBase10(value: string): tally {
