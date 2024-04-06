@@ -458,10 +458,6 @@ export function setup(
     const lastIndex = getLastBlockIndex();
     LoggerInfo("setting up last log index", ["index", lastIndex.toString()])
     setLastLogIndex(lastIndex);
-
-    // TODO we run the hooks that must be ran after block end
-    const blockData = getFinalBlock(getLastBlockIndex())
-    callHookContract("EndBlock", blockData);
 }
 
 // we just add the validator node to our list

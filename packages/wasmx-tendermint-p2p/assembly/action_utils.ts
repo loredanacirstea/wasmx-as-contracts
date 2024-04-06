@@ -238,8 +238,12 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         processReq.proposer_address,
     )
 
-    const blockDataBeginBlock = JSON.stringify<typestnd.RequestFinalizeBlock>(finalizeReq)
-    callHookContract("BeginBlock", blockDataBeginBlock);
+    // const blockDataBeginBlock = JSON.stringify<typestnd.RequestFinalizeBlock>(finalizeReq)
+    // callHookContract("BeginBlock", blockDataBeginBlock);
+    const resbegin = consensuswrap.BeginBlock(finalizeReq);
+    if (resbegin.error.length > 0) {
+        revert(`${resbegin.error}`);
+    }
 
     let respWrap = consensuswrap.FinalizeBlock(finalizeReq);
     if (respWrap.error.length > 0 && !retry) {
@@ -323,10 +327,9 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     }
     const info = consutil.defaultFinalizeResponseEventsParse(evs)
 
-    // execute hooks if there is no consensus change
-    // this must be ran from the new contract
-    if (info.consensusContract == "") {
-        callHookContract("EndBlock", blockData);
+    const resend = consensuswrap.EndBlock(blockData);
+    if (resend.error.length > 0) {
+        revert(`${resend.error}`);
     }
 
     if (info.createdValidators.length > 0) {

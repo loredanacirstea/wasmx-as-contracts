@@ -16,6 +16,8 @@ import {
     ResponseCommit,
     RequestCheckTx,
     ResponseCheckTx,
+    ResponseBeginBlockWrap,
+    ResponseBeginBlock,
 } from './types_tendermint';
 
 export function CheckTx(req: RequestCheckTx): ResponseCheckTx {
@@ -56,6 +58,41 @@ export function FinalizeBlock(req: RequestFinalizeBlock): ResponseFinalizeBlockW
     if (wrap.error.length == 0) {
         let data = String.UTF8.decode(decodeBase64(wrap.data).buffer)
         LoggerDebug("FinalizeBlock", ["response data", data]);
+        // replace @type with anytype for public keys
+        data = data.replaceAll(`"@type"`, `"anytype"`)
+        response.data = JSON.parse<ResponseFinalizeBlock>(data);
+    }
+    return response;
+}
+
+export function BeginBlock(req: RequestFinalizeBlock): ResponseBeginBlockWrap {
+    const reqstr = JSON.stringify<RequestFinalizeBlock>(req);
+    LoggerDebug("BeginBlock", ["request", reqstr]);
+    const respbz = consensus.BeginBlock(String.UTF8.encode(reqstr));
+    const respstr = String.UTF8.decode(respbz);
+    LoggerDebug("BeginBlock", ["response", respstr]);
+    const wrap = JSON.parse<ResponseWrap>(respstr);
+    const response = new ResponseBeginBlockWrap(wrap.error, null);
+    if (wrap.error.length == 0) {
+        let data = String.UTF8.decode(decodeBase64(wrap.data).buffer)
+        LoggerDebug("BeginBlock", ["response data", data]);
+        // replace @type with anytype for public keys
+        data = data.replaceAll(`"@type"`, `"anytype"`)
+        response.data = JSON.parse<ResponseBeginBlock>(data);
+    }
+    return response;
+}
+
+export function EndBlock(metadata: string): ResponseFinalizeBlockWrap {
+    LoggerDebug("EndBlock", ["metadata", metadata]);
+    const respbz = consensus.EndBlock(String.UTF8.encode(metadata));
+    const respstr = String.UTF8.decode(respbz);
+    LoggerDebug("EndBlock", ["response", respstr]);
+    const wrap = JSON.parse<ResponseWrap>(respstr);
+    const response = new ResponseFinalizeBlockWrap(wrap.error, null);
+    if (wrap.error.length == 0) {
+        let data = String.UTF8.decode(decodeBase64(wrap.data).buffer)
+        LoggerDebug("EndBlock", ["response data", data]);
         // replace @type with anytype for public keys
         data = data.replaceAll(`"@type"`, `"anytype"`)
         response.data = JSON.parse<ResponseFinalizeBlock>(data);

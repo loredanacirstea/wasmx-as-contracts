@@ -518,6 +518,26 @@ export class ResponseFinalizeBlockWrap {
 
 // @ts-ignore
 @serializable
+export class ResponseBeginBlock {
+	events: Event[]
+    constructor(events: Event[]) {
+        this.events = events
+    }
+}
+
+// @ts-ignore
+@serializable
+export class ResponseBeginBlockWrap {
+    error: string
+    data: ResponseBeginBlock | null
+    constructor(error: string, data: ResponseBeginBlock | null) {
+        this.error = error
+        this.data = data
+    }
+}
+
+// @ts-ignore
+@serializable
 export class ResponseCommit {
 	retainHeight: i64;
     constructor(retainHeight: i64) {
