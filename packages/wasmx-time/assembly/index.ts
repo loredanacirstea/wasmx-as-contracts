@@ -1,59 +1,102 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from "wasmx-env/assembly/wasmx";
+import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as base64 from "as-base64/assembly";
-import { Block } from "./types";
+import { Block, Params, QueryBlockRequest, QueryBlockResponse, QueryLastBlockRequest, QueryLastBlockResponse } from "./types";
 import { getEmtpyBlock, getNewBlock } from "./blocks";
-import { getParams } from "./storage";
+import { getParams, setParams } from "./storage";
 import { BigInt } from "wasmx-env/assembly/bn";
+import { getCallDataWrap } from "./calldata";
+import { LoggerInfo, revert } from "./utils";
 
 export function wasmx_env_2(): void {}
 export function instantiate(): void {
   // setup chainid
+  setParams(new Params("todochain_id"))
 }
 
 // shared array // TODO security issues?
 export const sharedArray = new ArrayBuffer(32); // An example array
 
-var count: i32 = 0;
 var maxBlockCount: i32 = 256;
 var blockCount: i32 = 0;
-// timestamp ?
-var blocksMap: Map<BigInt,Block> = new Map<BigInt,Block>()
+// timestamp => Block
+var blocksMap: Map<string,Block> = new Map<string,Block>()
 var chain_id: string = ""
-var previousBlock: Block = getEmtpyBlock("");
+var previousBlock: Block | null = null;
 var cycleCount: i64 = 0;
 
 export function main(): void {
+  let result: ArrayBuffer = new ArrayBuffer(0)
+  const calld = getCallDataWrap();
+  if (calld.StartNode !== null) {
+    startNode();
+    result = new ArrayBuffer(0)
+  } else if (calld.getLastBlock !== null) {
+    result = getLastBlock(calld.getLastBlock!);
+  } else if (calld.getBlock !== null) {
+    result = getBlock(calld.getBlock!);
+  } else {
+    const calldraw = wasmx.getCallData();
+    let calldstr = String.UTF8.decode(calldraw)
+    revert(`invalid function call data: ${calldstr}`);
+  }
+  wasmx.finish(result);
+}
+
+export function startNode(): void {
+  start()
+}
+
+export function start(): void {
   chain_id = getParams().chain_id;
   previousBlock = getEmtpyBlock(chain_id);
+  LoggerInfo("starting", ["chain_id", chain_id])
 
   Uint8Array.wrap(sharedArray).set([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1])
 
-  const lcount = 200
-  for (let i = 0; i < lcount; i++) {
-  // while (true) {
+  // const lcount = 200
+  // for (let i = 0; i < lcount; i++) {
+  while (true) {
     // const res = wasmx.sha256(sharedArray);
     // console.log("hash: " + count.toString() + ": " + base64.encode(Uint8Array.wrap(res)) + "--" + Uint8Array.wrap(sharedArray).toString())
-    produceBlock(previousBlock)
+    produceBlock()
     cycleCount += 1;
   }
 }
 
-function produceBlock(prevBlock: Block): void {
-  const block = getNewBlock(prevBlock, chain_id, sharedArray);
+// 2024-04-08T10:54:15.636Z // toISOString
+function produceBlock(): void {
+  const block = getNewBlock(previousBlock!, chain_id, sharedArray);
+  // wait a cycle if same timestamp
+  if (blocksMap.has(block.header.time.toISOString())) return;
+
+  if ((blockCount + 1) > maxBlockCount) {
+    const keyDelete = blocksMap.keys()[0]
+    blocksMap.delete(keyDelete);
+    // blocksMap.delete(nextToDelete.toISOString())
+    // nextToDelete = blocksMap.get(blocksMap.keys()[0])
+  }
+  blocksMap.set(block.header.time.toISOString(), block);
+  blockCount += 1;
   previousBlock = block;
-  // if (blocksMap.length > maxBlockCount) {
-    // TODO
-  // }
-  // blocksQueue.push(block);
 }
 
-export function increment(): void {
-    count += 1;
+export function getLastBlock(req: QueryLastBlockRequest): ArrayBuffer {
+  const keys = blocksMap.keys()
+  const key = keys[keys.length - 1];
+  const block = blocksMap.get(key);
+  return String.UTF8.encode(JSON.stringify<QueryLastBlockResponse>(new QueryLastBlockResponse(block)));
 }
 
-export function getCount(): i32 {
-    return count;
+export function getBlock(req: QueryBlockRequest): ArrayBuffer {
+  const key = req.time.toISOString();
+  const block = blocksMap.get(key);
+  return String.UTF8.encode(JSON.stringify<QueryBlockResponse>(new QueryBlockResponse(block)));
+}
+
+export function getCycleCount(): i64 {
+    return cycleCount;
 }
 
 // optional
