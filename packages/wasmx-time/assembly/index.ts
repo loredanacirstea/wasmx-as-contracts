@@ -6,13 +6,14 @@ import { Block, Params, QueryBlockRequest, QueryBlockResponse, QueryLastBlockReq
 import { getEmtpyBlock, getNewBlock } from "./blocks";
 import { getParams, setParams } from "./storage";
 import { BigInt } from "wasmx-env/assembly/bn";
-import { getCallDataWrap } from "./calldata";
+import { getCallDataInitialize, getCallDataWrap } from "./calldata";
 import { LoggerInfo, revert } from "./utils";
 
 export function wasmx_env_2(): void {}
+
 export function instantiate(): void {
-  // setup chainid
-  setParams(new Params("todochain_id"))
+  const calld = getCallDataInitialize()
+  setParams(calld.params)
 }
 
 // shared array // TODO security issues?
@@ -25,6 +26,7 @@ var blocksMap: Map<string,Block> = new Map<string,Block>()
 var chain_id: string = ""
 var previousBlock: Block | null = null;
 var cycleCount: i64 = 0;
+var nextTime = Date.now();
 
 export function main(): void {
   let result: ArrayBuffer = new ArrayBuffer(0)
@@ -32,8 +34,10 @@ export function main(): void {
   if (calld.StartNode !== null) {
     startNode();
     result = new ArrayBuffer(0)
+  } else if (calld.start !== null) {
+    start();
   } else if (calld.getLastBlock !== null) {
-    result = getLastBlock(calld.getLastBlock!);
+    result = getLastBlock();
   } else if (calld.getBlock !== null) {
     result = getBlock(calld.getBlock!);
   } else {
@@ -44,49 +48,59 @@ export function main(): void {
   wasmx.finish(result);
 }
 
+// only view
+export function peek(): void {
+  let result: ArrayBuffer = new ArrayBuffer(0)
+  result = getLastBlock();
+  wasmx.finish(result);
+}
+
 export function startNode(): void {
-  start()
+  const contract = wasmxw.getAddress()
+  wasmxw.startBackgroundProcess(contract, `{"start":{}}`);
 }
 
 export function start(): void {
-  chain_id = getParams().chain_id;
+  const params = getParams();
+  chain_id = params.chain_id;
   previousBlock = getEmtpyBlock(chain_id);
   LoggerInfo("starting", ["chain_id", chain_id])
 
   Uint8Array.wrap(sharedArray).set([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1])
 
-  // const lcount = 200
-  // for (let i = 0; i < lcount; i++) {
   while (true) {
-    // const res = wasmx.sha256(sharedArray);
-    // console.log("hash: " + count.toString() + ": " + base64.encode(Uint8Array.wrap(res)) + "--" + Uint8Array.wrap(sharedArray).toString())
-    produceBlock()
     cycleCount += 1;
+    const time = Date.now();
+    if (time < nextTime) continue;
+    produceBlock(new Date(time));
+    nextTime = time + params.interval_ms
+    cycleCount = 0;
   }
 }
 
 // 2024-04-08T10:54:15.636Z // toISOString
-function produceBlock(): void {
-  const block = getNewBlock(previousBlock!, chain_id, sharedArray);
-  // wait a cycle if same timestamp
-  if (blocksMap.has(block.header.time.toISOString())) return;
+function produceBlock(time: Date): void {
+  const block = getNewBlock(time, previousBlock!, chain_id, sharedArray);
 
   if ((blockCount + 1) > maxBlockCount) {
     const keyDelete = blocksMap.keys()[0]
     blocksMap.delete(keyDelete);
-    // blocksMap.delete(nextToDelete.toISOString())
-    // nextToDelete = blocksMap.get(blocksMap.keys()[0])
+    blockCount -= 1;
   }
   blocksMap.set(block.header.time.toISOString(), block);
   blockCount += 1;
   previousBlock = block;
 }
 
-export function getLastBlock(req: QueryLastBlockRequest): ArrayBuffer {
+export function getLastBlock(): ArrayBuffer {
   const keys = blocksMap.keys()
   const key = keys[keys.length - 1];
+  if (!blocksMap.has(key)) {
+    return String.UTF8.encode("block not found")
+  }
   const block = blocksMap.get(key);
-  return String.UTF8.encode(JSON.stringify<QueryLastBlockResponse>(new QueryLastBlockResponse(block)));
+  const blockstr = JSON.stringify<QueryLastBlockResponse>(new QueryLastBlockResponse(block));
+  return String.UTF8.encode(blockstr);
 }
 
 export function getBlock(req: QueryBlockRequest): ArrayBuffer {

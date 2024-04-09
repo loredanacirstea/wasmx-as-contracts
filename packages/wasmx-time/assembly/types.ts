@@ -1,20 +1,19 @@
 import { JSON } from "json-as/assembly";
-import { BigInt } from "wasmx-env/assembly/bn";
-import {HexString, Base64String, Bech32String} from 'wasmx-env/assembly/types';
+import {Base64String} from 'wasmx-env/assembly/types';
 
 export const MODULE_NAME = "time"
 
 // @ts-ignore
 @serializable
 export class Header {
-    index: BigInt
+    index: i64
     time: Date
     lastBlockHash: Base64String
     // TODO see if we include the chain_id or not; this should be the machine's identity
     chain_id: Base64String
     entropy: Base64String
     constructor(
-        index: BigInt,
+        index: i64,
         time: Date,
         lastBlockHash: Base64String,
         chain_id: Base64String,
@@ -47,8 +46,19 @@ export class Block {
 @serializable
 export class Params {
     chain_id: string
-    constructor(chain_id: string) {
+    interval_ms: i64
+    constructor(chain_id: string, interval_ms: i64) {
         this.chain_id = chain_id
+        this.interval_ms = interval_ms
+    }
+}
+
+// @ts-ignore
+@serializable
+export class MsgInitialize {
+    params: Params
+    constructor(params: Params) {
+        this.params = params
     }
 }
 
