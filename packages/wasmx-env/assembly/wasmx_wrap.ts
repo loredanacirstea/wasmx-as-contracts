@@ -25,6 +25,8 @@ import {
     VerifyCosmosTxResponse,
     BlockInfo,
     HexString,
+    StartBackgroundProcessRequest,
+    StartBackgroundProcessResponse,
 } from './types';
 import { u8ArrayToHex, uint8ArrayToHex } from "as-tally/assembly/tally";
 import { toUpperCase } from "./utils";
@@ -182,11 +184,6 @@ export function ed25519Verify(pubKeyStr: Base64String, signatureStr: Base64Strin
     return false;
 }
 
-export function startTimeout(contract: string, delayms: i64, args: string): void {
-    const req = new StartTimeoutRequest(contract, delayms, encodeBase64(Uint8Array.wrap(String.UTF8.encode(args))));
-    wasmx.startTimeout(String.UTF8.encode(JSON.stringify<StartTimeoutRequest>(req)));
-}
-
 export function LoggerInfo(module: string, msg: string, parts: string[]): void {
     msg = `${module}: ${msg}`
     const data = new LoggerLog(msg, parts);
@@ -268,4 +265,26 @@ export function ed25519PubToHex(pubKey: Base64String): HexString {
     const bz = wasmx.ed25519PubToHex(data);
     const hexstr = uint8ArrayToHex(Uint8Array.wrap(bz));
     return toUpperCase(hexstr);
+}
+
+export function startTimeout(contract: string, delayms: i64, args: string): void {
+    const req = new StartTimeoutRequest(contract, delayms, encodeBase64(Uint8Array.wrap(String.UTF8.encode(args))));
+    wasmx.startTimeout(String.UTF8.encode(JSON.stringify<StartTimeoutRequest>(req)));
+}
+
+export function startBackgroundProcess(contract: string, args: string): void {
+    const encodedargs = encodeBase64(Uint8Array.wrap(String.UTF8.encode(args)));
+    const msg = `{"data":"${encodedargs}"}`
+    const encodedmsg = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msg)));
+    const req = new StartBackgroundProcessRequest(contract, encodedmsg);
+    wasmx.startBackgroundProcess(String.UTF8.encode(JSON.stringify<StartBackgroundProcessRequest>(req)));
+}
+
+export function callBackgroundProcess(contract: string, args: string): StartBackgroundProcessResponse {
+    const encodedargs = encodeBase64(Uint8Array.wrap(String.UTF8.encode(args)));
+    const msg = `{"data":"${encodedargs}"}`
+    const encodedmsg = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msg)));
+    const req = new StartBackgroundProcessRequest(contract, encodedmsg);
+    const resp = wasmx.callBackgroundProcess(String.UTF8.encode(JSON.stringify<StartBackgroundProcessRequest>(req)));
+    return JSON.parse<StartBackgroundProcessResponse>(String.UTF8.decode(resp));
 }

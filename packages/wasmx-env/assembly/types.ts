@@ -467,3 +467,31 @@ export class BlockInfo {
         this.proposer = proposer;
     }
 }
+
+// @ts-ignore
+@serializable
+export class StartBackgroundProcessRequest {
+    contract: string
+    args: Base64String
+    constructor(
+        contract: string,
+        args: Base64String,
+    ) {
+        this.contract = contract
+        this.args = args
+    }
+}
+
+// @ts-ignore
+@serializable
+export class StartBackgroundProcessResponse {
+    error: string
+    data: Base64String
+    constructor(
+        error: string,
+        data: Base64String,
+    ) {
+        this.error = error
+        this.data = data
+    }
+}

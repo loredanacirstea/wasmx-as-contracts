@@ -18,17 +18,10 @@ export declare function finish(value: ArrayBuffer): void
 export declare function revert(message: ArrayBuffer): void
 
 export declare function getAccount(address: ArrayBuffer): ArrayBuffer
-export declare function externalCall(data: ArrayBuffer): ArrayBuffer
 export declare function call(data: ArrayBuffer): ArrayBuffer
 
 export declare function createAccount(data: ArrayBuffer): ArrayBuffer
 export declare function create2Account(data: ArrayBuffer): ArrayBuffer
-
-// TODO move to p2p and rename to wasmx-network
-export declare function grpcRequest(data: ArrayBuffer): ArrayBuffer
-
-// TODO move to a core/internal API; even wasmx-network
-export declare function startTimeout(req: ArrayBuffer): void
 
 export declare function sha256(value: ArrayBuffer): ArrayBuffer
 
@@ -52,3 +45,14 @@ export declare function executeCosmosMsg(value: ArrayBuffer): ArrayBuffer
 
 export declare function decodeCosmosTxToJson(value: ArrayBuffer): ArrayBuffer
 export declare function verifyCosmosTx(value: ArrayBuffer): ArrayBuffer
+
+// TODO move to p2p and rename to wasmx-network
+export declare function grpcRequest(data: ArrayBuffer): ArrayBuffer
+
+// TODO move to a core/internal API; even wasmx-network
+export declare function startTimeout(req: ArrayBuffer): void
+export declare function startBackgroundProcess(req: ArrayBuffer): void
+export declare function callBackgroundProcess(req: ArrayBuffer): ArrayBuffer
+
+// TODO move or remove
+export declare function externalCall(data: ArrayBuffer): ArrayBuffer
