@@ -72,27 +72,9 @@ export class QueryLastBlockRequest {}
 
 // @ts-ignore
 @serializable
-export class QueryLastBlockResponse {
-    block: Block
-    constructor(block: Block) {
-        this.block = block
-    }
-}
-
-// @ts-ignore
-@serializable
 export class QueryBlockRequest {
     time: Date
     constructor(time: Date) {
         this.time = time
-    }
-}
-
-// @ts-ignore
-@serializable
-export class QueryBlockResponse {
-    block: Block
-    constructor(block: Block) {
-        this.block = block
     }
 }

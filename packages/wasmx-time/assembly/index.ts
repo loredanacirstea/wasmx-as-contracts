@@ -1,11 +1,9 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from "wasmx-env/assembly/wasmx";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
-import * as base64 from "as-base64/assembly";
-import { Block, Params, QueryBlockRequest, QueryBlockResponse, QueryLastBlockRequest, QueryLastBlockResponse } from "./types";
+import { Block, QueryBlockRequest } from "./types";
 import { getEmtpyBlock, getNewBlock } from "./blocks";
 import { getParams, setParams } from "./storage";
-import { BigInt } from "wasmx-env/assembly/bn";
 import { getCallDataInitialize, getCallDataWrap } from "./calldata";
 import { LoggerInfo, revert } from "./utils";
 
@@ -17,12 +15,15 @@ export function instantiate(): void {
 }
 
 // shared array // TODO security issues?
-export const sharedArray = new ArrayBuffer(32); // An example array
+export const sharedArray = new ArrayBuffer(32);
+
+export const lastBlock = new ArrayBuffer(1024);
+export var lastBlockLength = 0;
 
 var maxBlockCount: i32 = 256;
 var blockCount: i32 = 0;
 // timestamp => Block
-var blocksMap: Map<string,Block> = new Map<string,Block>()
+var blocksMap: Map<string,string> = new Map<string,string>()
 var chain_id: string = ""
 var previousBlock: Block | null = null;
 var cycleCount: i64 = 0;
@@ -87,7 +88,13 @@ function produceBlock(time: Date): void {
     blocksMap.delete(keyDelete);
     blockCount -= 1;
   }
-  blocksMap.set(block.header.time.toISOString(), block);
+  const blockstr = JSON.stringify<Block>(block);
+  blocksMap.set(block.header.time.toISOString(), blockstr);
+
+  const data = Uint8Array.wrap(String.UTF8.encode(blockstr));
+  Uint8Array.wrap(lastBlock).set(data)
+  lastBlockLength = data.length;
+
   blockCount += 1;
   previousBlock = block;
 }
@@ -99,14 +106,13 @@ export function getLastBlock(): ArrayBuffer {
     return String.UTF8.encode("block not found")
   }
   const block = blocksMap.get(key);
-  const blockstr = JSON.stringify<QueryLastBlockResponse>(new QueryLastBlockResponse(block));
-  return String.UTF8.encode(blockstr);
+  return String.UTF8.encode(block);
 }
 
 export function getBlock(req: QueryBlockRequest): ArrayBuffer {
   const key = req.time.toISOString();
   const block = blocksMap.get(key);
-  return String.UTF8.encode(JSON.stringify<QueryBlockResponse>(new QueryBlockResponse(block)));
+  return String.UTF8.encode(block);
 }
 
 export function getCycleCount(): i64 {
