@@ -1,11 +1,11 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { EmptyRequest, MsgInitialize } from './types';
+import { EmptyRequest, MsgInitialize, MsgNewTransaction } from './types';
 
 // @ts-ignore
 @serializable
 export class CallData {
-    method: EmptyRequest | null = null;
+    newTransaction: MsgNewTransaction | null = null;
 }
 
 export function getCallDataInitialize(): MsgInitialize {
