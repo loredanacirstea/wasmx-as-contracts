@@ -27,6 +27,10 @@ import {
     HexString,
     StartBackgroundProcessRequest,
     StartBackgroundProcessResponse,
+    WriteToBackgroundProcessRequest,
+    WriteToBackgroundProcessResponse,
+    ReadFromBackgroundProcessRequest,
+    ReadFromBackgroundProcessResponse,
 } from './types';
 import { u8ArrayToHex, uint8ArrayToHex } from "as-tally/assembly/tally";
 import { toUpperCase } from "./utils";
@@ -280,11 +284,14 @@ export function startBackgroundProcess(contract: string, args: string): void {
     wasmx.startBackgroundProcess(String.UTF8.encode(JSON.stringify<StartBackgroundProcessRequest>(req)));
 }
 
-export function callBackgroundProcess(contract: string, args: string): StartBackgroundProcessResponse {
-    const encodedargs = encodeBase64(Uint8Array.wrap(String.UTF8.encode(args)));
-    const msg = `{"data":"${encodedargs}"}`
-    const encodedmsg = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msg)));
-    const req = new StartBackgroundProcessRequest(contract, encodedmsg);
-    const resp = wasmx.callBackgroundProcess(String.UTF8.encode(JSON.stringify<StartBackgroundProcessRequest>(req)));
-    return JSON.parse<StartBackgroundProcessResponse>(String.UTF8.decode(resp));
+export function writeToBackgroundProcess(contract: string, ptrFunc: string, data: Base64String): WriteToBackgroundProcessResponse {
+    const req = new WriteToBackgroundProcessRequest(contract, data, ptrFunc);
+    const resp = wasmx.writeToBackgroundProcess(String.UTF8.encode(JSON.stringify<WriteToBackgroundProcessRequest>(req)));
+    return JSON.parse<WriteToBackgroundProcessResponse>(String.UTF8.decode(resp));
+}
+
+export function readFromBackgroundProcess(contract: string, ptrFunc: string, lenFunc: string): ReadFromBackgroundProcessResponse {
+    const req = new ReadFromBackgroundProcessRequest(contract, ptrFunc, lenFunc);
+    const resp = wasmx.readFromBackgroundProcess(String.UTF8.encode(JSON.stringify<ReadFromBackgroundProcessRequest>(req)));
+    return JSON.parse<ReadFromBackgroundProcessResponse>(String.UTF8.decode(resp));
 }

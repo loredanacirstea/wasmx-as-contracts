@@ -52,7 +52,8 @@ export declare function grpcRequest(data: ArrayBuffer): ArrayBuffer
 // TODO move to a core/internal API; even wasmx-network
 export declare function startTimeout(req: ArrayBuffer): void
 export declare function startBackgroundProcess(req: ArrayBuffer): void
-export declare function callBackgroundProcess(req: ArrayBuffer): ArrayBuffer
+export declare function writeToBackgroundProcess(req: ArrayBuffer): ArrayBuffer
+export declare function readFromBackgroundProcess(req: ArrayBuffer): ArrayBuffer
 
 // TODO move or remove
 export declare function externalCall(data: ArrayBuffer): ArrayBuffer

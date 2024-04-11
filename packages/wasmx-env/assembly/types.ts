@@ -495,3 +495,57 @@ export class StartBackgroundProcessResponse {
         this.data = data
     }
 }
+
+// @ts-ignore
+@serializable
+export class WriteToBackgroundProcessRequest {
+    contract: string // role or address
+    data: Base64String
+    ptrFunc: string
+    constructor(
+        contract: string,
+        data: Base64String,
+        ptrFunc: string,
+    ) {
+        this.contract = contract
+        this.data = data
+        this.ptrFunc = ptrFunc
+    }
+}
+
+// @ts-ignore
+@serializable
+export class WriteToBackgroundProcessResponse {
+    error: string
+    constructor(error: string) {
+        this.error = error
+    }
+}
+
+// @ts-ignore
+@serializable
+export class ReadFromBackgroundProcessRequest {
+    contract: string // role or address
+    ptrFunc: string
+    lenFunc: string
+    constructor(
+        contract: string,
+        ptrFunc: string,
+        lenFunc: string,
+    ) {
+        this.contract = contract
+        this.lenFunc = lenFunc
+        this.ptrFunc = ptrFunc
+    }
+}
+
+// @ts-ignore
+@serializable
+export class ReadFromBackgroundProcessResponse {
+    error: string
+    data: Base64String
+    constructor(error: string, data: Base64String) {
+        this.error = error
+        this.data = data
+    }
+}
