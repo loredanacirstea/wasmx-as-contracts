@@ -14,11 +14,16 @@ export function instantiate(): void {
   setParams(calld.params)
 }
 
-// shared array // TODO security issues?
-export const sharedArray = new ArrayBuffer(32);
+// TODO security issues?
+export const entropyArray = new ArrayBuffer(32);
 
 export const lastBlock = new ArrayBuffer(1024);
 export var lastBlockLength = 0;
+
+// 300 * 255 = 76500
+export const lastBlocks = new ArrayBuffer(76500);
+export const lastBlocksLength = 0;
+export const SEPARATOR = "[xxxxx]";
 
 var maxBlockCount: i32 = 256;
 var blockCount: i32 = 0;
@@ -58,6 +63,7 @@ export function peek(): void {
 
 export function startNode(): void {
   const contract = wasmxw.getAddress()
+  LoggerInfo("sending background process request", ["contract", contract])
   wasmxw.startBackgroundProcess(contract, `{"start":{}}`);
 }
 
@@ -67,7 +73,7 @@ export function start(): void {
   previousBlock = getEmtpyBlock(chain_id);
   LoggerInfo("starting", ["chain_id", chain_id])
 
-  Uint8Array.wrap(sharedArray).set([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1])
+  resetEntropy()
 
   while (true) {
     cycleCount += 1;
@@ -81,15 +87,21 @@ export function start(): void {
 
 // 2024-04-08T10:54:15.636Z // toISOString
 function produceBlock(time: Date): void {
-  const block = getNewBlock(time, previousBlock!, chain_id, sharedArray);
+  const entropy = new Uint8Array(32);
+  entropy.set(Uint8Array.wrap(entropyArray))
+  resetEntropy()
+  const block = getNewBlock(time, previousBlock!, chain_id, entropy);
 
   if ((blockCount + 1) > maxBlockCount) {
     const keyDelete = blocksMap.keys()[0]
     blocksMap.delete(keyDelete);
     blockCount -= 1;
+    removeFirstBlock();
   }
+  console.log("hash: " + block.hash + ": " + block.header.entropy + ": " + block.header.time.toISOString() + "--index: " + block.header.index.toString() + "---cycle: " + cycleCount.toString())
   const blockstr = JSON.stringify<Block>(block);
   blocksMap.set(block.header.time.toISOString(), blockstr);
+  addLastBlock(blockstr);
 
   const data = Uint8Array.wrap(String.UTF8.encode(blockstr));
   Uint8Array.wrap(lastBlock).set(data)
@@ -97,6 +109,20 @@ function produceBlock(time: Date): void {
 
   blockCount += 1;
   previousBlock = block;
+}
+
+function removeFirstBlock(): void {
+
+}
+
+function addLastBlock(blockstr: string): void {
+  const blockdata = Uint8Array.wrap(String.UTF8.encode(blockstr));
+  const sep = Uint8Array.wrap(String.UTF8.encode(SEPARATOR));
+  const data = new Uint8Array(blockdata.length + sep.length);
+  data.set(sep)
+  data.set(blockdata, sep.length);
+  Uint8Array.wrap(lastBlocks).set(data, lastBlocksLength);
+  lastBlockLength += data.length;
 }
 
 export function getLastBlock(): ArrayBuffer {
@@ -119,12 +145,16 @@ export function getCycleCount(): i64 {
     return cycleCount;
 }
 
+function resetEntropy(): void {
+  Uint8Array.wrap(entropyArray).set([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
+}
+
 // optional
-export function storeSharedArray(val: ArrayBuffer): void {
-  let buffer = Uint8Array.wrap(sharedArray);
+export function storeEntropyArray(val: ArrayBuffer): void {
+  let buffer = Uint8Array.wrap(entropyArray);
   buffer.set(Uint8Array.wrap(val), 0)
 }
 
-export function getSharedArray(): ArrayBuffer {
-  return sharedArray
+export function getEntropyArray(): ArrayBuffer {
+  return entropyArray
 }
