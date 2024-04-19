@@ -67,7 +67,6 @@ export function getLogEntryAggregate(index: i64): LogEntryAggregate {
     return entry;
 }
 
-
 export function initChain(req: typestnd.InitChainSetup): void {
     LoggerDebug("start chain init", [])
 

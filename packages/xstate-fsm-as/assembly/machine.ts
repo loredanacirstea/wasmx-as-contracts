@@ -572,8 +572,7 @@ export class Machine implements StateMachine.Machine {
             wasmx.revert(String.UTF8.encode(message));
             throw new Error(message);
           } else {
-            // TODO log error only for consensus machines, otherwise log debug
-            LoggerError(message, []);
+            LoggerInfo(message, ["error", message]);
             return null;
           }
 

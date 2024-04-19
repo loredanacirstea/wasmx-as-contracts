@@ -67,6 +67,7 @@ export function startNode(): void {
   wasmxw.startBackgroundProcess(contract, `{"start":{}}`);
 }
 
+// TODO start should get the last timehash from someone else
 export function start(): void {
   const params = getParams();
   chain_id = params.chain_id;
