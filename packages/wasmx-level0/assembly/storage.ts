@@ -7,6 +7,9 @@ import { Block } from "./types";
 import { getEmtpyBlock } from "./block";
 
 export const chainId = "level0_667-1"; // TODO params
+export const MEMBERS_KEY = "members_"
+
+export function setMembers(): void {}
 
 export function getLastBlockByIndex(): Block {
     const lastBlockIndex = getLastBlockIndex();

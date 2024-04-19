@@ -30,6 +30,7 @@
     "wasmx-blocks": "file:../wasmx-blocks",
     "wasmx-env": "file:../wasmx-env",
     "wasmx-utils": "file:../wasmx-utils",
-    "wasmx-time": "file:../wasmx-time"
+    "wasmx-time": "file:../wasmx-time",
+    "xstate-fsm-as": "file:../xstate-fsm-as"
   }
 }
