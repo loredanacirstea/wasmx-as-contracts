@@ -6,23 +6,6 @@ export const MODULE_NAME = "derc20"
 
 // @ts-ignore
 @serializable
-export class CallDataInstantiate {
-    admin: Base64String
-    minter: Base64String
-    name: string
-    symbol: string
-    decimals: i32
-    constructor(admin: Base64String, minter: Base64String, name: string, symbol: string,  decimals: i32) {
-        this.admin = admin
-        this.minter = minter
-        this.name = name
-        this.symbol = symbol
-        this.decimals = decimals
-    }
-}
-
-// @ts-ignore
-@serializable
 export class MsgDelegate {
     delegator: Bech32String
     validator: Bech32String

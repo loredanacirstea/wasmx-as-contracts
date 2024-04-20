@@ -11,6 +11,7 @@ const VALIDATOR_CONSADDR_TO_OPERATOR_KEY = "validatorconsaddrtooperator_"
 const VALIDATOR_OPERATOR_TO_CONSADDR_KEY = "validatoroperatortoconsaddr_"
 const VALIDATOR_HEXADDR_TO_OPERATOR_KEY = "validatorhexaddrtooperator_"
 const PARAM_KEY = "params"
+const BASE_DENOM_KEY = "base_denom"
 
 export function setNewValidator(value: Validator): void {
     const addrs = getValidatorsAddresses();
@@ -82,4 +83,10 @@ export function setParams(params: Params): void {
     return wasmx.sstore(PARAM_KEY, JSON.stringify<Params>(params));
 }
 
+export function getBaseDenom(): string {
+    return wasmx.sload(BASE_DENOM_KEY);
+}
 
+export function setBaseDenom(value: string): void {
+    return wasmx.sstore(BASE_DENOM_KEY, value);
+}

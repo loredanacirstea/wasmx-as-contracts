@@ -31,7 +31,7 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
         LoggerDebug(`init denom`, ["base_denom", info.metadata.base, "code_id", info.code_id.toString(), "contract", info.contract])
         // we do not give supply, because we mint below
         if (info.contract == "") {
-            info.contract = deployDenom(info.code_id, info.metadata, info.admins, info.minters)
+            info.contract = deployDenom(info.code_id, info.metadata, info.admins, info.minters, info.base_denom)
             LoggerInfo(`deployed denom`, ["address", info.contract, "denom", info.metadata.base, "code_id", info.code_id.toString()])
         }
         registerDenomContract(info.contract, info.metadata.base, info.metadata.denom_units)
@@ -243,7 +243,7 @@ export function totalSupplyInternal(denom: string): Coin {
     return data.supply
 }
 
-export function deployDenom(codeId: u64, metadata: Metadata, admins: string[], minters: string[]): Bech32String {
+export function deployDenom(codeId: u64, metadata: Metadata, admins: string[], minters: string[], baseDenom: string): Bech32String {
     const denoms = getBaseDenoms()
     denoms.push(metadata.base);
     setBaseDenoms(denoms)
@@ -257,7 +257,7 @@ export function deployDenom(codeId: u64, metadata: Metadata, admins: string[], m
             decimals = unit.exponent;
         }
     }
-    const msg = JSON.stringify<erc20.CallDataInstantiate>(new erc20.CallDataInstantiate(admins, minters, name, symbol, decimals))
+    const msg = JSON.stringify<erc20.CallDataInstantiate>(new erc20.CallDataInstantiate(admins, minters, name, symbol, decimals, baseDenom))
     const label = "Bank_" + metadata.base
     const addr = wasmxw.createAccount(new CreateAccountRequest(codeId, msg, [], label), MODULE_NAME)
     return addr

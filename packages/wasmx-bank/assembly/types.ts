@@ -215,12 +215,14 @@ export class DenomDeploymentInfo {
     admins: string[]
     minters: string[]
     contract: Bech32String
-    constructor(metadata: Metadata, code_id: u64, admins: string[], minters: string[], contract: Bech32String) {
+    base_denom: string
+    constructor(metadata: Metadata, code_id: u64, admins: string[], minters: string[], contract: Bech32String, base_denom: string) {
         this.metadata = metadata
         this.code_id = code_id
         this.admins = admins
         this.minters = minters
         this.contract = contract
+        this.base_denom = base_denom
     }
 }
 

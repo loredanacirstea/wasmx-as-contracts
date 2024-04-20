@@ -15,12 +15,14 @@ export class CallDataInstantiate {
     name: string
     symbol: string
     decimals: i32
-    constructor(admins: Base64String[], minters: Base64String[], name: string, symbol: string,  decimals: i32) {
+    base_denom: string
+    constructor(admins: Base64String[], minters: Base64String[], name: string, symbol: string,  decimals: i32,  base_denom: string) {
         this.admins = admins
         this.minters = minters
         this.name = name
         this.symbol = symbol
         this.decimals = decimals
+        this.base_denom = base_denom
     }
 }
 

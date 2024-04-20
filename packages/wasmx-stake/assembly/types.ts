@@ -226,7 +226,8 @@ export class MsgInitGenesis {
     redelegations: Redelegation[]
     // exported defines a bool to identify whether the chain dealing with exported or initialized genesis.
     // exported: bool
-    constructor(params: Params, last_total_power: i64, last_validator_powers: LastValidatorPower[], validators: Validator[], delegations: Delegation[],  unbonding_delegations: UnbondingDelegation[], redelegations: Redelegation[]) {
+    base_denom: string
+    constructor(params: Params, last_total_power: i64, last_validator_powers: LastValidatorPower[], validators: Validator[], delegations: Delegation[],  unbonding_delegations: UnbondingDelegation[], redelegations: Redelegation[], base_denom: string) {
         this.params = params
         this.last_total_power = last_total_power
         this.last_validator_powers = last_validator_powers
@@ -235,6 +236,7 @@ export class MsgInitGenesis {
         this.unbonding_delegations = unbonding_delegations
         this.redelegations = redelegations
         // this.exported = exported
+        this.base_denom = base_denom
     }
 }
 

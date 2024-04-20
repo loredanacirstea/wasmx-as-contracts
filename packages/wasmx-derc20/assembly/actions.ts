@@ -1,20 +1,33 @@
 import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
+import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { Bech32String, CallRequest, CallResponse, Coin, PageResponse } from "wasmx-env/assembly/types";
 import { isAuthorized } from "wasmx-env/assembly/utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { QueryDelegationRequest, QueryDelegationResponse, Delegation, DelegationResponse, DelegationCosmos, QueryValidatorDelegationsRequest, QueryValidatorDelegationsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, Validator } from "wasmx-stake/assembly/types";
 import { move } from "wasmx-erc20/assembly/actions";
-import { setInfo, getInfo, getBalance, setBalance, getAllowance, setAllowance, getTotalSupply, setTotalSupply, getAdmins, getMinters } from "wasmx-erc20/assembly/storage";
+import { setInfo, getInfo, getBalance, setBalance, getAllowance, setAllowance, getTotalSupply, setTotalSupply, getAdmins, getMinters, setAdmins, setMinters } from "wasmx-erc20/assembly/storage";
 import * as banktypes from "wasmx-bank/assembly/types";
 import { DelegatorValidatorsResponse, MODULE_NAME, MsgDelegate, MsgGetAllSDKDelegations, MsgRedelegate, MsgUndelegate, SDKDelegation } from "./types";
 import { LoggerDebug, revert } from "./utils";
-import { addDelegatorToValidator, addValidatorToDelegator, setDelegatorToValidatorDelegation, addTotalDelegationToValidator, removeValidatorFromDelegator, removeDelegatorFromValidator, removeValidatorDelegationFromDelegator, removeDelegationAmountFromValidator, getDelegatorToValidatorDelegation, getBalanceValidator, setBalanceValidator, getValidatorToDelegators, getDelegatorToValidators } from "./storage";
-import { MsgBalanceOf, MsgBalanceOfResponse } from "wasmx-erc20/assembly/types";
+import { addDelegatorToValidator, addValidatorToDelegator, setDelegatorToValidatorDelegation, addTotalDelegationToValidator, removeValidatorFromDelegator, removeDelegatorFromValidator, removeValidatorDelegationFromDelegator, removeDelegationAmountFromValidator, getDelegatorToValidatorDelegation, getBalanceValidator, setBalanceValidator, getValidatorToDelegators, getDelegatorToValidators, setBaseDenom, getBaseDenom } from "./storage";
+import { MsgBalanceOf, MsgBalanceOfResponse, TokenInfo, CallDataInstantiate } from "wasmx-erc20/assembly/types";
 
-// TODO this must be in initialization
-const DENOM_BASE = "amyt"
+export function instantiateToken(): void {
+    const calldraw = wasmx.getCallData();
+    const calldrawstr = String.UTF8.decode(calldraw);
+    LoggerDebug("instantiate token", ["args", calldrawstr])
+    const calld = JSON.parse<CallDataInstantiate>(calldrawstr);
+    setAdmins(calld.admins)
+    let minters = calld.minters
+    if (minters.length == 0) {
+      minters = [wasmxw.getCaller()]
+    }
+    setMinters(minters);
+    setInfo(new TokenInfo(calld.name, calld.symbol, calld.decimals));
+    setBaseDenom(calld.base_denom);
+}
 
 export function balanceOfValidator(req: MsgBalanceOf): ArrayBuffer {
     const value = getBalanceValidator(req.owner)
@@ -31,9 +44,10 @@ export function delegate(req: MsgDelegate): ArrayBuffer {
     if (!authorized) {
         revert(`caller cannot delegate: ${caller}`);
     }
+    const baseDenom = getBaseDenom()
 
     // call bank to withdraw amount from delegator's account
-    bankSendCoin(req.delegator, wasmxw.getCaller(), req.value, DENOM_BASE)
+    bankSendCoin(req.delegator, wasmxw.getCaller(), req.value, baseDenom)
 
     // add to delegator's balance
     let balance = getBalance(req.delegator);
@@ -100,8 +114,10 @@ export function undelegate(req: MsgUndelegate): ArrayBuffer {
     // remove from validator's total delegation
     removeDelegationAmountFromValidator(req.validator, req.value)
 
+    const baseDenom = getBaseDenom()
+
     // call bank to give back amount to delegator's account
-    bankSendCoin(wasmxw.getAddress(), req.delegator, req.value, DENOM_BASE)
+    bankSendCoin(wasmxw.getAddress(), req.delegator, req.value, baseDenom)
 
     return new ArrayBuffer(0);
 }

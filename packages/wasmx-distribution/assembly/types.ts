@@ -266,6 +266,7 @@ export class MsgInitGenesis {
     validator_current_rewards: ValidatorCurrentRewardsRecord[]
     delegator_starting_infos: DelegatorStartingInfoRecord[]
     validator_slash_events: ValidatorSlashEventRecord[]
+    base_denom: string
     constructor(
         params: Params,
         fee_pool: FeePool,
@@ -277,6 +278,7 @@ export class MsgInitGenesis {
         validator_current_rewards: ValidatorCurrentRewardsRecord[],
         delegator_starting_infos: DelegatorStartingInfoRecord[],
         validator_slash_events: ValidatorSlashEventRecord[],
+        base_denom: string,
     ) {
         this.params = params
         this.fee_pool = fee_pool
@@ -288,6 +290,7 @@ export class MsgInitGenesis {
         this.validator_current_rewards = validator_current_rewards
         this.delegator_starting_infos = delegator_starting_infos
         this.validator_slash_events = validator_slash_events
+        this.base_denom = base_denom
     }
 }
 

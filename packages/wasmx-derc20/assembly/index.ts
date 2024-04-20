@@ -1,8 +1,8 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { getName, getSymbol, getDecimals, totalSupply, balanceOf, transfer, transferFrom, approve, allowance, instantiateToken } from "wasmx-erc20/assembly/actions";
+import { getName, getSymbol, getDecimals, totalSupply, balanceOf, transfer, transferFrom, approve, allowance } from "wasmx-erc20/assembly/actions";
 import { CallData, getCallDataWrap } from './calldata';
-import { delegate, redelegate, undelegate, GetAllSDKDelegations, GetDelegation, balanceOfValidator, GetValidatorDelegations } from "./actions";
+import { delegate, redelegate, undelegate, GetAllSDKDelegations, GetDelegation, balanceOfValidator, GetValidatorDelegations, instantiateToken } from "./actions";
 import { revert } from "./utils";
 
 export function wasmx_env_2(): void {}

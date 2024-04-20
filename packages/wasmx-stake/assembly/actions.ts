@@ -5,7 +5,7 @@ import { BigInt } from "wasmx-env/assembly/bn"
 import * as banktypes from "wasmx-bank/assembly/types"
 import * as derc20types from "wasmx-derc20/assembly/types"
 import * as erc20types from "wasmx-erc20/assembly/types"
-import { getParamsInternal, setParams, setNewValidator, getParams, getValidator, getValidatorsAddresses, getValidatorAddrByConsAddr, setValidator, getValidatorOperatorByHexAddr } from './storage';
+import { getParamsInternal, setParams, setNewValidator, getParams, getValidator, getValidatorsAddresses, getValidatorAddrByConsAddr, setValidator, getValidatorOperatorByHexAddr, setBaseDenom, getBaseDenom } from './storage';
 import { MsgInitGenesis, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool, BondedS, AfterValidatorCreated, AfterValidatorBonded, QueryValidatorDelegationsRequest, QueryValidatorDelegationsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryParamsRequest, QueryParamsResponse } from './types';
 import { LoggerDebug, LoggerError, revert } from './utils';
 import { parseInt64 } from "wasmx-utils/assembly/utils";
@@ -13,15 +13,13 @@ import { Bech32String, CallRequest, CallResponse, Coin, PageRequest, PageRespons
 
 export const POWER_REDUCTION: u32 = 1000000
 
-// TODO this must be in initialization
-export const DENOM_BASE = "amyt"
-
 export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
     if (getParamsInternal() != "") {
         revert("already called initGenesis")
     }
     const genesis = req;
     setParams(genesis.params)
+    setBaseDenom(genesis.base_denom);
     LoggerDebug(`init genesis`, ["validators", req.validators.length.toString(), "delegations", req.delegations.length.toString()])
     const vupdates: ValidatorUpdate[] = [];
     for (let i = 0; i < genesis.validators.length; i++) {
@@ -47,6 +45,7 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
 }
 
 export function CreateValidator(req: MsgCreateValidator): void {
+    const baseDenom = getBaseDenom()
     const validator = new Validator(
         req.validator_address,
         req.pubkey, // TODO codec any?
@@ -68,8 +67,8 @@ export function CreateValidator(req: MsgCreateValidator): void {
     }
 
     // check denom
-    if (req.value.denom != DENOM_BASE) {
-        revert(`cannot create validator with ${req.value.denom}; need ${DENOM_BASE}`)
+    if (req.value.denom != baseDenom) {
+        revert(`cannot create validator with ${req.value.denom}; need ${baseDenom}`)
     }
     setNewValidatorAndCallHook(validator);
 
@@ -188,9 +187,10 @@ export function GetParams(req: QueryParamsRequest): ArrayBuffer {
 
 export function GetPool(req: QueryPoolRequest): ArrayBuffer {
     // bonded
+    const baseDenom = getBaseDenom()
     const denom = getParams().bond_denom;
     const bonded = GetBankSupply(denom);
-    const unbonded = GetBankSupply(DENOM_BASE);
+    const unbonded = GetBankSupply(baseDenom);
     const res = new QueryPoolResponse(new Pool(unbonded.amount.amount, bonded.amount.amount))
     return String.UTF8.encode(JSON.stringify<QueryPoolResponse>(res))
 }

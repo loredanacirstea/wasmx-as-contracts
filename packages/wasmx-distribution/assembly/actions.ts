@@ -8,17 +8,18 @@ import * as stakingtypes from "wasmx-stake/assembly/types"
 import * as blocktypes from "wasmx-blocks/assembly/types"
 import * as erc20types from "wasmx-erc20/assembly/types"
 import * as derc20types from "wasmx-derc20/assembly/types"
-import { DENOM_BASE, callContract } from "wasmx-stake/assembly/actions"
+import { callContract } from "wasmx-stake/assembly/actions"
 import { decode as decodeBase64, encode as encodeBase64 } from "as-base64/assembly";
 import { Bech32String, CallRequest, CallResponse, Coin, DecCoin, PageRequest, ValidatorAddressString } from "wasmx-env/assembly/types";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { FEE_COLLECTOR_ROLE, MODULE_NAME, MsgCommunityPoolSpend, MsgCommunityPoolSpendResponse, MsgDepositValidatorRewardsPool, MsgDepositValidatorRewardsPoolResponse, MsgFundCommunityPool, MsgFundCommunityPoolResponse, MsgInitGenesis, MsgSetWithdrawAddress, MsgSetWithdrawAddressResponse, MsgUpdateParams, MsgUpdateParamsResponse, MsgWithdrawDelegatorReward, MsgWithdrawDelegatorRewardResponse, MsgWithdrawValidatorCommission, MsgWithdrawValidatorCommissionResponse, QueryCommunityPoolRequest, QueryCommunityPoolResponse, QueryDelegationRewardsRequest, QueryDelegationRewardsResponse, QueryDelegationTotalRewardsRequest, QueryDelegationTotalRewardsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryDelegatorWithdrawAddressRequest, QueryDelegatorWithdrawAddressResponse, QueryParamsRequest, QueryParamsResponse, QueryValidatorCommissionRequest, QueryValidatorCommissionResponse, QueryValidatorDistributionInfoRequest, QueryValidatorDistributionInfoResponse, QueryValidatorOutstandingRewardsRequest, QueryValidatorOutstandingRewardsResponse, QueryValidatorSlashesRequest, QueryValidatorSlashesResponse, REWARDS_TOKEN_SYMBOL } from './types';
 import * as types from "./types";
 import { LoggerDebug, LoggerError, revert } from "./utils";
-import { getParams, setParams } from "./storage";
+import { getBaseDenom, getParams, setBaseDenom, setParams } from "./storage";
 
 export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
     setParams(req.params);
+    setBaseDenom(req.base_denom);
     // TODO rest of genesis
     return new ArrayBuffer(0);
 }
@@ -29,13 +30,14 @@ export function EndBlock(req: MsgRunHook): void {
 
     // get fee collector balance
     const feeCollectorAddress = wasmxw.getAddressByRole(FEE_COLLECTOR_ROLE)
-    const fees = getBalance(feeCollectorAddress, DENOM_BASE);
+    const baseDenom = getBaseDenom()
+    const fees = getBalance(feeCollectorAddress, baseDenom);
     if (fees.amount.isZero()) {
         return
     }
     // burn fee collector balance
-    LoggerDebug("burn fee collector tokens", ["denom", DENOM_BASE, "amount", fees.amount.toString()])
-    const gasAddress = getTokenAddress(DENOM_BASE)
+    LoggerDebug("burn fee collector tokens", ["denom", baseDenom, "amount", fees.amount.toString()])
+    const gasAddress = getTokenAddress(baseDenom)
     callBurnToken(gasAddress, feeCollectorAddress, fees.amount);
 
     // TODO community_tax * fees to CommunityPool
@@ -50,14 +52,16 @@ export function SetWithdrawAddress(req: MsgSetWithdrawAddress): ArrayBuffer {
 }
 
 export function WithdrawDelegatorReward(req: MsgWithdrawDelegatorReward): ArrayBuffer {
+    const baseDenom = getBaseDenom()
     const reward = withdrawRewards(req.delegator_address);
-    return String.UTF8.encode(JSON.stringify<MsgWithdrawDelegatorRewardResponse>(new MsgWithdrawDelegatorRewardResponse([new Coin(DENOM_BASE, reward)])))
+    return String.UTF8.encode(JSON.stringify<MsgWithdrawDelegatorRewardResponse>(new MsgWithdrawDelegatorRewardResponse([new Coin(baseDenom, reward)])))
 }
 
 export function WithdrawValidatorCommission(req: MsgWithdrawValidatorCommission): ArrayBuffer {
+    const baseDenom = getBaseDenom()
     const validator = getValidatorByConsAddr(req.validator_address);
     const reward = withdrawRewards(validator.operator_address);
-    return String.UTF8.encode(JSON.stringify<MsgWithdrawValidatorCommissionResponse>(new MsgWithdrawValidatorCommissionResponse([new Coin(DENOM_BASE, reward)])))
+    return String.UTF8.encode(JSON.stringify<MsgWithdrawValidatorCommissionResponse>(new MsgWithdrawValidatorCommissionResponse([new Coin(baseDenom, reward)])))
 }
 
 export function FundCommunityPool(req: MsgFundCommunityPool): ArrayBuffer {
@@ -150,12 +154,13 @@ export function CommunityPool(req: QueryCommunityPoolRequest): ArrayBuffer {
 }
 
 export function withdrawRewards(delegatorAddress: Bech32String): BigInt {
+    const baseDenom = getBaseDenom()
     const tokenAddress = getTokenAddress(REWARDS_TOKEN_SYMBOL);
     const reward = getTokenAmount(tokenAddress, delegatorAddress);
     callBurnToken(tokenAddress, delegatorAddress, reward);
 
     // now mint amyt
-    const gasTokenAddress = getTokenAddress(DENOM_BASE);
+    const gasTokenAddress = getTokenAddress(baseDenom);
     callMintToken(gasTokenAddress, delegatorAddress, reward);
     return reward
 }

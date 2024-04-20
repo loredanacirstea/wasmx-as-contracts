@@ -20,6 +20,8 @@ export function getBalanceValidatorKey(addr: string): string {
     return BALANCE_VALID_KEY + addr;
 }
 
+const BASE_DENOM_KEY = "base_denom"
+
 // delegator => validators[]
 export function getDelegatorToValidatorsKey(delegator: Bech32String): string {
     return DELEGATOR_TO_VALIDATORS_KEY + delegator;
@@ -168,4 +170,12 @@ export function removeDelegationAmountFromValidator(validator: Bech32String, val
     // @ts-ignore
     const total = getValidatorToTotalDelegation(validator) - value
     wasmxw.sstore(getValidatorToTotalDelegationKey(validator), total.toString())
+}
+
+export function getBaseDenom(): string {
+    return wasmxw.sload(BASE_DENOM_KEY);
+}
+
+export function setBaseDenom(value: string): void {
+    return wasmxw.sstore(BASE_DENOM_KEY, value);
 }
