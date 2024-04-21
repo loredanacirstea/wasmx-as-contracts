@@ -16,6 +16,7 @@ import {
   AVA_SNOWMAN,
   RAFT_P2P,
   TendermintP2P,
+  Level0,
 } from './data.js';
 
 let currentState, value;
@@ -364,6 +365,11 @@ async function runTests() {
     // TendermintP2P
     machineConfig = parseMachine(TendermintP2P);
     console.log("==TendermintP2P==");
+    console.log(JSON.stringify(machineConfig));
+
+    // Level0
+    machineConfig = parseMachine(Level0);
+    console.log("==Level0==");
     console.log(JSON.stringify(machineConfig));
 }
 

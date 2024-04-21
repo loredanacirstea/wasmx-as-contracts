@@ -1,0 +1,95 @@
+// @ts-nocheck
+/* eslint-disable */
+import { createMachine } from "xstate";
+
+export const machine = createMachine({
+  context: {
+    maxLevel: 0,
+    blockTimeout: 3000,
+    currentLevel: 0,
+    membersCount: 1,
+  },
+  id: "Levels0-0",
+  initial: "uninitialized",
+  states: {
+    uninitialized: {
+      on: {
+        initialize: {
+          target: "initialized",
+        },
+      },
+    },
+    initialized: {
+      initial: "unstarted",
+      states: {
+        unstarted: {
+          on: {
+            start: {
+              target: "started",
+            },
+            setup: {
+              target: "unstarted",
+              actions: {
+                type: "setup",
+              },
+            },
+            prestart: {
+              target: "prestart",
+            },
+            setupNode: {
+              target: "unstarted",
+              actions: {
+                type: "setupNode",
+              },
+            },
+          },
+        },
+        started: {
+          initial: "active",
+          on: {
+            newTransaction: {},
+          },
+          states: {
+            active: {
+              after: {
+                blockTimeout: {
+                  target: "proposer",
+                },
+              },
+            },
+            proposer: {
+              always: {
+                target: "active",
+                actions: {
+                  type: "newBlock",
+                },
+              },
+            },
+          },
+        },
+        prestart: {
+          after: {
+            "500": {
+              target: "started",
+            },
+          },
+        },
+      },
+    },
+  },
+}).withConfig({
+  actions: {
+    setup: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    setupNode: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    newBlock: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+  },
+});

@@ -6,8 +6,9 @@ import {
     EventObject,
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
+import { getParamsOrEventParams, actionParamsToMap } from 'xstate-fsm-as/assembly/utils';
 import { Block, MsgNewTransaction, MsgNewTransactionResponse } from "./types";
-import { LoggerError } from "./utils";
+import { LoggerError, revert } from "./utils";
 import { buildNewBlock } from "./block";
 import { chainId, setBlock } from "./storage";
 
@@ -16,20 +17,47 @@ export function wrapGuard(value: boolean): ArrayBuffer {
     return String.UTF8.encode("0");
 }
 
+export function setupNode(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    // TODO
+}
+
 export function ifEnoughMembers(
     params: ActionParam[],
     event: EventObject,
-): bool {
+): boolean {
     // TODO
     return true
 }
 
-export function newTransaction(req: MsgNewTransaction): ArrayBuffer {
-    const block = buildNewBlock([req.transaction], chainId);
-    const data = JSON.stringify<Block>(block)
-    setBlock(data, block.hash, block.data_hashes);
+// req: MsgNewTransaction
+export function newTransaction(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    console.info("--newTransaction--")
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("transaction")) {
+        revert("no transaction found");
+    }
+    const transaction = ctx.get("transaction") // base64
+    console.info("--newTransaction--" + transaction);
 
-    return String.UTF8.encode(JSON.stringify<MsgNewTransactionResponse>(new MsgNewTransactionResponse(block.data_hashes[0], block.hash)))
+    // const block = buildNewBlock([req.transaction], chainId);
+    // const data = JSON.stringify<Block>(block)
+    // setBlock(data, block.hash, block.data_hashes);
+    // return String.UTF8.encode(JSON.stringify<MsgNewTransactionResponse>(new MsgNewTransactionResponse(block.data_hashes[0], block.hash)))
+}
+
+export function newBlock(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const block = buildNewBlock([], chainId);
+    setBlock(block);
 }
 
 export function setRepresentative(
@@ -47,13 +75,6 @@ export function sendSubBlock(
 }
 
 export function receiveSubBlock(
-    params: ActionParam[],
-    event: EventObject,
-): void {
-
-}
-
-export function newBlock(
     params: ActionParam[],
     event: EventObject,
 ): void {

@@ -18,10 +18,12 @@ export function main(): void {
     result = wrapGuard(actions.ifEnoughMembers(calld.params, calld.event));
     wasmx.finish(result);
     return;
-  }
-
-  if (calld.newTransaction !== null) {
-    result = newTransaction(calld.newTransaction!);
+  } else if (calld.method === "setupNode") {
+    actions.setupNode(calld.params, calld.event);
+  } else if (calld.method === "newBlock") {
+    actions.newBlock(calld.params, calld.event);
+  } else if (calld.method === "newTransaction") {
+    actions.newTransaction(calld.params, calld.event);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)

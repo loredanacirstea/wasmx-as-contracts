@@ -20,8 +20,7 @@ export function getLastBlockByIndex(): Block {
     return JSON.parse<Block>(lastBlock);
 }
 
-export function setBlock(value: string, hash: string, txhashes: string[]): void {
-    const block = JSON.parse<Block>(value);
+export function setBlock(block: Block): void {
     const index = getLastBlockIndex() + 1;
     if (block.header.index != index) {
         revert(`cannot store block with index ${block.header.index.toString()}; expected ${index.toString()}`)
@@ -32,12 +31,12 @@ export function setBlock(value: string, hash: string, txhashes: string[]): void 
     wasmxw.sstore(getBlockKey(index), blockValue);
 
     // index block by hash
-    wasmxw.sstore(getBlockHashKey(hash), index.toString());
+    wasmxw.sstore(getBlockHashKey(block.hash), index.toString());
 
     // index transactions
-    for (let i = 0; i < txhashes.length; i++) {
+    for (let i = 0; i < block.data_hashes.length; i++) {
         const data = new types.IndexedTransaction(index, i);
-        setIndexedTransactionByHash(txhashes[i], data);
+        setIndexedTransactionByHash(block.data_hashes[i], data);
     }
 
     // update last index
