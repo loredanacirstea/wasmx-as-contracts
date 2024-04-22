@@ -2,13 +2,15 @@ import { JSON } from "json-as/assembly";
 import * as sha256 from "@ark-us/as-sha256/assembly/index";
 import * as base64 from "as-base64/assembly";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
+import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
+import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
 import {
     EventObject,
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
 import { getParamsOrEventParams, actionParamsToMap } from 'xstate-fsm-as/assembly/utils';
 import { Block, MsgNewTransaction, MsgNewTransactionResponse } from "./types";
-import { LoggerError, revert } from "./utils";
+import { LoggerError, LoggerInfo, revert } from "./utils";
 import { buildNewBlock } from "./block";
 import { chainId, setBlock } from "./storage";
 
@@ -58,6 +60,7 @@ export function newBlock(
 ): void {
     const block = buildNewBlock([], chainId);
     setBlock(block);
+    finalizeBlock(block);
 }
 
 export function setRepresentative(
@@ -114,4 +117,48 @@ export function deployNextLevel(
     event: EventObject,
 ): void {
 
+}
+
+function finalizeBlock(block: Block): void {
+    const lastCommit = new typestnd.CommitInfo(0, []);
+    const processReq = new typestnd.RequestProcessProposal(
+        [],
+        lastCommit,
+        [],
+        block.hash,
+        block.header.index,
+        block.header.time.toISOString(),
+        "",
+        "",
+    )
+    const processResp = consensuswrap.ProcessProposal(processReq);
+    if (processResp.status === typestnd.ProposalStatus.REJECT) {
+        // TODO - what to do here? returning just discards the block and the transactions
+        LoggerError("new block rejected", ["height", processReq.height.toString()])
+    }
+    const finalizeReq = new typestnd.RequestFinalizeBlock(
+        [],
+        lastCommit,
+        [],
+        block.hash,
+        block.header.index,
+        block.header.time.toISOString(),
+        "",
+        "",
+    )
+    const resbegin = consensuswrap.BeginBlock(finalizeReq);
+    if (resbegin.error.length > 0) {
+        revert(`${resbegin.error}`);
+    }
+    let respWrap = consensuswrap.FinalizeBlock(finalizeReq);
+    if (respWrap.error.length > 0) {
+        revert(`consensus break: ${respWrap.error}`);
+    }
+    const blockData = JSON.stringify<Block>(block)
+    const resend = consensuswrap.EndBlock(blockData);
+    if (resend.error.length > 0) {
+        revert(`${resend.error}`);
+    }
+    const commitResponse = consensuswrap.Commit();
+    LoggerInfo("block finalized", ["height", block.header.index.toString()])
 }
