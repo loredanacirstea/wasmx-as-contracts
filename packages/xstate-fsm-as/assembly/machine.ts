@@ -572,7 +572,7 @@ export class Machine implements StateMachine.Machine {
             wasmx.revert(String.UTF8.encode(message));
             throw new Error(message);
           } else {
-            LoggerInfo(message, ["error", message]);
+            LoggerInfo("cannot apply event in current state", ["event", eventObject.type, "state", value]);
             return null;
           }
 

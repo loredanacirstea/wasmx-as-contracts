@@ -48,6 +48,9 @@ export const machine = createMachine({
           initial: "active",
           on: {
             newTransaction: {},
+            start: {
+              target: "started",
+            },
           },
           states: {
             active: {
