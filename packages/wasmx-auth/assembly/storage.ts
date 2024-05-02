@@ -10,6 +10,8 @@ export const PARAM_KEY = "params"
 export const ACC_ID_LAST_KEY = "account_id_last"
 export const ACC_BY_ADDR_KEY = "account."
 export const ACC_BY_ID_KEY = "account_addr."
+export const TYPEURL_BASE_KEY = "typeurl_base"
+export const TYPEURL_MODULE_KEY = "typeurl_module"
 
 export function setAccount(value: AnyAccount): void {
     const data = cleanDataForInternal(base64ToString(value.value))
@@ -126,4 +128,20 @@ export function accountToInternal(acc: AnyAccount): AnyAccount {
     const data = cleanDataForInternal(base64ToString(acc.value))
     acc.value = stringToBase64(data)
     return acc
+}
+
+export function getTypeUrlBase(): string {
+    return wasmxw.sload(TYPEURL_BASE_KEY);
+}
+
+export function setTypeUrlBase(value: string): void {
+    return wasmxw.sstore(TYPEURL_BASE_KEY, value);
+}
+
+export function getTypeUrlModule(): string {
+    return wasmxw.sload(TYPEURL_MODULE_KEY);
+}
+
+export function setTypeUrlModule(value: string): void {
+    return wasmxw.sstore(TYPEURL_MODULE_KEY, value);
 }

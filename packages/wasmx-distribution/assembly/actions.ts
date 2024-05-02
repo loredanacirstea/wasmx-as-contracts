@@ -12,14 +12,15 @@ import { callContract } from "wasmx-stake/assembly/actions"
 import { decode as decodeBase64, encode as encodeBase64 } from "as-base64/assembly";
 import { Bech32String, CallRequest, CallResponse, Coin, DecCoin, PageRequest, ValidatorAddressString } from "wasmx-env/assembly/types";
 import { BigInt } from "wasmx-env/assembly/bn";
-import { FEE_COLLECTOR_ROLE, MODULE_NAME, MsgCommunityPoolSpend, MsgCommunityPoolSpendResponse, MsgDepositValidatorRewardsPool, MsgDepositValidatorRewardsPoolResponse, MsgFundCommunityPool, MsgFundCommunityPoolResponse, MsgInitGenesis, MsgSetWithdrawAddress, MsgSetWithdrawAddressResponse, MsgUpdateParams, MsgUpdateParamsResponse, MsgWithdrawDelegatorReward, MsgWithdrawDelegatorRewardResponse, MsgWithdrawValidatorCommission, MsgWithdrawValidatorCommissionResponse, QueryCommunityPoolRequest, QueryCommunityPoolResponse, QueryDelegationRewardsRequest, QueryDelegationRewardsResponse, QueryDelegationTotalRewardsRequest, QueryDelegationTotalRewardsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryDelegatorWithdrawAddressRequest, QueryDelegatorWithdrawAddressResponse, QueryParamsRequest, QueryParamsResponse, QueryValidatorCommissionRequest, QueryValidatorCommissionResponse, QueryValidatorDistributionInfoRequest, QueryValidatorDistributionInfoResponse, QueryValidatorOutstandingRewardsRequest, QueryValidatorOutstandingRewardsResponse, QueryValidatorSlashesRequest, QueryValidatorSlashesResponse, REWARDS_TOKEN_SYMBOL } from './types';
+import { FEE_COLLECTOR_ROLE, MODULE_NAME, MsgCommunityPoolSpend, MsgCommunityPoolSpendResponse, MsgDepositValidatorRewardsPool, MsgDepositValidatorRewardsPoolResponse, MsgFundCommunityPool, MsgFundCommunityPoolResponse, MsgInitGenesis, MsgSetWithdrawAddress, MsgSetWithdrawAddressResponse, MsgUpdateParams, MsgUpdateParamsResponse, MsgWithdrawDelegatorReward, MsgWithdrawDelegatorRewardResponse, MsgWithdrawValidatorCommission, MsgWithdrawValidatorCommissionResponse, QueryCommunityPoolRequest, QueryCommunityPoolResponse, QueryDelegationRewardsRequest, QueryDelegationRewardsResponse, QueryDelegationTotalRewardsRequest, QueryDelegationTotalRewardsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryDelegatorWithdrawAddressRequest, QueryDelegatorWithdrawAddressResponse, QueryParamsRequest, QueryParamsResponse, QueryValidatorCommissionRequest, QueryValidatorCommissionResponse, QueryValidatorDistributionInfoRequest, QueryValidatorDistributionInfoResponse, QueryValidatorOutstandingRewardsRequest, QueryValidatorOutstandingRewardsResponse, QueryValidatorSlashesRequest, QueryValidatorSlashesResponse } from './types';
 import * as types from "./types";
 import { LoggerDebug, LoggerError, revert } from "./utils";
-import { getBaseDenom, getParams, setBaseDenom, setParams } from "./storage";
+import { getBaseDenom, getParams, getRewardsDenom, setBaseDenom, setParams, setRewardsDenom } from "./storage";
 
 export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
     setParams(req.params);
     setBaseDenom(req.base_denom);
+    setRewardsDenom(req.rewards_denom);
     // TODO rest of genesis
     return new ArrayBuffer(0);
 }
@@ -96,20 +97,21 @@ export function ValidatorDistributionInfo(req: QueryValidatorDistributionInfoReq
 }
 
 export function ValidatorOutstandingRewards(req: QueryValidatorOutstandingRewardsRequest): ArrayBuffer {
-    const tokenAddress = getTokenAddress(REWARDS_TOKEN_SYMBOL);
+    const rewardsDenom = getRewardsDenom();
+    const tokenAddress = getTokenAddress(rewardsDenom);
     const reward = getTokenAmount(tokenAddress, req.validator_address);
 
-    return String.UTF8.encode(JSON.stringify<QueryValidatorOutstandingRewardsResponse>(new QueryValidatorOutstandingRewardsResponse(new types.ValidatorOutstandingRewards([new DecCoin(REWARDS_TOKEN_SYMBOL, reward)]))))
+    return String.UTF8.encode(JSON.stringify<QueryValidatorOutstandingRewardsResponse>(new QueryValidatorOutstandingRewardsResponse(new types.ValidatorOutstandingRewards([new DecCoin(rewardsDenom, reward)]))))
 }
 
 export function ValidatorCommission(req: QueryValidatorCommissionRequest): ArrayBuffer {
     // const validator = getValidatorByConsAddr(req.validator_address)
     // const commission = validator.commission.commission_rates.rate;
-
-    const tokenAddress = getTokenAddress(REWARDS_TOKEN_SYMBOL);
+    const rewardsDenom = getRewardsDenom();
+    const tokenAddress = getTokenAddress(rewardsDenom);
     const reward = getTokenAmount(tokenAddress, req.validator_address);
 
-    return String.UTF8.encode(JSON.stringify<QueryValidatorCommissionResponse>(new QueryValidatorCommissionResponse(new types.ValidatorAccumulatedCommission([new DecCoin(REWARDS_TOKEN_SYMBOL, reward)]))))
+    return String.UTF8.encode(JSON.stringify<QueryValidatorCommissionResponse>(new QueryValidatorCommissionResponse(new types.ValidatorAccumulatedCommission([new DecCoin(rewardsDenom, reward)]))))
 }
 
 export function ValidatorSlashes(req: QueryValidatorSlashesRequest): ArrayBuffer {
@@ -129,10 +131,11 @@ export function DelegationRewards(req: QueryDelegationRewardsRequest): ArrayBuff
 
 // all rewards for a delegator, per validator
 export function DelegationTotalRewards(req: QueryDelegationTotalRewardsRequest): ArrayBuffer {
-    const tokenAddress = getTokenAddress(REWARDS_TOKEN_SYMBOL);
+    const rewardsDenom = getRewardsDenom();
+    const tokenAddress = getTokenAddress(rewardsDenom);
     const reward = getTokenAmount(tokenAddress, req.delegator_address);
 
-    return String.UTF8.encode(JSON.stringify<QueryDelegationTotalRewardsResponse>(new QueryDelegationTotalRewardsResponse([], [new DecCoin(REWARDS_TOKEN_SYMBOL, reward)])))
+    return String.UTF8.encode(JSON.stringify<QueryDelegationTotalRewardsResponse>(new QueryDelegationTotalRewardsResponse([], [new DecCoin(rewardsDenom, reward)])))
 }
 
 export function DelegatorValidators(req: QueryDelegatorValidatorsRequest): ArrayBuffer {
@@ -155,7 +158,8 @@ export function CommunityPool(req: QueryCommunityPoolRequest): ArrayBuffer {
 
 export function withdrawRewards(delegatorAddress: Bech32String): BigInt {
     const baseDenom = getBaseDenom()
-    const tokenAddress = getTokenAddress(REWARDS_TOKEN_SYMBOL);
+    const rewardsDenom = getRewardsDenom();
+    const tokenAddress = getTokenAddress(rewardsDenom);
     const reward = getTokenAmount(tokenAddress, delegatorAddress);
     callBurnToken(tokenAddress, delegatorAddress, reward);
 
@@ -167,6 +171,7 @@ export function withdrawRewards(delegatorAddress: Bech32String): BigInt {
 
 export function distributeFees(proposer: Bech32String, fees: Coin): void {
     LoggerDebug("distribute fees to block proposer", ["proposer", proposer, "denom", fees.denom, "amount", fees.amount.toString()])
+    const rewardsDenom = getRewardsDenom();
     const validator = getValidator(proposer);
     const delegators = getValidatorDelegations(proposer);
     const commission = validator.commission.commission_rates.rate;
@@ -175,7 +180,7 @@ export function distributeFees(proposer: Bech32String, fees: Coin): void {
     const validAmount = fees.amount.mul(bigf.num).div(bigf.denom)
     const delegAmount = fees.amount.sub(validAmount);
     // store validator commission
-    const tokenAddress = getTokenAddress(REWARDS_TOKEN_SYMBOL)
+    const tokenAddress = getTokenAddress(rewardsDenom)
     if (!validAmount.isZero()) {
         callMintToken(tokenAddress, validator.operator_address, validAmount)
     }
@@ -329,7 +334,7 @@ export function getTokenAddress(denom: string): Bech32String {
     }
     const result = JSON.parse<banktypes.QueryAddressByDenomResponse>(resp.data)
     if (result.address == "") {
-        revert(`could not find rewards token address`)
+        revert(`could not find rewards token address: ${denom}`)
     }
     return result.address
 }

@@ -8,17 +8,18 @@ export const MODULE_NAME = "auth"
 export const ModuleAccountTypeName = "ModuleAccount"
 export const BaseAccountTypeName = "BaseAccount"
 
-export const BaseAccountTypeURL = "/cosmos.auth.v1beta1.BaseAccount"
-export const ModuleAccountTypeURL = "/cosmos.auth.v1beta1.ModuleAccount"
-
 // @ts-ignore
 @serializable
 export class MsgInitGenesis {
     params: Params
     accounts: AnyAccount[]
-    constructor(params: Params, accounts: AnyAccount[]) {
+    base_account_typeurl: string
+    module_account_typeurl: string
+    constructor(params: Params, accounts: AnyAccount[], base_account_typeurl: string, module_account_typeurl: string) {
         this.params = params
         this.accounts = accounts
+        this.base_account_typeurl = base_account_typeurl
+        this.module_account_typeurl = module_account_typeurl
     }
 }
 
@@ -62,7 +63,7 @@ export class AnyAccount {
         this.value = value
     }
 
-    static New(addr: Bech32String): AnyAccount {
+    static New(BaseAccountTypeURL: string, addr: Bech32String): AnyAccount {
         const data = new BaseAccount(addr, new AnyPubKey("", ""), 0, 0)
         const encoded = stringToBase64(JSON.stringify<BaseAccount>(data))
         return new AnyAccount(BaseAccountTypeURL, encoded);
@@ -131,6 +132,28 @@ export class MsgSetAccount {
     account: AnyAccount
     constructor(account: AnyAccount) {
         this.account = account
+    }
+}
+
+// @ts-ignore
+@serializable
+export class MsgNewBaseAccount {
+    address: Bech32String
+    constructor(address: Bech32String) {
+        this.address = address
+    }
+}
+
+// @ts-ignore
+@serializable
+export class MsgNewModuleccount {
+    address: Bech32String
+    name: string
+    permissions: string[]
+    constructor(address: Bech32String, name: string, permissions: string[]) {
+        this.address = address
+        this.name = name
+        this.permissions = permissions
     }
 }
 

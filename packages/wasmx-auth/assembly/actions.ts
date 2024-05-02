@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
-import { AddressBytesToStringRequest, AddressStringToBytesRequest, Bech32PrefixRequest, MsgInitGenesis, MsgSetAccount, MsgUpdateParams, QueryAccountAddressByIDRequest, QueryAccountInfoRequest, QueryAccountRequest, QueryAccountResponse, QueryAccountsRequest, QueryHasAccountResponse, QueryModuleAccountByNameRequest, QueryModuleAccountsRequest, QueryParamsRequest, QueryParamsResponse } from "./types";
-import { accountToExternal, getAccountAddrById, getAccountByAddr, getParams, setAccount, setParams } from "./storage";
+import { AddressBytesToStringRequest, AddressStringToBytesRequest, AnyAccount, Bech32PrefixRequest, MsgInitGenesis, MsgNewBaseAccount, MsgNewModuleccount, MsgSetAccount, MsgUpdateParams, QueryAccountAddressByIDRequest, QueryAccountInfoRequest, QueryAccountRequest, QueryAccountResponse, QueryAccountsRequest, QueryHasAccountResponse, QueryModuleAccountByNameRequest, QueryModuleAccountsRequest, QueryParamsRequest, QueryParamsResponse } from "./types";
+import { accountToExternal, getAccountAddrById, getAccountByAddr, getParams, getTypeUrlBase, getTypeUrlModule, setAccount, setParams, setTypeUrlBase, setTypeUrlModule } from "./storage";
 import { LoggerDebug } from "./utils";
 
 export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
@@ -8,6 +8,22 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
         setAccount(req.accounts[i])
     }
     setParams(req.params)
+    setTypeUrlBase(req.base_account_typeurl)
+    setTypeUrlModule(req.module_account_typeurl)
+    return new ArrayBuffer(0)
+}
+
+export function SetNewBaseAccount(req: MsgNewBaseAccount): ArrayBuffer {
+    const typeurl = getTypeUrlBase();
+    const account = AnyAccount.New(typeurl, req.address)
+    setAccount(account);
+    return new ArrayBuffer(0)
+}
+
+export function SetNewModuleAccount(req: MsgNewModuleccount): ArrayBuffer {
+    const typeurl = getTypeUrlModule();
+    const account = AnyAccount.New(typeurl, req.address)
+    setAccount(account);
     return new ArrayBuffer(0)
 }
 

@@ -4,7 +4,6 @@ import { Bech32String, Coin, DecCoin, PageRequest, PageResponse, ValidatorAddres
 export const MODULE_NAME = "distribution"
 
 export const FEE_COLLECTOR_ROLE = "fee_collector"
-export const REWARDS_TOKEN_SYMBOL = "armyt"
 
 // @ts-ignore
 @serializable
@@ -267,6 +266,7 @@ export class MsgInitGenesis {
     delegator_starting_infos: DelegatorStartingInfoRecord[]
     validator_slash_events: ValidatorSlashEventRecord[]
     base_denom: string
+    rewards_denom: string
     constructor(
         params: Params,
         fee_pool: FeePool,
@@ -279,6 +279,7 @@ export class MsgInitGenesis {
         delegator_starting_infos: DelegatorStartingInfoRecord[],
         validator_slash_events: ValidatorSlashEventRecord[],
         base_denom: string,
+        rewards_denom: string,
     ) {
         this.params = params
         this.fee_pool = fee_pool
@@ -291,6 +292,7 @@ export class MsgInitGenesis {
         this.delegator_starting_infos = delegator_starting_infos
         this.validator_slash_events = validator_slash_events
         this.base_denom = base_denom
+        this.rewards_denom = rewards_denom
     }
 }
 

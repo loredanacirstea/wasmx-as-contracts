@@ -4,6 +4,7 @@ import { Params } from "./types";
 
 const PARAM_KEY = "params"
 const BASE_DENOM_KEY = "base_denom"
+const REWARDS_DENOM_KEY = "rewards_denom"
 
 export function getParams(): Params {
     const value = wasmx.sload(PARAM_KEY);
@@ -25,6 +26,15 @@ export function getBaseDenom(): string {
 export function setBaseDenom(value: string): void {
     return wasmx.sstore(BASE_DENOM_KEY, value);
 }
+
+export function getRewardsDenom(): string {
+    return wasmx.sload(REWARDS_DENOM_KEY);
+}
+
+export function setRewardsDenom(value: string): void {
+    return wasmx.sstore(REWARDS_DENOM_KEY, value);
+}
+
 
 
 // delegatorAddress => withdrawAddress

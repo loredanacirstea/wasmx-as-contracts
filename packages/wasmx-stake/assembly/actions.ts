@@ -297,6 +297,9 @@ export function getTokenAddress(): Bech32String {
         revert(`could not get staking token address: ${resp.data}`)
     }
     const result = JSON.parse<banktypes.QueryAddressByDenomResponse>(resp.data)
+    if (result.address == "") {
+        revert(`could not find staking token address: ${denom}`)
+    }
     return result.address
 }
 
