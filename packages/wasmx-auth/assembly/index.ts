@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, getCallDataWrap } from './calldata';
-import { GetAccount, GetAccountAddressByID, GetAccountInfo, GetAccounts, GetAddressBytesToString, GetAddressStringToBytes, GetBech32Prefix, InitGenesis, GetModuleAccountByName, GetModuleAccounts, GetParams, SetAccount, UpdateParams, HasAccount } from "./actions";
+import { GetAccount, GetAccountAddressByID, GetAccountInfo, GetAccounts, GetAddressBytesToString, GetAddressStringToBytes, GetBech32Prefix, InitGenesis, GetModuleAccountByName, GetModuleAccounts, GetParams, SetAccount, UpdateParams, HasAccount, SetNewBaseAccount, SetNewModuleAccount } from "./actions";
 import { revert } from "./utils";
 
 export function wasmx_env_2(): void {}
@@ -16,6 +16,10 @@ export function main(): void {
   const calld = getCallDataWrap();
   if (calld.SetAccount !== null) {
     result = SetAccount(calld.SetAccount!);
+  } else if (calld.SetNewBaseAccount !== null) {
+    result = SetNewBaseAccount(calld.SetNewBaseAccount!);
+  } else if (calld.SetNewModuleAccount !== null) {
+    result = SetNewModuleAccount(calld.SetNewModuleAccount!);
   } else if (calld.GetAccount !== null) {
     result = GetAccount(calld.GetAccount!);
   } else if (calld.HasAccount !== null) {

@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { AddressBytesToStringRequest, AddressStringToBytesRequest, Bech32PrefixRequest, MsgInitGenesis, MsgSetAccount, MsgUpdateParams, QueryAccountAddressByIDRequest, QueryAccountInfoRequest, QueryAccountRequest, QueryAccountsRequest, QueryModuleAccountByNameRequest, QueryModuleAccountsRequest, QueryParamsRequest } from './types';
+import { AddressBytesToStringRequest, AddressStringToBytesRequest, Bech32PrefixRequest, MsgInitGenesis, MsgNewBaseAccount, MsgNewModuleccount, MsgSetAccount, MsgUpdateParams, QueryAccountAddressByIDRequest, QueryAccountInfoRequest, QueryAccountRequest, QueryAccountsRequest, QueryModuleAccountByNameRequest, QueryModuleAccountsRequest, QueryParamsRequest } from './types';
 
 // @ts-ignore
 @serializable
@@ -10,6 +10,8 @@ export class CallData {
     // tx
     UpdateParams: MsgUpdateParams | null = null;
     SetAccount: MsgSetAccount | null = null;
+    SetNewBaseAccount: MsgNewBaseAccount | null = null;
+    SetNewModuleAccount: MsgNewModuleccount | null = null;
 
     // query
     GetAccounts: QueryAccountsRequest | null = null;

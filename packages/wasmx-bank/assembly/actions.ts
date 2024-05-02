@@ -315,8 +315,8 @@ export function sendCoins(from: Bech32String, to: Bech32String, coins: Coin[]): 
     }
     const r = JSON.parse<authtypes.QueryHasAccountResponse>(resp.data)
     if(!r.found) {
-        const calldata = new authtypes.MsgSetAccount(authtypes.AnyAccount.New(to));
-        const calldatastr = `{"SetAccount":${JSON.stringify<authtypes.MsgSetAccount>(calldata)}}`;
+        const calldata = new authtypes.MsgNewBaseAccount(to);
+        const calldatastr = `{"SetNewBaseAccount":${JSON.stringify<authtypes.MsgNewBaseAccount>(calldata)}}`;
         LoggerDebug("creating recipient account", ["address", to])
         let resp = callAuth(calldatastr, false);
         if (resp.success > 0) {
