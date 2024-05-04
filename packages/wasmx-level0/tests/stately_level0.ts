@@ -47,7 +47,16 @@ export const machine = createMachine({
         started: {
           initial: "active",
           on: {
-            newTransaction: {},
+            newTransaction: {
+              actions: [
+                {
+                  type: "addToMempool",
+                },
+                {
+                  type: "sendNewTransactionResponse",
+                },
+              ],
+            },
             start: {
               target: "started",
             },
@@ -87,6 +96,14 @@ export const machine = createMachine({
       // ...
     },
     setupNode: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    addToMempool: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    sendNewTransactionResponse: function (context, event) {
       // Add your action code here
       // ...
     },

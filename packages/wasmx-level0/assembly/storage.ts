@@ -1,21 +1,31 @@
 import { JSON } from "json-as/assembly";
+import * as fsm from 'xstate-fsm-as/assembly/storage';
+import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as types from "wasmx-blocks/assembly/types";
 import { getBlockHashKey, getBlockKey, getLastBlockIndex, setIndexedTransactionByHash, setLastBlockIndex, getBlockByIndex as _getBlockByIndex } from "wasmx-blocks/assembly/storage";
+import * as cfg from "./config";
 import { revert } from "./utils";
-import { Block } from "./types";
+import { Block, CurrentState } from "./types";
 import { getEmtpyBlock } from "./block";
 
-export const chainId = "level0_667-1"; // TODO params
 export const MEMBERS_KEY = "members_"
 
 export function setMembers(): void {}
 
-export function getLastBlockByIndex(): Block {
+export function getLastBlock(): Block {
     const lastBlockIndex = getLastBlockIndex();
     const lastBlock = _getBlockByIndex(lastBlockIndex);
     if (lastBlock == "") {
-        return getEmtpyBlock(chainId)
+        return getEmtpyBlock()
+    }
+    return JSON.parse<Block>(lastBlock);
+}
+
+export function getLastBlockByIndex(index: i64): Block {
+    const lastBlock = _getBlockByIndex(index);
+    if (lastBlock == "") {
+        return getEmtpyBlock()
     }
     return JSON.parse<Block>(lastBlock);
 }
@@ -41,4 +51,23 @@ export function setBlock(block: Block): void {
 
     // update last index
     setLastBlockIndex(index);
+}
+
+export function getCurrentState(): CurrentState {
+    const value = fsm.getContextValue(cfg.STATE_KEY);
+    // this must be set before we try to read it
+    if (value === "") {
+        revert("chain init setup was not ran")
+    }
+    return JSON.parse<CurrentState>(value);
+}
+
+export function setCurrentState(value: CurrentState): void {
+    fsm.setContextValue(cfg.STATE_KEY, JSON.stringify<CurrentState>(value));
+}
+
+export function getCurrentValidator(): typestnd.ValidatorInfo {
+    const currentState = getCurrentState();
+    // TODO voting_power & proposer_priority
+    return new typestnd.ValidatorInfo(currentState.validator_address, currentState.validator_pubkey, 0, 0);
 }

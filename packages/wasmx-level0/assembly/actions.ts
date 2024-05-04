@@ -2,6 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as sha256 from "@ark-us/as-sha256/assembly/index";
 import * as base64 from "as-base64/assembly";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
+import { base64ToHex } from "wasmx-utils/assembly/utils";
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
 import {
@@ -9,10 +10,12 @@ import {
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
 import { getParamsOrEventParams, actionParamsToMap } from 'xstate-fsm-as/assembly/utils';
-import { Block, MsgNewTransaction, MsgNewTransactionResponse } from "./types";
-import { LoggerError, LoggerInfo, revert } from "./utils";
-import { buildNewBlock } from "./block";
-import { chainId, setBlock } from "./storage";
+import { Block, CurrentState, MsgNewTransaction, MsgNewTransactionResponse } from "./types";
+import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
+import { buildNewBlock, commitBlock, proposeBlock } from "./block";
+import { setBlock, setCurrentState } from "./storage";
+import { LOG_START } from "./config";
+import { callStorage } from "wasmx-tendermint-p2p/assembly/action_utils";
 
 export function wrapGuard(value: boolean): ArrayBuffer {
     if (value) return String.UTF8.encode("1");
@@ -23,7 +26,24 @@ export function setupNode(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    // TODO
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("initChainSetup")) {
+        revert("no initChainSetup found");
+    }
+    const initChainSetup = ctx.get("initChainSetup") // base64
+    const datajson = String.UTF8.decode(base64.decode(initChainSetup).buffer);
+
+    LoggerDebug("setupNode", ["initChainSetup", datajson])
+    const data = JSON.parse<typestnd.InitChainSetup>(datajson);
+    initChain(data);
+}
+
+export function setup(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    LoggerInfo("setting up new level0 consensus contract", ["error", "not implemented"])
 }
 
 export function ifEnoughMembers(
@@ -34,33 +54,15 @@ export function ifEnoughMembers(
     return true
 }
 
-// req: MsgNewTransaction
-export function newTransaction(
-    params: ActionParam[],
-    event: EventObject,
-): void {
-    console.info("--newTransaction--")
-    const p = getParamsOrEventParams(params, event);
-    const ctx = actionParamsToMap(p);
-    if (!ctx.has("transaction")) {
-        revert("no transaction found");
-    }
-    const transaction = ctx.get("transaction") // base64
-    console.info("--newTransaction--" + transaction);
-
-    // const block = buildNewBlock([req.transaction], chainId);
-    // const data = JSON.stringify<Block>(block)
-    // setBlock(data, block.hash, block.data_hashes);
-    // return String.UTF8.encode(JSON.stringify<MsgNewTransactionResponse>(new MsgNewTransactionResponse(block.data_hashes[0], block.hash)))
-}
-
 export function newBlock(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    const block = buildNewBlock([], chainId);
-    setBlock(block);
-    finalizeBlock(block);
+    // const block = buildNewBlock();
+    // setBlock(block);
+    // finalizeBlock(block);
+    proposeBlock();
+    commitBlock();
 }
 
 export function setRepresentative(
@@ -161,4 +163,43 @@ function finalizeBlock(block: Block): void {
     }
     const commitResponse = consensuswrap.Commit();
     LoggerInfo("block finalized", ["height", block.header.index.toString()])
+}
+
+export function initChain(req: typestnd.InitChainSetup): void {
+    LoggerDebug("start chain init", [])
+
+    // TODO what are the correct empty valuew?
+    // we need a non-empty string value, because we use this to compute next proposer
+    const emptyBlockId = new typestnd.BlockID(base64ToHex(req.app_hash), new typestnd.PartSetHeader(0, ""))
+    const last_commit_hash = ""
+    const currentState = new CurrentState(
+        req.chain_id,
+        // req.version,
+        req.app_hash,
+        emptyBlockId,
+        last_commit_hash,
+        req.last_results_hash,
+        // 0, [],
+        req.validator_address,
+        req.validator_privkey,
+        req.validator_pubkey,
+        LOG_START + 1, "",
+        // 0, 0, 0, 0,
+        // [], 0, 0,
+    );
+
+    const valuestr = JSON.stringify<CurrentState>(currentState);
+    LoggerDebug("set current state", ["state", valuestr])
+    setCurrentState(currentState);
+    setConsensusParams(req.consensus_params);
+    LoggerDebug("current state set", [])
+}
+
+export function setConsensusParams(value: typestnd.ConsensusParams): void {
+    const valuestr = JSON.stringify<typestnd.ConsensusParams>(value)
+    const calldata = `{"setConsensusParams":{"params":"${base64.encode(Uint8Array.wrap(String.UTF8.encode(valuestr)))}"}}`
+    const resp = callStorage(calldata, false);
+    if (resp.success > 0) {
+        revert("could not set consensus params");
+    }
 }

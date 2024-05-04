@@ -96,7 +96,6 @@ export function initChain(req: typestnd.InitChainSetup): void {
     LoggerDebug("current state set", [])
 }
 
-
 export function setConsensusParams(value: typestnd.ConsensusParams): void {
     const valuestr = JSON.stringify<typestnd.ConsensusParams>(value)
     const calldata = `{"setConsensusParams":{"params":"${encodeBase64(Uint8Array.wrap(String.UTF8.encode(valuestr)))}"}}`
