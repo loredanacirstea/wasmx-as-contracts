@@ -4,9 +4,12 @@ import * as base64 from "as-base64/assembly";
 import * as tnd from "wasmx-tendermint/assembly/actions";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import * as roles from 'wasmx-env/assembly/roles';
 import { Base64String, CallRequest } from "wasmx-env/assembly/types";
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
+import * as mctypes from "wasmx-consensus/assembly/types_multichain";
+import * as mcwrap from 'wasmx-consensus/assembly/multichain_wrap';
 import * as consutil from "wasmx-consensus/assembly/utils";
 import * as timetypes from "wasmx-time/assembly/types";
 import * as wblocks from "wasmx-blocks/assembly/types";
@@ -187,6 +190,12 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         }
     }
 
+    if (info.initChainRequests.length > 0) {
+        for (let i = 0; i < info.initChainRequests.length; i++) {
+            initSubChain(info.initChainRequests[i], state);
+        }
+    }
+
     // we have finalized and saved the new block
     // so we can execute setup on the new contract
     // this way, the delay of the timed action that starts the new consensus fsm is minimal.
@@ -325,4 +334,19 @@ export function getEmtpyBlock(): Block {
     const hash = getHeaderHash(header);
     const block = new Block([], header, hash, [])
     return block;
+}
+
+export function initSubChain(encodedData: Base64String, state: CurrentState): typestnd.ResponseInitChain {
+    const data = String.UTF8.decode(base64.decode(encodedData).buffer)
+    const req = JSON.parse<mctypes.InitSubChainDeterministicRequest>(data);
+    LoggerInfo("new subchain", ["chain", "chain_id", req.init_chain_request.chain_id])
+    const msg = new mctypes.InitSubChainMsg(
+        req.init_chain_request,
+        req.chain_config,
+        state.validator_address,
+        state.validator_privkey,
+        state.validator_pubkey,
+        req.peers,
+    )
+    return mcwrap.InitSubChain(msg);
 }

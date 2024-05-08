@@ -1,5 +1,5 @@
 {
-  "name": "wasmx-multichain",
+  "name": "wasmx-multichain-registry",
   "version": "0.0.1",
   "description": "",
   "main": "index.js",
@@ -27,6 +27,7 @@
     "as-tally": "file:../as-tally",
     "json-as": "file:../../../as-json",
     "visitor-as": "^0.11.4",
+    "wasmx-env": "file:../wasmx-env",
     "wasmx-consensus": "file:../wasmx-consensus"
   }
 }

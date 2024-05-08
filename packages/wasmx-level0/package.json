@@ -31,6 +31,7 @@
     "wasmx-consensus": "file:../wasmx-consensus",
     "wasmx-consensus-utils": "file:../wasmx-consensus-utils",
     "wasmx-env": "file:../wasmx-env",
+    "wasmx-multichain": "file:../wasmx-multichain",
     "wasmx-utils": "file:../wasmx-utils",
     "wasmx-tendermint": "file:../wasmx-tendermint",
     "wasmx-tendermint-p2p": "file:../wasmx-tendermint-p2p",

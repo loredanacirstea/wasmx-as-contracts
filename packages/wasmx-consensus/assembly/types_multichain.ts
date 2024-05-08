@@ -1,5 +1,5 @@
 import { JSON } from "json-as/assembly";
-import * as constypes from "wasmx-consensus/assembly/types_tendermint"
+import * as constypes from "./types_tendermint"
 
 // @ts-ignore
 @serializable
@@ -28,7 +28,24 @@ export class ChainConfig {
 
 // @ts-ignore
 @serializable
-export class InitChainMsg {
+export class InitSubChainDeterministicRequest {
+    init_chain_request: constypes.RequestInitChain
+    chain_config: ChainConfig
+    peers: string[]
+    constructor(
+        init_chain_request: constypes.RequestInitChain,
+        chain_config: ChainConfig,
+        peers: string[],
+    ) {
+        this.init_chain_request = init_chain_request
+        this.chain_config = chain_config
+        this.peers = peers
+    }
+}
+
+// @ts-ignore
+@serializable
+export class InitSubChainMsg {
     init_chain_request: constypes.RequestInitChain
     chain_config: ChainConfig
     validator_address: HexString
