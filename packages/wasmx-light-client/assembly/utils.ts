@@ -13,6 +13,10 @@ export function LoggerDebug(msg: string, parts: string[]): void {
     wasmxwrap.LoggerDebug("light_client", msg, parts)
 }
 
+export function LoggerDebugExtended(msg: string, parts: string[]): void {
+    wasmxwrap.LoggerDebugExtended("light_client", msg, parts)
+}
+
 export function revert(message: string): void {
     LoggerError("revert", ["err", message])
     wasmx.revert(String.UTF8.encode(message));

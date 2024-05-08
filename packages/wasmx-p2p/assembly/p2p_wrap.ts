@@ -64,3 +64,7 @@ export function LoggerError(msg: string, parts: string[]): void {
 export function LoggerDebug(msg: string, parts: string[]): void {
     wasmxwrap.LoggerDebug("wasmx_p2p", msg, parts)
 }
+
+export function LoggerDebugExtended(msg: string, parts: string[]): void {
+    wasmxwrap.LoggerDebugExtended("wasmx_p2p", msg, parts)
+}

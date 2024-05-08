@@ -8,8 +8,7 @@ import {
 } from './types';
 import { MachineExternal } from './machine';
 import { Base64String, CallRequest, CallResponse } from "wasmx-env/assembly/types";
-
-const MAX_LOGGED = 2000
+import { LoggerDebug, LoggerDebugExtended } from "./utils";
 
 export class InterpreterCallData {
     config: MachineExternal;
@@ -134,7 +133,7 @@ class GrpcResponse {
 export function grpcRequest(ip: string, contract: Uint8Array, data: string): GrpcResponse {
     const contractAddress = encodeBase64(contract);
     const reqstr = `{"ip_address":"${ip}","contract":"${contractAddress}","data":"${data}"}`
-    console.debug("grpc request: " + reqstr.slice(0, MAX_LOGGED) + " [...]");
+    LoggerDebugExtended("grpc request", ["request", reqstr])
     const req = String.UTF8.encode(reqstr);
     const result = wasmx.grpcRequest(req);
     console.debug("grpc response: " + String.UTF8.decode(result));
@@ -214,38 +213,6 @@ class StartTimeoutRequest {
 export function startTimeout(contract: string, delayms: i64, args: string): void {
     const req = new StartTimeoutRequest(contract, delayms, encodeBase64(Uint8Array.wrap(String.UTF8.encode(args))));
     wasmx.startTimeout(String.UTF8.encode(JSON.stringify<StartTimeoutRequest>(req)));
-}
-
-// @ts-ignore
-@serializable
-class LoggerLog {
-	msg: string
-	parts: string[]
-    constructor(msg: string, parts: string[]) {
-        this.msg = msg;
-        this.parts = parts;
-    }
-}
-
-export function LoggerInfo(msg: string, parts: string[]): void {
-    msg = `fsm: ${msg}`
-    const data = new LoggerLog(msg, parts);
-    const databz = String.UTF8.encode(JSON.stringify<LoggerLog>(data));
-    wasmx.LoggerInfo(databz);
-}
-
-export function LoggerError(msg: string, parts: string[]): void {
-    msg = `fsm: ${msg}`
-    const data = new LoggerLog(msg, parts);
-    const databz = String.UTF8.encode(JSON.stringify<LoggerLog>(data));
-    wasmx.LoggerError(databz);
-}
-
-export function LoggerDebug(msg: string, parts: string[]): void {
-    msg = `fsm: ${msg}`
-    const data = new LoggerLog(msg, parts);
-    const databz = String.UTF8.encode(JSON.stringify<LoggerLog>(data));
-    wasmx.LoggerDebug(databz);
 }
 
 export function addr_humanize(value: ArrayBuffer): string {

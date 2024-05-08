@@ -16,7 +16,6 @@ export const STATE_KEY = "state";
 export const LOG_START = 1;
 export const STATE_SYNC_BATCH = 200;
 export const ERROR_INVALID_TX = "transaction is invalid";
-export const MAX_LOGGED = 2000;
 // ABCISemVer is the semantic version of the ABCI protocol
 export const ABCISemVer  = "2.0.0"
 export const ABCIVersion = ABCISemVer

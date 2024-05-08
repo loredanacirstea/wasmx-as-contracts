@@ -5,10 +5,9 @@ import { CurrentState, Mempool } from "./types_blockchain";
 import * as fsm from 'xstate-fsm-as/assembly/storage';
 import { parseInt32, parseInt64 } from "wasmx-utils/assembly/utils";
 import { LogEntry, LogEntryAggregate, TempBlock, NodeInfo } from "./types";
-import { LoggerDebug, revert } from "./utils";
+import { LoggerDebug, LoggerDebugExtended, revert } from "./utils";
 import {
     NODE_IPS,
-    MAX_LOGGED,
     CURRENT_NODE_ID,
     ROUNDS_KEY,
     LOG_START,
@@ -144,7 +143,7 @@ export function setLogEntry(
     index: i64,
     entry: string,
 ): void {
-    LoggerDebug("setting entry", ["height", index.toString(), "value", entry.slice(0, MAX_LOGGED) + " [...]"])
+    LoggerDebugExtended("setting entry", ["height", index.toString(), "value", entry])
     const key = getLogEntryKey(index);
     fsm.setContextValue(key, entry);
 }

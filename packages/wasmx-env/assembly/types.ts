@@ -1,8 +1,6 @@
 import { JSON } from "json-as/assembly";
 import { BigInt } from "./bn";
 
-export const MAX_LOGGED = 2000
-
 // @ts-ignore
 @serializable
 export type HexString = string;

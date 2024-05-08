@@ -2,7 +2,6 @@
 export const LOG_START = 1;
 export const STATE_SYNC_BATCH = 200;
 export const ERROR_INVALID_TX = "transaction is invalid";
-export const MAX_LOGGED = 2000;
 
 // LEADER:
 // new tx -> check tx -> add to mempool

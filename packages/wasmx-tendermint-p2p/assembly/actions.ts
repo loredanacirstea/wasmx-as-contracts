@@ -7,7 +7,7 @@ import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as tnd from "wasmx-tendermint/assembly/actions";
 import * as p2pw from "wasmx-p2p/assembly/p2p_wrap";
 import * as p2ptypes from "wasmx-p2p/assembly/types";
-import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
+import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
 import {
   Base64String,
   Bech32String,
@@ -745,7 +745,7 @@ export function receiveBlockProposal(
     const signature = ctx.get("signature");
     const sender = ctx.get("sender");
     const entryStr = String.UTF8.decode(decodeBase64(entryBase64).buffer);
-    LoggerDebug("received new block proposal", ["block", entryStr.slice(0, cfg.MAX_LOGGED) + " [...]"]);
+    LoggerDebugExtended("received new block proposal", ["block", entryStr]);
 
     let entry: AppendEntry = JSON.parse<AppendEntry>(entryStr);
     LoggerInfo("received new block proposal", [

@@ -2,7 +2,6 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmx from './wasmx';
 import {
-    MAX_LOGGED,
     CallRequest,
     CallResponse,
     Base64String,
@@ -35,9 +34,56 @@ import {
 import { u8ArrayToHex, uint8ArrayToHex } from "as-tally/assembly/tally";
 import { toUpperCase } from "./utils";
 
+export const MODULE_NAME = "wasmx-env"
+
+
+export function LoggerInfo(module: string, msg: string, parts: string[]): void {
+    msg = `${module}: ${msg}`
+    const data = new LoggerLog(msg, parts);
+    const databz = String.UTF8.encode(JSON.stringify<LoggerLog>(data));
+    wasmx.LoggerInfo(databz);
+}
+
+export function LoggerError(module: string, msg: string, parts: string[]): void {
+    msg = `${module}: ${msg}`
+    const data = new LoggerLog(msg, parts);
+    const databz = String.UTF8.encode(JSON.stringify<LoggerLog>(data));
+    wasmx.LoggerError(databz);
+}
+
+export function LoggerDebug(module: string, msg: string, parts: string[]): void {
+    msg = `${module}: ${msg}`
+    const data = new LoggerLog(msg, parts);
+    const databz = String.UTF8.encode(JSON.stringify<LoggerLog>(data));
+    wasmx.LoggerDebug(databz);
+}
+
+export function LoggerDebugExtended(module: string, msg: string, parts: string[]): void {
+    msg = `${module}: ${msg}`
+    const data = new LoggerLog(msg, parts);
+    const databz = String.UTF8.encode(JSON.stringify<LoggerLog>(data));
+    wasmx.LoggerDebugExtended(databz);
+}
+
+function LoggerInfoWrap(msg: string, parts: string[]): void {
+    LoggerInfo(MODULE_NAME, msg, parts)
+}
+
+function LoggerErrorWrap(msg: string, parts: string[]): void {
+    LoggerError(MODULE_NAME, msg, parts)
+}
+
+function LoggerDebugWrap(msg: string, parts: string[]): void {
+    LoggerDebug(MODULE_NAME, msg, parts)
+}
+
+function LoggerDebugExtendedWrap(msg: string, parts: string[]): void {
+    LoggerDebugExtended(MODULE_NAME, msg, parts)
+}
+
 export function revert(message: string): void {
     // console.debug(`Error: ${message}`);
-    LoggerError("wasmx_env", "revert", ["message", message])
+    LoggerErrorWrap("revert", ["message", message])
     wasmx.revert(String.UTF8.encode(message));
     throw new Error(message);
 }
@@ -117,10 +163,10 @@ export function emitCosmosEvents(events: Event[]): void {
 export function grpcRequest(ip: string, contract: Uint8Array, data: string): GrpcResponse {
     const contractAddress = encodeBase64(contract);
     const reqstr = `{"ip_address":"${ip}","contract":"${contractAddress}","data":"${data}"}`
-    console.debug("grpc request: " + reqstr.slice(0, MAX_LOGGED) + " [...]");
+    LoggerDebugExtendedWrap("grpc request: ", ["request", reqstr]);
     const req = String.UTF8.encode(reqstr);
     const result = wasmx.grpcRequest(req);
-    console.debug("grpc response: " + String.UTF8.decode(result));
+    LoggerDebugExtendedWrap("grpc request: ", ["response",  String.UTF8.decode(result)]);
     const response = JSON.parse<GrpcResponse>(String.UTF8.decode(result));
     if (response.error.length == 0) {
         response.data = String.UTF8.decode(decodeBase64(response.data).buffer);
@@ -175,38 +221,17 @@ export function ed25519Sign(privKeyStr: string, msgstr: string): Base64String {
     const privKey = decodeBase64(privKeyStr);
     const signature = wasmx.ed25519Sign(privKey.buffer, msgBase64.buffer);
     const signatureBase64 = encodeBase64(Uint8Array.wrap(signature));
-    LoggerDebug("wasmx_env", "ed25519Sign", ["signature", signatureBase64])
+    LoggerDebugWrap("ed25519Sign", ["signature", signatureBase64])
     return signatureBase64
 }
 
 export function ed25519Verify(pubKeyStr: Base64String, signatureStr: Base64String, msg: string): boolean {
     const pubKey = decodeBase64(pubKeyStr);
     const signature = decodeBase64(signatureStr);
-    LoggerDebug("wasmx_env", "ed25519Verify", ["signature", signatureStr, "pubKey", pubKeyStr])
+    LoggerDebugWrap("ed25519Verify", ["signature", signatureStr, "pubKey", pubKeyStr])
     const resp = wasmx.ed25519Verify(pubKey.buffer, signature.buffer, String.UTF8.encode(msg));
     if (resp == 1) return true;
     return false;
-}
-
-export function LoggerInfo(module: string, msg: string, parts: string[]): void {
-    msg = `${module}: ${msg}`
-    const data = new LoggerLog(msg, parts);
-    const databz = String.UTF8.encode(JSON.stringify<LoggerLog>(data));
-    wasmx.LoggerInfo(databz);
-}
-
-export function LoggerError(module: string, msg: string, parts: string[]): void {
-    msg = `${module}: ${msg}`
-    const data = new LoggerLog(msg, parts);
-    const databz = String.UTF8.encode(JSON.stringify<LoggerLog>(data));
-    wasmx.LoggerError(databz);
-}
-
-export function LoggerDebug(module: string, msg: string, parts: string[]): void {
-    msg = `${module}: ${msg}`
-    const data = new LoggerLog(msg, parts);
-    const databz = String.UTF8.encode(JSON.stringify<LoggerLog>(data));
-    wasmx.LoggerDebug(databz);
 }
 
 export function addr_humanize(value: ArrayBuffer): string {

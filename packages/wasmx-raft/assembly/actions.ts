@@ -4,7 +4,7 @@ import * as wblocks from "wasmx-blocks/assembly/types";
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
+import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
 import {
   Base64String,
   Bech32String,
@@ -579,7 +579,7 @@ export function processAppendEntries(
         revert("update node: empty signature");
     }
     const entryStr = String.UTF8.decode(decodeBase64(entryBase64).buffer);
-    LoggerDebug("received new entries", ["AppendEntry", entryStr.slice(0, cfg.MAX_LOGGED) + " [...]"]);
+    LoggerDebugExtended("received new entries", ["AppendEntry", entryStr]);
 
     let entry: AppendEntry = JSON.parse<AppendEntry>(entryStr);
     // verify signature

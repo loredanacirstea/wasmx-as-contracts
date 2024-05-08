@@ -15,6 +15,10 @@ export function LoggerDebug(msg: string, parts: string[]): void {
     wasmxwrap.LoggerDebug(MODULE_NAME, msg, parts)
 }
 
+export function LoggerDebugExtended(msg: string, parts: string[]): void {
+    wasmxwrap.LoggerDebugExtended(MODULE_NAME, msg, parts)
+}
+
 export function revert(message: string): void {
     LoggerError("revert", ["err", message, "module", MODULE_NAME])
     wasmx.revert(String.UTF8.encode(message));

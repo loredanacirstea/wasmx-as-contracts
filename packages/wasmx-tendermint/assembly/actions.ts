@@ -25,7 +25,7 @@ import { parseInt32, parseInt64, uint8ArrayToHex, parseUint8ArrayToU32BigEndian,
 import { extractUpdateNodeEntryAndVerify, registeredCheckMessage, registeredCheckNeeded, removeNode } from "wasmx-raft/assembly/actions";
 import { LogEntry, LogEntryAggregate, AppendEntry, AppendEntryResponse, TransactionResponse, Precommit, MODULE_NAME, BuildProposal } from "./types";
 import * as cfg from "./config";
-import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
+import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
 import { appendLogEntry, getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLogIndex, getLogEntryObj, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, removeLogEntry, setCurrentState, setLastLogIndex, setLogEntryAggregate, setNextIndexArray, setNodeIPs, setTermId } from "./action_utils";
@@ -297,7 +297,7 @@ export function processBlock(
         revert("update node: empty signature");
     }
     const entryStr = String.UTF8.decode(decodeBase64(entryBase64).buffer);
-    LoggerDebug("received new block proposal", ["block", entryStr.slice(0, cfg.MAX_LOGGED) + " [...]"]);
+    LoggerDebugExtended("received new block proposal", ["block", entryStr]);
 
     let entry: AppendEntry = JSON.parse<AppendEntry>(entryStr);
     LoggerInfo("received new block proposal", [
@@ -662,7 +662,7 @@ export function commitBlock(
         revert("update node: empty signature");
     }
     const entryStr = String.UTF8.decode(decodeBase64(entryBase64).buffer);
-    LoggerDebug("received precommit", ["Precommit", entryStr.slice(0, cfg.MAX_LOGGED) + " [...]"]);
+    LoggerDebugExtended("received precommit", ["Precommit", entryStr]);
 
     let entry: Precommit = JSON.parse<Precommit>(entryStr);
     LoggerInfo("received precommit", [

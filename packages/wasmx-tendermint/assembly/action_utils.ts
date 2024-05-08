@@ -6,7 +6,7 @@ import * as wblocks from "wasmx-blocks/assembly/types";
 import { CurrentState } from "./types_blockchain";
 import { parseInt32 } from "wasmx-utils/assembly/utils";
 import { LogEntry, LogEntryAggregate } from "./types";
-import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
+import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
 import * as cfg from "./config";
 import { NodeInfo } from "wasmx-raft/assembly/types_raft";
 
@@ -93,7 +93,7 @@ export function setLogEntry(
     index: i64,
     entry: string,
 ): void {
-    LoggerDebug("setting entry", ["height", index.toString(), "value", entry.slice(0, cfg.MAX_LOGGED) + " [...]"])
+    LoggerDebugExtended("setting entry", ["height", index.toString(), "value", entry])
     const key = getLogEntryKey(index);
     fsm.setContextValue(key, entry);
 }
