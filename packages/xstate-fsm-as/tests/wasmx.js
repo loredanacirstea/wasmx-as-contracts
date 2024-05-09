@@ -156,6 +156,14 @@ export function wasmx(storageMap, env, logType = LOG.error) {
         console.debug(req.msg, ...req.parts);
     }
 
+    function LoggerDebugExtended(buf) {
+        if (logType > 0) {
+            console.log('-host-LoggerDebugExtended', [...new Uint8Array(buf)]);
+        }
+        const req = JSON.parse(decodeFromUtf8Array(buf));
+        console.debug(req.msg, ...req.parts);
+    }
+
     function LoggerInfo(buf) {
         if (logType > 0) {
             console.log('-host-LoggerInfo', [...new Uint8Array(buf)]);
@@ -194,6 +202,7 @@ export function wasmx(storageMap, env, logType = LOG.error) {
         ed25519Verify,
         ed25519Sign,
         LoggerDebug,
+        LoggerDebugExtended,
         LoggerInfo,
         LoggerError,
     }

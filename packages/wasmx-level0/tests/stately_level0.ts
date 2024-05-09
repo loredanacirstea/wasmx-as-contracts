@@ -5,9 +5,10 @@ import { createMachine } from "xstate";
 export const machine = createMachine({
   context: {
     maxLevel: 0,
-    blockTimeout: 3000,
+    blockTimeoutInternal: 3000,
     currentLevel: 0,
     membersCount: 1,
+    blockTimeout: "blockTimeoutInternal",
   },
   id: "Levels0-0",
   initial: "uninitialized",
@@ -64,7 +65,7 @@ export const machine = createMachine({
           states: {
             active: {
               after: {
-                blockTimeout: {
+                blockTimeoutInternal: {
                   target: "proposer",
                 },
               },

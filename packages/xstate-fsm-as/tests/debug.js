@@ -71,6 +71,11 @@ async function instantiate(module, imports = {}) {
         // assembly/wasmx/getCaller() => ~lib/arraybuffer/ArrayBuffer
         return __lowerBuffer(__module0.getCaller()) || __notnull();
       },
+      LoggerDebugExtended(value) {
+        // ~lib/wasmx-env/assembly/wasmx/LoggerDebugExtended(~lib/arraybuffer/ArrayBuffer) => void
+        value = __liftBuffer(value >>> 0);
+        __module0.LoggerDebugExtended(value);
+      },
       grpcRequest(data) {
         // assembly/wasmx/grpcRequest(~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer
         data = __liftBuffer(data >>> 0);
