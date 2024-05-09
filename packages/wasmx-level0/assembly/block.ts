@@ -339,7 +339,7 @@ export function getEmtpyBlock(): Block {
 export function initSubChain(encodedData: Base64String, state: CurrentState): typestnd.ResponseInitChain {
     const data = String.UTF8.decode(base64.decode(encodedData).buffer)
     const req = JSON.parse<mctypes.InitSubChainDeterministicRequest>(data);
-    LoggerInfo("new subchain", ["chain", "chain_id", req.init_chain_request.chain_id])
+    LoggerInfo("new subchain", ["subchain_id", req.init_chain_request.chain_id])
     const msg = new mctypes.InitSubChainMsg(
         req.init_chain_request,
         req.chain_config,

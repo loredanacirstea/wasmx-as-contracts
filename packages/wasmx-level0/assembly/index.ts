@@ -8,6 +8,8 @@ import { wrapGuard } from "./actions";
 
 export function wasmx_env_2(): void {}
 
+export function wasmx_multichain_1(): void {}
+
 export function instantiate(): void {
   // const calld = getCallDataInitialize()
 }

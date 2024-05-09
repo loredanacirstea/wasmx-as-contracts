@@ -21,7 +21,7 @@ export function initSubChainInternal(req: InitSubChainDeterministicRequest): voi
         EventTypeInitSubChain,
         [
             new EventAttribute(AttributeKeyChainId, req.init_chain_request.chain_id, true),
-            new EventAttribute(AttributeKeyRequest, data64, true),
+            new EventAttribute(AttributeKeyRequest, data64, false),
         ],
     )
     wasmxw.emitCosmosEvents([ev]);

@@ -1,5 +1,6 @@
 import { JSON } from "json-as/assembly";
 import { decode as decodeBase64, encode as encodeBase64 } from "as-base64/assembly";
+import * as base64 from "as-base64/assembly"
 import { ActionParam, EventObject, ExternalActionCallData } from "xstate-fsm-as/assembly/types";
 import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
 import * as wblocks from "wasmx-blocks/assembly/types";
@@ -8,6 +9,8 @@ import * as consutil from "wasmx-consensus/assembly/utils";
 import * as staking from "wasmx-stake/assembly/types";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import * as mctypes from "wasmx-consensus/assembly/types_multichain";
+import * as mcwrap from 'wasmx-consensus/assembly/multichain_wrap';
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
 import * as tnd from "wasmx-tendermint/assembly/actions";
 import { buildLogEntryAggregate, callContract, callHookContract, getMempool, getTotalStaked, setMempool, updateConsensusParams, updateValidators } from "wasmx-tendermint/assembly/actions";
@@ -338,6 +341,12 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         }
     }
 
+    if (info.initChainRequests.length > 0) {
+        for (let i = 0; i < info.initChainRequests.length; i++) {
+            initSubChain(info.initChainRequests[i], state);
+        }
+    }
+
     // we have finalized and saved the new block
     // so we can execute setup on the new contract
     // this way, the delay of the timed action that starts the new consensus fsm is minimal.
@@ -569,4 +578,19 @@ export function getValidator(addr: Bech32String): staking.Validator {
     LoggerDebug("GetValidator", ["address", addr, "data", resp.data])
     const result = JSON.parse<staking.QueryValidatorResponse>(resp.data);
     return result.validator;
+}
+
+export function initSubChain(encodedData: Base64String, state: CurrentState): typestnd.ResponseInitChain {
+    const data = String.UTF8.decode(base64.decode(encodedData).buffer)
+    const req = JSON.parse<mctypes.InitSubChainDeterministicRequest>(data);
+    LoggerInfo("new subchain", ["subchain_id", req.init_chain_request.chain_id])
+    const msg = new mctypes.InitSubChainMsg(
+        req.init_chain_request,
+        req.chain_config,
+        state.validator_address,
+        state.validator_privkey,
+        state.validator_pubkey,
+        req.peers,
+    )
+    return mcwrap.InitSubChain(msg);
 }
