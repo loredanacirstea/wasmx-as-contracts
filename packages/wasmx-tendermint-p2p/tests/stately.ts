@@ -13,11 +13,11 @@ export const machine = createMachine({
     roundTimeout: 4000,
     currentNodeId: "0",
     max_block_gas: "20000000",
-    timeoutPropose: 3000,
     timeoutPrevote: 3000,
+    timeoutPropose: 3000,
     timeoutPrecommit: 3000,
   },
-  id: "Tendermint-P2P-5",
+  id: "Tendermint-P2P-6",
   initial: "uninitialized",
   states: {
     uninitialized: {
@@ -58,6 +58,9 @@ export const machine = createMachine({
                 },
                 {
                   type: "requestBlockSync",
+                },
+                {
+                  type: "StartNode",
                 },
               ],
             },
@@ -130,6 +133,9 @@ export const machine = createMachine({
                     {
                       type: "requestBlockSync",
                     },
+                    {
+                      type: "StartNode",
+                    },
                   ],
                 },
                 receiveCommit: {
@@ -160,7 +166,7 @@ export const machine = createMachine({
                   },
                 },
                 stop: {
-                  target: "#Tendermint-P2P-5.stopped",
+                  target: "#Tendermint-P2P-6.stopped",
                 },
                 receiveUpdateNodeResponse: {
                   actions: {
@@ -186,6 +192,9 @@ export const machine = createMachine({
                     },
                     {
                       type: "requestBlockSync",
+                    },
+                    {
+                      type: "StartNode",
                     },
                   ],
                 },
@@ -243,7 +252,7 @@ export const machine = createMachine({
                     },
                   },
                   always: {
-                    target: "#Tendermint-P2P-5.initialized.started.Proposer",
+                    target: "#Tendermint-P2P-6.initialized.started.Proposer",
                     guard: {
                       type: "isNextProposer",
                     },
@@ -402,10 +411,13 @@ export const machine = createMachine({
                     {
                       type: "requestBlockSync",
                     },
+                    {
+                      type: "StartNode",
+                    },
                   ],
                 },
                 stop: {
-                  target: "#Tendermint-P2P-5.stopped",
+                  target: "#Tendermint-P2P-6.stopped",
                 },
                 receiveUpdateNodeRequest: {
                   actions: {
@@ -417,7 +429,7 @@ export const machine = createMachine({
                 active: {
                   always: {
                     target:
-                      "#Tendermint-P2P-5.initialized.started.Validator.prevote",
+                      "#Tendermint-P2P-6.initialized.started.Validator.prevote",
                   },
                   entry: [
                     {
@@ -440,7 +452,7 @@ export const machine = createMachine({
     stopped: {
       on: {
         restart: {
-          target: "#Tendermint-P2P-5.initialized.unstarted",
+          target: "#Tendermint-P2P-6.initialized.unstarted",
         },
       },
     },
@@ -492,6 +504,10 @@ export const machine = createMachine({
       // ...
     },
     requestBlockSync: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    StartNode: function (context, event) {
       // Add your action code here
       // ...
     },

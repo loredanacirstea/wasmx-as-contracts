@@ -38,6 +38,12 @@ import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembl
 import { getAllValidators, getNodeByAddress, getNodeIdByAddress, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
 import { NodeInfo, NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft"
 import { Commit, CurrentState, SignedMsgType, ValidatorCommitVote, ValidatorProposalVote } from "./types_blockchain";
+import { callContract } from "wasmx-tendermint/assembly/actions";
+import { InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
+import * as roles from "wasmx-env/assembly/roles";
+import * as mcwrap from 'wasmx-consensus/assembly/multichain_wrap';
+import { StartSubChainMsg } from "wasmx-consensus/assembly/types_multichain";
+
 
 // TODO add delta to timeouts each failed round
 // and reset after a successful round
@@ -1349,3 +1355,25 @@ export function storeNewBlockOutOfOrder(blockTermId: i64, block: LogEntryAggrega
         processAppendEntry(block);
     }
 }
+
+export function StartNode(): void {
+    // call chain registry & get all subchains & start each node
+    const calldatastr = `{"GetSubChains":{}}`;
+    const resp = callContract(roles.ROLE_MULTICHAIN_REGISTRY, calldatastr, true);
+    if (resp.success > 0) {
+        // we do not fail, we want the chain to continue
+        LoggerError(`call failed`, ["contract", roles.ROLE_MULTICHAIN_REGISTRY, "error", resp.data])
+        return
+    }
+    const chains = JSON.parse<InitSubChainDeterministicRequest[]>(resp.data);
+    LoggerInfo("starting subchains", ["count", chains.length.toString()])
+    for (let i = 0; i < chains.length; i++) {
+        const chain = chains[i];
+        LoggerInfo("starting subchain", ["subchain_id", chain.init_chain_request.chain_id])
+        const resp = mcwrap.StartSubChain(new StartSubChainMsg(chain.init_chain_request.chain_id, chain.chain_config))
+        if (resp.error.length > 0) {
+            LoggerError("could not start subchain", ["subchain_id", chain.init_chain_request.chain_id])
+        }
+    }
+}
+
