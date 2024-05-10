@@ -31,6 +31,8 @@ export function main(): void {
     actions.setupNode(calld.params, calld.event);
   } else if (calld.method === "setup") {
     actions.setup(calld.params, calld.event);
+  } else if (calld.method === "StartNode") {
+    actions.StartNode();
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)

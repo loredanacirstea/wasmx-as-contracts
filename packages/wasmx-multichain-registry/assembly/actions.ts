@@ -4,16 +4,36 @@ import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import { InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
 import { Event, EventAttribute } from "wasmx-env/assembly/types";
 import { AttributeKeyChainId, AttributeKeyRequest, EventTypeInitSubChain } from "./events";
-import { setChainData } from "./storage";
+import { addChainId, getChainData, getChainIds, setChainData } from "./storage";
+import { QueryGetSubChainIdsRequest, QueryGetSubChainsRequest } from "./types";
 
 export function InitSubChain(req: InitSubChainDeterministicRequest): ArrayBuffer {
     initSubChainInternal(req)
     return new ArrayBuffer(0);
 }
 
+export function GetSubChains(req: QueryGetSubChainsRequest): ArrayBuffer {
+    const ids = getChainIds();
+    const data: InitSubChainDeterministicRequest[] = [];
+    for (let i = 0; i < ids.length; i++) {
+        const chain = getChainData(ids[i])
+        if (chain != null) {
+            data.push(chain);
+        }
+    }
+    const encoded = JSON.stringify<InitSubChainDeterministicRequest[]>(data)
+    return String.UTF8.encode(encoded)
+}
+
+export function GetSubChainIds(req: QueryGetSubChainIdsRequest): ArrayBuffer {
+    const ids = getChainIds();
+    return String.UTF8.encode(JSON.stringify<string[]>(ids))
+}
+
 export function initSubChainInternal(req: InitSubChainDeterministicRequest): void {
     // we just store the chain configuration and emit a subchain event
     req.init_chain_request.time = new Date(Date.now()).toISOString()
+    addChainId(req.init_chain_request.chain_id);
     setChainData(req);
     const data = JSON.stringify<InitSubChainDeterministicRequest>(req);
     const data64 = base64.encode(Uint8Array.wrap(String.UTF8.encode(data)))

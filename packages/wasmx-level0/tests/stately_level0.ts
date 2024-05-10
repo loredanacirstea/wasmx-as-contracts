@@ -27,6 +27,9 @@ export const machine = createMachine({
           on: {
             start: {
               target: "started",
+              actions: {
+                type: "StartNode",
+              },
             },
             setup: {
               target: "unstarted",
@@ -60,6 +63,9 @@ export const machine = createMachine({
             },
             start: {
               target: "started",
+              actions: {
+                type: "StartNode",
+              },
             },
           },
           states: {
@@ -92,6 +98,10 @@ export const machine = createMachine({
   },
 }).withConfig({
   actions: {
+    StartNode: function (context, event) {
+      // Add your action code here
+      // ...
+    },
     setup: function (context, event) {
       // Add your action code here
       // ...

@@ -2,9 +2,12 @@ import { JSON } from "json-as/assembly";
 import * as sha256 from "@ark-us/as-sha256/assembly/index";
 import * as base64 from "as-base64/assembly";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
+import * as roles from "wasmx-env/assembly/roles";
 import { base64ToHex } from "wasmx-utils/assembly/utils";
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
+import * as mcwrap from 'wasmx-consensus/assembly/multichain_wrap';
+import { StartSubChainMsg } from "wasmx-consensus/assembly/types_multichain";
 import {
     EventObject,
     ActionParam,
@@ -16,6 +19,8 @@ import { buildNewBlock, commitBlock, proposeBlock } from "./block";
 import { setBlock, setCurrentState } from "./storage";
 import { LOG_START } from "./config";
 import { callStorage } from "wasmx-tendermint-p2p/assembly/action_utils";
+import { callContract } from "wasmx-tendermint/assembly/actions";
+import { InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
 
 export function wrapGuard(value: boolean): ArrayBuffer {
     if (value) return String.UTF8.encode("1");
@@ -119,6 +124,27 @@ export function deployNextLevel(
     event: EventObject,
 ): void {
 
+}
+
+export function StartNode(): void {
+    // call chain registry & get all subchains & start each node
+    const calldatastr = `{"GetSubChains":{}}`;
+    const resp = callContract(roles.ROLE_MULTICHAIN_REGISTRY, calldatastr, true);
+    if (resp.success > 0) {
+        // we do not fail, we want the chain to continue
+        LoggerError(`call failed`, ["contract", roles.ROLE_MULTICHAIN_REGISTRY, "error", resp.data])
+        return
+    }
+    const chains = JSON.parse<InitSubChainDeterministicRequest[]>(resp.data);
+    LoggerInfo("starting subchains", ["count", chains.length.toString()])
+    for (let i = 0; i < chains.length; i++) {
+        const chain = chains[i];
+        LoggerInfo("starting subchain", ["subchain_id", chain.init_chain_request.chain_id])
+        const resp = mcwrap.StartSubChain(new StartSubChainMsg(chain.init_chain_request.chain_id, chain.chain_config))
+        if (resp.error.length > 0) {
+            LoggerError("could not start subchain", ["subchain_id", chain.init_chain_request.chain_id])
+        }
+    }
 }
 
 function finalizeBlock(block: Block): void {

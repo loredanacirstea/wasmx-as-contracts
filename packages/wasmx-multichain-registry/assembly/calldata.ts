@@ -1,11 +1,16 @@
 import { JSON } from "json-as/assembly";
 import { InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import { QueryGetSubChainIdsRequest, QueryGetSubChainsRequest } from "./types";
 
 // @ts-ignore
 @serializable
 export class CallData {
     InitSubChain: InitSubChainDeterministicRequest | null = null;
+
+    // query
+    GetSubChains: QueryGetSubChainsRequest | null = null;
+    GetSubChainIds: QueryGetSubChainIdsRequest | null = null;
 }
 
 export function getCallDataWrap(): CallData {

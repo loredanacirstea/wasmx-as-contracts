@@ -68,3 +68,20 @@ export class InitSubChainMsg {
         this.peers = peers
     }
 }
+
+// @ts-ignore
+@serializable
+export class StartSubChainMsg {
+    chain_id: string
+    chain_config: ChainConfig
+    constructor(chain_id: string, chain_config: ChainConfig) {
+        this.chain_id = chain_id
+        this.chain_config = chain_config
+    }
+}
+
+// @ts-ignore
+@serializable
+export class StartSubChainResponse {
+    error: string = ""
+}
