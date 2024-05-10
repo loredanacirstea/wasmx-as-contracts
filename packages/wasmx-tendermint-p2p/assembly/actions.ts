@@ -25,14 +25,13 @@ import {
 import { parseInt32, stringToBase64, base64ToString } from "wasmx-utils/assembly/utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { StateSyncRequest, StateSyncResponse } from "./sync_types";
-import { PROTOCOL_ID } from "./config";
 import { getCurrentNodeId, getCurrentState, getPrevoteArray, setPrevoteArray, getPrecommitArray, setPrecommitArray, getValidatorNodesInfo, setValidatorNodesInfo, setTermId, appendLogEntry, setLogEntryAggregate, setCurrentState, setLastLogIndex, getValidatorNodeCount, getLogEntryObj } from "./storage";
 import { getP2PAddress } from "wasmx-raft-p2p/assembly/actions"
 import { callHookContract, setMempool, signMessage } from "wasmx-tendermint/assembly/actions"
 import { Mempool } from "wasmx-tendermint/assembly/types_blockchain";
 import * as cfg from "./config";
 import { AppendEntry, AppendEntryResponse, LogEntryAggregate, UpdateNodeRequest } from "./types";
-import { getCurrentProposer, getEmptyPrecommitArray, getEmptyValidatorProposalVoteArray, getFinalBlock, getLastBlockCommit, getLastBlockIndex, getLogEntryAggregate, getNextProposer, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
+import { getCurrentProposer, getEmptyPrecommitArray, getEmptyValidatorProposalVoteArray, getFinalBlock, getLastBlockCommit, getLastBlockIndex, getLogEntryAggregate, getNextProposer, getProtocolId, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
 import { extractUpdateNodeEntryAndVerify, removeNode } from "wasmx-raft/assembly/actions";
 import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembly/storage";
 import { getAllValidators, getNodeByAddress, getNodeIdByAddress, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
@@ -52,20 +51,22 @@ export function connectRooms(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_PROTOCOL))
+    const protocolId = getProtocolId(getCurrentState())
+    p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, cfg.CHAT_ROOM_PROTOCOL))
 
-    // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_BLOCK_PROPOSAL))
-    // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_MEMPOOL))
-    // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_NODEINFO))
-    // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_PRECOMMIT))
-    // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(PROTOCOL_ID, cfg.CHAT_ROOM_PREVOTE))
+    // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, cfg.CHAT_ROOM_BLOCK_PROPOSAL))
+    // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, cfg.CHAT_ROOM_MEMPOOL))
+    // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, cfg.CHAT_ROOM_NODEINFO))
+    // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, cfg.CHAT_ROOM_PRECOMMIT))
+    // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, cfg.CHAT_ROOM_PREVOTE))
 }
 
 export function connectPeers(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    connectPeersInternal(PROTOCOL_ID);
+    const protocolId = getProtocolId(getCurrentState())
+    connectPeersInternal(protocolId);
 }
 
 export function connectPeersInternal(protocolId: string): void {
@@ -98,9 +99,10 @@ export function requestBlockSync(
 ): void {
     const nodeId = getCurrentNodeId();
     const nodes = getValidatorNodesInfo()
+    const protocolId = getProtocolId(getCurrentState())
     for (let i = 0; i < nodes.length; i++) {
         if (nodeId === i || !isNodeActive(nodes[i])) continue;
-        sendStateSyncRequest(PROTOCOL_ID, i);
+        sendStateSyncRequest(protocolId, i);
     }
 }
 
@@ -121,7 +123,8 @@ export function requestValidatorNodeInfoIfSynced(
     const resp = JSON.parse<StateSyncResponse>(data)
     if (resp.last_batch_index != resp.last_log_index) return;
 
-    sendNodeSyncRequest(PROTOCOL_ID)
+    const protocolId = getProtocolId(getCurrentState())
+    sendNodeSyncRequest(protocolId)
 }
 
 export function sendNodeSyncRequest(protocolId: string): void {
@@ -155,7 +158,8 @@ export function registerValidatorWithNetwork(
 ): void {
     // we check that we are registered with the Leader
     // and that we are in sync
-    announceValidatorNodeWithNetwork(PROTOCOL_ID);
+    const protocolId = getProtocolId(getCurrentState())
+    announceValidatorNodeWithNetwork(protocolId);
 }
 
 export function announceValidatorNodeWithNetwork(protocolId: string): void {
@@ -238,7 +242,8 @@ export function receiveUpdateNodeResponse(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    receiveUpdateNodeResponseInternal(params, event, PROTOCOL_ID)
+    const protocolId = getProtocolId(getCurrentState())
+    receiveUpdateNodeResponseInternal(params, event, protocolId)
 }
 
 export function receiveUpdateNodeResponseInternal(
@@ -529,7 +534,8 @@ export function sendNodeSyncResponse(peeraddr: string): void {
     const peers = [peeraddr]
 
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
+    const protocolId = getProtocolId(getCurrentState())
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
 }
 
 export function forwardMsgToChat(
@@ -546,7 +552,8 @@ export function forwardMsgToChat(
 
     // TODO protocolId as param for what chat room to send it too
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, PROTOCOL_ID, cfg.CHAT_ROOM_MEMPOOL))
+    const protocolId = getProtocolId(getCurrentState())
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, protocolId, cfg.CHAT_ROOM_MEMPOOL))
 }
 
 export function transitionNodeToValidator(
@@ -596,7 +603,8 @@ export function sendBlockProposal(
     LoggerDebug("sending block proposal", ["height", state.nextHeight.toString()])
 
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, PROTOCOL_ID, cfg.CHAT_ROOM_BLOCK_PROPOSAL))
+    const protocolId = getProtocolId(state)
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, protocolId, cfg.CHAT_ROOM_BLOCK_PROPOSAL))
 }
 
 // received statesync request
@@ -666,7 +674,8 @@ function sendStateSyncBatch(start_index: i64, lastIndexToSend: i64, lastIndex: i
     LoggerDebug("sending state sync chunk", ["count", response.entries.length.toString(), "from", start_index.toString(), "to", lastIndexToSend.toString(), "last_index", lastIndex.toString()])
 
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
+    const protocolId = getProtocolId(getCurrentState())
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
 }
 
 export function receiveStateSyncResponse(
@@ -724,7 +733,8 @@ export function sendAppendEntryResponseMessage(response: AppendEntryResponse, le
     LoggerDebug("sending new entries response to proposer", ["proposerId", leaderId.toString(), "lastIndex", response.lastIndex.toString()])
 
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
+    const protocolId = getProtocolId(getCurrentState())
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
 }
 
 // validator receiving block proposal
@@ -905,7 +915,8 @@ export function sendPrevote(
     LoggerDebug("sending prevote", ["index", data.index.toString(), "hash", data.hash])
 
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, PROTOCOL_ID, cfg.CHAT_ROOM_PREVOTE))
+    const protocolId = getProtocolId(getCurrentState())
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, protocolId, cfg.CHAT_ROOM_PREVOTE))
 }
 
 export function sendPrevoteNil(
@@ -932,7 +943,8 @@ export function sendPrevoteNil(
     LoggerDebug("sending prevote nil", ["index", data.index.toString()])
 
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, PROTOCOL_ID, cfg.CHAT_ROOM_PREVOTE))
+    const protocolId = getProtocolId(state)
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, protocolId, cfg.CHAT_ROOM_PREVOTE))
 }
 
 export function buildPrevoteMessage(): ValidatorProposalVote {
@@ -970,7 +982,8 @@ export function sendPrecommit(
     setPrecommitArray(arr);
 
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, PROTOCOL_ID, cfg.CHAT_ROOM_PRECOMMIT))
+    const protocolId = getProtocolId(getCurrentState())
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, protocolId, cfg.CHAT_ROOM_PRECOMMIT))
 }
 
 export function sendPrecommitNil(
@@ -998,7 +1011,8 @@ export function sendPrecommitNil(
     setPrecommitArray(arr);
 
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, PROTOCOL_ID, cfg.CHAT_ROOM_PREVOTE))
+    const protocolId = getProtocolId(state)
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, protocolId, cfg.CHAT_ROOM_PREVOTE))
 }
 
 export function buildPrecommitMessage(): ValidatorProposalVote {
@@ -1291,7 +1305,8 @@ export function sendCommit(
     LoggerDebug("sending commit", ["index", data.index.toString(), "hash", data.hash])
 
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, PROTOCOL_ID, cfg.CHAT_ROOM_PROTOCOL))
+    const protocolId = getProtocolId(getCurrentState())
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, protocolId, cfg.CHAT_ROOM_PROTOCOL))
 }
 
 export function receiveCommit(

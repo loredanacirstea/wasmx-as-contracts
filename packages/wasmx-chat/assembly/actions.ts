@@ -3,7 +3,7 @@ import { encode as base64encode } from "as-base64/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as p2pw from "wasmx-p2p/assembly/p2p_wrap";
 import * as p2ptypes from "wasmx-p2p/assembly/types";
-import { ChatBlock, ChatHeader, ChatMessage, ChatRoom, MsgJoinRoom, MsgReceiveMessage, MsgSendMessage, NodeInfo, QueryGetBlock, QueryGetBlocks, QueryGetMessage, QueryGetMessages, QueryGetRooms } from "./types";
+import { ChatBlock, ChatHeader, ChatMessage, ChatRoom, MsgJoinRoom, MsgReceiveMessage, MsgSendMessage, NodeInfo, PROTOCOL_ID, QueryGetBlock, QueryGetBlocks, QueryGetMessage, QueryGetMessages, QueryGetRooms } from "./types";
 import { EMPTY_HASH, getBlock, getBlocks, getMasterHash, getRoom, getRooms, setBlock, setRoom } from "./storage";
 import { LoggerInfo, revert } from "./utils";
 import { Base64String, TxMessage } from "wasmx-env/assembly/types";
@@ -20,7 +20,7 @@ export function joinRoom(ctx: TxMessage, tx: Base64String, req: MsgJoinRoom): vo
     const nodeInfo = new NodeInfo(ctx.sender, node);
     const newroom = new ChatRoom(req.roomId, [nodeInfo], 0, getEmptyHash());
     setRoom(newroom);
-    const protocolId = wasmxw.getAddress()
+    const protocolId = getProtocolId()
     p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, req.roomId))
     LoggerInfo("connected to chat room:", ["id", req.roomId])
 }
@@ -78,7 +78,7 @@ export function GetBlock(req: QueryGetBlock): ArrayBuffer {
 export function start(): void {
     const rooms = getRooms("", "")
     const roomIds = new Array<string>(rooms.length)
-    const protocolId = wasmxw.getAddress()
+    const protocolId = getProtocolId()
     for (let i = 0; i < rooms.length; i++) {
         roomIds[i] = rooms[i].roomId
         p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, rooms[i].roomId))
@@ -123,4 +123,8 @@ export function appendBlock(room: ChatRoom, block: ChatBlock): void {
 
 function getEmptyHash(): Base64String {
     return base64encode(Uint8Array.wrap(String.UTF8.encode(EMPTY_HASH)))
+}
+
+export function getProtocolId(): string {
+    return PROTOCOL_ID + "_" + wasmxw.getAddress()
 }

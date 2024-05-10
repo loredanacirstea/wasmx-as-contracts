@@ -594,3 +594,7 @@ export function initSubChain(encodedData: Base64String, state: CurrentState): ty
     )
     return mcwrap.InitSubChain(msg);
 }
+
+export function getProtocolId(state: CurrentState): string {
+    return cfg.PROTOCOL_ID + "_" + state.chain_id
+}

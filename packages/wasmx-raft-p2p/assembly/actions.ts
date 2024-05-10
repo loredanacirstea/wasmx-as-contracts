@@ -27,12 +27,13 @@ import * as cfg from "wasmx-raft/assembly/config";
 import { getLastLog, getMajority, getNodeByAddress, getRandomInRange, getRandomInRangeI32, getRandomInRangeI64, initChain, initializeIndexArrays, signMessage, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
 import { PROTOCOL_ID, StateSyncRequest, StateSyncResponse } from "./types";
 import { checkCommits, extractAppendEntry, extractUpdateNodeEntryAndVerify, getLogEntryAggregate, isNodeActive, prepareAppendEntry, prepareAppendEntryMessage, prepareHeartbeatResponse, processAppendEntry, registeredCheckMessage, updateNodeEntry, voteInternal } from "wasmx-raft/assembly/actions";
+import { CurrentState } from "wasmx-raft/assembly/types_blockchain";
 
 export function connectPeers(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    connectPeersInternal(PROTOCOL_ID);
+    connectPeersInternal(getProtocolId(getCurrentState()));
 }
 
 export function connectPeersInternal(protocolId: string): void {
@@ -150,7 +151,8 @@ export function updateNodeAndReturn(
     const peers = [getP2PAddress(entry.node)]
 
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
+    const protocolId = getProtocolId(getCurrentState())
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
 }
 
 // forward transactions to leader
@@ -181,13 +183,14 @@ export function forwardTxsToLeader(
     const txs = mempool.txs.slice(0, limit);
     LoggerDebug("forwarding txs to leader", ["nodeId", nodeId.toString(), "nodeIp", nodeInfo.node.ip, "count", limit.toString()])
     const contract = wasmxw.getAddress();
+    const protocolId = getProtocolId(getCurrentState())
 
     for (let i = 0; i < limit; i++) {
         const tx = txs[0];
         const msgstr = `{"run":{"event":{"type":"newTransaction","params":[{"key": "transaction","value":"${tx}"}]}}}`
         const peers = [getP2PAddress(nodeInfo)]
         LoggerDebug("forwarding tx to leader", ["nodeId", nodeId.toString(), "nodeIp", nodeInfo.node.ip, "tx_batch_index", i.toString()])
-        p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
+        p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
     }
     // TODO we will remove the tx from mempool now
     // if it is an invalid transaction (it can happen), then the leader will
@@ -205,7 +208,8 @@ export function requestNetworkSync(
 ): void {
     // we check that we are registered with the Leader
     // and that we are in sync
-    registeredCheck(PROTOCOL_ID);
+    const protocolId = getProtocolId(getCurrentState())
+    registeredCheck(protocolId);
 }
 
 // we just send a NodeUpdateRequest
@@ -242,7 +246,8 @@ export function receiveUpdateNodeResponse(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    receiveUpdateNodeResponseInternal(params, event, PROTOCOL_ID)
+    const protocolId = getProtocolId(getCurrentState())
+    receiveUpdateNodeResponseInternal(params, event, protocolId)
 }
 
 export function receiveUpdateNodeResponseInternal(
@@ -370,7 +375,8 @@ function sendVoteRequest(nodeId: i32, node: NodeInfo, request: VoteRequest, term
 
     const peers = [getP2PAddress(node)]
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
+    const protocolId = getProtocolId(getCurrentState())
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
 }
 
 export function receiveVoteResponse(
@@ -472,7 +478,8 @@ export function sendAppendEntry(
     // const contract = wasmx.getAddress();
     const peers = [getP2PAddress(node)]
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
+    const protocolId = getProtocolId(getCurrentState())
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
     // Uint8Array.wrap(contract)
 }
 
@@ -641,7 +648,8 @@ function sendStateSyncBatch(start_index: i64, lastIndexToSend: i64, lastIndex: i
     }
     const peers = [getP2PAddress(nodeInfo)]
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
+    const protocolId = getProtocolId(getCurrentState())
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
 }
 
 // received vote request
@@ -696,7 +704,8 @@ export function vote(
     LoggerDebug("sending vote response", ["to", entry.candidateId.toString(), "data", datastr])
 
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
+    const protocolId = getProtocolId(getCurrentState())
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
 
 }
 
@@ -724,7 +733,8 @@ export function sendHeartbeatResponseMessage(response: AppendEntryResponse, lead
     LoggerDebug("sending new entries response to leader", ["leaderId", leaderId.toString(), "lastIndex", response.lastIndex.toString()])
 
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, PROTOCOL_ID, peers))
+    const protocolId = getProtocolId(getCurrentState())
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
 }
 
 export function getP2PAddress(nodeInfo: NodeInfo): string {
@@ -751,4 +761,8 @@ export function getRandomSynced(arr: i64[], lastIndex: i64, leaderId: i32): i32 
     }
     const indx = getRandomInRangeI32(0, synced.length-1)
     return synced[indx];
+}
+
+export function getProtocolId(state: CurrentState): string {
+    return PROTOCOL_ID + "_" + state.chain_id
 }
