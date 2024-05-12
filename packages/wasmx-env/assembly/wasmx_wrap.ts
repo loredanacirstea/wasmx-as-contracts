@@ -183,6 +183,13 @@ export function call(req: CallRequest, moduleName: string = ""): CallResponse {
     return JSON.parse<CallResponse>(String.UTF8.decode(responsebz));
 }
 
+export function callEvm(req: CallRequest, moduleName: string = ""): CallResponse {
+    LoggerDebug(`${moduleName}:wasmx_env`, "call", ["to", req.to, "calldata", req.calldata])
+    const requestStr = JSON.stringify<CallRequest>(req);
+    const responsebz = wasmx.call(String.UTF8.encode(requestStr));
+    return JSON.parse<CallResponse>(String.UTF8.decode(responsebz));
+}
+
 export function createAccount(req: CreateAccountRequest, moduleName: string = ""): Bech32String {
     req.msg = encodeBase64(Uint8Array.wrap(String.UTF8.encode(req.msg)))
     const requestStr = JSON.stringify<CreateAccountRequest>(req);

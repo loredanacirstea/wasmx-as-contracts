@@ -99,7 +99,7 @@ function produceBlock(time: Date): void {
     blockCount -= 1;
     removeFirstBlock();
   }
-  console.log("hash: " + block.hash + ": " + block.header.entropy + ": " + block.header.time.toISOString() + "--index: " + block.header.index.toString() + "---cycle: " + cycleCount.toString())
+  // console.log("hash: " + block.hash + ": " + block.header.entropy + ": " + block.header.time.toISOString() + "--index: " + block.header.index.toString() + "---cycle: " + cycleCount.toString())
   const blockstr = JSON.stringify<Block>(block);
   blocksMap.set(block.header.time.toISOString(), blockstr);
   addLastBlock(blockstr);

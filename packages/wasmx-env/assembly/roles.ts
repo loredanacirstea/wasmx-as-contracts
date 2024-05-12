@@ -1,3 +1,4 @@
+export var ROLE_EID_REGISTRY = "eid_registry"
 export var ROLE_STORAGE = "storage"
 export var ROLE_STAKING = "staking"
 export var ROLE_BANK = "bank"
