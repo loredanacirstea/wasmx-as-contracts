@@ -45,6 +45,19 @@ export class InitSubChainDeterministicRequest {
 
 // @ts-ignore
 @serializable
+export type GenesisState = Map<string,Base64String>
+
+// @ts-ignore
+@serializable
+export class GenutilGenesis {
+    gen_txs: Base64String[]
+    constructor(gen_txs: Base64String[]) {
+        this.gen_txs = gen_txs
+    }
+}
+
+// @ts-ignore
+@serializable
 export class InitSubChainMsg {
     init_chain_request: constypes.RequestInitChain
     chain_config: ChainConfig

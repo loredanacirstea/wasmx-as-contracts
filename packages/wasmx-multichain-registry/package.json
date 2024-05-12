@@ -28,6 +28,7 @@
     "json-as": "file:../../../as-json",
     "visitor-as": "^0.11.4",
     "wasmx-env": "file:../wasmx-env",
-    "wasmx-consensus": "file:../wasmx-consensus"
+    "wasmx-consensus": "file:../wasmx-consensus",
+    "wasmx-utils": "file:../wasmx-utils"
   }
 }

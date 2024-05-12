@@ -397,7 +397,7 @@ export class AuthInfo {
 
 // @ts-ignore
 @serializable
-export class SignedTransaction { // TxRaw
+export class SignedTransaction { // Tx // cosmos/tx/v1beta1/tx.proto
     body: TxBody
     auth_info: AuthInfo
     signatures: Base64String[]
