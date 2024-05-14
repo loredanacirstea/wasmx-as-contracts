@@ -61,7 +61,7 @@ export function addChainValidatorAddress(chainId: string, addr: Bech32String): v
         revert(`validator address already includec: ${addr}`)
     }
     value.push(addr)
-    return wasmxw.sstore(CHAIN_IDS, JSON.stringify<Bech32String[]>(value));
+    setChainValidatorAddresses(chainId, value)
 }
 
 export function getChainValidatorAddresses(chainId: string): Bech32String[] {
@@ -76,7 +76,9 @@ export function setChainValidatorAddresses(chainId: string, addrs: Bech32String[
 
 export function addChainId(data: string): void {
     const ids = getChainIds()
-    if (ids.includes(data)) return
+    if (ids.includes(data)) {
+        return
+    }
     ids.push(data)
     return wasmxw.sstore(CHAIN_IDS, JSON.stringify<string[]>(ids));
 }

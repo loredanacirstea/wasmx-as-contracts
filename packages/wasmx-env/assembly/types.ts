@@ -310,19 +310,11 @@ export class WasmxExecutionMessage {
 // @ts-ignore
 @serializable
 export class TxMessage {
-    anytype: string
-    sender: Bech32String
-    contract: Bech32String
-    msg: WasmxExecutionMessage
-    funds: Coin[]
-    dependencies: string[]
-    constructor(anytype: string, sender: Bech32String, contract: Bech32String, msg: WasmxExecutionMessage, funds: Coin[], dependencies: string[]) {
-        this.anytype = anytype
-        this.sender = sender
-        this.contract = contract
-        this.msg = msg
-        this.funds = funds
-        this.dependencies = dependencies
+    type_url: string
+    value: Base64String
+    constructor(type_url: string, value: Base64String) {
+        this.type_url = type_url
+        this.value = value
     }
 }
 

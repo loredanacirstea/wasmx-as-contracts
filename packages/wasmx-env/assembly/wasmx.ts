@@ -38,6 +38,7 @@ export declare function ed25519PubToHex(pubKey: ArrayBuffer): ArrayBuffer
 
 export declare function addr_humanize(value: ArrayBuffer): ArrayBuffer
 export declare function addr_canonicalize(value: ArrayBuffer): ArrayBuffer
+export declare function addr_equivalent(addr1: ArrayBuffer, addr2: ArrayBuffer): i32
 
 export declare function getAddressByRole(value: ArrayBuffer): ArrayBuffer
 export declare function getRoleByAddress(value: ArrayBuffer): ArrayBuffer
@@ -46,6 +47,7 @@ export declare function executeCosmosMsg(value: ArrayBuffer): ArrayBuffer
 
 export declare function decodeCosmosTxToJson(value: ArrayBuffer): ArrayBuffer
 export declare function verifyCosmosTx(value: ArrayBuffer): ArrayBuffer
+export declare function verifyWasmxTx(value: ArrayBuffer): ArrayBuffer
 
 // TODO move to p2p and rename to wasmx-network
 export declare function grpcRequest(data: ArrayBuffer): ArrayBuffer

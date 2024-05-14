@@ -1,6 +1,7 @@
 import { JSON } from "json-as/assembly";
 import { encode as base64encode } from "as-base64/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
+import * as wasmxt from 'wasmx-env/assembly/wasmx_types';
 import * as p2pw from "wasmx-p2p/assembly/p2p_wrap";
 import * as p2ptypes from "wasmx-p2p/assembly/types";
 import { ChatBlock, ChatHeader, ChatMessage, ChatRoom, MsgJoinRoom, MsgReceiveMessage, MsgSendMessage, NodeInfo, PROTOCOL_ID, QueryGetBlock, QueryGetBlocks, QueryGetMessage, QueryGetMessages, QueryGetRooms } from "./types";
@@ -11,7 +12,7 @@ import { buildBlock, getBlockHeaderHash, getChatMessageFromBlock } from "./block
 import { stringToBase64 } from "wasmx-utils/assembly/utils";
 import { CallDataInternal } from "./calldata";
 
-export function joinRoom(ctx: TxMessage, tx: Base64String, req: MsgJoinRoom): void {
+export function joinRoom(ctx: wasmxt.MsgExecuteContract, tx: Base64String, req: MsgJoinRoom): void {
     const room = getRoom(req.roomId)
     if (room != null) {
         revert(`room already exists with id: ${req.roomId}`)
@@ -86,7 +87,7 @@ export function start(): void {
     LoggerInfo("connected to chat rooms:", ["rooms", roomIds.join(",")])
 }
 
-export function sendMessage(ctx: TxMessage, tx: Base64String, req: MsgSendMessage): void {
+export function sendMessage(ctx: wasmxt.MsgExecuteContract, tx: Base64String, req: MsgSendMessage): void {
     const room = getRoom(req.roomId)
     if (!room) return;
 
@@ -99,7 +100,7 @@ export function sendMessage(ctx: TxMessage, tx: Base64String, req: MsgSendMessag
     p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, blockstr, contract, req.roomId))
 }
 
-export function receiveMessage(ctx: TxMessage, peerblock: ChatBlock, req: MsgReceiveMessage, calld: CallDataInternal): void {
+export function receiveMessage(ctx: wasmxt.MsgExecuteContract, peerblock: ChatBlock, req: MsgReceiveMessage, calld: CallDataInternal): void {
     const room = getRoom(req.roomId)
     if (!room) return;
 

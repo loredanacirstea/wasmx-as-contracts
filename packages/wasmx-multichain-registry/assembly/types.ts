@@ -1,6 +1,12 @@
 import { JSON } from "json-as/assembly";
 import { InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
 import { Base64String, Coin } from "wasmx-env/assembly/types";
+import * as authtypes from "wasmx-auth/assembly/types";
+import * as banktypes from "wasmx-bank/assembly/types";
+import * as stakingtypes from "wasmx-stake/assembly/types";
+import * as govtypes from "wasmx-gov/assembly/types";
+import * as slashingtypes from "wasmx-slashing/assembly/types";
+import * as distributiontypes from "wasmx-distribution/assembly/types";
 
 export const MODULE_NAME = "multichain_registry"
 
@@ -98,5 +104,33 @@ export class InitSubChainRequest {
     chainId: string
     constructor(chainId: string) {
         this.chainId = chainId
+    }
+}
+
+export const MODULE_NAME_COSMOSMOD = "cosmosmod"
+
+// @ts-ignore
+@serializable
+export class CosmosmodGenesisState {
+    staking: stakingtypes.MsgInitGenesis
+    bank: banktypes.MsgInitGenesis
+    gov: govtypes.MsgInitGenesis
+    auth: authtypes.MsgInitGenesis
+    slashing: slashingtypes.MsgInitGenesis
+    distribution: distributiontypes.MsgInitGenesis
+    constructor(
+        staking: stakingtypes.MsgInitGenesis,
+        bank: banktypes.MsgInitGenesis,
+        gov: govtypes.MsgInitGenesis,
+        auth: authtypes.MsgInitGenesis,
+        slashing: slashingtypes.MsgInitGenesis,
+        distribution: distributiontypes.MsgInitGenesis,
+    ) {
+        this.staking = staking
+        this.bank = bank
+        this.gov = gov
+        this.auth = auth
+        this.slashing = slashing
+        this.distribution = distribution
     }
 }

@@ -1,6 +1,7 @@
 import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as base64decode } from "as-base64/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
+import * as wasmxt from 'wasmx-env/assembly/wasmx_types';
 import { ChatBlock, ChatHeader, ChatMessage, ChatRoom, MODULE_NAME } from './types';
 import { Base64String, SignedTransaction, TxMessage, VerifyCosmosTxResponse } from 'wasmx-env/assembly/types';
 import { base64ToString, i64ToUint8ArrayBE } from "wasmx-utils/assembly/utils";
@@ -18,7 +19,7 @@ export function validateBlock(block: ChatBlock): VerifyCosmosTxResponse {
         return new VerifyCosmosTxResponse(false, "no signatures");
     }
     // verify tx signature
-    const resp = wasmxw.verifyCosmosTx(block.data)
+    const resp = wasmxw.verifyWasmxTx(block.data)
     return resp;
 }
 
@@ -60,15 +61,21 @@ export function decodeTx(tx: Base64String): SignedTransaction {
     return wasmxw.decodeCosmosTxToJson(base64decode(tx).buffer);
 }
 
-export function parseTx(tx: Base64String): TxMessage | null {
+export function parseTx(tx: Base64String): wasmxt.MsgExecuteContract | null {
     const decoded = wasmxw.decodeCosmosTxToJson(base64decode(tx).buffer);
     if (decoded.body.messages.length == 0) return null;
-    const msg = decoded.body.messages[0]
-    if (msg.contract != wasmxw.getAddress()) {
-      revert(`${MODULE_NAME} cannot handle tx sent to ${msg.contract}`);
+    const msg =  decoded.body.messages[0]
+    if (msg.type_url != wasmxt.TypeUrl_MsgExecuteContract) {
+        return null
+    }
+    const msgexecbz = String.UTF8.decode(base64decode(msg.value).buffer)
+    const msgexec = JSON.parse<wasmxt.MsgExecuteContract>(msgexecbz)
+
+    if (msgexec.contract != wasmxw.getAddress()) {
+      revert(`${MODULE_NAME} cannot handle tx sent to ${msgexec.contract}`);
       return null;
     }
-    return msg;
+    return msgexec;
 }
 
 export function getChatMessageFromBlock(block: ChatBlock): ChatMessage | null {

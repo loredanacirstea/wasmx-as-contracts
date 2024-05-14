@@ -1,5 +1,5 @@
 import { JSON } from "json-as/assembly";
-import { Base64String, Bech32String, Coin } from 'wasmx-env/assembly/types';
+import { Base64String, Bech32String, Coin, PublicKey } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn"
 import { stringToBase64 } from "wasmx-utils/assembly/utils";
 
@@ -7,6 +7,9 @@ export const MODULE_NAME = "auth"
 
 export const ModuleAccountTypeName = "ModuleAccount"
 export const BaseAccountTypeName = "BaseAccount"
+
+export const TypeUrl_BaseAccount = "/mythos.cosmosmod.v1.BaseAccount"
+export const TypeUrl_ModuleAccount = "/mythos.cosmosmod.v1.ModuleAccount"
 
 // @ts-ignore
 @serializable
@@ -25,23 +28,12 @@ export class MsgInitGenesis {
 
 // @ts-ignore
 @serializable
-export class AnyPubKey {
-    anytype: string
-    key: Base64String
-    constructor(type: string, key: Base64String) {
-        this.anytype = type;
-        this.key = key
-    }
-}
-
-// @ts-ignore
-@serializable
 export class BaseAccount {
     address: Bech32String
-    pub_key: AnyPubKey
+    pub_key: PublicKey
     account_number: u64
     sequence: u64
-    constructor(address: Bech32String, pub_key: AnyPubKey, account_number: u64, sequence: u64) {
+    constructor(address: Bech32String, pub_key: PublicKey, account_number: u64, sequence: u64) {
         this.address = address
         this.pub_key = pub_key
         this.account_number = account_number
@@ -49,7 +41,7 @@ export class BaseAccount {
     }
 
     static New(addr: Bech32String): BaseAccount {
-        return new BaseAccount(addr, new AnyPubKey("", ""), 0, 0)
+        return new BaseAccount(addr, new PublicKey("", ""), 0, 0)
     }
 }
 
@@ -64,8 +56,13 @@ export class AnyAccount {
     }
 
     static New(BaseAccountTypeURL: string, addr: Bech32String): AnyAccount {
-        const data = new BaseAccount(addr, new AnyPubKey("", ""), 0, 0)
+        const data = new BaseAccount(addr, new PublicKey("", ""), 0, 0)
         const encoded = stringToBase64(JSON.stringify<BaseAccount>(data))
+        return new AnyAccount(BaseAccountTypeURL, encoded);
+    }
+
+    static fromBaseAccount(BaseAccountTypeURL: string, acc: BaseAccount): AnyAccount {
+        const encoded = stringToBase64(JSON.stringify<BaseAccount>(acc))
         return new AnyAccount(BaseAccountTypeURL, encoded);
     }
 }

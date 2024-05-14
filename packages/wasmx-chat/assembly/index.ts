@@ -1,6 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
+import * as wasmxt from "wasmx-env/assembly/wasmx_types";
 import { base64ToString } from "wasmx-utils/assembly/utils";
 import { Base64String, TxMessage, WasmxExecutionMessage } from "wasmx-env/assembly/types";
 import { CallDataInternal, getCallDataInternal, getCallDataWrap } from './calldata';
@@ -55,7 +56,7 @@ export function p2pmsg(): void {
   const ctx = parseTx(block.data);
   if (!ctx) return;
   // verify tx signature
-  const resp = wasmxw.verifyCosmosTx(block.data)
+  const resp = wasmxw.verifyWasmxTx(block.data)
   if (!resp.valid) {
     revert(`invalid transaction signature: ${resp.error}`);
   }
@@ -70,7 +71,7 @@ function handleTx(tx: Base64String): void {
   handleMessage(msg, tx, calld);
 }
 
-function handleMessage(ctx: TxMessage, tx: Base64String, calld: CallDataInternal): void {
+function handleMessage(ctx: wasmxt.MsgExecuteContract, tx: Base64String, calld: CallDataInternal): void {
   if (calld.SendMessage !== null) {
     actions.sendMessage(ctx, tx, calld.SendMessage!);
   } else if (calld.JoinRoom !== null) {

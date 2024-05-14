@@ -33,6 +33,8 @@ export const UnbondingS = "BOND_STATUS_UNBONDING"; // Unbonding
 // BONDED defines a validator that is bonded.
 export const BondedS = "BOND_STATUS_BONDED"; // Bonded
 
+export const TypeUrl_MsgCreateValidator = "/cosmos.staking.v1beta1.MsgCreateValidator"
+
 // @ts-ignore
 @serializable
 export class Description {
@@ -91,6 +93,9 @@ export class MsgCreateValidator {
         this.validator_address = validator_address
         this.pubkey = pubkey
         this.value = value
+    }
+    static typeUrl(): string {
+        return TypeUrl_MsgCreateValidator;
     }
 }
 
@@ -212,7 +217,7 @@ export class MsgInitGenesis {
     params: Params
     // last_total_power tracks the total amounts of bonded tokens recorded during
     // the previous end block.
-    last_total_power: i64
+    last_total_power: string
     // last_validator_powers is a special index that provides a historical list
     // of the last-block's bonded validators.
     last_validator_powers: LastValidatorPower[]
@@ -227,7 +232,7 @@ export class MsgInitGenesis {
     // exported defines a bool to identify whether the chain dealing with exported or initialized genesis.
     // exported: bool
     base_denom: string
-    constructor(params: Params, last_total_power: i64, last_validator_powers: LastValidatorPower[], validators: Validator[], delegations: Delegation[],  unbonding_delegations: UnbondingDelegation[], redelegations: Redelegation[], base_denom: string) {
+    constructor(params: Params, last_total_power: string, last_validator_powers: LastValidatorPower[], validators: Validator[], delegations: Delegation[],  unbonding_delegations: UnbondingDelegation[], redelegations: Redelegation[], base_denom: string) {
         this.params = params
         this.last_total_power = last_total_power
         this.last_validator_powers = last_validator_powers
@@ -253,7 +258,7 @@ export class InitGenesisResponse {
 @serializable
 export class Params {
 	// unbonding_time is the time duration of unbonding.
-	unbonding_time: i64
+	unbonding_time: string
 	// max_validators is the maximum number of validators.
 	max_validators: u32
 	// max_entries is the max entries for either unbonding delegation or redelegation (per pair/trio).
@@ -264,7 +269,7 @@ export class Params {
 	bond_denom: string
 	// min_commission_rate is the chain-wide minimum commission rate that a validator can charge their delegators
 	min_commission_rate: string
-    constructor(unbonding_time: i64, max_validators: u32, max_entries: u32, historical_entries: u32, bond_denom: string, min_commission_rate: string) {
+    constructor(unbonding_time: string, max_validators: u32, max_entries: u32, historical_entries: u32, bond_denom: string, min_commission_rate: string) {
         this.unbonding_time = unbonding_time
         this.max_validators = max_validators
         this.max_entries = max_entries

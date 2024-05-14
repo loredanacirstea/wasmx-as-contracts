@@ -250,6 +250,11 @@ export function addr_canonicalize(value: string): ArrayBuffer {
     return wasmx.addr_canonicalize(String.UTF8.encode(value));
 }
 
+export function addr_equivalent(addr1: Bech32String, addr2: Bech32String): boolean {
+    const resp = wasmx.addr_equivalent(String.UTF8.encode(addr1), String.UTF8.encode(addr2));
+    return resp == 1;
+}
+
 export function getCaller(): Bech32String {
     return addr_humanize(wasmx.getCaller())
 }
@@ -287,6 +292,12 @@ export function decodeCosmosTxToJson(data: ArrayBuffer): SignedTransaction {
 export function verifyCosmosTx(encodedTx: Base64String): VerifyCosmosTxResponse {
     const data = decodeBase64(encodedTx).buffer;
     const result = wasmx.verifyCosmosTx(data)
+    return JSON.parse<VerifyCosmosTxResponse>(String.UTF8.decode(result));
+}
+
+export function verifyWasmxTx(encodedTx: Base64String): VerifyCosmosTxResponse {
+    const data = decodeBase64(encodedTx).buffer;
+    const result = wasmx.verifyWasmxTx(data)
     return JSON.parse<VerifyCosmosTxResponse>(String.UTF8.decode(result));
 }
 
