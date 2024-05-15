@@ -8,11 +8,11 @@ export const FEE_COLLECTOR_ROLE = "fee_collector"
 // @ts-ignore
 @serializable
 export class Params {
-    community_tax: f64
-    base_proposer_reward: f64
-    bonus_proposer_reward: f64
+    community_tax: string // f64
+    base_proposer_reward: string // f64
+    bonus_proposer_reward: string // f64
     withdraw_addr_enabled: bool
-    constructor(community_tax: f64, base_proposer_reward: f64, bonus_proposer_reward: f64, withdraw_addr_enabled: bool) {
+    constructor(community_tax: string, base_proposer_reward: string, bonus_proposer_reward: string, withdraw_addr_enabled: bool) {
         this.community_tax = community_tax
         this.base_proposer_reward = base_proposer_reward
         this.bonus_proposer_reward = bonus_proposer_reward

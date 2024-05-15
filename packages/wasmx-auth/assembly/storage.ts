@@ -79,8 +79,9 @@ export function removeAccountByAddr(addr: Bech32String): void {
 }
 
 // addr -> account SET
-export function setAccountByAddr(address: Bech32String, value: AnyWrap): void {
-    wasmxw.sstore(ACC_BY_ADDR_KEY + address, JSON.stringify<AnyWrap>(value));
+export function setAccountByAddr(addr: Bech32String, value: AnyWrap): void {
+    const data = JSON.stringify<AnyWrap>(value)
+    wasmxw.sstore(ACC_BY_ADDR_KEY + addr, data);
 }
 
 // account count GET

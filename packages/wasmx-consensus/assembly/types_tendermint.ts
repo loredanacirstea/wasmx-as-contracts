@@ -370,9 +370,9 @@ export class ExecTxResult { // same as ResponseCheckTx
 // @ts-ignore
 @serializable
 export class ValidatorUpdate {
-    pub_key: PublicKey | null
+    pub_key: PublicKey
 	power: i64
-    constructor(pub_key: PublicKey | null, power: i64) {
+    constructor(pub_key: PublicKey, power: i64) {
         this.pub_key = pub_key;
         this.power = power;
     }

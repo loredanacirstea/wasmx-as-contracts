@@ -33,7 +33,7 @@ export const UnbondingS = "BOND_STATUS_UNBONDING"; // Unbonding
 // BONDED defines a validator that is bonded.
 export const BondedS = "BOND_STATUS_BONDED"; // Bonded
 
-export const TypeUrl_MsgCreateValidator = "/cosmos.staking.v1beta1.MsgCreateValidator"
+export const TypeUrl_MsgCreateValidator = "/mythos.cosmosmod.v1.MsgCreateValidator"
 
 // @ts-ignore
 @serializable
@@ -81,12 +81,13 @@ export class MsgCreateValidator {
     commission: CommissionRates
     min_self_delegation: BigInt // TODO Int
     // Deprecated: Use of Delegator Address in MsgCreateValidator is deprecated.
+    delegator_address: string = ""
     // The validator address bytes and delegator address bytes refer to the same account while creating validator (defer
     // only in bech32 notation).
-    validator_address: ValidatorAddressString
+    validator_address: Bech32String
     pubkey: PublicKey
     value: Coin
-    constructor(description: Description, commission: CommissionRates, min_self_delegation: BigInt, validator_address: ValidatorAddressString, pubkey: PublicKey, value: Coin) {
+    constructor(description: Description, commission: CommissionRates, min_self_delegation: BigInt, validator_address: Bech32String, pubkey: PublicKey, value: Coin) {
         this.description = description
         this.commission = commission
         this.min_self_delegation = min_self_delegation
@@ -395,9 +396,9 @@ export class MsgDelegate {
 // @ts-ignore
 @serializable
 export class ValidatorUpdate {
-    pub_key: PublicKey | null
+    pub_key: PublicKey
     power:  i64
-    constructor(pub_key: PublicKey | null, power:  i64) {
+    constructor(pub_key: PublicKey, power:  i64) {
         this.pub_key = pub_key;
         this.power = power;
     }

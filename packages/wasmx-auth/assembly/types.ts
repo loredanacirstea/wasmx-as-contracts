@@ -31,10 +31,10 @@ export class MsgInitGenesis {
 @serializable
 export class BaseAccount {
     address: Bech32String
-    pub_key: PublicKey | null
+    pub_key: PublicKey
     account_number: u64
     sequence: u64
-    constructor(address: Bech32String, pub_key: PublicKey | null, account_number: u64, sequence: u64) {
+    constructor(address: Bech32String, pub_key: PublicKey, account_number: u64, sequence: u64) {
         this.address = address
         this.pub_key = pub_key
         this.account_number = account_number

@@ -6,6 +6,7 @@ import * as utils from "wasmx-utils/assembly/utils";
 import * as authtypes from "wasmx-auth/assembly/types";
 import * as banktypes from "wasmx-bank/assembly/types";
 import * as stakingtypes from "wasmx-stake/assembly/types";
+import { AnyWrap } from "wasmx-env/assembly/wasmx_types";
 import { GenesisState, GenutilGenesis, InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
 import { Base64String, Bech32String, CallRequest, CallResponse, Coin, Event, EventAttribute, PublicKey, SignedTransaction } from "wasmx-env/assembly/types";
 import { AttributeKeyChainId, AttributeKeyRequest, EventTypeInitSubChain } from "./events";
@@ -194,14 +195,10 @@ export function includeGenTxs(data: SubChainData, genTxs: Base64String[]): InitS
         const signer = tx.auth_info.signer_infos[0]
 
         // we set account number 0, because it is updated when wasmx-auth initGenesis is ran
-        const signerPubKey = signer.public_key;
-        let accPubKey: PublicKey | null = null;
-        if (signerPubKey != null) {
-            accPubKey = new PublicKey(signerPubKey.type_url, signerPubKey.value)
-        }
+        const accPubKey = new PublicKey(signer.public_key.type_url, signer.public_key.value)
         const account = new authtypes.BaseAccount(msg.validator_address, accPubKey, 0, 0)
         let encoded = JSON.stringify<authtypes.BaseAccount>(account)
-        const accountAny = authtypes.NewBaseAccount(authtypes.TypeUrl_BaseAccount, encoded);
+        const accountAny = AnyWrap.New(authtypes.TypeUrl_BaseAccount, encoded)
         authGenesis.accounts.push(accountAny);
     }
 

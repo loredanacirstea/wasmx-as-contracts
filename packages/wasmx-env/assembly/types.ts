@@ -370,10 +370,10 @@ export class TxBody {
 // @ts-ignore
 @serializable
 export class SignerInfo {
-    public_key: PublicKey | null
+    public_key: PublicKey
     mode_info: ModeInfo
     sequence: u64
-    constructor(public_key: PublicKey | null, mode_info: ModeInfo, sequence: u64) {
+    constructor(public_key: PublicKey, mode_info: ModeInfo, sequence: u64) {
         this.public_key = public_key
         this.mode_info = mode_info
         this.sequence = sequence
