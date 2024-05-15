@@ -11,7 +11,8 @@ export function getValidatorsHash(validators: staking.Validator[]): string {
     let data = new Array<string>(validators.length);
     for (let i = 0; i < validators.length; i++) {
         // hex
-        const pub_key = hexToUint8Array32(validators[i].consensus_pubkey.key);
+        const key = validators[i].consensus_pubkey;
+        const pub_key = decodeBase64(key.getKey().key);
         const tokens = validators[i].tokens.toU8ArrayBe()
         const newdata = new Uint8Array(pub_key.length + tokens.length);
         newdata.set(pub_key, 0);

@@ -690,8 +690,8 @@ export function verifyMessage(nodeIndex: i32, signatureStr: Base64String, msg: s
         LoggerDebug("could not verify mesage: validator not found", ["address", addr, "node_index", nodeIndex.toString()])
         return false;
     }
-    const pubKey = validator.consensus_pubkey!;
-    return wasmxw.ed25519Verify(pubKey.key, signatureStr, msg);
+    const pubKey = validator.consensus_pubkey;
+    return wasmxw.ed25519Verify(pubKey.getKey().key, signatureStr, msg);
 }
 
 export function getLogEntryAggregate(index: i64): LogEntryAggregate {

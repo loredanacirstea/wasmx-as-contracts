@@ -4,6 +4,7 @@ import {ValidatorInfo, Params, Validator} from "./types";
 import { Bech32String, HexString, ValidatorAddressString } from "wasmx-env/assembly/types";
 import { decode as decodeBase64 } from "as-base64/assembly";
 import { uint8ArrayToHex } from "../../as-tally/assembly/tally";
+import { revert } from "./utils";
 
 const VALIDATOR_ADDRESSES = "validators_addresses"
 const VALIDATOR_KEY = "validator_"
@@ -39,8 +40,9 @@ export function getValidator(address: Bech32String): Validator | null {
 export function setValidator(value: Validator): void {
     const data = JSON.stringify<Validator>(value);
     wasmx.sstore(VALIDATOR_KEY + value.operator_address, data);
-    const consaddr = wasmx.addr_humanize(decodeBase64(value.consensus_pubkey.key).buffer)
-    const hexaddr = wasmx.ed25519PubToHex(value.consensus_pubkey.key)
+    const key = value.consensus_pubkey.getKey()
+    const consaddr = wasmx.addr_humanize(decodeBase64(key.key).buffer)
+    const hexaddr = wasmx.ed25519PubToHex(key.key)
     setValidatorAddrByConsAddr(value.operator_address, consaddr)
     setValidatorConsAddrByOperator(value.operator_address, consaddr)
     setValidatorOperatorByHexAddr(hexaddr, value.operator_address);

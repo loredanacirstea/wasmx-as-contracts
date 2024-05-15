@@ -30,6 +30,5 @@ export class CallData {
 export function getCallDataWrap(): CallData {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)
-    calldstr = calldstr.replaceAll(`"@type"`, `"anytype"`)
     return JSON.parse<CallData>(calldstr);
 }

@@ -1,5 +1,5 @@
 import { JSON } from "json-as/assembly";
-import { Base64String, Bech32String, HexString, Coin, PageRequest, PageResponse, ValidatorAddressString } from 'wasmx-env/assembly/types';
+import { Base64String, Bech32String, HexString, Coin, PageRequest, PageResponse, ValidatorAddressString, PublicKey } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn"
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint"
 
@@ -292,18 +292,6 @@ export class Commission {
     }
 }
 
-
-// @ts-ignore
-@serializable
-export class PublicKey {
-    anytype: string
-    key: Base64String
-    constructor(type: string, key: Base64String) {
-        this.anytype = type;
-        this.key = key
-    }
-}
-
 // @ts-ignore
 @serializable
 export class Validator {
@@ -407,9 +395,9 @@ export class MsgDelegate {
 // @ts-ignore
 @serializable
 export class ValidatorUpdate {
-    pub_key: PublicKey
+    pub_key: PublicKey | null
     power:  i64
-    constructor(pub_key: PublicKey, power:  i64) {
+    constructor(pub_key: PublicKey | null, power:  i64) {
         this.pub_key = pub_key;
         this.power = power;
     }

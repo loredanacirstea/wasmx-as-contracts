@@ -58,8 +58,6 @@ export function FinalizeBlock(req: RequestFinalizeBlock): ResponseFinalizeBlockW
     if (wrap.error.length == 0) {
         let data = String.UTF8.decode(decodeBase64(wrap.data).buffer)
         LoggerDebug("FinalizeBlock", ["response data", data]);
-        // replace @type with anytype for public keys
-        data = data.replaceAll(`"@type"`, `"anytype"`)
         response.data = JSON.parse<ResponseFinalizeBlock>(data);
     }
     return response;
@@ -76,8 +74,6 @@ export function BeginBlock(req: RequestFinalizeBlock): ResponseBeginBlockWrap {
     if (wrap.error.length == 0) {
         let data = String.UTF8.decode(decodeBase64(wrap.data).buffer)
         LoggerDebug("BeginBlock", ["response data", data]);
-        // replace @type with anytype for public keys
-        data = data.replaceAll(`"@type"`, `"anytype"`)
         response.data = JSON.parse<ResponseBeginBlock>(data);
     }
     return response;
@@ -93,8 +89,6 @@ export function EndBlock(metadata: string): ResponseFinalizeBlockWrap {
     if (wrap.error.length == 0) {
         let data = String.UTF8.decode(decodeBase64(wrap.data).buffer)
         LoggerDebug("EndBlock", ["response data", data]);
-        // replace @type with anytype for public keys
-        data = data.replaceAll(`"@type"`, `"anytype"`)
         response.data = JSON.parse<ResponseFinalizeBlock>(data);
     }
     return response;

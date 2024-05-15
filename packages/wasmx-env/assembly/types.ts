@@ -1,5 +1,7 @@
 import { JSON } from "json-as/assembly";
+import * as base64 from "as-base64/assembly";
 import { BigInt } from "./bn";
+import { AnyWrap } from "./wasmx_types";
 
 // @ts-ignore
 @serializable
@@ -249,23 +251,53 @@ export class StoragePairs {
 
 // @ts-ignore
 @serializable
-export class PublicKey {
-    anytype: string
+export class ed25519PubKey {
     key: Base64String
-    constructor(type: string, key: Base64String) {
-        this.anytype = type;
+    constructor(key: Base64String) {
         this.key = key
     }
+    static typeUrl(): string {
+        return "/cosmos.crypto.ed25519.PubKey"
+    }
+}
 
-    static toExternal(pk: PublicKey): string {
-        let data = JSON.stringify<PublicKey>(pk)
-        data = data.replaceAll(`"anytype"`, `"@type"`)
-        return data;
+// @ts-ignore
+@serializable
+export class secp256k1PubKey {
+    key: Base64String
+    constructor(key: Base64String) {
+        this.key = key
+    }
+    static typeUrl(): string {
+        return "/cosmos.crypto.secp256k1.PubKey"
+    }
+}
+
+// @ts-ignore
+@serializable
+export class defaultPubKey {
+    key: Base64String
+    constructor(key: Base64String) {
+        this.key = key
+    }
+}
+
+// @ts-ignore
+@serializable
+export class PublicKey { // extends AnyWrap // we cannot extend in as-json
+    type_url: string
+    value: Base64String
+    constructor(type_url: string, value: Base64String) {
+        this.type_url = type_url
+        this.value = value
     }
 
-    static fromExternal(value: string): PublicKey {
-        value = value.replaceAll(`"@type"`, `"anytype"`)
-        return JSON.parse<PublicKey>(value);
+    static New(typeUrl: string, value: string): AnyWrap {
+        return new AnyWrap(typeUrl, base64.encode(Uint8Array.wrap(String.UTF8.encode(value))));
+    }
+
+    getKey(): defaultPubKey {
+        return JSON.parse<defaultPubKey>(String.UTF8.decode(base64.decode(this.value).buffer))
     }
 }
 
@@ -338,10 +370,10 @@ export class TxBody {
 // @ts-ignore
 @serializable
 export class SignerInfo {
-    public_key: PublicKey
+    public_key: PublicKey | null
     mode_info: ModeInfo
     sequence: u64
-    constructor(public_key: PublicKey, mode_info: ModeInfo, sequence: u64) {
+    constructor(public_key: PublicKey | null, mode_info: ModeInfo, sequence: u64) {
         this.public_key = public_key
         this.mode_info = mode_info
         this.sequence = sequence

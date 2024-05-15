@@ -104,8 +104,8 @@ export function verifyMessageByAddr(addr: Bech32String, signatureStr: Base64Stri
         LoggerDebug("could not verify mesage: validator not found", ["address", addr])
         return false;
     }
-    const pubKey = validator.consensus_pubkey!;
-    return wasmxw.ed25519Verify(pubKey.key, signatureStr, msg);
+    const pubKey = validator.consensus_pubkey;
+    return wasmxw.ed25519Verify(pubKey.getKey().key, signatureStr, msg);
 }
 
 export function setFinalizedBlock(blockData: string, hash: string, txhashes: string[], indexedTopics: wblockscalld.IndexedTopic[]): void {

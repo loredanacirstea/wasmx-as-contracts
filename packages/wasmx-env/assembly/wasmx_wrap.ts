@@ -285,7 +285,6 @@ export function decodeCosmosTxToJson(data: ArrayBuffer): SignedTransaction {
     const result = wasmx.decodeCosmosTxToJson(data)
     // encoded JSON object
     let resultstr = String.UTF8.decode(result)
-    resultstr = resultstr.replaceAll(`"anytype"`, `"@type"`)
     return JSON.parse<SignedTransaction>(resultstr);
 }
 

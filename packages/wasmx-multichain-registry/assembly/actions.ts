@@ -80,7 +80,6 @@ export function registerSubChainInternal(data: InitSubChainDeterministicRequest,
 export function registerSubChainValidatorInternal(chainId: string, genTx: Base64String): void {
     // we verify the transaction when the subchain is started
     let genTxStr = String.UTF8.decode(base64.decode(genTx).buffer)
-    genTxStr = genTxStr.replaceAll(`"@type"`, `"anytype"`)
     const tx = JSON.parse<SignedTransaction>(genTxStr)
     const msg = extractCreateValidatorMsg(tx)
     if (msg == null) {
@@ -180,7 +179,6 @@ export function includeGenTxs(data: SubChainData, genTxs: Base64String[]): InitS
     for (let i = 0; i < genTxs.length; i++) {
         const genTx = genTxs[i]
         let genTxStr = utils.base64ToString(genTx)
-        genTxStr = genTxStr.replaceAll(`"@type"`, `"anytype"`)
         const tx = JSON.parse<SignedTransaction>(genTxStr)
         const msg = extractCreateValidatorMsg(tx)
         if (msg == null) {
@@ -196,10 +194,14 @@ export function includeGenTxs(data: SubChainData, genTxs: Base64String[]): InitS
         const signer = tx.auth_info.signer_infos[0]
 
         // we set account number 0, because it is updated when wasmx-auth initGenesis is ran
-        const account = new authtypes.BaseAccount(msg.validator_address, new PublicKey(signer.public_key.anytype, signer.public_key.key), 0, 0)
+        const signerPubKey = signer.public_key;
+        let accPubKey: PublicKey | null = null;
+        if (signerPubKey != null) {
+            accPubKey = new PublicKey(signerPubKey.type_url, signerPubKey.value)
+        }
+        const account = new authtypes.BaseAccount(msg.validator_address, accPubKey, 0, 0)
         let encoded = JSON.stringify<authtypes.BaseAccount>(account)
-        encoded = encoded.replaceAll(`"anytype"`, `"@type"`)
-        const accountAny = new authtypes.AnyAccount(authtypes.TypeUrl_BaseAccount, utils.stringToBase64(encoded));
+        const accountAny = authtypes.NewBaseAccount(authtypes.TypeUrl_BaseAccount, encoded);
         authGenesis.accounts.push(accountAny);
     }
 

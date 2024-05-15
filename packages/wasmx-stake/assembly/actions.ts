@@ -40,7 +40,6 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
         bondValidatorAndCallHook(validator);
     }
     let data = JSON.stringify<InitGenesisResponse>(new InitGenesisResponse(vupdates))
-    data = data.replaceAll(`"anytype"`, `"@type"`)
     return String.UTF8.encode(data)
 }
 
@@ -48,7 +47,7 @@ export function CreateValidator(req: MsgCreateValidator): void {
     const baseDenom = getBaseDenom()
     const validator = new Validator(
         req.validator_address,
-        req.pubkey, // TODO codec any?
+        req.pubkey,
         false,
         BondedS,
         req.value.amount,
@@ -129,7 +128,6 @@ export function GetAllValidators(): ArrayBuffer {
         }
     }
     let data = JSON.stringify<QueryValidatorsResponse>(new QueryValidatorsResponse(validators, new PageResponse(validators.length)))
-    data = data.replaceAll(`"anytype"`, `"@type"`)
     return String.UTF8.encode(data)
 }
 
@@ -140,7 +138,6 @@ export function GetValidator(req: QueryValidatorRequest): ArrayBuffer {
         return new ArrayBuffer(0)
     }
     let data = JSON.stringify<QueryValidatorResponse>(new QueryValidatorResponse(validator))
-    data = data.replaceAll(`"anytype"`, `"@type"`)
     return String.UTF8.encode(data)
 }
 
@@ -207,7 +204,6 @@ export function ValidatorByConsAddr(req: QueryValidatorRequest): ArrayBuffer {
         return new ArrayBuffer(0)
     }
     let data = JSON.stringify<QueryValidatorResponse>(new QueryValidatorResponse(validator))
-    data = data.replaceAll(`"anytype"`, `"@type"`)
     return String.UTF8.encode(data)
 }
 
@@ -223,7 +219,6 @@ export function ValidatorByHexAddr(req: QueryValidatorRequest): ArrayBuffer {
         return new ArrayBuffer(0)
     }
     let data = JSON.stringify<QueryValidatorResponse>(new QueryValidatorResponse(validator))
-    data = data.replaceAll(`"anytype"`, `"@type"`)
     return String.UTF8.encode(data)
 }
 

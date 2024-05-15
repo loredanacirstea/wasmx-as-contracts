@@ -1,9 +1,10 @@
 import { JSON } from "json-as/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
-import { BaseAccount, BaseAccountTypeName, ModuleAccount, ModuleAccountTypeName, Params, AnyAccount } from "./types";
+import { BaseAccount, BaseAccountTypeName, ModuleAccount, ModuleAccountTypeName, Params } from "./types";
 import { parseInt64, base64ToString, stringToBase64 } from "wasmx-utils/assembly/utils";
 import { Bech32String } from "wasmx-env/assembly/types";
 import { LoggerDebug } from "./utils";
+import { AnyWrap } from "wasmx-env/assembly/wasmx_types";
 
 export const SPLIT = "."
 export const PARAM_KEY = "params"
@@ -13,8 +14,8 @@ export const ACC_BY_ID_KEY = "account_addr."
 export const TYPEURL_BASE_KEY = "typeurl_base"
 export const TYPEURL_MODULE_KEY = "typeurl_module"
 
-export function setAccount(value: AnyAccount): void {
-    const data = cleanDataForInternal(base64ToString(value.value))
+export function setAccount(value: AnyWrap): void {
+    const data = base64ToString(value.value)
     if (value.type_url.includes(BaseAccountTypeName)) {
         const decoded = JSON.parse<BaseAccount>(data)
         let id = decoded.account_number
@@ -66,10 +67,10 @@ export function setAccountAddrById(id: i64, addr: Bech32String): void {
 }
 
 // addr -> account GET
-export function getAccountByAddr(addr: Bech32String): AnyAccount | null {
+export function getAccountByAddr(addr: Bech32String): AnyWrap | null {
     const value = wasmxw.sload(ACC_BY_ADDR_KEY + addr);
     if (value === "") return null;
-    return JSON.parse<AnyAccount>(value);
+    return JSON.parse<AnyWrap>(value);
 }
 
 // addr -> account DELETE
@@ -78,8 +79,8 @@ export function removeAccountByAddr(addr: Bech32String): void {
 }
 
 // addr -> account SET
-export function setAccountByAddr(address: Bech32String, value: AnyAccount): void {
-    wasmxw.sstore(ACC_BY_ADDR_KEY + address, JSON.stringify<AnyAccount>(value));
+export function setAccountByAddr(address: Bech32String, value: AnyWrap): void {
+    wasmxw.sstore(ACC_BY_ADDR_KEY + address, JSON.stringify<AnyWrap>(value));
 }
 
 // account count GET
@@ -105,29 +106,6 @@ export function getParamsInternal(): string {
 
 export function setParams(params: Params): void {
     return wasmxw.sstore(PARAM_KEY, JSON.stringify<Params>(params));
-}
-
-export function cleanDataForInternal(data: string): string {
-    data = data.replaceAll(`"@type"`, `"anytype"`)
-    data = data.replaceAll(`"pub_key":null`, `"pub_key":{"anytype":"","key":""}`)
-    return data
-}
-
-export function cleanDataForExternal(data: string): string {
-   data = data.replaceAll(`"anytype"`, `"@type"`)
-   data = data.replaceAll(`"pub_key":{"@type":"","key":""}`, `"pub_key":null`)
-   return data
-}
-
-export function accountToExternal(acc: AnyAccount): AnyAccount {
-    const data = cleanDataForExternal(base64ToString(acc.value))
-    acc.value = stringToBase64(data)
-    return acc
-}
-export function accountToInternal(acc: AnyAccount): AnyAccount {
-    const data = cleanDataForInternal(base64ToString(acc.value))
-    acc.value = stringToBase64(data)
-    return acc
 }
 
 export function getTypeUrlBase(): string {

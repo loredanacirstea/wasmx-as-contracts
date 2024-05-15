@@ -1,5 +1,5 @@
 import { JSON } from "json-as/assembly";
-import {HexString, Base64String, Bech32String, Event} from 'wasmx-env/assembly/types';
+import {HexString, Base64String, Bech32String, Event, PublicKey} from 'wasmx-env/assembly/types';
 
 // @ts-ignore
 @serializable
@@ -369,21 +369,10 @@ export class ExecTxResult { // same as ResponseCheckTx
 
 // @ts-ignore
 @serializable
-export class PublicKey {
-    anytype: string
-    key: Base64String
-    constructor(type: string, key: Base64String) {
-        this.anytype = type;
-        this.key = key
-    }
-}
-
-// @ts-ignore
-@serializable
 export class ValidatorUpdate {
-    pub_key: PublicKey
+    pub_key: PublicKey | null
 	power: i64
-    constructor(pub_key: PublicKey, power: i64) {
+    constructor(pub_key: PublicKey | null, power: i64) {
         this.pub_key = pub_key;
         this.power = power;
     }
@@ -581,7 +570,26 @@ export enum CodeType {
 
 // @ts-ignore
 @serializable
-export class ResponseCheckTx extends ExecTxResult {}
+export class ResponseCheckTx { // extends ExecTxResult {}// same as ResponseCheckTx
+    code: u32
+	data: Base64String
+	log: string
+	info: string
+	gas_wanted: i64
+	gas_used: i64
+	events: Event[]
+	codespace: string
+    constructor(code: u32, data: Base64String, log: string, info: string, gas_wanted: i64, gas_used: i64, events: Event[], codespace: string) {
+        this.code = code;
+        this.data = data;
+        this.log = log;
+        this.info = info;
+        this.gas_wanted = gas_wanted;
+        this.gas_used = gas_used;
+        this.events = events;
+        this.codespace = codespace;
+    }
+}
 
 // @ts-ignore
 @serializable

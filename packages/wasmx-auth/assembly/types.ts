@@ -2,6 +2,7 @@ import { JSON } from "json-as/assembly";
 import { Base64String, Bech32String, Coin, PublicKey } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn"
 import { stringToBase64 } from "wasmx-utils/assembly/utils";
+import { AnyWrap } from "wasmx-env/assembly/wasmx_types";
 
 export const MODULE_NAME = "auth"
 
@@ -15,10 +16,10 @@ export const TypeUrl_ModuleAccount = "/mythos.cosmosmod.v1.ModuleAccount"
 @serializable
 export class MsgInitGenesis {
     params: Params
-    accounts: AnyAccount[]
+    accounts: AnyWrap[]
     base_account_typeurl: string
     module_account_typeurl: string
-    constructor(params: Params, accounts: AnyAccount[], base_account_typeurl: string, module_account_typeurl: string) {
+    constructor(params: Params, accounts: AnyWrap[], base_account_typeurl: string, module_account_typeurl: string) {
         this.params = params
         this.accounts = accounts
         this.base_account_typeurl = base_account_typeurl
@@ -30,10 +31,10 @@ export class MsgInitGenesis {
 @serializable
 export class BaseAccount {
     address: Bech32String
-    pub_key: PublicKey
+    pub_key: PublicKey | null
     account_number: u64
     sequence: u64
-    constructor(address: Bech32String, pub_key: PublicKey, account_number: u64, sequence: u64) {
+    constructor(address: Bech32String, pub_key: PublicKey | null, account_number: u64, sequence: u64) {
         this.address = address
         this.pub_key = pub_key
         this.account_number = account_number
@@ -42,28 +43,6 @@ export class BaseAccount {
 
     static New(addr: Bech32String): BaseAccount {
         return new BaseAccount(addr, new PublicKey("", ""), 0, 0)
-    }
-}
-
-// @ts-ignore
-@serializable
-export class AnyAccount {
-    type_url: string
-    value: Base64String
-    constructor(type_url: string, value: Base64String) {
-        this.type_url = type_url
-        this.value = value
-    }
-
-    static New(BaseAccountTypeURL: string, addr: Bech32String): AnyAccount {
-        const data = new BaseAccount(addr, new PublicKey("", ""), 0, 0)
-        const encoded = stringToBase64(JSON.stringify<BaseAccount>(data))
-        return new AnyAccount(BaseAccountTypeURL, encoded);
-    }
-
-    static fromBaseAccount(BaseAccountTypeURL: string, acc: BaseAccount): AnyAccount {
-        const encoded = stringToBase64(JSON.stringify<BaseAccount>(acc))
-        return new AnyAccount(BaseAccountTypeURL, encoded);
     }
 }
 
@@ -126,8 +105,8 @@ export class MsgUpdateParamsResponse {}
 // @ts-ignore
 @serializable
 export class MsgSetAccount {
-    account: AnyAccount
-    constructor(account: AnyAccount) {
+    account: AnyWrap
+    constructor(account: AnyWrap) {
         this.account = account
     }
 }
@@ -194,9 +173,9 @@ export class QueryAccountsRequest {
 // @ts-ignore
 @serializable
 export class QueryAccountsResponse {
-    accounts: AnyAccount[]
+    accounts: AnyWrap[]
     pagination: PageResponse
-    constructor(accounts: AnyAccount[], pagination: PageResponse) {
+    constructor(accounts: AnyWrap[], pagination: PageResponse) {
         this.accounts = accounts
         this.pagination = pagination
     }
@@ -214,8 +193,8 @@ export class QueryAccountRequest {
 // @ts-ignore
 @serializable
 export class QueryAccountResponse {
-    account: AnyAccount
-    constructor(account: AnyAccount) {
+    account: AnyWrap
+    constructor(account: AnyWrap) {
         this.account = account
     }
 }
@@ -269,8 +248,8 @@ export class QueryModuleAccountsRequest {}
 // @ts-ignore
 @serializable
 export class QueryModuleAccountsResponse {
-    accounts: AnyAccount[]
-    constructor(accounts: AnyAccount[]) {
+    accounts: AnyWrap[]
+    constructor(accounts: AnyWrap[]) {
         this.accounts = accounts
     }
 }
@@ -287,8 +266,8 @@ export class QueryModuleAccountByNameRequest {
 // @ts-ignore
 @serializable
 export class QueryModuleAccountByNameResponse {
-    account: AnyAccount
-    constructor(account: AnyAccount) {
+    account: AnyWrap
+    constructor(account: AnyWrap) {
         this.account = account
     }
 }
@@ -358,4 +337,9 @@ export class QueryAccountInfoResponse {
     constructor(info: BaseAccount) {
         this.info = info
     }
+}
+
+export function NewBaseAccount(typeUrl: string, addr: Bech32String): AnyWrap {
+    const data = new BaseAccount(addr, new PublicKey("", ""), 0, 0)
+    return AnyWrap.New(typeUrl, JSON.stringify<BaseAccount>(data))
 }

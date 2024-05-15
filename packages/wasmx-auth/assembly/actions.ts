@@ -1,7 +1,6 @@
 import { JSON } from "json-as/assembly";
-import { AddressBytesToStringRequest, AddressStringToBytesRequest, AnyAccount, Bech32PrefixRequest, MsgInitGenesis, MsgNewBaseAccount, MsgNewModuleccount, MsgSetAccount, MsgUpdateParams, QueryAccountAddressByIDRequest, QueryAccountInfoRequest, QueryAccountRequest, QueryAccountResponse, QueryAccountsRequest, QueryHasAccountResponse, QueryModuleAccountByNameRequest, QueryModuleAccountsRequest, QueryParamsRequest, QueryParamsResponse } from "./types";
-import { accountToExternal, getAccountAddrById, getAccountByAddr, getParams, getTypeUrlBase, getTypeUrlModule, setAccount, setParams, setTypeUrlBase, setTypeUrlModule } from "./storage";
-import { LoggerDebug } from "./utils";
+import { AddressBytesToStringRequest, AddressStringToBytesRequest, BaseAccount, Bech32PrefixRequest, MsgInitGenesis, MsgNewBaseAccount, MsgNewModuleccount, MsgSetAccount, MsgUpdateParams, QueryAccountAddressByIDRequest, QueryAccountInfoRequest, QueryAccountRequest, QueryAccountResponse, QueryAccountsRequest, QueryHasAccountResponse, QueryModuleAccountByNameRequest, QueryModuleAccountsRequest, QueryParamsRequest, QueryParamsResponse, NewBaseAccount } from "./types";
+import { getAccountAddrById, getAccountByAddr, getParams, getTypeUrlBase, getTypeUrlModule, setAccount, setParams, setTypeUrlBase, setTypeUrlModule } from "./storage";
 
 export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
     for (let i = 0; i < req.accounts.length; i++) {
@@ -15,14 +14,14 @@ export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
 
 export function SetNewBaseAccount(req: MsgNewBaseAccount): ArrayBuffer {
     const typeurl = getTypeUrlBase();
-    const account = AnyAccount.New(typeurl, req.address)
+    const account = NewBaseAccount(typeurl, req.address)
     setAccount(account);
     return new ArrayBuffer(0)
 }
 
 export function SetNewModuleAccount(req: MsgNewModuleccount): ArrayBuffer {
     const typeurl = getTypeUrlModule();
-    const account = AnyAccount.New(typeurl, req.address)
+    const account = NewBaseAccount(typeurl, req.address)
     setAccount(account);
     return new ArrayBuffer(0)
 }
@@ -38,7 +37,6 @@ export function UpdateParams(req: MsgUpdateParams): ArrayBuffer {
 }
 
 export function GetAccounts(req: QueryAccountsRequest): ArrayBuffer {
-    // data = data.replaceAll(`"anytype"`, `"@type"`)
     return new ArrayBuffer(0)
 }
 
@@ -46,7 +44,7 @@ export function GetAccount(req: QueryAccountRequest): ArrayBuffer {
     const acc = getAccountByAddr(req.address);
     let response = `{"account":null}`
     if (acc != null) {
-        response = JSON.stringify<QueryAccountResponse>(new QueryAccountResponse(accountToExternal(acc)))
+        response = JSON.stringify<QueryAccountResponse>(new QueryAccountResponse(acc))
     }
     return String.UTF8.encode(response)
 }
@@ -63,7 +61,7 @@ export function GetAccountAddressByID(req: QueryAccountAddressByIDRequest): Arra
     if (addr != null) {
         const acc = getAccountByAddr(addr);
         if (acc != null) {
-            response = JSON.stringify<QueryAccountResponse>(new QueryAccountResponse(accountToExternal(acc)))
+            response = JSON.stringify<QueryAccountResponse>(new QueryAccountResponse(acc))
         }
     }
     return String.UTF8.encode(response)
