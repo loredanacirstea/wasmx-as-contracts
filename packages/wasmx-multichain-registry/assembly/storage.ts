@@ -58,7 +58,7 @@ export function setChainValidators(chainId: string, genTxs: Base64String[]): voi
 export function addChainValidatorAddress(chainId: string, addr: Bech32String): void {
     const value = getChainValidatorAddresses(chainId)
     if (value.includes(addr)) {
-        revert(`validator address already includec: ${addr}`)
+        revert(`validator address already included: ${addr}`)
     }
     value.push(addr)
     setChainValidatorAddresses(chainId, value)
