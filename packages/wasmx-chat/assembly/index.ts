@@ -56,7 +56,7 @@ export function p2pmsg(): void {
   const ctx = parseTx(block.data);
   if (!ctx) return;
   // verify tx signature
-  const resp = wasmxw.verifyWasmxTx(block.data)
+  const resp = wasmxw.verifyCosmosTx(block.data)
   if (!resp.valid) {
     revert(`invalid transaction signature: ${resp.error}`);
   }

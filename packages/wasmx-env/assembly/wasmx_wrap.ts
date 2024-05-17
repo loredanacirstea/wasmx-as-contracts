@@ -294,12 +294,6 @@ export function verifyCosmosTx(encodedTx: Base64String): VerifyCosmosTxResponse 
     return JSON.parse<VerifyCosmosTxResponse>(String.UTF8.decode(result));
 }
 
-export function verifyWasmxTx(encodedTx: Base64String): VerifyCosmosTxResponse {
-    const data = decodeBase64(encodedTx).buffer;
-    const result = wasmx.verifyWasmxTx(data)
-    return JSON.parse<VerifyCosmosTxResponse>(String.UTF8.decode(result));
-}
-
 export function getCurrentBlock(): BlockInfo {
     const data = wasmx.getCurrentBlock();
     return JSON.parse<BlockInfo>(String.UTF8.decode(data));

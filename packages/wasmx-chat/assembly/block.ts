@@ -19,7 +19,7 @@ export function validateBlock(block: ChatBlock): VerifyCosmosTxResponse {
         return new VerifyCosmosTxResponse(false, "no signatures");
     }
     // verify tx signature
-    const resp = wasmxw.verifyWasmxTx(block.data)
+    const resp = wasmxw.verifyCosmosTx(block.data)
     return resp;
 }
 

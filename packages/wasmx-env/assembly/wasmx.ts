@@ -47,7 +47,6 @@ export declare function executeCosmosMsg(value: ArrayBuffer): ArrayBuffer
 
 export declare function decodeCosmosTxToJson(value: ArrayBuffer): ArrayBuffer
 export declare function verifyCosmosTx(value: ArrayBuffer): ArrayBuffer
-export declare function verifyWasmxTx(value: ArrayBuffer): ArrayBuffer
 
 // TODO move to p2p and rename to wasmx-network
 export declare function grpcRequest(data: ArrayBuffer): ArrayBuffer
