@@ -16,9 +16,9 @@ export const TypeUrl_ModuleAccount = "/mythos.cosmosmod.v1.ModuleAccount"
 @serializable
 export class MsgInitGenesis {
     params: Params
-    accounts: AnyWrap[]
-    base_account_typeurl: string
-    module_account_typeurl: string
+    accounts: AnyWrap[] = []
+    base_account_typeurl: string = ""
+    module_account_typeurl: string = ""
     constructor(params: Params, accounts: AnyWrap[], base_account_typeurl: string, module_account_typeurl: string) {
         this.params = params
         this.accounts = accounts
@@ -31,10 +31,10 @@ export class MsgInitGenesis {
 @serializable
 export class BaseAccount {
     address: Bech32String
-    pub_key: PublicKey
-    account_number: u64
-    sequence: u64
-    constructor(address: Bech32String, pub_key: PublicKey, account_number: u64, sequence: u64) {
+    pub_key: PublicKey | null = null
+    account_number: u64 = 0
+    sequence: u64 = 0
+    constructor(address: Bech32String, pub_key: PublicKey | null, account_number: u64, sequence: u64) {
         this.address = address
         this.pub_key = pub_key
         this.account_number = account_number
@@ -42,7 +42,7 @@ export class BaseAccount {
     }
 
     static New(addr: Bech32String): BaseAccount {
-        return new BaseAccount(addr, new PublicKey("", ""), 0, 0)
+        return new BaseAccount(addr, null, 0, 0)
     }
 }
 
@@ -50,8 +50,8 @@ export class BaseAccount {
 @serializable
 export class ModuleAccount {
     base_account: BaseAccount
-    name: string
-    permissions: string[]
+    name: string = ""
+    permissions: string[] = []
     constructor(base_account: BaseAccount, name: string, permissions: string[]) {
         this.base_account = base_account
         this.name = name
@@ -62,8 +62,8 @@ export class ModuleAccount {
 // @ts-ignore
 @serializable
 export class ModuleCredential {
-    module_name: string
-    derivation_keys: Base64String[]
+    module_name: string = ""
+    derivation_keys: Base64String[] = []
     constructor(module_name: string, derivation_keys: Base64String[]) {
         this.module_name = module_name
         this.derivation_keys = derivation_keys
@@ -73,11 +73,11 @@ export class ModuleCredential {
 // @ts-ignore
 @serializable
 export class Params {
-    max_memo_characters: u64
-    tx_sig_limit: u64
-    tx_size_cost_per_byte: u64
-    sig_verify_cost_ed25519: u64
-    sig_verify_cost_secp256k1: u64
+    max_memo_characters: u64 = 0
+    tx_sig_limit: u64 = 0
+    tx_size_cost_per_byte: u64 = 0
+    sig_verify_cost_ed25519: u64 = 0
+    sig_verify_cost_secp256k1: u64 = 0
     constructor(max_memo_characters: u64, tx_sig_limit: u64, tx_size_cost_per_byte: u64, sig_verify_cost_ed25519: u64, sig_verify_cost_secp256k1: u64) {
         this.max_memo_characters = max_memo_characters
         this.tx_sig_limit = tx_sig_limit
@@ -90,7 +90,7 @@ export class Params {
 // @ts-ignore
 @serializable
 export class MsgUpdateParams {
-    authority: string
+    authority: string = ""
     params: Params
     constructor(authority: string, params: Params) {
         this.authority = authority
@@ -114,7 +114,7 @@ export class MsgSetAccount {
 // @ts-ignore
 @serializable
 export class MsgNewBaseAccount {
-    address: Bech32String
+    address: Bech32String = ""
     constructor(address: Bech32String) {
         this.address = address
     }
@@ -123,9 +123,9 @@ export class MsgNewBaseAccount {
 // @ts-ignore
 @serializable
 export class MsgNewModuleccount {
-    address: Bech32String
-    name: string
-    permissions: string[]
+    address: Bech32String = ""
+    name: string = ""
+    permissions: string[] = []
     constructor(address: Bech32String, name: string, permissions: string[]) {
         this.address = address
         this.name = name
@@ -136,11 +136,11 @@ export class MsgNewModuleccount {
 // @ts-ignore
 @serializable
 export class PageRequest {
-    key: u8
-    offset: u64
-    limit: u64
-    count_total: bool
-    reverse: bool
+    key: u8 = 0
+    offset: u64 = 0
+    limit: u64 = 0
+    count_total: bool = false
+    reverse: bool = false
     constructor( key: u8, offset: u64, limit: u64, count_total: bool, reverse: bool) {
         this.key = key
         this.offset = offset
@@ -154,7 +154,7 @@ export class PageRequest {
 @serializable
 export class PageResponse {
     // next_key: Base64String
-    total: u64
+    total: u64 = 0
     constructor(total: u64) {
         // this.next_key = next_key
         this.total = total
@@ -173,7 +173,7 @@ export class QueryAccountsRequest {
 // @ts-ignore
 @serializable
 export class QueryAccountsResponse {
-    accounts: AnyWrap[]
+    accounts: AnyWrap[] = []
     pagination: PageResponse
     constructor(accounts: AnyWrap[], pagination: PageResponse) {
         this.accounts = accounts
@@ -184,7 +184,7 @@ export class QueryAccountsResponse {
 // @ts-ignore
 @serializable
 export class QueryAccountRequest {
-    address: string
+    address: string = ""
     constructor(address: string) {
         this.address = address
     }
@@ -193,8 +193,8 @@ export class QueryAccountRequest {
 // @ts-ignore
 @serializable
 export class QueryAccountResponse {
-    account: AnyWrap
-    constructor(account: AnyWrap) {
+    account: AnyWrap | null = null
+    constructor(account: AnyWrap | null) {
         this.account = account
     }
 }
@@ -202,7 +202,7 @@ export class QueryAccountResponse {
 // @ts-ignore
 @serializable
 export class QueryHasAccountResponse {
-    found: bool
+    found: bool = false
     constructor(found: bool) {
         this.found = found
     }
@@ -211,8 +211,8 @@ export class QueryHasAccountResponse {
 // @ts-ignore
 @serializable
 export class QueryAccountAddressByIDRequest {
-    id: i64
-    account_id: u64
+    id: i64 = 0
+    account_id: u64 = 0
     constructor(id: i64, account_id: u64) {
         this.id = id
         this.account_id = account_id
@@ -222,7 +222,7 @@ export class QueryAccountAddressByIDRequest {
 // @ts-ignore
 @serializable
 export class QueryAccountAddressByIDResponse {
-    account_address: string
+    account_address: string = ""
     constructor(account_address: string) {
         this.account_address = account_address
     }
@@ -248,7 +248,7 @@ export class QueryModuleAccountsRequest {}
 // @ts-ignore
 @serializable
 export class QueryModuleAccountsResponse {
-    accounts: AnyWrap[]
+    accounts: AnyWrap[] = []
     constructor(accounts: AnyWrap[]) {
         this.accounts = accounts
     }
@@ -257,7 +257,7 @@ export class QueryModuleAccountsResponse {
 // @ts-ignore
 @serializable
 export class QueryModuleAccountByNameRequest {
-    name: string
+    name: string = ""
     constructor(name: string) {
         this.name = name
     }
@@ -266,8 +266,8 @@ export class QueryModuleAccountByNameRequest {
 // @ts-ignore
 @serializable
 export class QueryModuleAccountByNameResponse {
-    account: AnyWrap
-    constructor(account: AnyWrap) {
+    account: AnyWrap | null = null
+    constructor(account: AnyWrap | null) {
         this.account = account
     }
 }
@@ -279,7 +279,7 @@ export class Bech32PrefixRequest {}
 // @ts-ignore
 @serializable
 export class Bech32PrefixResponse {
-    bech32_prefix: string
+    bech32_prefix: string = ""
     constructor(bech32_prefix: string) {
         this.bech32_prefix = bech32_prefix
     }
@@ -288,7 +288,7 @@ export class Bech32PrefixResponse {
 // @ts-ignore
 @serializable
 export class AddressBytesToStringRequest {
-    address_bytes: Base64String
+    address_bytes: Base64String = ""
     constructor(address_bytes: Base64String) {
         this.address_bytes = address_bytes
     }
@@ -297,7 +297,7 @@ export class AddressBytesToStringRequest {
 // @ts-ignore
 @serializable
 export class AddressBytesToStringResponse {
-    address_string: string
+    address_string: string = ""
     constructor(address_string: string) {
         this.address_string = address_string
     }
@@ -306,7 +306,7 @@ export class AddressBytesToStringResponse {
 // @ts-ignore
 @serializable
 export class AddressStringToBytesRequest {
-    address_string: string
+    address_string: string = ""
     constructor(address_string: string) {
         this.address_string = address_string
     }
@@ -315,7 +315,7 @@ export class AddressStringToBytesRequest {
 // @ts-ignore
 @serializable
 export class AddressStringToBytesResponse {
-    address_bytes: Base64String
+    address_bytes: Base64String = ""
     constructor(address_bytes: Base64String) {
         this.address_bytes = address_bytes
     }
@@ -324,7 +324,7 @@ export class AddressStringToBytesResponse {
 // @ts-ignore
 @serializable
 export class QueryAccountInfoRequest {
-    address: string
+    address: string = ""
     constructor(address: string) {
         this.address = address
     }
@@ -340,6 +340,6 @@ export class QueryAccountInfoResponse {
 }
 
 export function NewBaseAccount(typeUrl: string, addr: Bech32String): AnyWrap {
-    const data = new BaseAccount(addr, new PublicKey("", ""), 0, 0)
+    const data = new BaseAccount(addr, null, 0, 0)
     return AnyWrap.New(typeUrl, JSON.stringify<BaseAccount>(data))
 }

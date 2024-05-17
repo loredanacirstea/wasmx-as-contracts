@@ -195,7 +195,11 @@ export function includeGenTxs(data: SubChainData, genTxs: Base64String[]): InitS
         const signer = tx.auth_info.signer_infos[0]
 
         // we set account number 0, because it is updated when wasmx-auth initGenesis is ran
-        const accPubKey = new PublicKey(signer.public_key.type_url, signer.public_key.value)
+        const pubkey = signer.public_key;
+        let accPubKey: PublicKey | null = null;
+        if (pubkey != null) {
+            accPubKey = new PublicKey(pubkey.type_url, pubkey.value);
+        }
         const account = new authtypes.BaseAccount(msg.validator_address, accPubKey, 0, 0)
         let encoded = JSON.stringify<authtypes.BaseAccount>(account)
         const accountAny = AnyWrap.New(authtypes.TypeUrl_BaseAccount, encoded)

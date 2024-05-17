@@ -285,8 +285,8 @@ export class defaultPubKey {
 // @ts-ignore
 @serializable
 export class PublicKey { // extends AnyWrap // we cannot extend in as-json
-    type_url: string
-    value: Base64String
+    type_url: string = ""
+    value: Base64String = ""
     constructor(type_url: string, value: Base64String) {
         this.type_url = type_url
         this.value = value
@@ -370,10 +370,10 @@ export class TxBody {
 // @ts-ignore
 @serializable
 export class SignerInfo {
-    public_key: PublicKey
+    public_key: PublicKey  | null = null
     mode_info: ModeInfo
     sequence: u64
-    constructor(public_key: PublicKey, mode_info: ModeInfo, sequence: u64) {
+    constructor(public_key: PublicKey | null, mode_info: ModeInfo, sequence: u64) {
         this.public_key = public_key
         this.mode_info = mode_info
         this.sequence = sequence

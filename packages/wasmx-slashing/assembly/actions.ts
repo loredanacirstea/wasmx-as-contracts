@@ -50,7 +50,12 @@ export function AfterValidatorBonded(req: MsgRunHook): void {
     const data = String.UTF8.decode(decodeBase64(req.data).buffer)
     LoggerDebug("AfterValidatorBonded", ["data", data])
     const validator = JSON.parse<stakingtypes.Validator>(data)
-    const vaddr = wasmxw.addr_humanize(decodeBase64(validator.consensus_pubkey.getKey().key).buffer)
+    const consKey = validator.consensus_pubkey;
+    if (consKey == null) {
+        revert(`bonded validator missing consensus_pubkey: ${validator.operator_address}`)
+        return
+    }
+    const vaddr = wasmxw.addr_humanize(decodeBase64(consKey.getKey().key).buffer)
     LoggerDebug("AfterValidatorBonded", ["validator_address", vaddr])
     let signingInfo = getValidatorSigningInfo(vaddr);
     const block = wasmxw.getCurrentBlock();
@@ -84,7 +89,12 @@ export function BeginBlock(req: MsgRunHook): void {
         // we get the operator bech32 address
         const vaddr = wasmxw.addr_humanize(decodeBase64(vote.validator.address).buffer)
         const validator = getValidatorInfo(vaddr)
-        const consaddr = wasmxw.addr_humanize(decodeBase64(validator.consensus_pubkey.getKey().key).buffer)
+        const consKey = validator.consensus_pubkey
+        if (consKey == null) {
+            revert(`BeginBlock: validator missing consensus_pubkey: ${validator.operator_address}`)
+            return
+        }
+        const consaddr = wasmxw.addr_humanize(decodeBase64(consKey.getKey().key).buffer)
 
         const info = getValidatorSigningInfo(consaddr)
         if (!info) {

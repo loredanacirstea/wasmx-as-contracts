@@ -7,8 +7,8 @@ export const TypeUrl_MsgExecuteContract = "/mythos.wasmx.v1.MsgExecuteContract"
 // @ts-ignore
 @serializable
 export class AnyWrap {
-    type_url: string
-    value: Base64String
+    type_url: string = ""
+    value: Base64String = ""
     constructor(type_url: string, value: Base64String) {
         this.type_url = type_url
         this.value = value

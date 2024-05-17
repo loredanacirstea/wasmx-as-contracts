@@ -1088,6 +1088,7 @@ export function setMaxTxBytes(value: i64): void {
 }
 
 export function updateValidators(updates: typestnd.ValidatorUpdate[]): void {
+    if (updates.length == 0) return;
     const calldata = `{"UpdateValidators":{"updates":${JSON.stringify<typestnd.ValidatorUpdate[]>(updates)}}}`
     const resp = callStaking(calldata, true);
     if (resp.success > 0) {

@@ -691,6 +691,10 @@ export function verifyMessage(nodeIndex: i32, signatureStr: Base64String, msg: s
         return false;
     }
     const pubKey = validator.consensus_pubkey;
+    if (pubKey == null) {
+        LoggerDebug("could not verify mesage: empty consensus_pubkey", ["address", addr, "node_index", nodeIndex.toString()])
+        return false;
+    }
     return wasmxw.ed25519Verify(pubKey.getKey().key, signatureStr, msg);
 }
 
@@ -983,6 +987,7 @@ export function setConsensusParams(value: typestnd.ConsensusParams): void {
 
 
 function updateValidators(updates: typestnd.ValidatorUpdate[]): void {
+    if (updates.length == 0) return;
     const calldata = `{"UpdateValidators":{"updates":${JSON.stringify<typestnd.ValidatorUpdate[]>(updates)}}}`
     const resp = callStaking(calldata, true);
     if (resp.success > 0) {

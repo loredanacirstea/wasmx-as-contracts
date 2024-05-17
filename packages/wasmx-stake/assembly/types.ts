@@ -33,7 +33,7 @@ export const UnbondingS = "BOND_STATUS_UNBONDING"; // Unbonding
 // BONDED defines a validator that is bonded.
 export const BondedS = "BOND_STATUS_BONDED"; // Bonded
 
-export const TypeUrl_MsgCreateValidator = "/mythos.cosmosmod.v1.MsgCreateValidator"
+export const TypeUrl_MsgCreateValidator = "/cosmos.staking.v1beta1.MsgCreateValidator"
 
 // @ts-ignore
 @serializable
@@ -85,9 +85,9 @@ export class MsgCreateValidator {
     // The validator address bytes and delegator address bytes refer to the same account while creating validator (defer
     // only in bech32 notation).
     validator_address: Bech32String
-    pubkey: PublicKey
+    pubkey: PublicKey | null
     value: Coin
-    constructor(description: Description, commission: CommissionRates, min_self_delegation: BigInt, validator_address: Bech32String, pubkey: PublicKey, value: Coin) {
+    constructor(description: Description, commission: CommissionRates, min_self_delegation: BigInt, validator_address: Bech32String, pubkey: PublicKey | null, value: Coin) {
         this.description = description
         this.commission = commission
         this.min_self_delegation = min_self_delegation
@@ -299,7 +299,7 @@ export class Validator {
 	// operator_address defines the address of the validator's operator; bech encoded in JSON.
 	operator_address: Bech32String
 	// consensus_pubkey is the consensus public key of the validator, as a Protobuf Any.
-	consensus_pubkey: PublicKey
+	consensus_pubkey: PublicKey | null
 	// jailed defined whether the validator has been jailed from bonded status or not.
 	jailed: bool
 	// status is the validator status (bonded/unbonding/unbonded).
@@ -324,7 +324,7 @@ export class Validator {
 	unbonding_on_hold_ref_count: i64
 	// list of unbonding ids, each uniquely identifing an unbonding of this validator
 	unbonding_ids: u64[]
-    constructor(operator_address: string, consensus_pubkey: PublicKey, jailed: bool, status: BondStatusString, tokens: BigInt, delegator_shares: string, description: Description, unbonding_height: i64, unbonding_time: Date, commission: Commission, min_self_delegation: BigInt, unbonding_on_hold_ref_count: i64, unbonding_ids: u64[]) {
+    constructor(operator_address: string, consensus_pubkey: PublicKey | null, jailed: bool, status: BondStatusString, tokens: BigInt, delegator_shares: string, description: Description, unbonding_height: i64, unbonding_time: Date, commission: Commission, min_self_delegation: BigInt, unbonding_on_hold_ref_count: i64, unbonding_ids: u64[]) {
         this.operator_address = operator_address
         this.consensus_pubkey = consensus_pubkey
         this.jailed = jailed
@@ -396,9 +396,9 @@ export class MsgDelegate {
 // @ts-ignore
 @serializable
 export class ValidatorUpdate {
-    pub_key: PublicKey
+    pub_key: PublicKey | null
     power:  i64
-    constructor(pub_key: PublicKey, power:  i64) {
+    constructor(pub_key: PublicKey | null, power:  i64) {
         this.pub_key = pub_key;
         this.power = power;
     }

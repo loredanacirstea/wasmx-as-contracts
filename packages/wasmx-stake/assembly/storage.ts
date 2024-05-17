@@ -40,7 +40,12 @@ export function getValidator(address: Bech32String): Validator | null {
 export function setValidator(value: Validator): void {
     const data = JSON.stringify<Validator>(value);
     wasmx.sstore(VALIDATOR_KEY + value.operator_address, data);
-    const key = value.consensus_pubkey.getKey()
+    const consKey = value.consensus_pubkey;
+    if (consKey == null) {
+        revert(`cannot set validator with empty consensus_pubkey: ${value.operator_address}`)
+        return;
+    }
+    const key = consKey.getKey();
     const consaddr = wasmx.addr_humanize(decodeBase64(key.key).buffer)
     const hexaddr = wasmx.ed25519PubToHex(key.key)
     setValidatorAddrByConsAddr(value.operator_address, consaddr)

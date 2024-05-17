@@ -563,7 +563,12 @@ export function getCommitSigsFromPrecommitArray(): typestnd.CommitSig[] {
         // TODO vote.validatorAddress make it hex; now is bech32
         // we need the consensus key
         const validator = getValidator(comm.vote.validatorAddress);
-        const addrhex = wasmxw.ed25519PubToHex(validator.consensus_pubkey.getKey().key)
+        const consKey = validator.consensus_pubkey
+        if (consKey == null) {
+            revert(`getCommitSigsFromPrecommitArray: validator missing consensus_pubkey: ${validator.operator_address}`)
+            return sigs;
+        }
+        const addrhex = wasmxw.ed25519PubToHex(consKey.getKey().key)
         sigs[i] = new typestnd.CommitSig(comm.block_id_flag, addrhex, comm.vote.timestamp, comm.signature);
     }
     return sigs;
