@@ -54,6 +54,15 @@ export class QueryGetSubChainsRequest {}
 
 // @ts-ignore
 @serializable
+export class QueryGetSubChainsByIdsRequest {
+    ids: string[]
+    constructor(ids: string[]) {
+        this.ids = ids
+    }
+}
+
+// @ts-ignore
+@serializable
 export class QueryGetSubChainIdsRequest {}
 
 // @ts-ignore
@@ -106,8 +115,6 @@ export class InitSubChainRequest {
         this.chainId = chainId
     }
 }
-
-export const MODULE_NAME_COSMOSMOD = "cosmosmod"
 
 // @ts-ignore
 @serializable

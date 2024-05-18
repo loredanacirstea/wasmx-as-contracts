@@ -21,6 +21,7 @@ import { LOG_START } from "./config";
 import { callStorage } from "wasmx-tendermint-p2p/assembly/action_utils";
 import { callContract } from "wasmx-tendermint/assembly/actions";
 import { InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
+import { QuerySubChainIdsResponse } from "wasmx-multichain-registry-local/assembly/types";
 
 export function wrapGuard(value: boolean): ArrayBuffer {
     if (value) return String.UTF8.encode("1");
@@ -127,12 +128,22 @@ export function deployNextLevel(
 }
 
 export function StartNode(): void {
-    // call chain registry & get all subchains & start each node
-    const calldatastr = `{"GetSubChains":{}}`;
-    const resp = callContract(roles.ROLE_MULTICHAIN_REGISTRY, calldatastr, true);
+    // get chain ids from our local registry
+    const resp = callContract(roles.ROLE_MULTICHAIN_REGISTRY_LOCAL, `{"GetSubChainIds":{}}`, true)
     if (resp.success > 0) {
         // we do not fail, we want the chain to continue
-        LoggerError(`call failed`, ["contract", roles.ROLE_MULTICHAIN_REGISTRY, "error", resp.data])
+        LoggerError(`call failed: could not start subchains`, ["error", resp.data, "contract", roles.ROLE_MULTICHAIN_REGISTRY_LOCAL])
+        return;
+    }
+    const idresp = JSON.parse<QuerySubChainIdsResponse>(resp.data);
+    if (idresp.ids.length == 0) return;
+
+    // call chain registry & get all subchains & start each node
+    const calldatastr = `{"GetSubChainsByIds":${resp.data}}`;
+    const resp2 = callContract(roles.ROLE_MULTICHAIN_REGISTRY, calldatastr, true);
+    if (resp2.success > 0) {
+        // we do not fail, we want the chain to continue
+        LoggerError(`call failed: could not start subchains`, ["contract", roles.ROLE_MULTICHAIN_REGISTRY, "error", resp2.data])
         return
     }
     const chains = JSON.parse<InitSubChainDeterministicRequest[]>(resp.data);

@@ -2,6 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as base64 from "as-base64/assembly";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as roles from "wasmx-env/assembly/roles";
+import * as modnames from "wasmx-env/assembly/modules";
 import * as utils from "wasmx-utils/assembly/utils";
 import * as authtypes from "wasmx-auth/assembly/types";
 import * as banktypes from "wasmx-bank/assembly/types";
@@ -11,7 +12,7 @@ import { GenesisState, GenutilGenesis, InitSubChainDeterministicRequest } from "
 import { Base64String, Bech32String, CallRequest, CallResponse, Coin, Event, EventAttribute, PublicKey, SignedTransaction } from "wasmx-env/assembly/types";
 import { AttributeKeyChainId, AttributeKeyRequest, EventTypeInitSubChain } from "./events";
 import { addChainId, addChainValidator, getChainData, getChainIds, getChainValidatorAddresses, getChainValidators, getParams, setChainData } from "./storage";
-import { CosmosmodGenesisState, InitSubChainRequest, MODULE_NAME, MODULE_NAME_COSMOSMOD, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest, SubChainData } from "./types";
+import { CosmosmodGenesisState, InitSubChainRequest, MODULE_NAME, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest, SubChainData } from "./types";
 import { revert } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 
@@ -47,6 +48,18 @@ export function GetSubChains(req: QueryGetSubChainsRequest): ArrayBuffer {
     const data: InitSubChainDeterministicRequest[] = [];
     for (let i = 0; i < ids.length; i++) {
         const chain = getChainData(ids[i])
+        if (chain != null && chain.initialized) {
+            data.push(chain.data);
+        }
+    }
+    const encoded = JSON.stringify<InitSubChainDeterministicRequest[]>(data)
+    return String.UTF8.encode(encoded)
+}
+
+export function GetSubChainsByIds(req: QueryGetSubChainsByIdsRequest): ArrayBuffer {
+    const data: InitSubChainDeterministicRequest[] = [];
+    for (let i = 0; i < req.ids.length; i++) {
+        const chain = getChainData(req.ids[i])
         if (chain != null && chain.initialized) {
             data.push(chain.data);
         }
@@ -167,10 +180,10 @@ export function includeGenTxs(data: SubChainData, genTxs: Base64String[]): InitS
     genesisState.set("genutil", genutilData)
 
     // update bank balances & create auth accounts
-    if (!genesisState.has(MODULE_NAME_COSMOSMOD)) {
-        revert(`genesis state missing field: ${MODULE_NAME_COSMOSMOD}`)
+    if (!genesisState.has(modnames.MODULE_NAME_COSMOSMOD)) {
+        revert(`genesis state missing field: ${modnames.MODULE_NAME_COSMOSMOD}`)
     }
-    const cosmosmodGenesisStr = utils.base64ToString(genesisState.get(MODULE_NAME_COSMOSMOD))
+    const cosmosmodGenesisStr = utils.base64ToString(genesisState.get(modnames.MODULE_NAME_COSMOSMOD))
     const cosmosmodGenesis = JSON.parse<CosmosmodGenesisState>(cosmosmodGenesisStr)
     const bankGenesis = cosmosmodGenesis.bank
     const authGenesis = cosmosmodGenesis.auth
@@ -210,7 +223,7 @@ export function includeGenTxs(data: SubChainData, genTxs: Base64String[]): InitS
     cosmosmodGenesis.auth = authGenesis
     const newcosmosmodGenesisStr = utils.stringToBase64(JSON.stringify<CosmosmodGenesisState>(cosmosmodGenesis))
 
-    genesisState.set(MODULE_NAME_COSMOSMOD, newcosmosmodGenesisStr)
+    genesisState.set(modnames.MODULE_NAME_COSMOSMOD, newcosmosmodGenesisStr)
     const newGenesisState = JSON.stringify<GenesisState>(genesisState)
     data.data.init_chain_request.app_state_bytes = utils.stringToBase64(newGenesisState);
     return data.data;

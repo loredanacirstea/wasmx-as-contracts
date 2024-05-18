@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import { InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { InitSubChainRequest, MsgInitialize, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest } from "./types";
+import { InitSubChainRequest, MsgInitialize, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest } from "./types";
 
 // @ts-ignore
 @serializable
@@ -13,6 +13,7 @@ export class CallData {
 
     // query
     GetSubChains: QueryGetSubChainsRequest | null = null;
+    GetSubChainsByIds: QueryGetSubChainsByIdsRequest | null = null;
     GetSubChainIds: QueryGetSubChainIdsRequest | null = null;
     GetSubChainById: QueryGetSubChainRequest | null = null;
 }

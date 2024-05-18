@@ -9,6 +9,8 @@ import * as consutil from "wasmx-consensus/assembly/utils";
 import * as staking from "wasmx-stake/assembly/types";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import * as roles from "wasmx-env/assembly/roles";
+import * as modnames from "wasmx-env/assembly/modules";
 import * as mctypes from "wasmx-consensus/assembly/types_multichain";
 import * as mcwrap from 'wasmx-consensus/assembly/multichain_wrap';
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
@@ -24,9 +26,9 @@ import { CurrentState, GetProposerResponse, SignedMsgType, ValidatorCommitVote, 
 import { Base64String, Bech32String, CallRequest, CallResponse } from "wasmx-env/assembly/types";
 import { LOG_START } from "./config";
 import { NodeInfo } from "wasmx-raft/assembly/types_raft";
-import { base64ToHex, parseUint8ArrayToU32BigEndian, uint8ArrayToHex } from "wasmx-utils/assembly/utils";
+import { base64ToHex, base64ToString, parseUint8ArrayToU32BigEndian, uint8ArrayToHex } from "wasmx-utils/assembly/utils";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils";
-import { BuildProposal } from "wasmx-tendermint/assembly/types";
+import { CosmosmodGenesisState } from "wasmx-multichain-registry/assembly/types";
 
 export function wrapGuard(value: boolean): ArrayBuffer {
     if (value) return String.UTF8.encode("1");
@@ -585,10 +587,42 @@ export function getValidator(addr: Bech32String): staking.Validator {
     return result.validator;
 }
 
-export function initSubChain(encodedData: Base64String, state: CurrentState): typestnd.ResponseInitChain {
+export function initSubChain(encodedData: Base64String, state: CurrentState): typestnd.ResponseInitChain | null {
     const data = String.UTF8.decode(base64.decode(encodedData).buffer)
     const req = JSON.parse<mctypes.InitSubChainDeterministicRequest>(data);
-    LoggerInfo("new subchain", ["subchain_id", req.init_chain_request.chain_id])
+    const chainId = req.init_chain_request.chain_id
+    LoggerInfo("new subchain created", ["subchain_id", chainId])
+
+    // we initialize only if we are a validator here
+    const appstate = base64ToString(req.init_chain_request.app_state_bytes)
+    const genesisState: mctypes.GenesisState = JSON.parse<mctypes.GenesisState>(appstate)
+    if (!genesisState.has(modnames.MODULE_NAME_COSMOSMOD)) {
+        revert(`genesis state missing field: ${modnames.MODULE_NAME_COSMOSMOD}`)
+    }
+    const cosmosmodGenesisStr = base64ToString(genesisState.get(modnames.MODULE_NAME_COSMOSMOD))
+    const cosmosmodGenesis = JSON.parse<CosmosmodGenesisState>(cosmosmodGenesisStr)
+    const vals = cosmosmodGenesis.staking.validators
+    let weAreValidator = false;
+    for (let i = 0; i < vals.length; i++) {
+        const consKey = vals[i].consensus_pubkey;
+        if (consKey == null) continue;
+        if (consKey.getKey().key == state.validator_pubkey) {
+            weAreValidator = true;
+            break;
+        }
+    }
+
+    if (!weAreValidator) return null;
+
+    // add the chainId to our internal node registry
+    const calldatastr = `{"AddSubChainId":{"id":"${chainId}"}}`
+    const resp = callContract(roles.ROLE_MULTICHAIN_REGISTRY_LOCAL, calldatastr, false)
+    if (resp.success > 0) {
+        // we do not fail, we want the chain to continue
+        LoggerError(`call to ${roles.ROLE_MULTICHAIN_REGISTRY_LOCAL} failed`, ["error", resp.data, "subchain_id", chainId.toString()])
+    }
+
+    // initialize the chain
     const msg = new mctypes.InitSubChainMsg(
         req.init_chain_request,
         req.chain_config,
