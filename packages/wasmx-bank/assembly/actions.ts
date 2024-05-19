@@ -7,19 +7,19 @@ import { CallRequest, CallResponse, CreateAccountRequest, Coin } from 'wasmx-env
 import * as erc20 from "wasmx-erc20/assembly/types";
 import * as authtypes from "wasmx-auth/assembly/types";
 import {
-    MsgInitGenesis, MsgSend, MsgMultiSend, MsgSetSendEnabled, MsgUpdateParams, MsgRegisterDenom, Metadata, Balance, CoinMap,
+    GenesisState, MsgSend, MsgMultiSend, MsgSetSendEnabled, MsgUpdateParams, MsgRegisterDenom, Metadata, Balance, CoinMap,
     PageResponse, QueryAllBalancesRequest, QueryAllBalancesResponse, QueryBalanceRequest, QueryBalanceResponse, QueryDenomMetadataByQueryStringRequest, QueryDenomMetadataRequest, QueryDenomOwnersRequest, QueryDenomsMetadataRequest, QueryParamsRequest, QuerySendEnabledRequest, QuerySpendableBalanceByDenomRequest, QuerySpendableBalancesRequest, QuerySupplyOfRequest, QueryTotalSupplyRequest, QueryTotalSupplyResponse,
     QueryAddressByDenom,
     QueryAddressByDenomResponse,
     MODULE_NAME,
     MsgMintCoins,
-    QuerySupplyOfResponse
+    QuerySupplyOfResponse,
 } from './types';
 import { LoggerDebug, LoggerInfo, revert } from './utils';
 import { getParamsInternal, setParams, getParams, getDenomInfoByAnyDenom, getAuthorities, getBaseDenoms, setBaseDenoms, registerDenomContract, getAddressByDenom, getDenomByAddress } from './storage';
 import { BigInt } from "wasmx-env/assembly/bn";
 
-export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
+export function InitGenesis(req: GenesisState): ArrayBuffer {
     if (getParamsInternal() != "") {
         revert("already called initGenesis")
     }
@@ -180,7 +180,7 @@ export function SupplyOf(req: QuerySupplyOfRequest): ArrayBuffer {
     return String.UTF8.encode(JSON.stringify<QuerySupplyOfResponse>(response))
 }
 
-export function Params(req: QueryParamsRequest): ArrayBuffer {
+export function GetParams(req: QueryParamsRequest): ArrayBuffer {
     return new ArrayBuffer(0)
 }
 

@@ -254,7 +254,7 @@ export class DelegationDelegatorReward {
 
 // @ts-ignore
 @serializable
-export class MsgInitGenesis {
+export class GenesisState {
     params: Params
     fee_pool: FeePool
     delegator_withdraw_infos: DelegatorWithdrawInfo[]

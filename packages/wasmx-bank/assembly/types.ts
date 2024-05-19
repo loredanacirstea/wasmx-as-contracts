@@ -191,7 +191,7 @@ export class Metadata {
 
 // @ts-ignore
 @serializable
-export class MsgInitGenesis {
+export class GenesisState {
     // params defines all the parameters of related to deposit.
     params: Params
     balances: Balance[]

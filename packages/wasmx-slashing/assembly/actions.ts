@@ -6,13 +6,13 @@ import * as blocktypes from "wasmx-blocks/assembly/types";
 import * as constypes from "wasmx-consensus/assembly/types_tendermint";
 import * as stakingtypes from "wasmx-stake/assembly/types";
 import { decode as decodeBase64 } from "as-base64/assembly";
-import { MODULE_NAME, MsgInitGenesis, QuerySigningInfoRequest, QuerySigningInfoResponse, ValidatorSigningInfo, MsgRunHook, QuerySigningInfosRequest, QuerySigningInfosResponse, QueryParamsRequest, Params, QueryParamsResponse } from './types';
+import { MODULE_NAME, GenesisState, QuerySigningInfoRequest, QuerySigningInfoResponse, ValidatorSigningInfo, MsgRunHook, QuerySigningInfosRequest, QuerySigningInfosResponse, QueryParamsRequest, Params, QueryParamsResponse } from './types';
 import { getParamsInternal, getParams, getValidatorSigningInfo, setParams, setValidatorSigningInfo, getValidatorSigningInfos } from "./storage";
 import { LoggerDebug, LoggerError, revert } from "./utils";
 import { Bech32String, CallRequest, CallResponse, PageResponse } from "wasmx-env/assembly/types";
 import { BigInt } from "wasmx-env/assembly/bn";
 
-export function InitGenesis(req: MsgInitGenesis): ArrayBuffer {
+export function InitGenesis(req: GenesisState): ArrayBuffer {
     if (getParamsInternal() != "") {
         revert("already called initGenesis")
     }

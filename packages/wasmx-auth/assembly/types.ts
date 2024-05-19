@@ -14,7 +14,7 @@ export const TypeUrl_ModuleAccount = "/mythos.cosmosmod.v1.ModuleAccount"
 
 // @ts-ignore
 @serializable
-export class MsgInitGenesis {
+export class GenesisState {
     params: Params
     accounts: AnyWrap[] = []
     base_account_typeurl: string = ""

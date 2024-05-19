@@ -1,11 +1,11 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { AddressBytesToStringRequest, AddressStringToBytesRequest, Bech32PrefixRequest, MsgInitGenesis, MsgNewBaseAccount, MsgNewModuleccount, MsgSetAccount, MsgUpdateParams, QueryAccountAddressByIDRequest, QueryAccountInfoRequest, QueryAccountRequest, QueryAccountsRequest, QueryModuleAccountByNameRequest, QueryModuleAccountsRequest, QueryParamsRequest } from './types';
+import { AddressBytesToStringRequest, AddressStringToBytesRequest, Bech32PrefixRequest, GenesisState, MsgNewBaseAccount, MsgNewModuleccount, MsgSetAccount, MsgUpdateParams, QueryAccountAddressByIDRequest, QueryAccountInfoRequest, QueryAccountRequest, QueryAccountsRequest, QueryModuleAccountByNameRequest, QueryModuleAccountsRequest, QueryParamsRequest } from './types';
 
 // @ts-ignore
 @serializable
 export class CallData {
-    InitGenesis: MsgInitGenesis | null = null;
+    InitGenesis: GenesisState | null = null;
 
     // tx
     UpdateParams: MsgUpdateParams | null = null;

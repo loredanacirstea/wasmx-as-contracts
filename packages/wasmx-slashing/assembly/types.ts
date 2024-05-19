@@ -5,7 +5,7 @@ export const MODULE_NAME = "slashing"
 
 // @ts-ignore
 @serializable
-export class MsgInitGenesis {
+export class GenesisState {
     params: Params
     signing_infos: SigningInfo[]
     missed_blocks: ValidatorMissedBlocks[]

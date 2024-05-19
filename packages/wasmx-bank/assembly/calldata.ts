@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import {
-    MsgInitGenesis, MsgSend, MsgMultiSend, MsgUpdateParams, MsgSetSendEnabled,
+    GenesisState, MsgSend, MsgMultiSend, MsgUpdateParams, MsgSetSendEnabled,
     QueryBalanceRequest,
     QueryAllBalancesRequest,
     QuerySpendableBalancesRequest,
@@ -21,7 +21,7 @@ import {
 // @ts-ignore
 @serializable
 export class CallData {
-    InitGenesis: MsgInitGenesis | null = null;
+    InitGenesis: GenesisState | null = null;
     SendCoins: MsgSend | null = null;
     MultiSend: MsgMultiSend | null = null;
     UpdateParams: MsgUpdateParams | null = null;

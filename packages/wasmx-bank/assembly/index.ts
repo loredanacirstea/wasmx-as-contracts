@@ -9,7 +9,7 @@ import {
   SpendableBalanceByDenom,
   TotalSupply,
   SupplyOf,
-  Params,
+  GetParams,
   DenomMetadata,
   DenomMetadataByQueryString,
   DenomOwners,
@@ -62,7 +62,7 @@ export function main(): void {
   } else if (calld.GetSupplyOf !== null) {
     result = SupplyOf(calld.GetSupplyOf!);
   } else if (calld.GetParams !== null) {
-    result = Params(calld.GetParams!);
+    result = GetParams(calld.GetParams!);
   } else if (calld.GetDenomMetadata !== null) {
     result = DenomMetadata(calld.GetDenomMetadata!);
   } else if (calld.GetDenomMetadataByQueryString !== null) {

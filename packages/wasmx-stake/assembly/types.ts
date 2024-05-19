@@ -213,7 +213,7 @@ export class Redelegation {
 
 // @ts-ignore
 @serializable
-export class MsgInitGenesis {
+export class GenesisState {
     // params defines all the parameters of related to deposit.
     params: Params
     // last_total_power tracks the total amounts of bonded tokens recorded during

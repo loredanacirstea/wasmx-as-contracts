@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { MsgDeposit, MsgEndBlock, MsgInitGenesis, MsgSubmitProposal, MsgVote, MsgVoteWeighted, QueryDepositRequest, QueryDepositsRequest, QueryParamsRequest, QueryProposalRequest, QueryProposalsRequest, QueryTallyResultRequest, QueryVoteRequest, QueryVotesRequest } from './types';
+import { MsgDeposit, MsgEndBlock, GenesisState, MsgSubmitProposal, MsgVote, MsgVoteWeighted, QueryDepositRequest, QueryDepositsRequest, QueryParamsRequest, QueryProposalRequest, QueryProposalsRequest, QueryTallyResultRequest, QueryVoteRequest, QueryVotesRequest } from './types';
 
 // @ts-ignore
 @serializable
@@ -9,7 +9,7 @@ export class MsgEmpty {}
 // @ts-ignore
 @serializable
 export class CallData {
-    InitGenesis: MsgInitGenesis | null = null;
+    InitGenesis: GenesisState | null = null;
     SubmitProposal: MsgSubmitProposal | null = null;
     Vote: MsgVote | null = null;
     VoteWeighted: MsgVoteWeighted | null = null;

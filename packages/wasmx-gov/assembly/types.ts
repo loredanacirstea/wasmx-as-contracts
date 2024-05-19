@@ -327,7 +327,12 @@ export class Params {
     // Since: cosmos-sdk 0.50
     min_deposit_ratio: string // f64
     constructor(
-        min_deposit: Coin[], max_deposit_period: i64, voting_period: i64, quorum: string, threshold: string, veto_threshold: string,
+        min_deposit: Coin[],
+        max_deposit_period: i64,
+        voting_period: i64,
+        quorum: string,
+        threshold: string,
+        veto_threshold: string,
         min_initial_deposit_ratio: string,
         proposal_cancel_ratio: string,
         proposal_cancel_dest: Bech32String,
@@ -384,7 +389,7 @@ export class Deposit {
 
 // @ts-ignore
 @serializable
-export class MsgInitGenesis {
+export class GenesisState {
     starting_proposal_id: u64
     deposits: Deposit[]
     votes: Vote[]

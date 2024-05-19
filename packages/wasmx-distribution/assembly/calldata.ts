@@ -1,12 +1,12 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { MsgCommunityPoolSpend, MsgDepositValidatorRewardsPool, MsgFundCommunityPool, MsgInitGenesis, MsgSetWithdrawAddress, MsgUpdateParams, MsgWithdrawDelegatorReward, MsgWithdrawValidatorCommission, QueryCommunityPoolRequest, QueryDelegationRewardsRequest, QueryDelegationTotalRewardsRequest, QueryDelegatorValidatorsRequest, QueryDelegatorWithdrawAddressRequest, QueryParamsRequest, QueryValidatorCommissionRequest, QueryValidatorDistributionInfoRequest, QueryValidatorOutstandingRewardsRequest, QueryValidatorSlashesRequest } from './types';
+import { MsgCommunityPoolSpend, MsgDepositValidatorRewardsPool, MsgFundCommunityPool, GenesisState, MsgSetWithdrawAddress, MsgUpdateParams, MsgWithdrawDelegatorReward, MsgWithdrawValidatorCommission, QueryCommunityPoolRequest, QueryDelegationRewardsRequest, QueryDelegationTotalRewardsRequest, QueryDelegatorValidatorsRequest, QueryDelegatorWithdrawAddressRequest, QueryParamsRequest, QueryValidatorCommissionRequest, QueryValidatorDistributionInfoRequest, QueryValidatorOutstandingRewardsRequest, QueryValidatorSlashesRequest } from './types';
 import { MsgRunHook } from "wasmx-hooks/assembly/types";
 
 // @ts-ignore
 @serializable
 export class CallData {
-    InitGenesis: MsgInitGenesis | null = null;
+    InitGenesis: GenesisState | null = null;
 
     // msg
     SetWithdrawAddress: MsgSetWithdrawAddress | null = null;

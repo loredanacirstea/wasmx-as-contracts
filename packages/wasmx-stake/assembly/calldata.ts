@@ -1,11 +1,11 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { MsgCreateValidator, MsgInitGenesis, MsgGetAllValidators, MsgUpdateValidators, QueryValidatorRequest, QueryDelegationRequest, QueryPoolRequest, QueryValidatorDelegationsRequest, QueryDelegatorValidatorsRequest, QueryParamsRequest } from './types';
+import { MsgCreateValidator, GenesisState, MsgGetAllValidators, MsgUpdateValidators, QueryValidatorRequest, QueryDelegationRequest, QueryPoolRequest, QueryValidatorDelegationsRequest, QueryDelegatorValidatorsRequest, QueryParamsRequest } from './types';
 
 // @ts-ignore
 @serializable
 export class CallData {
-    InitGenesis: MsgInitGenesis | null = null;
+    InitGenesis: GenesisState | null = null;
     CreateValidator: MsgCreateValidator | null = null;
     GetAllValidators: MsgGetAllValidators | null = null;
     UpdateValidators: MsgUpdateValidators | null = null;
