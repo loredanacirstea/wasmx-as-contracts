@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, getCallDataInitialize, getCallDataWrap } from './calldata';
-import { GetSubChainById, GetSubChainIds, GetSubChains, GetSubChainsByIds, InitSubChain, RegisterSubChain, RegisterSubChainValidator, RemoveSubChain } from "./actions";
+import { GetSubChainById, GetSubChainIds, GetSubChains, GetSubChainsByIds, InitSubChain, RegisterDefaultSubChain, RegisterSubChain, RegisterSubChainValidator, RemoveSubChain } from "./actions";
 import { revert } from "./utils";
 import { setParams } from "./storage";
 
@@ -19,6 +19,8 @@ export function main(): void {
     result = InitSubChain(calld.InitSubChain!);
   } else if (calld.RegisterSubChain !== null) {
     result = RegisterSubChain(calld.RegisterSubChain!);
+  } else if (calld.RegisterDefaultSubChain !== null) {
+    result = RegisterDefaultSubChain(calld.RegisterDefaultSubChain!);
   } else if (calld.RegisterSubChainValidator !== null) {
     result = RegisterSubChainValidator(calld.RegisterSubChainValidator!);
   } else if (calld.RemoveSubChain !== null) {

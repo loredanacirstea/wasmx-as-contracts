@@ -38,3 +38,14 @@ export class MsgExecuteContract {
         return TypeUrl_MsgExecuteContract;
     }
 }
+
+// @ts-ignore
+@serializable
+export class PrefixedAddress {
+    bz: Base64String = ""
+    prefix: string = ""
+    constructor(bz: Base64String = "", prefix: string = "") {
+        this.bz = bz
+        this.prefix = prefix
+    }
+}

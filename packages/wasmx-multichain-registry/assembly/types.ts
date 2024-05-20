@@ -12,6 +12,8 @@ export const MODULE_NAME = "multichain_registry"
 
 export const DEFAULT_MIN_VALIDATORS_COUNT = 3;
 export const DEFAULT_EID_CHECK = false;
+export const DEFAULT_ERC20_CODE_ID = 27;
+export const DEFAULT_DERC20_CODE_ID = 28;
 
 // @ts-ignore
 @serializable
@@ -27,9 +29,13 @@ export class MsgInitialize {
 export class Params {
     min_validators_count: i32
     enable_eid_check: bool
-    constructor(min_validators_count: i32, enable_eid_check: bool) {
+    erc20CodeId: u64
+    derc20CodeId: u64
+    constructor(min_validators_count: i32, enable_eid_check: bool, erc20CodeId: u64, derc20CodeId: u64) {
         this.min_validators_count = min_validators_count
         this.enable_eid_check = enable_eid_check
+        this.erc20CodeId = erc20CodeId
+        this.derc20CodeId = derc20CodeId
     }
 }
 
@@ -71,6 +77,32 @@ export class QueryGetSubChainRequest {
     chainId: string
     constructor(chainId: string) {
         this.chainId = chainId
+    }
+}
+
+// @ts-ignore
+@serializable
+export class RegisterDefaultSubChainRequest {
+    denom_unit: string
+    base_denom_unit: u32
+    chain_base_name: string
+    level_index: u32
+    balances: Coin[]
+    gen_txs: Base64String[]
+    constructor(
+        denom_unit: string,
+        base_denom_unit: u32,
+        chain_base_name: string,
+        level_index: u32,
+        balances: Coin[],
+        gen_txs: Base64String[],
+    ) {
+        this.denom_unit = denom_unit
+        this.base_denom_unit = base_denom_unit
+        this.chain_base_name = chain_base_name
+        this.level_index = level_index
+        this.balances = balances
+        this.gen_txs = gen_txs
     }
 }
 
@@ -119,19 +151,19 @@ export class InitSubChainRequest {
 // @ts-ignore
 @serializable
 export class CosmosmodGenesisState {
-    staking: stakingtypes.MsgInitGenesis
-    bank: banktypes.MsgInitGenesis
-    gov: govtypes.MsgInitGenesis
-    auth: authtypes.MsgInitGenesis
-    slashing: slashingtypes.MsgInitGenesis
-    distribution: distributiontypes.MsgInitGenesis
+    staking: stakingtypes.GenesisState
+    bank: banktypes.GenesisState
+    gov: govtypes.GenesisState
+    auth: authtypes.GenesisState
+    slashing: slashingtypes.GenesisState
+    distribution: distributiontypes.GenesisState
     constructor(
-        staking: stakingtypes.MsgInitGenesis,
-        bank: banktypes.MsgInitGenesis,
-        gov: govtypes.MsgInitGenesis,
-        auth: authtypes.MsgInitGenesis,
-        slashing: slashingtypes.MsgInitGenesis,
-        distribution: distributiontypes.MsgInitGenesis,
+        staking: stakingtypes.GenesisState,
+        bank: banktypes.GenesisState,
+        gov: govtypes.GenesisState,
+        auth: authtypes.GenesisState,
+        slashing: slashingtypes.GenesisState,
+        distribution: distributiontypes.GenesisState,
     ) {
         this.staking = staking
         this.bank = bank

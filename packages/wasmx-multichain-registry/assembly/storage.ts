@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import { Base64String, Bech32String } from "wasmx-env/assembly/types";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import { revert } from "./utils";
-import { DEFAULT_EID_CHECK, DEFAULT_MIN_VALIDATORS_COUNT, Params, SubChainData } from "./types";
+import { DEFAULT_DERC20_CODE_ID, DEFAULT_EID_CHECK, DEFAULT_ERC20_CODE_ID, DEFAULT_MIN_VALIDATORS_COUNT, Params, SubChainData } from "./types";
 
 export const SPLIT = "."
 const PARAMS_KEY = "params"
@@ -106,7 +106,7 @@ export function setChainLastId(id: i32): void {
 
 export function getParams(): Params {
     const value = wasmxw.sload(PARAMS_KEY);
-    if (value == "") return new Params(DEFAULT_MIN_VALIDATORS_COUNT, DEFAULT_EID_CHECK);
+    if (value == "") return new Params(DEFAULT_MIN_VALIDATORS_COUNT, DEFAULT_EID_CHECK, DEFAULT_ERC20_CODE_ID, DEFAULT_DERC20_CODE_ID);
     return JSON.parse<Params>(value);
 }
 

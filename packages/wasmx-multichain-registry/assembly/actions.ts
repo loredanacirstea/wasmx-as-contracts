@@ -3,22 +3,56 @@ import * as base64 from "as-base64/assembly";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as roles from "wasmx-env/assembly/roles";
 import * as modnames from "wasmx-env/assembly/modules";
+import * as authzdefaults from "wasmx-env/assembly/defaults_authz";
+// import * as capabilitydefaults from "wasmx-env/assembly/defaults_capability";
+import * as circuitdefaults from "wasmx-env/assembly/defaults_circuit";
+import * as crisisdefaults from "wasmx-env/assembly/defaults_crisis";
+import * as evidencedefaults from "wasmx-env/assembly/defaults_evidence";
+import * as groupdefaults from "wasmx-env/assembly/defaults_group";
+import * as mintdefaults from "wasmx-env/assembly/defaults_mint";
+import * as networkdefaults from "wasmx-env/assembly/defaults_network";
+import * as upgradedefaults from "wasmx-env/assembly/defaults_upgrade";
+import * as wasmxtypes from "wasmx-wasmx/assembly/types";
+import * as wasmxdefaults from "wasmx-wasmx/assembly/defaults";
+import * as websrvdefaults from "wasmx-env/assembly/defaults_websrv";
 import * as utils from "wasmx-utils/assembly/utils";
 import * as authtypes from "wasmx-auth/assembly/types";
+import * as authdefaults from "wasmx-auth/assembly/defaults";
 import * as banktypes from "wasmx-bank/assembly/types";
+import * as bankdefaults from "wasmx-bank/assembly/defaults";
 import * as stakingtypes from "wasmx-stake/assembly/types";
+import * as stakingdefaults from "wasmx-stake/assembly/defaults";
+import * as distributiontypes from "wasmx-distribution/assembly/types";
+import * as distributiondefaults from "wasmx-distribution/assembly/defaults";
+import * as govtypes from "wasmx-gov/assembly/types";
+import * as govdefaults from "wasmx-gov/assembly/defaults";
+import * as slashingtypes from "wasmx-slashing/assembly/types";
+import * as slashingdefaults from "wasmx-slashing/assembly/defaults";
 import { AnyWrap } from "wasmx-env/assembly/wasmx_types";
-import { GenesisState, GenutilGenesis, InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
+import { ChainConfig, GenesisState, GenutilGenesis, InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
+import { buildChainConfig, buildChainId, getDefaultConsensusParams } from "wasmx-consensus/assembly/multichain_utils";
 import { Base64String, Bech32String, CallRequest, CallResponse, Coin, Event, EventAttribute, PublicKey, SignedTransaction } from "wasmx-env/assembly/types";
 import { AttributeKeyChainId, AttributeKeyRequest, EventTypeInitSubChain } from "./events";
-import { addChainId, addChainValidator, getChainData, getChainIds, getChainValidatorAddresses, getChainValidators, getParams, setChainData } from "./storage";
-import { CosmosmodGenesisState, InitSubChainRequest, MODULE_NAME, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest, SubChainData } from "./types";
-import { revert } from "./utils";
+import { addChainId, addChainValidator, getChainData, getChainIds, getChainLastId, getChainValidatorAddresses, getChainValidators, getParams, setChainData } from "./storage";
+import { CosmosmodGenesisState, InitSubChainRequest, MODULE_NAME, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, RegisterDefaultSubChainRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest, SubChainData } from "./types";
+import { LoggerDebug, revert } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
+import { ConsensusParams, RequestInitChain } from "wasmx-consensus/assembly/types_tendermint";
 
-// TODO: permission!! only one of the validators can call InitSubChain for a level1 chain
 export function InitSubChain(req: InitSubChainRequest): ArrayBuffer {
+    LoggerDebug("initializing subchain", ["chain_id", req.chainId])
     initSubChainInternal(req.chainId)
+    LoggerDebug("initialized subchain", ["chain_id", req.chainId])
+    return new ArrayBuffer(0);
+}
+
+export function RegisterDefaultSubChain(req: RegisterDefaultSubChainRequest): ArrayBuffer {
+    if (!passCheckEIDActive(wasmxw.getCaller())) {
+        revert(`unauthorized: no eID active`);
+    }
+    LoggerDebug("start registering new default subchain", ["chain_base_name", req.chain_base_name])
+    registerDefaultSubChainInternal(req);
+    LoggerDebug("registered new default subchain", ["chain_base_name", req.chain_base_name])
     return new ArrayBuffer(0);
 }
 
@@ -40,6 +74,7 @@ export function RegisterSubChainValidator(req: RegisterSubChainValidatorRequest)
 
 export function RemoveSubChain(req: RemoveSubChainRequest): ArrayBuffer {
     removeSubChain(req.chainId)
+    LoggerDebug("removed subchain temporary data", ["chain_id", req.chainId])
     return new ArrayBuffer(0);
 }
 
@@ -80,6 +115,36 @@ export function GetSubChainById(req: QueryGetSubChainRequest): ArrayBuffer {
     }
     const encoded = JSON.stringify<InitSubChainDeterministicRequest>(chaindata.data)
     return String.UTF8.encode(encoded)
+}
+
+// TODO each level can create a chain for the next level only?
+// so add the level number in genesis
+export function registerDefaultSubChainInternal(req: RegisterDefaultSubChainRequest): void {
+    const peers: string[] = [];
+    const defaultInitialHeight: i64 = 1;
+    const lastId = getChainLastId()
+    const chainId = buildChainId(req.chain_base_name, req.level_index, lastId+1, 1)
+    const consensusParams = getDefaultConsensusParams()
+    const chainConfig = buildChainConfig(req.denom_unit, req.base_denom_unit, req.chain_base_name)
+
+    const bootstrapAccountBech32 = wasmxw.addr_humanize_mc(utils.hexToUint8Array(modnames.ADDR_BOOTSTRAP_ACCOUNT).buffer, chainConfig.Bech32PrefixAccAddr)
+    const feeCollectorBech32 =  wasmxw.addr_humanize_mc(utils.hexToUint8Array(modnames.ADDR_FEE_COLLECTOR).buffer, chainConfig.Bech32PrefixAccAddr)
+    const mintBech32 =  wasmxw.addr_humanize_mc(utils.hexToUint8Array(modnames.ADDR_MINT).buffer, chainConfig.Bech32PrefixAccAddr)
+
+    const genesisState = buildGenesisData(req.denom_unit, req.base_denom_unit, bootstrapAccountBech32, feeCollectorBech32, mintBech32)
+
+    const appStateBz = utils.stringToBase64(JSON.stringify<GenesisState>(genesisState))
+
+    const initChainReq = new RequestInitChain(
+        new Date(Date.now()).toISOString(),
+        chainId,
+        consensusParams,
+        [],
+        appStateBz,
+        defaultInitialHeight,
+    )
+    const data = new InitSubChainDeterministicRequest(initChainReq, chainConfig, peers);
+    return registerSubChainInternal(data, req.gen_txs, req.balances);
 }
 
 export function registerSubChainInternal(data: InitSubChainDeterministicRequest, genTxs: Base64String[], balances: Coin[]): void {
@@ -180,10 +245,10 @@ export function includeGenTxs(data: SubChainData, genTxs: Base64String[]): InitS
     genesisState.set("genutil", genutilData)
 
     // update bank balances & create auth accounts
-    if (!genesisState.has(modnames.MODULE_NAME_COSMOSMOD)) {
-        revert(`genesis state missing field: ${modnames.MODULE_NAME_COSMOSMOD}`)
+    if (!genesisState.has(modnames.MODULE_COSMOSMOD)) {
+        revert(`genesis state missing field: ${modnames.MODULE_COSMOSMOD}`)
     }
-    const cosmosmodGenesisStr = utils.base64ToString(genesisState.get(modnames.MODULE_NAME_COSMOSMOD))
+    const cosmosmodGenesisStr = utils.base64ToString(genesisState.get(modnames.MODULE_COSMOSMOD))
     const cosmosmodGenesis = JSON.parse<CosmosmodGenesisState>(cosmosmodGenesisStr)
     const bankGenesis = cosmosmodGenesis.bank
     const authGenesis = cosmosmodGenesis.auth
@@ -223,7 +288,7 @@ export function includeGenTxs(data: SubChainData, genTxs: Base64String[]): InitS
     cosmosmodGenesis.auth = authGenesis
     const newcosmosmodGenesisStr = utils.stringToBase64(JSON.stringify<CosmosmodGenesisState>(cosmosmodGenesis))
 
-    genesisState.set(modnames.MODULE_NAME_COSMOSMOD, newcosmosmodGenesisStr)
+    genesisState.set(modnames.MODULE_COSMOSMOD, newcosmosmodGenesisStr)
     const newGenesisState = JSON.stringify<GenesisState>(genesisState)
     data.data.init_chain_request.app_state_bytes = utils.stringToBase64(newGenesisState);
     return data.data;
@@ -256,4 +321,82 @@ export function callEvmContract(addr: Bech32String, calldata: string, isQuery: b
     const req = new CallRequest(addr, calldata, BigInt.zero(), 100000000, isQuery);
     const resp = wasmxw.callEvm(req, MODULE_NAME);
     return resp;
+}
+
+export function buildGenesisData(denomUnit: string, baseDenomUnit: u32, bootstrapAccountBech32: string, feeCollectorBech32: string, mintBech32: string): GenesisState {
+    // validators are only added through genTxs
+    const params = getParams()
+    const bankGenesis = bankdefaults.getDefaultGenesis(denomUnit, baseDenomUnit, params.erc20CodeId, params.derc20CodeId)
+
+    const gasBaseDenom = bankGenesis.denom_info[0].base_denom
+    const stakingBaseDenom = bankGenesis.denom_info[1].base_denom
+    const rewardsBaseDenom = bankGenesis.denom_info[2].base_denom
+
+    const stakingGenesis = stakingdefaults.getDefaultGenesis(stakingBaseDenom)
+    const govGenesis = govdefaults.getDefaultGenesis(gasBaseDenom, stakingBaseDenom, rewardsBaseDenom)
+    const slashingGenesis = slashingdefaults.getDefaultGenesis()
+    const distributionGenesis = distributiondefaults.getDefaultGenesis(gasBaseDenom, rewardsBaseDenom)
+    const authGenesis = authdefaults.getDefaultGenesis()
+
+    const cosmosmodGenesis = new CosmosmodGenesisState(
+        stakingGenesis,
+        bankGenesis,
+        govGenesis,
+        authGenesis,
+        slashingGenesis,
+        distributionGenesis,
+    )
+    const cosmosmodGenesisBz = utils.stringToBase64(JSON.stringify<CosmosmodGenesisState>(cosmosmodGenesis))
+
+    const authzGenesis = authzdefaults.getDefaultGenesis()
+    const authzGenesisBz = utils.stringToBase64(JSON.stringify<authzdefaults.GenesisState>(authzGenesis))
+
+    // const capabilityGenesis = capabilitydefaults.getDefaultGenesis()
+    const circuitGenesis = circuitdefaults.getDefaultGenesis()
+    const circuitGenesisBz = utils.stringToBase64(JSON.stringify<circuitdefaults.GenesisState>(circuitGenesis))
+
+    const crisisGenesis = crisisdefaults.getDefaultGenesis(stakingBaseDenom)
+    const crisisGenesisBz = utils.stringToBase64(JSON.stringify<crisisdefaults.GenesisState>(crisisGenesis))
+
+    const evidenceGenesis = evidencedefaults.getDefaultGenesis()
+    const evidenceGenesisBz = utils.stringToBase64(JSON.stringify<evidencedefaults.GenesisState>(evidenceGenesis))
+
+    const genutilGenesis = new GenutilGenesis([])
+    const genutilGenesisBz = utils.stringToBase64(JSON.stringify<GenutilGenesis>(genutilGenesis))
+
+    const groupGenesis = groupdefaults.getDefaultGenesis()
+    const groupGenesisBz = utils.stringToBase64(JSON.stringify<groupdefaults.GenesisState>(groupGenesis))
+
+    const mintGenesis = mintdefaults.getDefaultGenesis(gasBaseDenom)
+    const mintGenesisBz = utils.stringToBase64(JSON.stringify<mintdefaults.GenesisState>(mintGenesis))
+
+    const networkGenesis = networkdefaults.getDefaultGenesis()
+    const networkGenesisBz = utils.stringToBase64(JSON.stringify<networkdefaults.GenesisState>(networkGenesis))
+
+    // const transferGenesis = transferdefaults.getDefaultGenesis()
+
+    const upgradeGenesis = upgradedefaults.getDefaultGenesis()
+    const upgradeGenesisBz = utils.stringToBase64(JSON.stringify<upgradedefaults.GenesisState>(upgradeGenesis))
+
+    const wasmxGenesis = wasmxdefaults.getDefaultGenesis(bootstrapAccountBech32, feeCollectorBech32, mintBech32)
+    const wasmxGenesisBz = utils.stringToBase64(JSON.stringify<wasmxtypes.GenesisState>(wasmxGenesis))
+
+    const websrvGenesis = websrvdefaults.getDefaultGenesis()
+    const websrvGenesisBz = utils.stringToBase64(JSON.stringify<websrvdefaults.GenesisState>(websrvGenesis))
+
+    const genesisState: GenesisState = new Map<string,Base64String>()
+    genesisState.set(modnames.MODULE_COSMOSMOD,  cosmosmodGenesisBz)
+    genesisState.set(modnames.MODULE_AUTHZ,  authzGenesisBz)
+    genesisState.set(modnames.MODULE_CIRCUIT,  circuitGenesisBz)
+    genesisState.set(modnames.MODULE_CRISIS,  crisisGenesisBz)
+    genesisState.set(modnames.MODULE_EVIDENCE,  evidenceGenesisBz)
+    genesisState.set(modnames.MODULE_GENUTIL,  genutilGenesisBz)
+    genesisState.set(modnames.MODULE_GROUP,  groupGenesisBz)
+    genesisState.set(modnames.MODULE_MINT,  mintGenesisBz)
+    genesisState.set(modnames.MODULE_NETWORK,  networkGenesisBz)
+    genesisState.set(modnames.MODULE_UPGRADE,  upgradeGenesisBz)
+    genesisState.set(modnames.MODULE_WASMX,  wasmxGenesisBz)
+    genesisState.set(modnames.MODULE_WEBSRV,  websrvGenesisBz)
+
+    return genesisState;
 }

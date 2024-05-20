@@ -3,13 +3,22 @@ import * as base64 from "as-base64/assembly";
 import * as constypes from "./types_tendermint"
 import * as mc from "./multichain";
 import { InitSubChainMsg, StartSubChainMsg, StartSubChainResponse } from "./types_multichain";
+import { LoggerDebug } from "./consensus_wrap";
 
 export function InitSubChain(req: InitSubChainMsg): constypes.ResponseInitChain {
-    const resp = mc.InitSubChain(String.UTF8.encode(JSON.stringify<InitSubChainMsg>(req)));
-    return JSON.parse<constypes.ResponseInitChain>(String.UTF8.decode(resp));
+    const data = JSON.stringify<InitSubChainMsg>(req)
+    LoggerDebug("InitSubChain", ["request", data]);
+    const resp = mc.InitSubChain(String.UTF8.encode(data));
+    const respdata = String.UTF8.decode(resp)
+    LoggerDebug("InitSubChain", ["response", respdata]);
+    return JSON.parse<constypes.ResponseInitChain>(respdata);
 }
 
 export function StartSubChain(req: StartSubChainMsg): StartSubChainResponse {
-    const resp = mc.StartSubChain(String.UTF8.encode(JSON.stringify<StartSubChainMsg>(req)));
-    return JSON.parse<StartSubChainResponse>(String.UTF8.decode(resp));
+    const data = JSON.stringify<StartSubChainMsg>(req)
+    LoggerDebug("StartSubChain", ["request", data]);
+    const resp = mc.StartSubChain(String.UTF8.encode(data));
+    const respdata = String.UTF8.decode(resp)
+    LoggerDebug("StartSubChain", ["response", respdata]);
+    return JSON.parse<StartSubChainResponse>(respdata);
 }

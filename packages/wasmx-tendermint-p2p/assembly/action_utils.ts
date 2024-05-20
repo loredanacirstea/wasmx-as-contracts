@@ -300,7 +300,10 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     setCurrentState(state);
     // update consensus params
     LoggerDebug("updating consensus parameters...", [])
-    updateConsensusParams(finalizeResp.consensus_param_updates);
+    const consensusUpd = finalizeResp.consensus_param_updates
+    if (consensusUpd != null) {
+        updateConsensusParams(consensusUpd);
+    }
     // update validator info
     LoggerDebug("updating validator info...", [])
     updateValidators(finalizeResp.validator_updates);
@@ -596,10 +599,10 @@ export function initSubChain(encodedData: Base64String, state: CurrentState): ty
     // we initialize only if we are a validator here
     const appstate = base64ToString(req.init_chain_request.app_state_bytes)
     const genesisState: mctypes.GenesisState = JSON.parse<mctypes.GenesisState>(appstate)
-    if (!genesisState.has(modnames.MODULE_NAME_COSMOSMOD)) {
-        revert(`genesis state missing field: ${modnames.MODULE_NAME_COSMOSMOD}`)
+    if (!genesisState.has(modnames.MODULE_COSMOSMOD)) {
+        revert(`genesis state missing field: ${modnames.MODULE_COSMOSMOD}`)
     }
-    const cosmosmodGenesisStr = base64ToString(genesisState.get(modnames.MODULE_NAME_COSMOSMOD))
+    const cosmosmodGenesisStr = base64ToString(genesisState.get(modnames.MODULE_COSMOSMOD))
     const cosmosmodGenesis = JSON.parse<CosmosmodGenesisState>(cosmosmodGenesisStr)
     const vals = cosmosmodGenesis.staking.validators
     let weAreValidator = false;

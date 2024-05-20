@@ -39,6 +39,8 @@ export declare function ed25519PubToHex(pubKey: ArrayBuffer): ArrayBuffer
 export declare function addr_humanize(value: ArrayBuffer): ArrayBuffer
 export declare function addr_canonicalize(value: ArrayBuffer): ArrayBuffer
 export declare function addr_equivalent(addr1: ArrayBuffer, addr2: ArrayBuffer): i32
+export declare function addr_humanize_mc(value: ArrayBuffer, prefix: ArrayBuffer): ArrayBuffer
+export declare function addr_canonicalize_mc(value: ArrayBuffer): ArrayBuffer
 
 export declare function getAddressByRole(value: ArrayBuffer): ArrayBuffer
 export declare function getRoleByAddress(value: ArrayBuffer): ArrayBuffer

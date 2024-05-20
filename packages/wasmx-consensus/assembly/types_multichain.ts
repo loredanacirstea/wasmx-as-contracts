@@ -24,6 +24,35 @@ export class ChainConfig {
 	BaseDenomUnit: u32 = 18
 	BondBaseDenom: string = ""
 	BondDenom: string = ""
+    constructor(
+        Bech32PrefixAccAddr: string,
+        Bech32PrefixAccPub: string,
+        Bech32PrefixValAddr: string,
+        Bech32PrefixValPub: string,
+        Bech32PrefixConsAddr: string,
+        Bech32PrefixConsPub: string,
+        Name: string,
+        HumanCoinUnit: string,
+        BaseDenom: string,
+        DenomUnit: string,
+        BaseDenomUnit: u32,
+        BondBaseDenom: string,
+        BondDenom: string,
+    ) {
+        this.Bech32PrefixAccAddr = Bech32PrefixAccAddr
+        this.Bech32PrefixAccPub = Bech32PrefixAccPub
+        this.Bech32PrefixValAddr = Bech32PrefixValAddr
+        this.Bech32PrefixValPub = Bech32PrefixValPub
+        this.Bech32PrefixConsAddr = Bech32PrefixConsAddr
+        this.Bech32PrefixConsPub = Bech32PrefixConsPub
+        this.Name = Name
+        this.HumanCoinUnit = HumanCoinUnit
+        this.BaseDenom = BaseDenom
+        this.DenomUnit = DenomUnit
+        this.BaseDenomUnit = BaseDenomUnit
+        this.BondBaseDenom = BondBaseDenom
+        this.BondDenom = BondDenom
+    }
 }
 
 // @ts-ignore

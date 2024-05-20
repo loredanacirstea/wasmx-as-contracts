@@ -33,6 +33,7 @@ import {
 } from './types';
 import { u8ArrayToHex, uint8ArrayToHex } from "as-tally/assembly/tally";
 import { toUpperCase } from "./utils";
+import { PrefixedAddress } from "./wasmx_types";
 
 export const MODULE_NAME = "wasmx-env"
 
@@ -248,6 +249,17 @@ export function addr_humanize(value: ArrayBuffer): string {
 
 export function addr_canonicalize(value: string): ArrayBuffer {
     return wasmx.addr_canonicalize(String.UTF8.encode(value));
+}
+
+export function addr_humanize_mc(bz: ArrayBuffer, prefix: string): string {
+    const addr = wasmx.addr_humanize_mc(bz, String.UTF8.encode(prefix));
+    return String.UTF8.decode(addr);
+}
+
+export function addr_canonicalize_mc(value: Bech32String): PrefixedAddress {
+    const resp = wasmx.addr_canonicalize_mc(String.UTF8.encode(value));
+    const res = JSON.parse<PrefixedAddress>(String.UTF8.decode(resp));
+    return res;
 }
 
 export function addr_equivalent(addr1: Bech32String, addr2: Bech32String): boolean {

@@ -415,17 +415,17 @@ export class EvidenceParams {
 	//
 	// The basic formula for calculating this is: MaxAgeDuration / {average block
 	// time}.
-	max_age_num_blocks: i64
+	max_age_num_blocks: i64 = 0
 	// Max age of evidence, in time.
 	//
 	// It should correspond with an app's "unbonding period" or other similar
 	// mechanism for handling [Nothing-At-Stake
 	// attacks](https://github.com/ethereum/wiki/wiki/Proof-of-Stake-FAQ#what-is-the-nothing-at-stake-problem-and-how-can-it-be-fixed).
-	max_age_duration: i64
+	max_age_duration: i64 = 0
 	// This sets the maximum size of total evidence in bytes that can be committed in a single block.
 	// and should fall comfortably under the max block bytes.
 	// Default is 1048576 or 1MB
-	max_bytes: i64
+	max_bytes: i64 = 0
     constructor(max_age_num_blocks: i64, max_age_duration: i64, max_bytes: i64) {
         this.max_age_num_blocks = max_age_num_blocks;
         this.max_age_duration = max_age_duration;
@@ -480,12 +480,12 @@ export class ConsensusParams {
 // @ts-ignore
 @serializable
 export class ResponseFinalizeBlock {
-	events: Event[]
-	tx_results: ExecTxResult[]
-	validator_updates: ValidatorUpdate[]
-	consensus_param_updates: ConsensusParams
-	app_hash: Base64String
-    constructor(events: Event[], txResults: ExecTxResult[], validatorUpdates: ValidatorUpdate[], consensusParamUpdates: ConsensusParams, appHash: Base64String) {
+	events: Event[] = []
+	tx_results: ExecTxResult[] = []
+	validator_updates: ValidatorUpdate[] = []
+	consensus_param_updates: ConsensusParams | null = null
+	app_hash: Base64String = ""
+    constructor(events: Event[], txResults: ExecTxResult[], validatorUpdates: ValidatorUpdate[], consensusParamUpdates: ConsensusParams | null, appHash: Base64String) {
         this.events = events;
         this.tx_results = txResults;
         this.validator_updates = validatorUpdates;

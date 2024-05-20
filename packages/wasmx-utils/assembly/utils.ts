@@ -28,10 +28,13 @@ export function hexToU8(value: string): u8[] {
 }
 
 export function hexToUint8Array32(value: string): Uint8Array {
-    if (value.length % 2 == 1) value = "0" + value;
     value = value.padStart(64, '0');
-    const arr: Uint8Array = new Uint8Array(value.length / 2);
+    return hexToUint8Array(value);
+}
 
+export function hexToUint8Array(value: string): Uint8Array {
+    if (value.length % 2 == 1) value = "0" + value;
+    const arr: Uint8Array = new Uint8Array(value.length / 2);
     for (let i = 0; i < value.length / 2; i++) {
         const item = u8(parseInt(value.substr(2*i, 2), 16));
         arr.set([item], i);
