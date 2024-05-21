@@ -385,7 +385,7 @@ export const sc_storage = new SystemContract(
     storageInitMsg,
     false,
     false,
-    roles.ROLE_INTERPRETER,
+    roles.ROLE_STORAGE,
     [],
     CodeMetadata.Empty(),
 )
@@ -732,7 +732,12 @@ export const sc_hooks_nonc = new SystemContract(
 
 export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32: string): SystemContract[] {
     return [
+        // auth must be first
+        sc_auth,
+
         sc_ecrecover,
+        sc_ecrecovereth,
+
         sc_sha2_256,
         sc_ripmd160,
         sc_identity,
@@ -742,18 +747,32 @@ export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32
         sc_ecpairings,
         sc_blake2f,
 
-        sc_ecrecovereth,
+        sc_interpreter_evm,
+        sc_interpreter_py,
+        sc_interpreter_js,
+        sc_interpreter_fsm,
+
+        sc_storage,
+        sc_aliaseth,
+        sc_proxy_interfaces,
+        sc_sys_proxy,
 
         sc_secp384r1,
         sc_secp384r1_registry,
         sc_secret_sharing,
-        sc_interpreter_evm,
-        sc_aliaseth,
-        sc_proxy_interfaces,
-        sc_interpreter_py,
-        sc_interpreter_js,
-        sc_interpreter_fsm,
-        sc_storage,
+
+        sc_hooks,
+        sc_hooks_nonc,
+
+        sc_staking,
+        sc_bank(feeCollectorBech32, mintBech32),
+        sc_erc20,
+        sc_derc20,
+        sc_slashing,
+        sc_distribution,
+        sc_gov,
+        sc_gov_cont,
+
         sc_raft_library,
         sc_raftp2p_library,
         sc_tendermint_library,
@@ -765,28 +784,18 @@ export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32
         sc_ava_snowman_library,
         sc_ava_snowman,
 
-        sc_staking,
-        sc_bank(feeCollectorBech32, mintBech32),
-        sc_hooks,
-        sc_gov,
-        sc_gov_cont,
-        sc_auth,
+        sc_multichain_registry,
 
         sc_chat,
-        sc_hooks_nonc,
         sc_chat_verifier,
-        sc_slashing,
-        sc_distribution,
+
+        // for leveln
+
         sc_time,
-        sc_level0,
         sc_level0_library,
-        sc_multichain_registry,
+        sc_level0,
+
         sc_multichain_registry_local,
-
-        sc_sys_proxy,
-
-        sc_erc20,
-        sc_derc20,
     ]
 }
 

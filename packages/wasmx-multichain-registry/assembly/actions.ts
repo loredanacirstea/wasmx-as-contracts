@@ -69,6 +69,7 @@ export function RegisterSubChainValidator(req: RegisterSubChainValidatorRequest)
     if (!passCheckEIDActive(wasmxw.getCaller())) {
         revert(`unauthorized: no eID active`);
     }
+    LoggerDebug("start registering new subchain validator", ["subchain_id", req.chainId])
     registerSubChainValidatorInternal(req.chainId, req.genTx);
     return new ArrayBuffer(0);
 }
@@ -188,7 +189,9 @@ export function registerSubChainValidatorInternal(chainId: string, genTx: Base64
         return
     }
     chaindata.data.peers.push(tx.body.memo)
+    chaindata.genTxs.push(genTx)
     setChainData(chaindata);
+    LoggerDebug("registered new subchain validator", ["subchain_id", chainId, "address", msg.validator_address])
 }
 
 export function removeSubChain(chainId: string): void {
@@ -338,9 +341,9 @@ export function buildGenesisData(denomUnit: string, baseDenomUnit: u32, bootstra
     const params = getParams()
     const bankGenesis = bankdefaults.getDefaultGenesis(denomUnit, baseDenomUnit, params.erc20CodeId, params.derc20CodeId)
 
-    const gasBaseDenom = bankGenesis.denom_info[0].base_denom
-    const stakingBaseDenom = bankGenesis.denom_info[1].base_denom
-    const rewardsBaseDenom = bankGenesis.denom_info[2].base_denom
+    const gasBaseDenom = bankGenesis.denom_info[0].metadata.base
+    const stakingBaseDenom = bankGenesis.denom_info[1].metadata.base
+    const rewardsBaseDenom = bankGenesis.denom_info[2].metadata.base
 
     const stakingGenesis = stakingdefaults.getDefaultGenesis(stakingBaseDenom)
     const govGenesis = govdefaults.getDefaultGenesis(gasBaseDenom, stakingBaseDenom, rewardsBaseDenom)

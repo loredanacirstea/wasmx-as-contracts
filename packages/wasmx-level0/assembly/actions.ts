@@ -8,7 +8,7 @@ import * as wasmxt from "wasmx-env/assembly/types";
 import { Base64String, Coin, SignedTransaction, Event, EventAttribute, PublicKey, Bech32String } from "wasmx-env/assembly/types";
 import * as p2pw from "wasmx-p2p/assembly/p2p_wrap";
 import * as p2ptypes from "wasmx-p2p/assembly/types";
-import { base64ToHex, base64ToString } from "wasmx-utils/assembly/utils";
+import { base64ToHex, base64ToString, stringToBase64 } from "wasmx-utils/assembly/utils";
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
 import * as mcwrap from 'wasmx-consensus/assembly/multichain_wrap';
@@ -49,8 +49,7 @@ export function buildGenTx(
         revert("no message found");
     }
     const msgstr = ctx.get("message") // stringified message
-    const datajson = String.UTF8.decode(base64.decode(msgstr).buffer);
-    const req = JSON.parse<QueryBuildGenTxRequest>(datajson);
+    const req = JSON.parse<QueryBuildGenTxRequest>(msgstr);
 
     const chainConfig = getSubChainConfig(req.chainId)
     if (chainConfig == null) {
@@ -61,7 +60,7 @@ export function buildGenTx(
     const nodeIps = getValidatorNodesInfo();
     const nodeInfo = nodeIps[0];
 
-    const genTx = createGenTx(nodeInfo, chainConfig.BondBaseDenom, req.msg)
+    const genTx = createGenTx(nodeInfo, chainConfig.Bech32PrefixAccAddr, chainConfig.BondBaseDenom, req.msg)
     if (genTx == null) {
         revert(`genTx is null`)
         return;
@@ -324,31 +323,37 @@ export function setConsensusParams(value: typestnd.ConsensusParams): void {
 }
 
 export function createGenTx(
-    // validatorOperator: string,
-    // validatorPubKey: PublicKey,
     node: NodeInfo,
+    accprefix: string,
     bondBaseDenom: string,
     input: stakingtypes.MsgCreateValidator,
 ): SignedTransaction | null {
-    const validatorOperator = node.address
-    const accresp = getAccountInfo(validatorOperator)
+    const accresp = getAccountInfo(node.address)
     const acc = accresp.account
     if (!acc) {
-        revert(`account not found: ${validatorOperator}`)
+        revert(`account not found: ${node.address}`)
         return null
     }
     const baseacc = JSON.parse<BaseAccount>(base64ToString(acc.value))
+
+    const val = getValidator(node.address)
+    if (!val) {
+        revert(`validator not found: ${node.address}`)
+        return null
+    }
+    const addrbz = wasmxw.addr_canonicalize(node.address)
+    const validatorOperator = wasmxw.addr_humanize_mc(addrbz, accprefix)
 
     const valmsg = new stakingtypes.MsgCreateValidator(
         input.description,
         input.commission,
         input.min_self_delegation,
         validatorOperator,
-        baseacc.pub_key,
+        val.consensus_pubkey,
         new Coin(bondBaseDenom, input.value.amount),
     )
     const valmsgstr = JSON.stringify<stakingtypes.MsgCreateValidator>(valmsg)
-    const txmsg = new wasmxt.TxMessage(stakingtypes.TypeUrl_MsgCreateValidator, valmsgstr)
+    const txmsg = new wasmxt.TxMessage(stakingtypes.TypeUrl_MsgCreateValidator, stringToBase64(valmsgstr))
 
     const memo = `${validatorOperator}@/ip4/${node.node.host}/tcp/${node.node.port}/p2p/${node.node.id}`
 
@@ -356,7 +361,7 @@ export function createGenTx(
 
     const authinfo = new wasmxt.AuthInfo(
         [new wasmxt.SignerInfo(baseacc.pub_key, new wasmxt.ModeInfo(new wasmxt.ModeInfoSingle(wasmxt.SIGN_MODE_DIRECT), null), 0)],
-        new wasmxt.Fee([], 5000000, validatorOperator, ""),
+        new wasmxt.Fee([], 5000000, "", ""),
         null,
     )
     return new SignedTransaction(txbody, authinfo, [])
@@ -364,7 +369,7 @@ export function createGenTx(
 
 export function getSubChainConfig(chainId: string): ChainConfig | null {
     // call chain registry & get all subchains & start each node
-    const calldatastr = `{"GetSubChainConfigById":"${chainId}"}`;
+    const calldatastr = `{"GetSubChainConfigById":{"chainId":"${chainId}"}}`;
     const resp = callContract(roles.ROLE_MULTICHAIN_REGISTRY, calldatastr, true);
     if (resp.success > 0) {
         // we do not fail, we want the chain to continue
@@ -381,4 +386,15 @@ export function getAccountInfo(addr: Bech32String): QueryAccountResponse {
         return new QueryAccountResponse(null);
     }
     return JSON.parse<QueryAccountResponse>(resp.data);
+}
+
+export function getValidator(addr: Bech32String): stakingtypes.Validator | null {
+    // call chain registry & get all subchains & start each node
+    const calldatastr = `{"GetValidator":{"validator_addr":"${addr}"}}`;
+    const resp = callContract(roles.ROLE_STAKING, calldatastr, true);
+    if (resp.success > 0) {
+        return null
+    }
+    const valresp = JSON.parse<stakingtypes.QueryValidatorResponse>(resp.data);
+    return valresp.validator
 }

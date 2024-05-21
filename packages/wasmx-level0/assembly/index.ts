@@ -35,6 +35,7 @@ export function main(): void {
     actions.StartNode();
   } else if (calld.method === "buildGenTx") {
     actions.buildGenTx(calld.params, calld.event);
+    wasmx.finish(wasmx.getFinishData());
     return;
   } else if (calld.method === "signMessage") {
     actions.signMessageExternal(calld.params, calld.event);

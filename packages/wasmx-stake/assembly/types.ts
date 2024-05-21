@@ -39,15 +39,15 @@ export const TypeUrl_MsgCreateValidator = "/cosmos.staking.v1beta1.MsgCreateVali
 @serializable
 export class Description {
     // moniker defines a human-readable name for the validator.
-    moniker: string
+    moniker: string = ""
     // identity defines an optional identity signature (ex. UPort or Keybase).
-    identity: string
+    identity: string = ""
     // website defines an optional website link.
-    website: string
+    website: string = ""
     // security_contact defines an optional email for security contact.
-    security_contact: string
+    security_contact: string = ""
     // details define other optional details.
-    details: string
+    details: string = ""
     constructor(moniker: string, identity: string, website: string, security_contact: string, details: string) {
         this.moniker = moniker;
         this.identity = identity;
@@ -62,11 +62,11 @@ export class Description {
 export class CommissionRates {
     // TODO
     // rate is the commission rate charged to delegators, as a fraction.
-    rate: string // f64
+    rate: string = "" // f64
     // max_rate defines the maximum commission rate which validator can ever charge, as a fraction.
-    max_rate: string // f64
+    max_rate: string = "" // f64
     // max_change_rate defines the maximum daily increase of the validator commission, as a fraction.
-    max_change_rate: string // f64
+    max_change_rate: string = "" // f64
     constructor(rate: string, max_rate: string, max_change_rate: string) {
         this.rate = rate
         this.max_rate = max_rate
@@ -79,13 +79,13 @@ export class CommissionRates {
 export class MsgCreateValidator {
     description: Description
     commission: CommissionRates
-    min_self_delegation: BigInt // TODO Int
+    min_self_delegation: BigInt = BigInt.zero() // TODO Int
     // Deprecated: Use of Delegator Address in MsgCreateValidator is deprecated.
     delegator_address: string = ""
     // The validator address bytes and delegator address bytes refer to the same account while creating validator (defer
     // only in bech32 notation).
-    validator_address: Bech32String
-    pubkey: PublicKey | null
+    validator_address: Bech32String = "" // bech32 operator address
+    pubkey: PublicKey | null = null // consensus signing public key
     value: Coin
     constructor(description: Description, commission: CommissionRates, min_self_delegation: BigInt, validator_address: Bech32String, pubkey: PublicKey | null, value: Coin) {
         this.description = description
@@ -107,10 +107,10 @@ export class MsgCreateValidatorResponse {}
 // @ts-ignore
 @serializable
 export class ValidatorInfo {
-    address: HexString
-    pub_key: Base64String // crypto.PubKey
-    voting_power: i64
-    proposer_priority: i64
+    address: HexString = ""
+    pub_key: Base64String  = ""// crypto.PubKey
+    voting_power: i64 = 0
+    proposer_priority: i64 = 0
     constructor(address: HexString, pub_key: string, voting_power: i64, proposer_priority: i64) {
         this.address = address;
         this.pub_key = pub_key;
@@ -122,9 +122,9 @@ export class ValidatorInfo {
 // @ts-ignore
 @serializable
 export class Delegation {
-    delegator_address: Bech32String
-    validator_address: ValidatorAddressString
-    amount: BigInt
+    delegator_address: Bech32String = ""
+    validator_address: ValidatorAddressString = ""
+    amount: BigInt = BigInt.zero()
     constructor(delegator_address: Bech32String, validator_address: ValidatorAddressString, amount: BigInt) {
         this.delegator_address = delegator_address
         this.validator_address = validator_address
@@ -136,9 +136,9 @@ export class Delegation {
 @serializable
 export class LastValidatorPower {
     // address is the address of the validator.
-    address: string
+    address: string = ""
     // power defines the power of the validator.
-    power: i64
+    power: i64 = 0
     constructor(address: string, power: i64) {
         this.address = address
         this.power = power

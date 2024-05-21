@@ -23,7 +23,7 @@ export function getDefaultGenesis(bondBaseDenom: string): GenesisState {
     const params = getDefaultParams(bondBaseDenom)
     return new GenesisState(
         params,
-        "",
+        "0",
         [],
         [],
         [],
