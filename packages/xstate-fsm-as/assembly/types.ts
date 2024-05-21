@@ -134,7 +134,7 @@ export class ActionParam {
 export class ActionObject {
   type: string;
   params: Array<ActionParam>
-  event: EventObject | null
+  event: EventObject | null = null
   // exec: ActionFunction | null;
   // assignment: PropertyAssigner<ContextGeneralString> | null;
   // assignmentFn: PropertyAssignerFn | null;
@@ -231,9 +231,9 @@ export class StateClassExternal {
 export class AssignActionObject extends ActionObject {
   type: AssignAction;
    // assignment: PropertyAssigner<ContextGeneralString> | null;
-  assignment: Map<string, string> | null;
+  assignment: Map<string, string> | null = null;
   // assignmentFn: PropertyAssignerFn | null;
-  assignmentFn: ((event: EventObject) => string) | null;
+  assignmentFn: ((event: EventObject) => string) | null = null;
 
   constructor(
     type: AssignAction,
@@ -251,7 +251,7 @@ export class AssignActionObject extends ActionObject {
 @serializable
 export class ActionClass {
   value: string;
-  action: ActionObject | null;
+  action: ActionObject | null = null;
   // actionFn: StateMachine.ActionFunction | null;
   // assignAction: AssignActionObject | null;
 
@@ -273,7 +273,7 @@ export class ActionClass {
 export class Transition {
   target: string;
   actions: Array<ActionObject>;
-  guard: ActionObject | null;
+  guard: ActionObject | null = null;
   meta: Array<ActionParam>;
 
   constructor(
@@ -306,7 +306,7 @@ export class TransitionExternal {
 
 export class StateInfoClass implements StateInfo {
   always: Array<Transition>;
-  after: StateTimers | null;
+  after: StateTimers | null = null;
   on: StateInfoEvents;
   exit: Array<ActionObject>;
   entry: Array<ActionObject>;
