@@ -303,6 +303,40 @@ export class PublicKey { // extends AnyWrap // we cannot extend in as-json
 
 // @ts-ignore
 @serializable
+export enum SignMode {
+    SIGN_MODE_UNSPECIFIED = 0,
+    SIGN_MODE_DIRECT = 1,
+    SIGN_MODE_TEXTUAL = 2,
+    SIGN_MODE_DIRECT_AUX = 3,
+    SIGN_MODE_LEGACY_AMINO_JSON = 127,
+    SIGN_MODE_EIP_191 = 191,
+}
+
+export const SIGN_MODE_UNSPECIFIED = "SIGN_MODE_UNSPECIFIED"
+export const SIGN_MODE_DIRECT = "SIGN_MODE_DIRECT"
+export const SIGN_MODE_TEXTUAL = "SIGN_MODE_TEXTUAL"
+export const SIGN_MODE_DIRECT_AUX = "SIGN_MODE_DIRECT_AUX"
+export const SIGN_MODE_LEGACY_AMINO_JSON = "SIGN_MODE_LEGACY_AMINO_JSON"
+export const SIGN_MODE_EIP_191 = "SIGN_MODE_EIP_191"
+
+export const SignModeByEnum = new Map<SignMode, string>();
+SignModeByEnum.set(SignMode.SIGN_MODE_UNSPECIFIED, SIGN_MODE_UNSPECIFIED);
+SignModeByEnum.set(SignMode.SIGN_MODE_DIRECT, SIGN_MODE_DIRECT);
+SignModeByEnum.set(SignMode.SIGN_MODE_TEXTUAL, SIGN_MODE_TEXTUAL);
+SignModeByEnum.set(SignMode.SIGN_MODE_DIRECT_AUX, SIGN_MODE_DIRECT_AUX);
+SignModeByEnum.set(SignMode.SIGN_MODE_LEGACY_AMINO_JSON, SIGN_MODE_LEGACY_AMINO_JSON);
+SignModeByEnum.set(SignMode.SIGN_MODE_EIP_191, SIGN_MODE_EIP_191);
+
+export const SignModeByName = new Map<string, SignMode>();
+SignModeByName.set(SIGN_MODE_UNSPECIFIED, SignMode.SIGN_MODE_UNSPECIFIED);
+SignModeByName.set(SIGN_MODE_DIRECT, SignMode.SIGN_MODE_DIRECT);
+SignModeByName.set(SIGN_MODE_TEXTUAL, SignMode.SIGN_MODE_TEXTUAL);
+SignModeByName.set(SIGN_MODE_DIRECT_AUX, SignMode.SIGN_MODE_DIRECT_AUX);
+SignModeByName.set(SIGN_MODE_LEGACY_AMINO_JSON, SignMode.SIGN_MODE_LEGACY_AMINO_JSON);
+SignModeByName.set(SIGN_MODE_EIP_191, SignMode.SIGN_MODE_EIP_191);
+
+// @ts-ignore
+@serializable
 export class ModeInfoSingle {
     mode: string
     constructor(mode: string) {

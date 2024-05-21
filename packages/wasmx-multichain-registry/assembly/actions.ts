@@ -31,7 +31,8 @@ import * as slashingdefaults from "wasmx-slashing/assembly/defaults";
 import { AnyWrap } from "wasmx-env/assembly/wasmx_types";
 import { ChainConfig, GenesisState, GenutilGenesis, InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
 import { buildChainConfig, buildChainId, getDefaultConsensusParams } from "wasmx-consensus/assembly/multichain_utils";
-import { Base64String, Bech32String, CallRequest, CallResponse, Coin, Event, EventAttribute, PublicKey, SignedTransaction } from "wasmx-env/assembly/types";
+import * as wasmxt from "wasmx-env/assembly/types";
+import { Base64String, Coin, SignedTransaction, Event, EventAttribute, PublicKey, Bech32String } from "wasmx-env/assembly/types";
 import { AttributeKeyChainId, AttributeKeyRequest, EventTypeInitSubChain } from "./events";
 import { addChainId, addChainValidator, getChainData, getChainIds, getChainLastId, getChainValidatorAddresses, getChainValidators, getParams, setChainData } from "./storage";
 import { CosmosmodGenesisState, InitSubChainRequest, MODULE_NAME, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, RegisterDefaultSubChainRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest, SubChainData } from "./types";
@@ -40,9 +41,9 @@ import { BigInt } from "wasmx-env/assembly/bn";
 import { ConsensusParams, RequestInitChain } from "wasmx-consensus/assembly/types_tendermint";
 
 export function InitSubChain(req: InitSubChainRequest): ArrayBuffer {
-    LoggerDebug("initializing subchain", ["chain_id", req.chainId])
+    LoggerDebug("initializing subchain", ["subchain_id", req.chainId])
     initSubChainInternal(req.chainId)
-    LoggerDebug("initialized subchain", ["chain_id", req.chainId])
+    LoggerDebug("initialized subchain", ["subchain_id", req.chainId])
     return new ArrayBuffer(0);
 }
 
@@ -74,7 +75,7 @@ export function RegisterSubChainValidator(req: RegisterSubChainValidatorRequest)
 
 export function RemoveSubChain(req: RemoveSubChainRequest): ArrayBuffer {
     removeSubChain(req.chainId)
-    LoggerDebug("removed subchain temporary data", ["chain_id", req.chainId])
+    LoggerDebug("removed subchain temporary data", ["subchain_id", req.chainId])
     return new ArrayBuffer(0);
 }
 
@@ -114,6 +115,15 @@ export function GetSubChainById(req: QueryGetSubChainRequest): ArrayBuffer {
         return new ArrayBuffer(0)
     }
     const encoded = JSON.stringify<InitSubChainDeterministicRequest>(chaindata.data)
+    return String.UTF8.encode(encoded)
+}
+
+export function GetSubChainConfigById(req: QueryGetSubChainRequest): ArrayBuffer {
+    const chaindata = getChainData(req.chainId)
+    if (chaindata == null) {
+        return new ArrayBuffer(0)
+    }
+    const encoded = JSON.stringify<ChainConfig>(chaindata.data.chain_config)
     return String.UTF8.encode(encoded)
 }
 
@@ -317,8 +327,8 @@ export function isEIDActive(addr: Bech32String): boolean {
     return !active.isZero()
 }
 
-export function callEvmContract(addr: Bech32String, calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest(addr, calldata, BigInt.zero(), 100000000, isQuery);
+export function callEvmContract(addr: Bech32String, calldata: string, isQuery: boolean): wasmxt.CallResponse {
+    const req = new wasmxt.CallRequest(addr, calldata, BigInt.zero(), 100000000, isQuery);
     const resp = wasmxw.callEvm(req, MODULE_NAME);
     return resp;
 }

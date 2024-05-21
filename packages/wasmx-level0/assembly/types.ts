@@ -1,6 +1,8 @@
 import { JSON } from "json-as/assembly";
 import { Base64String, HexString } from "wasmx-env/assembly/types";
+import * as stakingtypes from "wasmx-stake/assembly/types";
 import { Version, BlockID, CommitSig, BlockIDFlag } from 'wasmx-consensus/assembly/types_tendermint';
+import { BigInt } from "wasmx-env/assembly/bn";
 
 export const MODULE_NAME = "level0"
 
@@ -105,5 +107,16 @@ export class Block {
         this.header = header
         this.hash = hash
         this.data_hashes = data_hashes
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryBuildGenTxRequest {
+    chainId: string
+    msg: stakingtypes.MsgCreateValidator
+    constructor(chainId: string, msg: stakingtypes.MsgCreateValidator) {
+        this.chainId = chainId
+        this.msg = msg
     }
 }

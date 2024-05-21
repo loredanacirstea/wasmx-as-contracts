@@ -33,6 +33,12 @@ export function main(): void {
     actions.setup(calld.params, calld.event);
   } else if (calld.method === "StartNode") {
     actions.StartNode();
+  } else if (calld.method === "buildGenTx") {
+    actions.buildGenTx(calld.params, calld.event);
+    return;
+  } else if (calld.method === "signMessage") {
+    actions.signMessageExternal(calld.params, calld.event);
+    return;
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)

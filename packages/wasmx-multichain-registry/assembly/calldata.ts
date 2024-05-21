@@ -17,6 +17,7 @@ export class CallData {
     GetSubChainsByIds: QueryGetSubChainsByIdsRequest | null = null;
     GetSubChainIds: QueryGetSubChainIdsRequest | null = null;
     GetSubChainById: QueryGetSubChainRequest | null = null;
+    GetSubChainConfigById: QueryGetSubChainRequest | null = null;
 }
 
 export function getCallDataWrap(): CallData {

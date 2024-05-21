@@ -1,31 +1,93 @@
 import { JSON } from "json-as/assembly";
 import * as sha256 from "@ark-us/as-sha256/assembly/index";
 import * as base64 from "as-base64/assembly";
+import * as wasmx from "wasmx-env/assembly/wasmx";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as roles from "wasmx-env/assembly/roles";
-import { base64ToHex } from "wasmx-utils/assembly/utils";
+import * as wasmxt from "wasmx-env/assembly/types";
+import { Base64String, Coin, SignedTransaction, Event, EventAttribute, PublicKey, Bech32String } from "wasmx-env/assembly/types";
+import * as p2pw from "wasmx-p2p/assembly/p2p_wrap";
+import * as p2ptypes from "wasmx-p2p/assembly/types";
+import { base64ToHex, base64ToString } from "wasmx-utils/assembly/utils";
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
 import * as mcwrap from 'wasmx-consensus/assembly/multichain_wrap';
-import { StartSubChainMsg } from "wasmx-consensus/assembly/types_multichain";
+import { ChainConfig, StartSubChainMsg } from "wasmx-consensus/assembly/types_multichain";
+import { BaseAccount, QueryAccountResponse } from "wasmx-auth/assembly/types";
+import * as stakingtypes from "wasmx-stake/assembly/types";
 import {
     EventObject,
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
 import { getParamsOrEventParams, actionParamsToMap } from 'xstate-fsm-as/assembly/utils';
-import { Block, CurrentState, MsgNewTransaction, MsgNewTransactionResponse } from "./types";
+import { Block, CurrentState, MODULE_NAME, MsgNewTransaction, MsgNewTransactionResponse, QueryBuildGenTxRequest } from "./types";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
 import { buildNewBlock, commitBlock, proposeBlock } from "./block";
-import { setBlock, setCurrentState } from "./storage";
+import { setBlock, setCurrentState, getCurrentState } from "./storage";
 import { LOG_START } from "./config";
 import { callStorage } from "wasmx-tendermint-p2p/assembly/action_utils";
-import { callContract } from "wasmx-tendermint/assembly/actions";
+import { callContract, signMessage } from "wasmx-tendermint/assembly/actions";
 import { InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
 import { QuerySubChainIdsResponse } from "wasmx-multichain-registry-local/assembly/types";
+import * as mctypes from "wasmx-multichain-registry/assembly/types";
+import { BigInt } from "wasmx-env/assembly/bn";
+import { getValidatorNodesInfo, setValidatorNodesInfo } from "wasmx-tendermint-p2p/assembly/storage";
+import { NodeInfo } from "wasmx-raft/assembly/types_raft"
 
 export function wrapGuard(value: boolean): ArrayBuffer {
     if (value) return String.UTF8.encode("1");
     return String.UTF8.encode("0");
+}
+
+export function buildGenTx(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("message")) {
+        revert("no message found");
+    }
+    const msgstr = ctx.get("message") // stringified message
+    const datajson = String.UTF8.decode(base64.decode(msgstr).buffer);
+    const req = JSON.parse<QueryBuildGenTxRequest>(datajson);
+
+    const chainConfig = getSubChainConfig(req.chainId)
+    if (chainConfig == null) {
+        revert(`subchain config is null: ${req.chainId}`)
+        return;
+    }
+
+    const nodeIps = getValidatorNodesInfo();
+    const nodeInfo = nodeIps[0];
+
+    const genTx = createGenTx(nodeInfo, chainConfig.BondBaseDenom, req.msg)
+    if (genTx == null) {
+        revert(`genTx is null`)
+        return;
+    }
+    const resp = String.UTF8.encode(JSON.stringify<wasmxt.SignedTransaction>(genTx))
+    wasmx.setFinishData(resp)
+}
+
+export function signMessageExternal(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("message")) {
+        revert("no message found");
+    }
+    const msgstr = ctx.get("message") // stringified message
+
+    const currentState = getCurrentState();
+    const msgBase64 = Uint8Array.wrap(String.UTF8.encode(msgstr));
+    const privKey = base64.decode(currentState.validator_privkey);
+    const signature = wasmx.ed25519Sign(privKey.buffer, msgBase64.buffer);
+    const signatureBase64 = base64.encode(Uint8Array.wrap(signature));
+    LoggerDebug("ed25519Sign", ["signature", signatureBase64])
+    wasmx.setFinishData(signature)
 }
 
 export function setupNode(
@@ -42,6 +104,26 @@ export function setupNode(
 
     LoggerDebug("setupNode", ["initChainSetup", datajson])
     const data = JSON.parse<typestnd.InitChainSetup>(datajson);
+
+    const peers = new Array<NodeInfo>(data.peers.length);
+    for (let i = 0; i < data.peers.length; i++) {
+        const parts1 = data.peers[i].split("@");
+        if (parts1.length != 2) {
+            revert(`invalid node format; found: ${data.peers[i]}`)
+        }
+        // <address>@/ip4/127.0.0.1/tcp/5001/p2p/12D3KooWMWpac4Qp74N2SNkcYfbZf2AWHz7cjv69EM5kejbXwBZF
+        const addr = parts1[0]
+        const parts2 = parts1[1].split("/")
+        if (parts2.length != 7) {
+            revert(`invalid node format; found: ${data.peers[i]}`)
+        }
+        const host = parts2[2]
+        const port = parts2[4]
+        const p2pid = parts2[6]
+        peers[i] = new NodeInfo(addr, new p2ptypes.NetworkNode(p2pid, host, port, parts1[1]), false);
+    }
+    setValidatorNodesInfo(peers);
+
     initChain(data);
 }
 
@@ -239,4 +321,64 @@ export function setConsensusParams(value: typestnd.ConsensusParams): void {
     if (resp.success > 0) {
         revert("could not set consensus params");
     }
+}
+
+export function createGenTx(
+    // validatorOperator: string,
+    // validatorPubKey: PublicKey,
+    node: NodeInfo,
+    bondBaseDenom: string,
+    input: stakingtypes.MsgCreateValidator,
+): SignedTransaction | null {
+    const validatorOperator = node.address
+    const accresp = getAccountInfo(validatorOperator)
+    const acc = accresp.account
+    if (!acc) {
+        revert(`account not found: ${validatorOperator}`)
+        return null
+    }
+    const baseacc = JSON.parse<BaseAccount>(base64ToString(acc.value))
+
+    const valmsg = new stakingtypes.MsgCreateValidator(
+        input.description,
+        input.commission,
+        input.min_self_delegation,
+        validatorOperator,
+        baseacc.pub_key,
+        new Coin(bondBaseDenom, input.value.amount),
+    )
+    const valmsgstr = JSON.stringify<stakingtypes.MsgCreateValidator>(valmsg)
+    const txmsg = new wasmxt.TxMessage(stakingtypes.TypeUrl_MsgCreateValidator, valmsgstr)
+
+    const memo = `${validatorOperator}@/ip4/${node.node.host}/tcp/${node.node.port}/p2p/${node.node.id}`
+
+    const txbody = new wasmxt.TxBody([txmsg], memo, 0, [], [])
+
+    const authinfo = new wasmxt.AuthInfo(
+        [new wasmxt.SignerInfo(baseacc.pub_key, new wasmxt.ModeInfo(new wasmxt.ModeInfoSingle(wasmxt.SIGN_MODE_DIRECT), null), 0)],
+        new wasmxt.Fee([], 5000000, validatorOperator, ""),
+        null,
+    )
+    return new SignedTransaction(txbody, authinfo, [])
+}
+
+export function getSubChainConfig(chainId: string): ChainConfig | null {
+    // call chain registry & get all subchains & start each node
+    const calldatastr = `{"GetSubChainConfigById":"${chainId}"}`;
+    const resp = callContract(roles.ROLE_MULTICHAIN_REGISTRY, calldatastr, true);
+    if (resp.success > 0) {
+        // we do not fail, we want the chain to continue
+        return null
+    }
+    return JSON.parse<ChainConfig>(resp.data);
+}
+
+export function getAccountInfo(addr: Bech32String): QueryAccountResponse {
+    // call chain registry & get all subchains & start each node
+    const calldatastr = `{"GetAccount":{"address":"${addr}"}}`;
+    const resp = callContract(roles.ROLE_AUTH, calldatastr, true);
+    if (resp.success > 0) {
+        return new QueryAccountResponse(null);
+    }
+    return JSON.parse<QueryAccountResponse>(resp.data);
 }
