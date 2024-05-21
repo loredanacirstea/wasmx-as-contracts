@@ -5,6 +5,7 @@ import {
   runInternal,
   MachineExternal,
   setup,
+  executeInternal,
 } from './machine';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, CallDataRun, getCallDataWrap, getInterpreterCalldata } from './calldata';
@@ -52,6 +53,12 @@ export function main(): u8[] {
     } else if (calldata.StartNode !== null) {
       StartNodeInternal(config)
       result = new ArrayBuffer(0);
+    } else if (calldata.query !== null) {
+      const action = calldata.query!.action;
+      const _event = new EventObject("", []);
+      executeInternal(config, _event, action);
+      // we may have set the return data during execution
+      result = wasmx.getFinishData();
     } else {
       const calldraw = wasmx.getCallData();
       let calldstr = String.UTF8.decode(calldraw)

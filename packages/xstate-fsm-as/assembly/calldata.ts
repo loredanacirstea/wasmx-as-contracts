@@ -5,6 +5,7 @@ import { parseUint8ArrayToI32BigEndian } from 'wasmx-utils/assembly/utils';
 import {
     EventObject,
     ContextParam,
+    ActionObject,
 } from './types';
 import { MachineExternal } from './machine';
 import { Base64String, CallRequest, CallResponse } from "wasmx-env/assembly/types";
@@ -33,6 +34,7 @@ export class CallData {
     getCurrentState: CallDataGetCurrentState | null = null;
     getContextValue: CallDataGetContextValue | null = null;
     run: CallDataRun | null = null;
+    query: CallDataQuery | null = null;
 
     // consensusless hooks
     StartNode: StartNodeCalld | null = null;
@@ -68,6 +70,15 @@ export class CallDataRun {
     event: EventObject;
     constructor(event: EventObject) {
         this.event = event;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class CallDataQuery {
+    action: ActionObject
+    constructor(action: ActionObject) {
+        this.action = action;
     }
 }
 

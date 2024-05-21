@@ -826,6 +826,13 @@ export function runInternal(config: MachineExternal, event: EventObject): ArrayB
     return new ArrayBuffer(0);
 }
 
+export function executeInternal(config: MachineExternal, event: EventObject, action: ActionObject): ArrayBuffer {
+  const service = loadServiceFromConfig(config);
+  let state = storage.getCurrentState();
+  executeStateAction(service, state, event, action);
+  return new ArrayBuffer(0);
+}
+
 export function loadServiceFromConfig(config: MachineExternal): Service {
     const status = storage.getCurrentStatus();
     return new ServiceExternal(config, status).toInternal();
