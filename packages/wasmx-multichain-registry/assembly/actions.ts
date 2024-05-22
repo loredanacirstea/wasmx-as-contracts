@@ -61,7 +61,7 @@ export function RegisterSubChain(req: RegisterSubChainRequest): ArrayBuffer {
     if (!passCheckEIDActive(wasmxw.getCaller())) {
         revert(`unauthorized: no eID active`);
     }
-    registerSubChainInternal(req.data, req.genTxs, req.balances)
+    registerSubChainInternal(req.data, req.genTxs, req.initial_balance)
     return new ArrayBuffer(0);
 }
 
@@ -155,12 +155,12 @@ export function registerDefaultSubChainInternal(req: RegisterDefaultSubChainRequ
         defaultInitialHeight,
     )
     const data = new InitSubChainDeterministicRequest(initChainReq, chainConfig, peers);
-    return registerSubChainInternal(data, req.gen_txs, req.balances);
+    return registerSubChainInternal(data, req.gen_txs, req.initial_balance);
 }
 
-export function registerSubChainInternal(data: InitSubChainDeterministicRequest, genTxs: Base64String[], balances: Coin[]): void {
+export function registerSubChainInternal(data: InitSubChainDeterministicRequest, genTxs: Base64String[], initialBalance: BigInt): void {
     addChainId(data.init_chain_request.chain_id);
-    const chaindata = new SubChainData(data, genTxs, balances);
+    const chaindata = new SubChainData(data, genTxs, initialBalance);
     setChainData(chaindata);
     for (let i = 0; i < genTxs.length; i++) {
         registerSubChainValidatorInternal(data.init_chain_request.chain_id, genTxs[i]);
@@ -266,6 +266,7 @@ export function includeGenTxs(data: SubChainData, genTxs: Base64String[]): InitS
     const bankGenesis = cosmosmodGenesis.bank
     const authGenesis = cosmosmodGenesis.auth
 
+    const baseDenom = bankGenesis.denom_info[0].metadata.base
 
     // bankGenesis.balances
     for (let i = 0; i < genTxs.length; i++) {
@@ -277,7 +278,7 @@ export function includeGenTxs(data: SubChainData, genTxs: Base64String[]): InitS
             continue;
         }
         // new balance
-        const balance = new banktypes.Balance(msg.validator_address, data.balances)
+        const balance = new banktypes.Balance(msg.validator_address, [new Coin(baseDenom, data.initial_balance)])
         bankGenesis.balances.push(balance);
         // new account
         if (tx.auth_info.signer_infos.length == 0) {

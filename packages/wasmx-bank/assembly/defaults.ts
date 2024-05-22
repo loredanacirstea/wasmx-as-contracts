@@ -33,6 +33,7 @@ export function getDefaultBankDenoms(denomUnit: string, baseDenomUnit: u32, erc2
         gasTokenMinters,
         "",
     )
+    gasTokenInfo.base_denom = gasTokenInfo.metadata.base
 
     const stakingTokenAdmins: string[] = [roles.ROLE_BANK, roles.ROLE_STAKING]
     const stakingTokenMinters: string[] = [roles.ROLE_BANK, roles.ROLE_STAKING]

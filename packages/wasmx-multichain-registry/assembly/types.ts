@@ -7,6 +7,7 @@ import * as stakingtypes from "wasmx-stake/assembly/types";
 import * as govtypes from "wasmx-gov/assembly/types";
 import * as slashingtypes from "wasmx-slashing/assembly/types";
 import * as distributiontypes from "wasmx-distribution/assembly/types";
+import { BigInt } from "wasmx-env/assembly/bn";
 
 export const MODULE_NAME = "multichain_registry"
 
@@ -44,12 +45,12 @@ export class Params {
 export class SubChainData {
     data: InitSubChainDeterministicRequest
     genTxs: Base64String[] // json format!!
-    balances: Coin[]
+    initial_balance: BigInt
     initialized: bool
-    constructor(data: InitSubChainDeterministicRequest, genTxs: Base64String[], balances: Coin[]) {
+    constructor(data: InitSubChainDeterministicRequest, genTxs: Base64String[], initial_balance: BigInt) {
         this.data = data
         this.genTxs = genTxs
-        this.balances = balances
+        this.initial_balance = initial_balance
         this.initialized = false
     }
 }
@@ -87,21 +88,21 @@ export class RegisterDefaultSubChainRequest {
     base_denom_unit: u32
     chain_base_name: string
     level_index: u32
-    balances: Coin[]
+    initial_balance: BigInt
     gen_txs: Base64String[]
     constructor(
         denom_unit: string,
         base_denom_unit: u32,
         chain_base_name: string,
         level_index: u32,
-        balances: Coin[],
+        initial_balance: BigInt,
         gen_txs: Base64String[],
     ) {
         this.denom_unit = denom_unit
         this.base_denom_unit = base_denom_unit
         this.chain_base_name = chain_base_name
         this.level_index = level_index
-        this.balances = balances
+        this.initial_balance = initial_balance
         this.gen_txs = gen_txs
     }
 }
@@ -111,11 +112,11 @@ export class RegisterDefaultSubChainRequest {
 export class RegisterSubChainRequest {
     data: InitSubChainDeterministicRequest
     genTxs: Base64String[]
-    balances: Coin[]
-    constructor(data: InitSubChainDeterministicRequest, genTxs: Base64String[], balances: Coin[]) {
+    initial_balance: BigInt
+    constructor(data: InitSubChainDeterministicRequest, genTxs: Base64String[], initial_balance: BigInt) {
         this.data = data
         this.genTxs = genTxs
-        this.balances = balances
+        this.initial_balance = initial_balance
     }
 }
 
