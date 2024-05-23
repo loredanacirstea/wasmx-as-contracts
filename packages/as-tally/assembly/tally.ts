@@ -522,7 +522,13 @@ export class tally {
         if (carry) {
             console.log("mul overflow");
         }
-        const len = significantLength32(c.a32);
+        let len = significantLength32(c.a32);
+        if (len < a.a32.length) {
+            len = a.a32.length
+        }
+        if (len < b.a32.length) {
+            len = b.a32.length
+        }
         if (len < c.a32.length) {
             c = tally.fromUint32Array(c.a32.slice(0, len));
         }

@@ -1,5 +1,5 @@
 import assert from "assert";
-import { add, sub, div, mul, exp, toString10, toString16, fromString } from "../build/debug.js";
+import { add, sub, div, mul, exp, toString10, toString16, fromString, mul_str } from "../build/debug.js";
 
 let result;
 
@@ -18,9 +18,13 @@ let ttstr = "24900552009816332"
 result = fromString(encodeToUtf8Array(ttstr).buffer);
 assert.strictEqual(decodeFromUtf8Array(result), ttstr);
 
+// 10000000000000000000 * 1
+result = mul_str(encodeToUtf8Array("10000000000000000000").buffer, encodeToUtf8Array("1").buffer)
+assert.strictEqual(decodeFromUtf8Array(result), "10000000000000000000");
+
 // add
 result = add(new Uint8Array([1]).buffer, new Uint8Array([2]).buffer, 0)
-assert.strictEqual(decodeFromUtf8Array(result), "03");
+assert.strictEqual(decodeFromUtf8Array(result), "3");
 
 result = add(hexToUint8Array("09d11b1a5ef44f6bf02bd225b55c04d38a737d99f3c378456b4f5f7cf9c1fe03"), hexToUint8Array("18b6a4a190a001b085f7996423266d84c00642b0caddbf68dd258dcbeb112fc6"), 32)
 assert.strictEqual(decodeFromUtf8Array(result), "2287bfbbef94511c76236b89d88272584a79c04abea137ae4874ed48e4d32dc9");

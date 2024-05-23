@@ -22,6 +22,13 @@ export function mul(a: ArrayBuffer, b: ArrayBuffer, byteLength: i32): ArrayBuffe
     return String.UTF8.encode(result.toString(16, byteLength, false, false))
 }
 
+export function mul_str(a: ArrayBuffer, b: ArrayBuffer): ArrayBuffer {
+    const aa = tally.fromString(String.UTF8.decode(a))
+    const bb = tally.fromString(String.UTF8.decode(b))
+    const result = aa.mul(bb)
+    return String.UTF8.encode(result.toString())
+}
+
 export function div(a: ArrayBuffer, b: ArrayBuffer, byteLength: i32): ArrayBuffer {
     const aa = tally.fromUint8Array(Uint8Array.wrap(a), 32, false)
     const bb = tally.fromUint8Array(Uint8Array.wrap(b), 32, false)
