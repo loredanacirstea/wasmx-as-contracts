@@ -43,6 +43,7 @@ export function SendMessageToPeers(req: SendMessageToPeersRequest): void {
 }
 
 export function ConnectChatRoom(req: ConnectChatRoomRequest): void {
+    LoggerDebug("connect p2p rooms", ["protocolId", req.protocolId, "topic", req.topic])
     const data = JSON.stringify<ConnectChatRoomRequest>(req);
     p2p.ConnectChatRoom(String.UTF8.encode(data));
 }

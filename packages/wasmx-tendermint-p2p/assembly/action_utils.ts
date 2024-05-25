@@ -646,3 +646,19 @@ export function initSubChain(encodedData: Base64String, state: CurrentState): ty
 export function getProtocolId(state: CurrentState): string {
     return cfg.PROTOCOL_ID + "_" + state.chain_id
 }
+
+export function getTopic(state: CurrentState, topic: string): string {
+    return topic + "_" + state.chain_id
+}
+
+export function getAllValidatorInfos(): staking.ValidatorSimple[] {
+    const calldata = `{"GetAllValidatorInfos":{}}`
+    const resp = tnd.callStaking(calldata, true);
+    if (resp.success > 0) {
+        revert("could not get validators");
+    }
+    if (resp.data === "") return [];
+    LoggerDebug("GetAllValidatorInfos", ["data", resp.data])
+    const result = JSON.parse<staking.QueryValidatorInfosResponse>(resp.data);
+    return result.validators;
+}

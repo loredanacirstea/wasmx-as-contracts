@@ -4,6 +4,7 @@ import { getCallDataWrap } from 'wasmx-tendermint/assembly/calldata';
 import * as tnd from "wasmx-tendermint/assembly/actions";
 import * as raftp2p from "wasmx-raft-p2p/assembly/actions";
 import * as actions from "./actions";
+import * as actionsmc from "./multichain";
 import { wrapGuard } from "./action_utils";
 import { revert } from "./utils";
 
@@ -133,7 +134,14 @@ export function main(): void {
   } else if (calld.method === "receiveUpdateNodeResponse") {
     actions.receiveUpdateNodeResponse(calld.params, calld.event);
   } else if (calld.method === "StartNode") {
-    actions.StartNode();
+    actionsmc.StartNode();
+  } else if (calld.method === "buildGenTx") {
+    actionsmc.buildGenTx(calld.params, calld.event);
+    wasmx.finish(wasmx.getFinishData());
+    return;
+  } else if (calld.method === "signMessage") {
+    actions.signMessageExternal(calld.params, calld.event);
+    return;
   }
   else {
     revert(`invalid function call data: ${calld.method}`);

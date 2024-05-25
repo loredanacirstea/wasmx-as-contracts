@@ -1,5 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
+import * as stakingtypes from "wasmx-stake/assembly/types";
 import { Base64String, Bech32String, Coin } from "wasmx-env/assembly/types";
 import { NodeInfo } from "wasmx-raft/assembly/types_raft";
 
@@ -104,5 +105,16 @@ export class UpdateNodeRequest {
     peer_address: string
     constructor(peer_address: string) {
         this.peer_address = peer_address;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryBuildGenTxRequest {
+    chainId: string
+    msg: stakingtypes.MsgCreateValidator
+    constructor(chainId: string, msg: stakingtypes.MsgCreateValidator) {
+        this.chainId = chainId
+        this.msg = msg
     }
 }
