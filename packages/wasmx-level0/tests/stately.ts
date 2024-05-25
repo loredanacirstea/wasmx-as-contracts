@@ -4,14 +4,20 @@ import { createMachine } from "xstate";
 
 export const machine = createMachine({
   context: {
-    maxLevel: 0,
-    blockTimeout: 3000,
-    currentLevel: 0,
-    membersCount: 3,
-    seekTimeout: 5000,
-    currentMembers: 1,
+    log: "",
+    votedFor: "0",
+    nextIndex: "[]",
+    currentTerm: "0",
+    blockTimeout: "roundTimeout",
+    max_tx_bytes: "65536",
+    roundTimeout: 4000,
+    currentNodeId: "0",
+    max_block_gas: "20000000",
+    timeoutPrevote: 3000,
+    timeoutPropose: 3000,
+    timeoutPrecommit: 3000,
   },
-  id: "Levels-P2P-0",
+  id: "Levels-P2P-2",
   initial: "uninitialized",
   states: {
     uninitialized: {
@@ -26,8 +32,14 @@ export const machine = createMachine({
       states: {
         unstarted: {
           on: {
-            start: {
-              target: "started",
+            setupNode: {
+              target: "unstarted",
+              actions: {
+                type: "setupNode",
+              },
+            },
+            prestart: {
+              target: "prestart",
             },
             setup: {
               target: "unstarted",
@@ -35,93 +47,23 @@ export const machine = createMachine({
                 type: "setup",
               },
             },
-            prestart: {
-              target: "prestart",
+            start: {
+              target: "started",
+              actions: [
+                {
+                  type: "connectPeers",
+                },
+                {
+                  type: "connectRooms",
+                },
+                {
+                  type: "requestBlockSync",
+                },
+                {
+                  type: "StartNode",
+                },
+              ],
             },
-          },
-        },
-        started: {
-          initial: "Seeker",
-          states: {
-            Seeker: {
-              on: {
-                receiveJoinInvite: {
-                  target: "Seeker",
-                  actions: [
-                    {
-                      type: "receiveJoinInvite",
-                    },
-                    {
-                      type: "sendJoinResponse",
-                    },
-                  ],
-                },
-              },
-              after: {
-                seekTimeout: {
-                  target: "Seeker",
-                  actions: {
-                    type: "sendJoinInvite",
-                  },
-                },
-              },
-              always: {
-                target: "Member",
-                actions: {
-                  type: "deployNextLevel",
-                },
-                guard: {
-                  type: "ifEnoughMembers",
-                },
-              },
-            },
-            Member: {
-              initial: "active",
-              on: {
-                receiveJoinInvite: {
-                  actions: {
-                    type: "sendKnownSeekers",
-                  },
-                },
-              },
-              states: {
-                active: {
-                  after: {
-                    blockTimeout: {
-                      target: "proposer",
-                      actions: {
-                        type: "sendSubBlock",
-                      },
-                    },
-                  },
-                },
-                proposer: {
-                  on: {
-                    receiveSubBlock: {
-                      target: "proposer",
-                      actions: {
-                        type: "receiveSubBlock",
-                      },
-                    },
-                  },
-                  always: {
-                    target: "active",
-                    actions: [
-                      {
-                        type: "newBlock",
-                      },
-                      {
-                        type: "broadcastNewBlock",
-                      },
-                    ],
-                    guard: {
-                      type: "ifAllSubBlocks",
-                    },
-                  },
-                },
-              },
-            },
-            Representative: {},
           },
         },
         prestart: {
@@ -131,58 +73,484 @@ export const machine = createMachine({
             },
           },
         },
+        started: {
+          initial: "Node",
+          on: {
+            newTransaction: {
+              actions: [
+                {
+                  type: "addToMempool",
+                },
+                {
+                  type: "sendNewTransactionResponse",
+                },
+                {
+                  type: "forwardMsgToChat",
+                  params: {
+                    protocolId: "mempool",
+                  },
+                },
+              ],
+            },
+            receiveStateSyncRequest: {
+              actions: {
+                type: "receiveStateSyncRequest",
+              },
+            },
+            updateNode: {
+              actions: {
+                type: "updateNodeAndReturn",
+              },
+            },
+          },
+          states: {
+            Node: {
+              on: {
+                becomeValidator: {
+                  target: "Validator",
+                  actions: [
+                    {
+                      type: "registerValidatorWithNetwork",
+                    },
+                    {
+                      type: "requestBlockSync",
+                    },
+                  ],
+                },
+                receiveStateSyncResponse: {
+                  actions: {
+                    type: "receiveStateSyncResponse",
+                  },
+                },
+                start: {
+                  actions: [
+                    {
+                      type: "connectPeers",
+                    },
+                    {
+                      type: "connectRooms",
+                    },
+                    {
+                      type: "requestBlockSync",
+                    },
+                    {
+                      type: "StartNode",
+                    },
+                  ],
+                },
+                receiveCommit: {
+                  actions: {
+                    type: "receiveCommit",
+                  },
+                },
+              },
+              always: {
+                target: "Validator",
+                actions: {
+                  type: "registerValidatorWithNetwork",
+                },
+                guard: {
+                  type: "ifNodeIsValidator",
+                },
+              },
+            },
+            Validator: {
+              initial: "active",
+              on: {
+                receiveBlockProposal: {
+                  actions: {
+                    type: "receiveBlockProposal",
+                  },
+                  guard: {
+                    type: "ifSenderIsProposer",
+                  },
+                },
+                stop: {
+                  target: "#Levels-P2P-2.stopped",
+                },
+                receiveUpdateNodeResponse: {
+                  actions: {
+                    type: "receiveUpdateNodeResponse",
+                  },
+                },
+                start: {
+                  target: "Validator",
+                  actions: [
+                    {
+                      type: "connectPeers",
+                    },
+                    {
+                      type: "connectRooms",
+                    },
+                    {
+                      type: "registerValidatorWithNetwork",
+                    },
+                    {
+                      type: "requestBlockSync",
+                    },
+                    {
+                      type: "StartNode",
+                    },
+                  ],
+                },
+                receiveCommit: {
+                  actions: {
+                    type: "receiveCommit",
+                  },
+                },
+                receiveUpdateNodeRequest: {
+                  actions: {
+                    type: "receiveUpdateNodeRequest",
+                  },
+                },
+                receiveStateSyncResponse: {
+                  actions: [
+                    {
+                      type: "receiveStateSyncResponse",
+                    },
+                    {
+                      type: "requestValidatorNodeInfoIfSynced",
+                    },
+                  ],
+                },
+              },
+              states: {
+                active: {
+                  on: {
+                    receiveBlockProposal: {
+                      target: "precommit",
+                      actions: [
+                        {
+                          type: "receiveBlockProposal",
+                        },
+                        {
+                          type: "sendPrecommit",
+                        },
+                        {
+                          type: "cancelActiveIntervals",
+                          params: {
+                            after: "timeoutPropose",
+                          },
+                        },
+                      ],
+                      guard: {
+                        type: "ifSenderIsProposer",
+                      },
+                    },
+                  },
+                  after: {
+                    timeoutPropose: {
+                      target: "precommit",
+                      actions: {
+                        type: "sendPrecommitNil",
+                      },
+                    },
+                  },
+                  always: {
+                    target: "#Levels-P2P-2.initialized.started.Proposer",
+                    guard: {
+                      type: "isNextProposer",
+                    },
+                  },
+                  entry: [
+                    {
+                      type: "incrementCurrentTerm",
+                    },
+                    {
+                      type: "setRoundProposer",
+                    },
+                    {
+                      type: "resetPrecommits",
+                    },
+                  ],
+                },
+                precommit: {
+                  on: {
+                    receivePrecommit: {
+                      target: "precommit",
+                      actions: {
+                        type: "receivePrecommit",
+                      },
+                    },
+                  },
+                  after: {
+                    timeoutPrecommit: {
+                      target: "active",
+                      guard: {
+                        type: "ifPrecommitAnyThreshold",
+                      },
+                    },
+                  },
+                  always: {
+                    target: "commit",
+                    actions: [
+                      {
+                        type: "commitBlock",
+                      },
+                      {
+                        type: "sendCommit",
+                      },
+                      {
+                        type: "resetLockedRound",
+                      },
+                      {
+                        type: "resetValidValue",
+                      },
+                      {
+                        type: "resetValidRound",
+                      },
+                      {
+                        type: "cancelActiveIntervals",
+                        params: {
+                          after: "timeoutPrecommit",
+                        },
+                      },
+                      {
+                        type: "resetLockedValue",
+                      },
+                    ],
+                    guard: {
+                      type: "ifPrecommitAcceptThreshold",
+                    },
+                  },
+                },
+                commit: {
+                  on: {
+                    receivePrecommit: {
+                      actions: {
+                        type: "receivePrecommit",
+                      },
+                    },
+                  },
+                  after: {
+                    roundTimeout: {
+                      target: "active",
+                    },
+                  },
+                },
+              },
+            },
+            Proposer: {
+              initial: "active",
+              on: {
+                start: {
+                  target: "Validator",
+                  actions: [
+                    {
+                      type: "connectPeers",
+                    },
+                    {
+                      type: "connectRooms",
+                    },
+                    {
+                      type: "registerValidatorWithNetwork",
+                    },
+                    {
+                      type: "requestBlockSync",
+                    },
+                    {
+                      type: "StartNode",
+                    },
+                  ],
+                },
+                stop: {
+                  target: "#Levels-P2P-2.stopped",
+                },
+                receiveUpdateNodeRequest: {
+                  actions: {
+                    type: "receiveUpdateNodeRequest",
+                  },
+                },
+              },
+              states: {
+                active: {
+                  always: {
+                    target:
+                      "#Levels-P2P-2.initialized.started.Validator.precommit",
+                  },
+                  entry: [
+                    {
+                      type: "proposeBlock",
+                    },
+                    {
+                      type: "sendBlockProposal",
+                    },
+                    {
+                      type: "sendPrevote",
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    stopped: {
+      on: {
+        restart: {
+          target: "#Levels-P2P-2.initialized.unstarted",
+        },
       },
     },
   },
 }).withConfig({
   actions: {
+    incrementCurrentTerm: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    setRoundProposer: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    resetPrecommits: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    proposeBlock: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    sendBlockProposal: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    sendPrevote: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    setupNode: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    connectPeers: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    connectRooms: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    registerValidatorWithNetwork: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    requestBlockSync: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    StartNode: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    receiveBlockProposal: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    addToMempool: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    sendNewTransactionResponse: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    forwardMsgToChat: function (context, event) {
+      // Add your action code here
+      // ...
+    },
     setup: function (context, event) {
       // Add your action code here
       // ...
     },
-    receiveJoinInvite: function (context, event) {
+    receiveUpdateNodeResponse: function (context, event) {
       // Add your action code here
       // ...
     },
-    sendJoinResponse: function (context, event) {
+    receiveStateSyncRequest: function (context, event) {
       // Add your action code here
       // ...
     },
-    deployNextLevel: function (context, event) {
+    updateNodeAndReturn: function (context, event) {
       // Add your action code here
       // ...
     },
-    sendSubBlock: function (context, event) {
+    receiveStateSyncResponse: function (context, event) {
       // Add your action code here
       // ...
     },
-    receiveSubBlock: function (context, event) {
+    receivePrecommit: function (context, event) {
       // Add your action code here
       // ...
     },
-    newBlock: function (context, event) {
+    commitBlock: function (context, event) {
       // Add your action code here
       // ...
     },
-    broadcastNewBlock: function (context, event) {
+    sendCommit: function (context, event) {
       // Add your action code here
       // ...
     },
-    sendKnownSeekers: function (context, event) {
+    resetLockedRound: function (context, event) {
       // Add your action code here
       // ...
     },
-    sendJoinInvite: function (context, event) {
+    resetValidValue: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    resetValidRound: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    cancelActiveIntervals: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    resetLockedValue: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    sendPrecommit: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    sendPrecommitNil: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    receiveCommit: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    receiveUpdateNodeRequest: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    requestValidatorNodeInfoIfSynced: function (context, event) {
       // Add your action code here
       // ...
     },
   },
   guards: {
-    ifEnoughMembers: function (context, event) {
+    ifSenderIsProposer: function (context, event) {
       // Add your guard condition here
       return true;
     },
-    ifAllSubBlocks: function (context, event) {
+    isNextProposer: function (context, event) {
+      // Add your guard condition here
+      return true;
+    },
+    ifPrecommitAcceptThreshold: function (context, event) {
+      // Add your guard condition here
+      return true;
+    },
+    ifNodeIsValidator: function (context, event) {
+      // Add your guard condition here
+      return true;
+    },
+    ifPrecommitAnyThreshold: function (context, event) {
       // Add your guard condition here
       return true;
     },

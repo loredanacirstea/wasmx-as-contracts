@@ -475,6 +475,12 @@ export function isValidatorActive(validator: staking.Validator): bool {
     return true
 }
 
+export function isValidatorSimpleActive(validator: staking.ValidatorSimple): bool {
+    if (validator.jailed) return false;
+    if (validator.status != staking.BondedS) return false;
+    return true
+}
+
 export function updateProposerQueue(validators: staking.Validator[], queue: ValidatorQueueEntry[]): ValidatorQueueEntry[] {
     const m = new Map<Bech32String,i32>();
 

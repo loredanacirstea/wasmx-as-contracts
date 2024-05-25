@@ -34,6 +34,8 @@ export class CurrentState {
     nextHeight: i64
     nextHash: Base64String
 
+    proposerIndex: i32 = 0
+
     constructor(chain_id: string, app_hash: string, last_block_id: BlockID, last_commit_hash: Base64String, last_results_hash: Base64String, validator_address: HexString, validator_privkey: Base64String, validator_pubkey: Base64String,
         nextHeight: i64,
         nextHash: Base64String,

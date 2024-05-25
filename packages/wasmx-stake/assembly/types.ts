@@ -343,6 +343,81 @@ export class Validator {
 
 // @ts-ignore
 @serializable
+export class ValidatorSimple {
+	// operator_address defines the address of the validator's operator; bech encoded in JSON.
+	operator_address: Bech32String
+	// consensus_pubkey is the consensus public key of the validator, as a Protobuf Any.
+	consensus_pubkey: PublicKey | null
+	// jailed defined whether the validator has been jailed from bonded status or not.
+	jailed: bool
+	// status is the validator status (bonded/unbonding/unbonded).
+	status: BondStatusString
+	// description defines the description terms for the validator.
+	description: Description
+	// unbonding_height defines, if unbonding, the height at which this validator has begun unbonding.
+	unbonding_height: i64
+	// unbonding_time defines, if unbonding, the min time for the validator to complete unbonding.
+	unbonding_time: Date
+	// commission defines the commission parameters.
+	commission: Commission
+	// min_self_delegation is the validator's self declared minimum self delegation.
+	// Since: cosmos-sdk 0.46
+	min_self_delegation: BigInt
+	// strictly positive if this validator's unbonding has been stopped by external modules
+	unbonding_on_hold_ref_count: i64
+	// list of unbonding ids, each uniquely identifing an unbonding of this validator
+	unbonding_ids: u64[]
+    constructor(operator_address: string, consensus_pubkey: PublicKey | null, jailed: bool, status: BondStatusString, description: Description, unbonding_height: i64, unbonding_time: Date, commission: Commission, min_self_delegation: BigInt, unbonding_on_hold_ref_count: i64, unbonding_ids: u64[]) {
+        this.operator_address = operator_address
+        this.consensus_pubkey = consensus_pubkey
+        this.jailed = jailed
+        this.status = status
+        this.description = description
+        this.unbonding_height = unbonding_height
+        this.unbonding_time = unbonding_time
+        this.commission = commission
+        this.min_self_delegation = min_self_delegation
+        this.unbonding_on_hold_ref_count = unbonding_on_hold_ref_count
+        this.unbonding_ids = unbonding_ids
+    }
+
+    static fromValidator(value: Validator): ValidatorSimple {
+        return new ValidatorSimple(
+            value.operator_address,
+            value.consensus_pubkey,
+            value.jailed,
+            value.status,
+            value.description,
+            value.unbonding_height,
+            value.unbonding_time,
+            value.commission,
+            value.min_self_delegation,
+            value.unbonding_on_hold_ref_count,
+            value.unbonding_ids,
+        )
+    }
+
+    toValidator(tokens: BigInt, shares: string): Validator {
+        return new Validator(
+            this.operator_address,
+            this.consensus_pubkey,
+            this.jailed,
+            this.status,
+            tokens,
+            shares,
+            this.description,
+            this.unbonding_height,
+            this.unbonding_time,
+            this.commission,
+            this.min_self_delegation,
+            this.unbonding_on_hold_ref_count,
+            this.unbonding_ids,
+        )
+    }
+}
+
+// @ts-ignore
+@serializable
 export class RedelegationEntryResponse {
     redelegation_entry: RedelegationEntry
     balance: BigInt
@@ -410,6 +485,10 @@ export class MsgGetAllValidators {}
 
 // @ts-ignore
 @serializable
+export class MsgGetAllValidatorInfos {}
+
+// @ts-ignore
+@serializable
 export class MsgUpdateValidators {
     updates: ValidatorUpdate[]
     constructor(updates: ValidatorUpdate[]) {
@@ -432,6 +511,17 @@ export class QueryValidatorsResponse {
     validators: Validator[]
     pagination: PageResponse
     constructor(validators: Validator[], pagination: PageResponse) {
+        this.validators = validators
+        this.pagination = pagination
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryValidatorInfosResponse {
+    validators: ValidatorSimple[]
+    pagination: PageResponse
+    constructor(validators: ValidatorSimple[], pagination: PageResponse) {
         this.validators = validators
         this.pagination = pagination
     }

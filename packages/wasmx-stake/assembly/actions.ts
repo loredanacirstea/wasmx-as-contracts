@@ -6,7 +6,7 @@ import * as banktypes from "wasmx-bank/assembly/types"
 import * as derc20types from "wasmx-derc20/assembly/types"
 import * as erc20types from "wasmx-erc20/assembly/types"
 import { getParamsInternal, setParams, setNewValidator, getParams, getValidator, getValidatorsAddresses, getValidatorAddrByConsAddr, setValidator, getValidatorOperatorByHexAddr, setBaseDenom, getBaseDenom } from './storage';
-import { GenesisState, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool, BondedS, AfterValidatorCreated, AfterValidatorBonded, QueryValidatorDelegationsRequest, QueryValidatorDelegationsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryParamsRequest, QueryParamsResponse } from './types';
+import { GenesisState, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool, BondedS, AfterValidatorCreated, AfterValidatorBonded, QueryValidatorDelegationsRequest, QueryValidatorDelegationsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryParamsRequest, QueryParamsResponse, ValidatorSimple, QueryValidatorInfosResponse } from './types';
 import { LoggerDebug, LoggerError, revert } from './utils';
 import { parseInt64 } from "wasmx-utils/assembly/utils";
 import { Bech32String, CallRequest, CallResponse, Coin, PageRequest, PageResponse, ValidatorAddressString } from "wasmx-env/assembly/types";
@@ -117,6 +117,18 @@ export function UpdateValidators(req: MsgUpdateValidators): ArrayBuffer {
     return new ArrayBuffer(0)
 }
 
+export function GetAllValidatorInfos(): ArrayBuffer {
+    const addrs = getValidatorsAddresses()
+    const validators = new Array<ValidatorSimple>(addrs.length)
+    for (let i = 0; i < validators.length; i++) {
+        const valid = getValidator(addrs[i]);
+        if (valid != null) {
+            validators[i] = ValidatorSimple.fromValidator(valid);
+        }
+    }
+    let data = JSON.stringify<QueryValidatorInfosResponse>(new QueryValidatorInfosResponse(validators, new PageResponse(validators.length)))
+    return String.UTF8.encode(data)
+}
 
 export function GetAllValidators(): ArrayBuffer {
     const addrs = getValidatorsAddresses()
@@ -222,6 +234,9 @@ export function ValidatorByHexAddr(req: QueryValidatorRequest): ArrayBuffer {
     return String.UTF8.encode(data)
 }
 
+// TODO do not use .tokens
+// tokens define the delegated tokens (incl. self-delegation)
+// but everything should be taken from the derc20
 export function getValidatorWithBalance(validatorAddr: Bech32String): Validator | null {
     const validator = getValidator(validatorAddr)
     if (validator == null) {

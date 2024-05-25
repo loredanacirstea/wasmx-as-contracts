@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, getCallDataWrap } from './calldata';
-import { InitGenesis, CreateValidator, UpdateValidators, GetAllValidators, GetValidator, GetDelegation, GetPool, ValidatorByConsAddr, ValidatorByHexAddr, GetValidatorDelegations, GetDelegatorValidators, GetDelegatorValidatorAddresses, GetParams } from "./actions";
+import { InitGenesis, CreateValidator, UpdateValidators, GetAllValidators, GetValidator, GetDelegation, GetPool, ValidatorByConsAddr, ValidatorByHexAddr, GetValidatorDelegations, GetDelegatorValidators, GetDelegatorValidatorAddresses, GetParams, GetAllValidatorInfos } from "./actions";
 import { revert } from "./utils";
 
 export function wasmx_env_2(): void {}
@@ -18,6 +18,8 @@ export function main(): void {
     result = InitGenesis(calld.InitGenesis!);
   } else if (calld.GetAllValidators !== null) {
     result = GetAllValidators();
+  } else if (calld.GetAllValidatorInfos !== null) {
+    result = GetAllValidatorInfos();
   } else if (calld.GetValidator !== null) {
     result = GetValidator(calld.GetValidator!);
   } else if (calld.ValidatorByHexAddr !== null) {

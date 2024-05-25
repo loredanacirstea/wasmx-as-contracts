@@ -2,11 +2,15 @@ import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap } from './calldata';
 import * as tnd from "wasmx-tendermint/assembly/actions";
+import * as tnd2 from "wasmx-tendermint-p2p/assembly/actions";
 import { revert } from "./utils";
 import * as actions from "./actions";
+import * as mcactions from "./multichain";
 import { wrapGuard } from "./actions";
 
 export function wasmx_env_2(): void {}
+
+export function wasmx_p2p_1(): void {}
 
 export function wasmx_multichain_1(): void {}
 
@@ -17,24 +21,103 @@ export function instantiate(): void {
 export function main(): void {
   let result: ArrayBuffer = new ArrayBuffer(0)
   const calld = getCallDataWrap();
-  if (calld.method === "ifEnoughMembers") {
-    result = wrapGuard(actions.ifEnoughMembers(calld.params, calld.event));
-    wasmx.finish(result);
-    return;
-  } else if (calld.method === "newBlock") {
-    actions.newBlock(calld.params, calld.event);
-  } else if (calld.method === "sendNewTransactionResponse") {
+  // if (calld.method === "newBlock") {
+  //   actions.newBlock(calld.params, calld.event);
+  // } else
+  if (calld.method === "sendNewTransactionResponse") {
     tnd.sendNewTransactionResponse(calld.params, calld.event);
   } else if (calld.method === "addToMempool") {
     tnd.addToMempool(calld.params, calld.event);
+  // } else if (calld.method === "setupNode") {
+  //   actions.setupNode(calld.params, calld.event);
+  // } else if (calld.method === "setup") {
+  //   actions.setup(calld.params, calld.event);
+  } else if (calld.method === "isNextProposer") {
+    result = wrapGuard(actions.isNextProposer(calld.params, calld.event));
+    wasmx.finish(result);
+    return;
+  } else if (calld.method === "ifPrecommitAnyThreshold") {
+    result = wrapGuard(actions.ifPrecommitAnyThreshold(calld.params, calld.event));
+    wasmx.finish(result);
+    return;
+  } else if (calld.method === "ifPrecommitAcceptThreshold") {
+    result = wrapGuard(actions.ifPrecommitAcceptThreshold(calld.params, calld.event));
+    wasmx.finish(result);
+    return;
+  } else if (calld.method === "ifSenderIsProposer") {
+    result = wrapGuard(tnd2.ifSenderIsProposer(calld.params, calld.event));
+    wasmx.finish(result);
+    return;
+  } else if (calld.method === "ifNodeIsValidator") {
+    result = wrapGuard(tnd2.ifNodeIsValidator(calld.params, calld.event));
+    wasmx.finish(result);
+    return;
+  } else if (calld.method === "newValidatorIsSelf") {
+    result = wrapGuard(tnd2.newValidatorIsSelf(calld.params, calld.event));
+    wasmx.finish(result);
+    return;
+  } else if (calld.method === "setRoundProposer") {
+    actions.setRoundProposer(calld.params, calld.event);
+  } else if (calld.method === "sendBlockProposal") {
+    tnd2.sendBlockProposal(calld.params, calld.event);
+  } else if (calld.method === "sendPrevote") {
+    tnd2.sendPrevote(calld.params, calld.event);
+  } else if (calld.method === "sendPrecommit") {
+    tnd2.sendPrecommit(calld.params, calld.event);
+  } else if (calld.method === "sendPrecommitNil") {
+    tnd2.sendPrecommitNil(calld.params, calld.event);
   } else if (calld.method === "setupNode") {
     actions.setupNode(calld.params, calld.event);
+  } else if (calld.method === "addToMempool") {
+    tnd.addToMempool(calld.params, calld.event);
+  } else if (calld.method === "commitBlock") {
+    tnd2.commitBlock(calld.params, calld.event);
+  } else if (calld.method === "sendNewTransactionResponse") {
+    tnd.sendNewTransactionResponse(calld.params, calld.event);
+  } else if (calld.method === "incrementCurrentTerm") {
+    tnd.incrementCurrentTerm(calld.params, calld.event);
+  } else if (calld.method === "updateNodeAndReturn") {
+    tnd2.updateNodeAndReturn(calld.params, calld.event);
+  } else if (calld.method === "proposeBlock") {
+    tnd2.proposeBlock(calld.params, calld.event);
+  } else if (calld.method === "resetPrecommits") {
+    tnd2.resetPrecommits(calld.params, calld.event);
+  } else if (calld.method === "sendCommit") {
+    tnd2.sendCommit(calld.params, calld.event);
   } else if (calld.method === "setup") {
     actions.setup(calld.params, calld.event);
+  } else if (calld.method === "forwardMsgToChat") {
+    tnd2.forwardMsgToChat(calld.params, calld.event);
+  } else if (calld.method === "connectPeers") {
+    tnd2.connectPeers(calld.params, calld.event);
+  } else if (calld.method === "connectRooms") {
+    tnd2.connectRooms(calld.params, calld.event);
+  } else if (calld.method === "requestBlockSync") {
+    tnd2.requestBlockSync(calld.params, calld.event);
+  } else if (calld.method === "requestValidatorNodeInfoIfSynced") {
+    tnd2.requestValidatorNodeInfoIfSynced(calld.params, calld.event);
+  } else if (calld.method === "registerValidatorWithNetwork") {
+    tnd2.registerValidatorWithNetwork(calld.params, calld.event);
+  } else if (calld.method === "transitionNodeToValidator") {
+    tnd2.transitionNodeToValidator(calld.params, calld.event);
+  } else if (calld.method === "receivePrecommit") {
+    tnd2.receivePrecommit(calld.params, calld.event);
+  } else if (calld.method === "receiveBlockProposal") {
+    tnd2.receiveBlockProposal(calld.params, calld.event);
+  } else if (calld.method === "receiveCommit") {
+    tnd2.receiveCommit(calld.params, calld.event);
+  } else if (calld.method === "receiveUpdateNodeRequest") {
+    tnd2.receiveUpdateNodeRequest(calld.params, calld.event);
+  } else if (calld.method === "receiveStateSyncRequest") {
+    tnd2.receiveStateSyncRequest(calld.params, calld.event);
+  } else if (calld.method === "receiveStateSyncResponse") {
+    tnd2.receiveStateSyncResponse(calld.params, calld.event);
+  } else if (calld.method === "receiveUpdateNodeResponse") {
+    tnd2.receiveUpdateNodeResponse(calld.params, calld.event);
   } else if (calld.method === "StartNode") {
     actions.StartNode();
   } else if (calld.method === "buildGenTx") {
-    actions.buildGenTx(calld.params, calld.event);
+    mcactions.buildGenTx(calld.params, calld.event);
     wasmx.finish(wasmx.getFinishData());
     return;
   } else if (calld.method === "signMessage") {
