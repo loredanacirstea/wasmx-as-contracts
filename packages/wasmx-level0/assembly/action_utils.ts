@@ -1,11 +1,6 @@
 import { getPrecommitArray } from "wasmx-tendermint-p2p/assembly/storage";
 import { ValidatorProposalVote } from "wasmx-tendermint-p2p/assembly/types_blockchain";
-import { getCurrentState } from "./storage";
-
-export function getCurrentProposer(): i32 {
-    const state = getCurrentState();
-    return state.proposerIndex;
-}
+import { LoggerDebug } from "./utils";
 
 export function isPrecommitAcceptThreshold(hash: string): boolean {
     const precommitArr = getPrecommitArray();
@@ -26,8 +21,9 @@ export function isPrecommitAnyThreshold(): boolean {
 }
 
 export function calculateVote(votePerNode: Array<ValidatorProposalVote>, hash: string): boolean {
-    const threshold = votePerNode.length * 80 / 100;
-    let count = 0;
+    const max = votePerNode.length
+    const threshold = u32(Math.ceil(f32(max) * 80 / 100));
+    let count: u32 = 0;
     for (let i = 0; i < votePerNode.length; i++) {
         if (hash == "") { // any vote
             if (votePerNode[i].hash != "") {
@@ -37,5 +33,6 @@ export function calculateVote(votePerNode: Array<ValidatorProposalVote>, hash: s
             count += 1;
         }
     }
+    LoggerDebug("calculate vote", ["max", max.toString(), "threshold", threshold.toString(), "value", count.toString()])
     return count >= threshold;
 }

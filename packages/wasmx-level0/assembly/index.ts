@@ -3,9 +3,9 @@ import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap } from './calldata';
 import * as tnd from "wasmx-tendermint/assembly/actions";
 import * as tnd2 from "wasmx-tendermint-p2p/assembly/actions";
+import * as tnd2mc from "wasmx-tendermint-p2p/assembly/multichain";
 import { revert } from "./utils";
 import * as actions from "./actions";
-import * as mcactions from "./multichain";
 import { wrapGuard } from "./actions";
 
 export function wasmx_env_2(): void {}
@@ -21,17 +21,10 @@ export function instantiate(): void {
 export function main(): void {
   let result: ArrayBuffer = new ArrayBuffer(0)
   const calld = getCallDataWrap();
-  // if (calld.method === "newBlock") {
-  //   actions.newBlock(calld.params, calld.event);
-  // } else
   if (calld.method === "sendNewTransactionResponse") {
     tnd.sendNewTransactionResponse(calld.params, calld.event);
   } else if (calld.method === "addToMempool") {
     tnd.addToMempool(calld.params, calld.event);
-  // } else if (calld.method === "setupNode") {
-  //   actions.setupNode(calld.params, calld.event);
-  // } else if (calld.method === "setup") {
-  //   actions.setup(calld.params, calld.event);
   } else if (calld.method === "isNextProposer") {
     result = wrapGuard(actions.isNextProposer(calld.params, calld.event));
     wasmx.finish(result);
@@ -67,7 +60,7 @@ export function main(): void {
   } else if (calld.method === "sendPrecommitNil") {
     tnd2.sendPrecommitNil(calld.params, calld.event);
   } else if (calld.method === "setupNode") {
-    actions.setupNode(calld.params, calld.event);
+    tnd2.setupNode(calld.params, calld.event);
   } else if (calld.method === "addToMempool") {
     tnd.addToMempool(calld.params, calld.event);
   } else if (calld.method === "commitBlock") {
@@ -85,7 +78,7 @@ export function main(): void {
   } else if (calld.method === "sendCommit") {
     tnd2.sendCommit(calld.params, calld.event);
   } else if (calld.method === "setup") {
-    actions.setup(calld.params, calld.event);
+    tnd2.setup(calld.params, calld.event);
   } else if (calld.method === "forwardMsgToChat") {
     tnd2.forwardMsgToChat(calld.params, calld.event);
   } else if (calld.method === "connectPeers") {
@@ -115,13 +108,13 @@ export function main(): void {
   } else if (calld.method === "receiveUpdateNodeResponse") {
     tnd2.receiveUpdateNodeResponse(calld.params, calld.event);
   } else if (calld.method === "StartNode") {
-    actions.StartNode();
+    tnd2mc.StartNode();
   } else if (calld.method === "buildGenTx") {
-    mcactions.buildGenTx(calld.params, calld.event);
+    tnd2mc.buildGenTx(calld.params, calld.event);
     wasmx.finish(wasmx.getFinishData());
     return;
   } else if (calld.method === "signMessage") {
-    actions.signMessageExternal(calld.params, calld.event);
+    tnd2.signMessageExternal(calld.params, calld.event);
     return;
   } else {
     const calldraw = wasmx.getCallData();

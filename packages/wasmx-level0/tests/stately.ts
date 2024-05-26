@@ -13,7 +13,6 @@ export const machine = createMachine({
     roundTimeout: 4000,
     currentNodeId: "0",
     max_block_gas: "20000000",
-    timeoutPrevote: 3000,
     timeoutPropose: 3000,
     timeoutPrecommit: 3000,
   },
@@ -291,22 +290,10 @@ export const machine = createMachine({
                         type: "sendCommit",
                       },
                       {
-                        type: "resetLockedRound",
-                      },
-                      {
-                        type: "resetValidValue",
-                      },
-                      {
-                        type: "resetValidRound",
-                      },
-                      {
                         type: "cancelActiveIntervals",
                         params: {
                           after: "timeoutPrecommit",
                         },
-                      },
-                      {
-                        type: "resetLockedValue",
                       },
                     ],
                     guard: {
@@ -376,7 +363,7 @@ export const machine = createMachine({
                       type: "sendBlockProposal",
                     },
                     {
-                      type: "sendPrevote",
+                      type: "sendPrecommit",
                     },
                   ],
                 },
@@ -416,7 +403,7 @@ export const machine = createMachine({
       // Add your action code here
       // ...
     },
-    sendPrevote: function (context, event) {
+    sendPrecommit: function (context, event) {
       // Add your action code here
       // ...
     },
@@ -492,27 +479,7 @@ export const machine = createMachine({
       // Add your action code here
       // ...
     },
-    resetLockedRound: function (context, event) {
-      // Add your action code here
-      // ...
-    },
-    resetValidValue: function (context, event) {
-      // Add your action code here
-      // ...
-    },
-    resetValidRound: function (context, event) {
-      // Add your action code here
-      // ...
-    },
     cancelActiveIntervals: function (context, event) {
-      // Add your action code here
-      // ...
-    },
-    resetLockedValue: function (context, event) {
-      // Add your action code here
-      // ...
-    },
-    sendPrecommit: function (context, event) {
       // Add your action code here
       // ...
     },
