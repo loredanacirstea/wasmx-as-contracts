@@ -33,7 +33,7 @@ import { ChainConfig, GenesisState, GenutilGenesis, InitSubChainDeterministicReq
 import { buildChainConfig, buildChainId, getDefaultConsensusParams } from "wasmx-consensus/assembly/multichain_utils";
 import * as wasmxt from "wasmx-env/assembly/types";
 import { Base64String, Coin, SignedTransaction, Event, EventAttribute, PublicKey, Bech32String } from "wasmx-env/assembly/types";
-import { AttributeKeyChainId, AttributeKeyRequest, EventTypeInitSubChain } from "./events";
+import { AttributeKeyChainId, AttributeKeyRequest, AttributeKeyValidator, EventTypeInitSubChain, EventTypeRegisterSubChain, EventTypeRegisterSubChainValidator } from "./events";
 import { addChainId, addChainValidator, getChainData, getChainIds, getChainLastId, getChainValidatorAddresses, getChainValidators, getParams, setChainData } from "./storage";
 import { CosmosmodGenesisState, InitSubChainRequest, MODULE_NAME, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, RegisterDefaultSubChainRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest, SubChainData } from "./types";
 import { LoggerDebug, revert } from "./utils";
@@ -159,12 +159,22 @@ export function registerDefaultSubChainInternal(req: RegisterDefaultSubChainRequ
 }
 
 export function registerSubChainInternal(data: InitSubChainDeterministicRequest, genTxs: Base64String[], initialBalance: BigInt): void {
-    addChainId(data.init_chain_request.chain_id);
+    const chainId = data.init_chain_request.chain_id
+    addChainId(chainId);
     const chaindata = new SubChainData(data, genTxs, initialBalance);
     setChainData(chaindata);
     for (let i = 0; i < genTxs.length; i++) {
-        registerSubChainValidatorInternal(data.init_chain_request.chain_id, genTxs[i]);
+        registerSubChainValidatorInternal(chainId, genTxs[i]);
     }
+
+    // emit registration event with chainId
+    const ev = new Event(
+        EventTypeRegisterSubChain,
+        [
+            new EventAttribute(AttributeKeyChainId, chainId, true),
+        ],
+    )
+    wasmxw.emitCosmosEvents([ev]);
 }
 
 export function registerSubChainValidatorInternal(chainId: string, genTx: Base64String): void {
@@ -192,6 +202,15 @@ export function registerSubChainValidatorInternal(chainId: string, genTx: Base64
     chaindata.genTxs.push(genTx)
     setChainData(chaindata);
     LoggerDebug("registered new subchain validator", ["subchain_id", chainId, "address", msg.validator_address])
+    // emit registration event with chainId
+    const ev = new Event(
+        EventTypeRegisterSubChainValidator,
+        [
+            new EventAttribute(AttributeKeyChainId, chainId, true),
+            new EventAttribute(AttributeKeyValidator, msg.validator_address, true),
+        ],
+    )
+    wasmxw.emitCosmosEvents([ev]);
 }
 
 export function removeSubChain(chainId: string): void {
