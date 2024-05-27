@@ -369,6 +369,10 @@ export class ExecTxResult { // same as ResponseCheckTx
 
 // @ts-ignore
 @serializable
+export class  ExtensionOptionEthereumTx {}
+
+// @ts-ignore
+@serializable
 export class ValidatorUpdate {
     pub_key: PublicKey | null = null
 	power: i64

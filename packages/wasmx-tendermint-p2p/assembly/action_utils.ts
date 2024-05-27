@@ -23,12 +23,12 @@ import { BigInt } from "wasmx-env/assembly/bn";
 import { appendLogEntry, getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getPrecommitArray, getPrevoteArray, getTermId, getValidatorNodeCount, getValidatorNodesInfo, removeLogEntry, setCurrentState, setLogEntryAggregate, setPrecommitArray, setPrevoteArray } from "./storage";
 import { getAllValidators, signMessage } from "wasmx-raft/assembly/action_utils";
 import { CurrentState, GetProposerResponse, SignedMsgType, ValidatorCommitVote, ValidatorProposalVote, ValidatorQueueEntry } from "./types_blockchain";
-import { Base64String, Bech32String, CallRequest, CallResponse } from "wasmx-env/assembly/types";
+import { Base64String, Bech32String, CallRequest, CallResponse, SignedTransaction } from "wasmx-env/assembly/types";
 import { LOG_START } from "./config";
 import { NodeInfo } from "wasmx-raft/assembly/types_raft";
 import { base64ToHex, base64ToString, parseUint8ArrayToU32BigEndian, uint8ArrayToHex } from "wasmx-utils/assembly/utils";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils";
-import { CosmosmodGenesisState } from "wasmx-multichain-registry/assembly/types";
+import * as stakingutils from "wasmx-stake/assembly/msg_utils";
 
 export function wrapGuard(value: boolean): ArrayBuffer {
     if (value) return String.UTF8.encode("1");
@@ -605,15 +605,19 @@ export function initSubChain(encodedData: Base64String, state: CurrentState): ty
     // we initialize only if we are a validator here
     const appstate = base64ToString(req.init_chain_request.app_state_bytes)
     const genesisState: mctypes.GenesisState = JSON.parse<mctypes.GenesisState>(appstate)
-    if (!genesisState.has(modnames.MODULE_COSMOSMOD)) {
-        revert(`genesis state missing field: ${modnames.MODULE_COSMOSMOD}`)
+
+    if (!genesisState.has(modnames.MODULE_GENUTIL)) {
+        revert(`genesis state missing field: ${modnames.MODULE_GENUTIL}`)
     }
-    const cosmosmodGenesisStr = base64ToString(genesisState.get(modnames.MODULE_COSMOSMOD))
-    const cosmosmodGenesis = JSON.parse<CosmosmodGenesisState>(cosmosmodGenesisStr)
-    const vals = cosmosmodGenesis.staking.validators
+    const genutilGenesisStr = base64ToString(genesisState.get(modnames.MODULE_GENUTIL))
+    const genutilGenesis = JSON.parse<mctypes.GenutilGenesis>(genutilGenesisStr)
     let weAreValidator = false;
-    for (let i = 0; i < vals.length; i++) {
-        const consKey = vals[i].consensus_pubkey;
+    for (let i = 0; i < genutilGenesis.gen_txs.length; i++) {
+        const gentx = String.UTF8.decode(base64.decode(genutilGenesis.gen_txs[i]).buffer)
+        const tx = JSON.parse<SignedTransaction>(gentx);
+        const msg = stakingutils.extractCreateValidatorMsg(tx)
+        if (msg == null) continue;
+        const consKey = msg.pubkey
         if (consKey == null) continue;
         if (consKey.getKey().key == state.validator_pubkey) {
             weAreValidator = true;
@@ -621,7 +625,10 @@ export function initSubChain(encodedData: Base64String, state: CurrentState): ty
         }
     }
 
-    if (!weAreValidator) return null;
+    if (!weAreValidator) {
+        return null;
+    }
+    LoggerInfo("node is validating the new subchain", ["subchain_id", chainId])
 
     // add the chainId to our internal node registry
     const calldatastr = `{"AddSubChainId":{"id":"${chainId}"}}`
@@ -640,7 +647,10 @@ export function initSubChain(encodedData: Base64String, state: CurrentState): ty
         state.validator_pubkey,
         req.peers,
     )
-    return mcwrap.InitSubChain(msg);
+    LoggerInfo("initializing subchain", ["subchain_id", chainId])
+    const response = mcwrap.InitSubChain(msg);
+    LoggerInfo("initialized subchain", ["subchain_id", chainId])
+    return response;
 }
 
 export function getProtocolId(state: CurrentState): string {

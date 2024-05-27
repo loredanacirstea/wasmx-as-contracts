@@ -20,7 +20,7 @@ import * as authtypes from "wasmx-auth/assembly/types";
 import * as authdefaults from "wasmx-auth/assembly/defaults";
 import * as banktypes from "wasmx-bank/assembly/types";
 import * as bankdefaults from "wasmx-bank/assembly/defaults";
-import * as stakingtypes from "wasmx-stake/assembly/types";
+import * as stakingutils from "wasmx-stake/assembly/msg_utils";
 import * as stakingdefaults from "wasmx-stake/assembly/defaults";
 import * as distributiontypes from "wasmx-distribution/assembly/types";
 import * as distributiondefaults from "wasmx-distribution/assembly/defaults";
@@ -181,7 +181,7 @@ export function registerSubChainValidatorInternal(chainId: string, genTx: Base64
     // we verify the transaction when the subchain is started
     let genTxStr = String.UTF8.decode(base64.decode(genTx).buffer)
     const tx = JSON.parse<SignedTransaction>(genTxStr)
-    const msg = extractCreateValidatorMsg(tx)
+    const msg = stakingutils.extractCreateValidatorMsg(tx)
     if (msg == null) {
         revert(`invalid gentx: does not contain MsgCreateValidator`);
         return;
@@ -257,16 +257,6 @@ export function initSubChainInternal(chainId: string): void {
     wasmxw.emitCosmosEvents([ev]);
 }
 
-export function extractCreateValidatorMsg(tx: SignedTransaction): stakingtypes.MsgCreateValidator | null {
-    const msgany = tx.body.messages[0]
-    if (msgany.type_url != stakingtypes.TypeUrl_MsgCreateValidator) {
-        return null;
-    }
-    const msgstr = String.UTF8.decode(base64.decode(msgany.value).buffer)
-    const msg = JSON.parse<stakingtypes.MsgCreateValidator>(msgstr)
-    return msg;
-}
-
 export function includeGenTxs(data: SubChainData, genTxs: Base64String[]): InitSubChainDeterministicRequest {
     const appstate = utils.base64ToString(data.data.init_chain_request.app_state_bytes)
     const genesisState: GenesisState = JSON.parse<GenesisState>(appstate)
@@ -292,7 +282,7 @@ export function includeGenTxs(data: SubChainData, genTxs: Base64String[]): InitS
         const genTx = genTxs[i]
         let genTxStr = utils.base64ToString(genTx)
         const tx = JSON.parse<SignedTransaction>(genTxStr)
-        const msg = extractCreateValidatorMsg(tx)
+        const msg = stakingutils.extractCreateValidatorMsg(tx)
         if (msg == null) {
             continue;
         }

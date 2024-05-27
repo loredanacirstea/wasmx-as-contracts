@@ -390,9 +390,9 @@ export class TxBody {
     messages: TxMessage[]
     memo: string
     timeout_height: u64
-    extension_options: Base64String[]
-    non_critical_extension_options: Base64String[]
-    constructor(messages: TxMessage[], memo: string, timeout_height: u64, extension_options: Base64String[], non_critical_extension_options: Base64String[]) {
+    extension_options: AnyWrap[]
+    non_critical_extension_options: AnyWrap[]
+    constructor(messages: TxMessage[], memo: string, timeout_height: u64, extension_options: AnyWrap[], non_critical_extension_options: AnyWrap[]) {
         this.messages = messages
         this.memo = memo
         this.timeout_height = timeout_height
