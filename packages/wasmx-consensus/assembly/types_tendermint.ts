@@ -369,6 +369,29 @@ export class ExecTxResult { // same as ResponseCheckTx
 
 // @ts-ignore
 @serializable
+export class ExtensionOptionMultiChainTx {
+    // option (gogoproto.goproto_getters) = false;
+    chain_id: string
+    index: i32 // index of this transaction in the atomic set
+    tx_count: i32 // total transactions in the atomic set
+    constructor(chain_id: string, index: i32, tx_count: i32) {
+        this.chain_id = chain_id
+        this.index = index
+        this.tx_count = tx_count
+    }
+}
+
+// @ts-ignore
+@serializable
+export class  ExtensionOptionAtomicMultiChainTx {
+    leader_chain: string;
+    constructor(leader_chain: string) {
+        this.leader_chain = leader_chain
+    }
+}
+
+// @ts-ignore
+@serializable
 export class  ExtensionOptionEthereumTx {}
 
 // @ts-ignore
