@@ -30,6 +30,8 @@ import {
     WriteToBackgroundProcessResponse,
     ReadFromBackgroundProcessRequest,
     ReadFromBackgroundProcessResponse,
+    MsgExecuteCrossChainTxResponse,
+    MsgExecuteCrossChainTxRequest,
 } from './types';
 import { u8ArrayToHex, uint8ArrayToHex } from "as-tally/assembly/tally";
 import { toUpperCase } from "./utils";

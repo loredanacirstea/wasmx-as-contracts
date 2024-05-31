@@ -605,3 +605,46 @@ export class ReadFromBackgroundProcessResponse {
         this.data = data
     }
 }
+
+// @ts-ignore
+@serializable
+export class MsgExecuteCrossChainTxRequest {
+    from: string
+    to_address_or_role: string
+    msg: Base64String
+    funds: Coin[]
+    dependencies: string[]
+    from_chain_id: string
+    from_role: string
+    to_chain_id: string
+    constructor(
+        from: string,
+        to_address_or_role: string,
+        msg: Base64String,
+        funds: Coin[],
+        dependencies: string[],
+        from_chain_id: string,
+        from_role: string,
+        to_chain_id: string,
+    ) {
+        this.from = from
+        this.to_address_or_role = to_address_or_role
+        this.msg = msg
+        this.funds = funds
+        this.dependencies = dependencies
+        this.from_chain_id = from_chain_id
+        this.from_role = from_role
+        this.to_chain_id = to_chain_id
+    }
+}
+
+// @ts-ignore
+@serializable
+export class MsgExecuteCrossChainTxResponse {
+    error: string
+    data: Base64String
+    constructor(error: string, data: Base64String) {
+        this.error = error
+        this.data = data
+    }
+}
