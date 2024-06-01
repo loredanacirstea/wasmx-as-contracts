@@ -4,10 +4,9 @@ import * as base64 from "as-base64/assembly"
 import { CallData, getCallDataCrossChain, getCallDataWrap } from "./calldata";
 import { get, set } from "./actions";
 import { LoggerInfo, revert } from "./utils";
+import { WasmxExecutionMessage } from "wasmx-env/assembly/types";
 
 export function wasmx_env_2(): void {}
-
-export function wasmx_crosschain_1(): void {}
 
 export function instantiate(): void {}
 
@@ -35,8 +34,11 @@ export function crosschain(): void{
   const calld = getCallDataCrossChain();
   LoggerInfo("crosschain request", ["from_chain_id", calld.from_chain_id, "from", calld.from, "from_role", calld.from_role])
 
-  let calldstr = String.UTF8.decode(base64.decode(calld.msg).buffer)
-  const msg = JSON.parse<CallData>(calldstr);
-
+  const calldstr = String.UTF8.decode(base64.decode(calld.msg).buffer)
+  const execmsg = JSON.parse<WasmxExecutionMessage>(calldstr);
+  const execmsgstr = String.UTF8.decode(base64.decode(execmsg.data).buffer)
+  const msg = JSON.parse<CallData>(execmsgstr);
+  const result = mainInternal(msg);
+  wasmx.finish(result);
 }
 

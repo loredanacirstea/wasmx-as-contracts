@@ -107,7 +107,7 @@ export function proposeBlockInternalAndStore(lastBlockCommit: typestnd.BlockComm
         maxbytes = cfg.MaxBlockSizeBytes;
     }
     const batch = mempool.batch(cparams.block.max_gas, maxbytes);
-    LoggerDebug("batch transactions", ["count", batch.txs.length.toString()])
+    LoggerDebug("mempool: batch transactions", ["count", batch.txs.length.toString(), "total", mempool.txs.length.toString()])
 
     // TODO
     // maxDataBytes := types.MaxDataBytes(maxBytes, evSize, state.Validators.Size())
@@ -512,7 +512,7 @@ export function addTransactionToMempool(
     const mempool = getMempool();
     // TODO actually decode tx
     // const parsedTx = decodeTx(transaction);
-    const parsedTx =  new typestnd.Transaction(15000000);
+    const parsedTx =  new typestnd.Transaction(30000000);
     const cparams = getConsensusParams();
     const maxgas = cparams.block.max_gas;
     if (maxgas > -1 && maxgas < parsedTx.gas) {

@@ -609,14 +609,14 @@ export class ReadFromBackgroundProcessResponse {
 // @ts-ignore
 @serializable
 export class MsgExecuteCrossChainTxRequest {
-    from: string
-    to_address_or_role: string
-    msg: Base64String
-    funds: Coin[]
-    dependencies: string[]
-    from_chain_id: string
-    from_role: string
-    to_chain_id: string
+    from: string = ""
+    to_address_or_role: string = ""
+    msg: Base64String = ""
+    funds: Coin[] = []
+    dependencies: string[] = []
+    from_chain_id: string = ""
+    from_role: string = ""
+    to_chain_id: string = ""
     constructor(
         from: string,
         to_address_or_role: string,
