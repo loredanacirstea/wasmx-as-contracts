@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import { InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { InitSubChainRequest, MsgInitialize, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, RegisterDefaultSubChainRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest } from "./types";
+import { InitSubChainRequest, MsgInitialize, QueryGetSubChainIdsByLevelRequest, QueryGetSubChainIdsByValidatorRequest, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, QueryGetValidatorsByChainIdRequest, RegisterDefaultSubChainRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest } from "./types";
 
 // @ts-ignore
 @serializable
@@ -18,6 +18,9 @@ export class CallData {
     GetSubChainIds: QueryGetSubChainIdsRequest | null = null;
     GetSubChainById: QueryGetSubChainRequest | null = null;
     GetSubChainConfigById: QueryGetSubChainRequest | null = null;
+    GetSubChainIdsByLevel: QueryGetSubChainIdsByLevelRequest | null = null;
+    GetSubChainIdsByValidator: QueryGetSubChainIdsByValidatorRequest | null = null;
+    GetValidatorsByChainId: QueryGetValidatorsByChainIdRequest | null = null;
 }
 
 export function getCallDataWrap(): CallData {

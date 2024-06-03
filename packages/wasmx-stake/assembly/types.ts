@@ -830,3 +830,21 @@ export class QueryPoolResponse {
         this.pool = pool
     }
 }
+
+export function getValidatorFromMsgCreate(req: MsgCreateValidator): Validator {
+    return new Validator(
+        req.validator_address,
+        req.pubkey,
+        false,
+        BondedS,
+        req.value.amount,
+        "0.0",
+        req.description,
+        0,
+        new Date(0),
+        new Commission(req.commission, new Date(0)),
+        req.min_self_delegation || BigInt.one(),
+        0,
+        [],
+    )
+}

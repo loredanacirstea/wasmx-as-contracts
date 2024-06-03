@@ -6,7 +6,7 @@ import * as banktypes from "wasmx-bank/assembly/types"
 import * as derc20types from "wasmx-derc20/assembly/types"
 import * as erc20types from "wasmx-erc20/assembly/types"
 import { getParamsInternal, setParams, setNewValidator, getParams, getValidator, getValidatorsAddresses, getValidatorAddrByConsAddr, setValidator, getValidatorOperatorByHexAddr, setBaseDenom, getBaseDenom } from './storage';
-import { GenesisState, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool, BondedS, AfterValidatorCreated, AfterValidatorBonded, QueryValidatorDelegationsRequest, QueryValidatorDelegationsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryParamsRequest, QueryParamsResponse, ValidatorSimple, QueryValidatorInfosResponse } from './types';
+import { GenesisState, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool, BondedS, AfterValidatorCreated, AfterValidatorBonded, QueryValidatorDelegationsRequest, QueryValidatorDelegationsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryParamsRequest, QueryParamsResponse, ValidatorSimple, QueryValidatorInfosResponse, getValidatorFromMsgCreate } from './types';
 import { LoggerDebug, LoggerError, revert } from './utils';
 import { parseInt64 } from "wasmx-utils/assembly/utils";
 import { Bech32String, CallRequest, CallResponse, Coin, PageRequest, PageResponse, ValidatorAddressString } from "wasmx-env/assembly/types";
@@ -45,21 +45,7 @@ export function InitGenesis(req: GenesisState): ArrayBuffer {
 
 export function CreateValidator(req: MsgCreateValidator): void {
     const baseDenom = getBaseDenom()
-    const validator = new Validator(
-        req.validator_address,
-        req.pubkey,
-        false,
-        BondedS,
-        req.value.amount,
-        "0.0",
-        req.description,
-        0,
-        new Date(0),
-        new Commission(req.commission, new Date(0)),
-        req.min_self_delegation || BigInt.one(),
-        0,
-        [],
-    )
+    const validator = getValidatorFromMsgCreate(req)
 
     if (req.min_self_delegation > req.value.amount) {
         revert("delegation lower than min self delegation")
@@ -369,3 +355,4 @@ export function runHookContract(hookName: string, data: string): void {
         LoggerError(`hooks failed`, ["error", resp.data])
     }
 }
+

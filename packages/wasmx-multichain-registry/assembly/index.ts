@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, getCallDataInitialize, getCallDataWrap } from './calldata';
-import { GetSubChainById, GetSubChainConfigById, GetSubChainIds, GetSubChains, GetSubChainsByIds, InitSubChain, RegisterDefaultSubChain, RegisterSubChain, RegisterSubChainValidator, RemoveSubChain } from "./actions";
+import { GetSubChainById, GetSubChainConfigById, GetSubChainIds, GetSubChainIdsByLevel, GetSubChainIdsByValidator, GetSubChains, GetSubChainsByIds, GetValidatorsByChainId, InitSubChain, RegisterDefaultSubChain, RegisterSubChain, RegisterSubChainValidator, RemoveSubChain } from "./actions";
 import { revert } from "./utils";
 import { setParams } from "./storage";
 
@@ -35,6 +35,12 @@ export function main(): void {
     result = GetSubChains(calld.GetSubChains!);
   } else if (calld.GetSubChainIds !== null) {
     result = GetSubChainIds(calld.GetSubChainIds!);
+  } else if (calld.GetSubChainIdsByLevel !== null) {
+    result = GetSubChainIdsByLevel(calld.GetSubChainIdsByLevel!);
+  } else if (calld.GetSubChainIdsByValidator !== null) {
+    result = GetSubChainIdsByValidator(calld.GetSubChainIdsByValidator!);
+  } else if (calld.GetValidatorsByChainId !== null) {
+    result = GetValidatorsByChainId(calld.GetValidatorsByChainId!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)
