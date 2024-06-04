@@ -34,16 +34,26 @@ import { buildChainConfig, buildChainId, getDefaultConsensusParams } from "wasmx
 import * as wasmxt from "wasmx-env/assembly/types";
 import { Base64String, Coin, SignedTransaction, Event, EventAttribute, PublicKey, Bech32String } from "wasmx-env/assembly/types";
 import { AttributeKeyChainId, AttributeKeyRequest, AttributeKeyValidator, EventTypeInitSubChain, EventTypeRegisterSubChain, EventTypeRegisterSubChainValidator } from "./events";
-import { addChainId, addChainValidator, addChainValidatorAddress, addLevelChainId, getChainData, getChainIds, getChainLastId, getChainValidatorAddresses, getChainValidators, getLevelChainIds, getParams, getValidatorChains, setChainData } from "./storage";
+import { addChainId, addChainValidator, addChainValidatorAddress, addLevelChainId, getChainData, getChainIds, getChainValidatorAddresses, getChainValidators, getLevelChainIds, getLevelLast, getParams, getValidatorChains, INITIAL_LEVEL, setChainData } from "./storage";
 import { CosmosmodGenesisState, InitSubChainRequest, MODULE_NAME, QueryGetSubChainIdsByLevelRequest, QueryGetSubChainIdsByValidatorRequest, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, QueryGetValidatorsByChainIdRequest, RegisterDefaultSubChainRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest, SubChainData, ValidatorInfo } from "./types";
-import { LoggerInfo, revert } from "./utils";
+import { LoggerDebug, LoggerInfo, revert } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { RequestInitChain } from "wasmx-consensus/assembly/types_tendermint";
-import { Delegation, MsgCreateValidator, getValidatorFromMsgCreate } from "wasmx-stake/assembly/types";
+import { BondedS, Delegation, MsgCreateValidator, Validator, getValidatorFromMsgCreate } from "wasmx-stake/assembly/types";
 
 export function InitSubChain(req: InitSubChainRequest): ArrayBuffer {
     LoggerInfo("initializing subchain", ["subchain_id", req.chainId])
-    initSubChainInternal(req.chainId, true)
+    const lastLevel = getLevelLast()
+    const chaindata = getChainData(req.chainId)
+    if (chaindata == null) {
+        revert(`subchain not registered: ${req.chainId}`);
+        return new ArrayBuffer(0);
+    }
+    // how many upper levels can we initialize
+    // this is mostly a limit for chains with 1 validator
+    // to not infinitely create upper levels
+    const maxNewUpperLevels = lastLevel + 1 - chaindata.level
+    initSubChainInternal(chaindata, maxNewUpperLevels)
     LoggerInfo("initialized subchain", ["subchain_id", req.chainId])
     return new ArrayBuffer(0);
 }
@@ -53,7 +63,7 @@ export function RegisterDefaultSubChain(req: RegisterDefaultSubChainRequest): Ar
         revert(`unauthorized: no eID active`);
     }
     LoggerInfo("start registering new default subchain", ["chain_base_name", req.chain_base_name])
-    registerDefaultSubChainInternal(req);
+    registerDefaultSubChainInternal(req, INITIAL_LEVEL);
     LoggerInfo("registered new default subchain", ["chain_base_name", req.chain_base_name])
     return new ArrayBuffer(0);
 }
@@ -62,7 +72,8 @@ export function RegisterSubChain(req: RegisterSubChainRequest): ArrayBuffer {
     if (!passCheckEIDActive(wasmxw.getCaller())) {
         revert(`unauthorized: no eID active`);
     }
-    registerSubChainInternal(req.data, req.genTxs, req.initial_balance)
+    const initialLevel = 1;
+    registerSubChainInternal(req.data, req.genTxs, req.initial_balance, initialLevel)
     return new ArrayBuffer(0);
 }
 
@@ -144,7 +155,7 @@ export function GetValidatorsByChainId(req: QueryGetValidatorsByChainIdRequest):
     return String.UTF8.encode(JSON.stringify<string[]>(addrs))
 }
 
-export function tryRegisterUpperLevel(lastRegisteredLevel: i32, lastRegisteredChainId: string): void {
+export function tryRegisterUpperLevel(lastRegisteredLevel: i32, lastRegisteredChainId: string, trynextlevel: i32): void {
     const params = getParams()
     const levelchains = getLevelChainIds(lastRegisteredLevel)
     const count = levelchains.length;
@@ -159,45 +170,52 @@ export function tryRegisterUpperLevel(lastRegisteredLevel: i32, lastRegisteredCh
     LoggerInfo("registering subchain", ["subchain_level", nextLevel.toString()])
 
     // we need to create another level
-    const subchaindata = registerDefaultSubChainLevel(nextLevel);
+    let subchaindata = registerDefaultSubChainLevel(nextLevel);
     const newChainId = subchaindata.data.init_chain_request.chain_id
     LoggerInfo("registered subchain", ["subchain_level", nextLevel.toString(), "subchain_id", newChainId])
 
     LoggerInfo("registering subchain with validators", ["subchain_level", nextLevel.toString(), "subchain_id", newChainId])
+
     // subchains that will provide a validator each
     const subchainIds = levelchains.slice(count - params.min_validators_count)
     const valInfos: ValidatorInfo[] = []
     for (let i = 0; i < subchainIds.length; i++) {
         const valIndex = 0; // we take the first validator of each chain
         // TODO the algorithm whould rotate validators
-        let valInfo = getChainValidatorInfoFromGenTx(lastRegisteredChainId, valIndex)
+        let valInfo = getChainValidatorInfoFromSubChain(lastRegisteredChainId, valIndex)
         if (valInfo == null) continue;
-        const valAddr = wasmxw.addr_canonicalize_mc(valInfo.validator.validator_address)
+        const val = valInfo.validator;
+        const valAddr = wasmxw.addr_canonicalize_mc(val.operator_address)
         const newValidatorAddress = wasmxw.addr_humanize_mc(
             base64.decode(valAddr.bz).buffer,
             subchaindata.data.chain_config.Bech32PrefixAccAddr,
         )
-        const newvalue = new Coin(
-            subchaindata.data.chain_config.BaseDenom,
-            // TODO take the staked amount or the default initial balance?
-            valInfo.validator.value.amount,
-        )
-        const newmsg = new MsgCreateValidator(
-            valInfo.validator.description,
-            valInfo.validator.commission,
-            valInfo.validator.min_self_delegation,
+        const newval = new Validator(
             newValidatorAddress,
-            valInfo.validator.pubkey,
-            newvalue,
+            val.consensus_pubkey,
+            false,
+            BondedS,
+            params.level_initial_balance,
+            val.delegator_shares,
+            val.description,
+            val.unbonding_height,
+            val.unbonding_time,
+            val.commission,
+            val.min_self_delegation,
+            0,
+            [],
         )
-        const newValInfo = new ValidatorInfo(newmsg, valInfo.operator_pubkey, valInfo.p2p_address)
+        // TODO fix memo - replace address
+        valInfo.p2p_address = replacePeerOperatorAddress(valInfo.p2p_address, newValidatorAddress)
+        const newValInfo = new ValidatorInfo(newval, valInfo.operator_pubkey, valInfo.p2p_address)
         valInfos.push(newValInfo);
     }
-    subchaindata.data = includeValidatorInfos(subchaindata, valInfos)
+    subchaindata = includeValidatorInfos(subchaindata, valInfos)
     setChainData(subchaindata)
 
     LoggerInfo("initializing subchain", ["subchain_level", nextLevel.toString(), "subchain_id", newChainId])
-    initSubChainInternal(newChainId, false)
+
+    initSubChainInternal(subchaindata, trynextlevel)
     LoggerInfo("initialized subchain", ["subchain_level", nextLevel.toString(), "subchain_id", newChainId])
 }
 
@@ -206,16 +224,17 @@ export function registerDefaultSubChainLevel(levelIndex: i32): SubChainData {
     const denomUnit = `lvl${levelIndex}`
     const chainBaseName = "leveln"
     const req = new RegisterDefaultSubChainRequest(denomUnit, 18, chainBaseName, levelIndex, params.level_initial_balance, [])
-    return registerDefaultSubChainInternal(req)
+    return registerDefaultSubChainInternal(req, levelIndex)
 }
 
 // TODO each level can create a chain for the next level only?
 // so add the level number in genesis
-export function registerDefaultSubChainInternal(req: RegisterDefaultSubChainRequest): SubChainData {
+export function registerDefaultSubChainInternal(req: RegisterDefaultSubChainRequest, levelIndex: i32): SubChainData {
     const peers: string[] = [];
     const defaultInitialHeight: i64 = 1;
-    const lastId = getChainLastId()
-    const chainId = buildChainId(req.chain_base_name, req.level_index, lastId+1, 1)
+    // we start at 1, not 0, to leave space for level0 ids
+    const idPerLevel = getLevelChainIds(levelIndex).length + 1
+    const chainId = buildChainId(req.chain_base_name, req.level_index, idPerLevel, 1)
     const consensusParams = getDefaultConsensusParams()
     const chainConfig = buildChainConfig(req.denom_unit, req.base_denom_unit, req.chain_base_name)
 
@@ -236,14 +255,13 @@ export function registerDefaultSubChainInternal(req: RegisterDefaultSubChainRequ
         defaultInitialHeight,
     )
     const data = new InitSubChainDeterministicRequest(initChainReq, chainConfig, peers);
-    return registerSubChainInternal(data, req.gen_txs, req.initial_balance);
+    return registerSubChainInternal(data, req.gen_txs, req.initial_balance, levelIndex);
 }
 
-export function registerSubChainInternal(data: InitSubChainDeterministicRequest, genTxs: Base64String[], initialBalance: BigInt): SubChainData {
+export function registerSubChainInternal(data: InitSubChainDeterministicRequest, genTxs: Base64String[], initialBalance: BigInt, levelIndex: i32): SubChainData {
     const chainId = data.init_chain_request.chain_id
     addChainId(chainId);
-    const initialLevel = 1;
-    const chaindata = new SubChainData(data, genTxs, initialBalance, initialLevel);
+    const chaindata = new SubChainData(data, genTxs, initialBalance, levelIndex);
     setChainData(chaindata);
     for (let i = 0; i < genTxs.length; i++) {
         registerSubChainValidatorInternal(chainId, genTxs[i]);
@@ -302,13 +320,9 @@ export function removeSubChain(chainId: string): void {
     // only if not initialized
 }
 
-export function initSubChainInternal(chainId: string, trynextlevel: boolean): void {
+export function initSubChainInternal(chaindata: SubChainData, trynextlevel: i32): void {
+    const chainId = chaindata.data.init_chain_request.chain_id
     const params = getParams()
-    const chaindata = getChainData(chainId)
-    if (chaindata == null) {
-        revert(`subchain not registered: ${chainId}`);
-        return;
-    }
 
     // only the first validator can execute this
     const addr = getChainValidatorAddresses(chainId)
@@ -352,8 +366,8 @@ export function initSubChainInternal(chainId: string, trynextlevel: boolean): vo
 
     // check if we need to trigger the registration of any upper level
     addLevelChainId(chaindata.level, chainId)
-    if (trynextlevel) {
-        tryRegisterUpperLevel(chaindata.level, chainId)
+    if (trynextlevel > 0) {
+        tryRegisterUpperLevel(chaindata.level, chainId, trynextlevel - 1)
     }
 }
 
@@ -387,7 +401,7 @@ export function includeGenTxs(genesisState: GenesisState, genTxs: Base64String[]
         }
         const signer = tx.auth_info.signer_infos[0]
 
-        cosmosmodGenesis = includeValidatorAccountInfo(cosmosmodGenesis, msg,  signer.public_key, initial_balance)
+        cosmosmodGenesis = includeValidatorAccountInfo(cosmosmodGenesis, msg.validator_address,  signer.public_key, initial_balance)
     }
 
     const newcosmosmodGenesisStr = utils.stringToBase64(JSON.stringify<CosmosmodGenesisState>(cosmosmodGenesis))
@@ -503,10 +517,19 @@ export function buildGenesisData(denomUnit: string, baseDenomUnit: u32, bootstra
     return genesisState;
 }
 
+export function getChainValidatorInfoFromSubChain(chainId: string, index: i32): (ValidatorInfo | null) {
+    let valInfo = getChainValidatorInfoFromGenTx(chainId, index)
+    if (valInfo == null) {
+        valInfo = getChainValidatorInfoFromGenesis(chainId, index)
+    }
+    return valInfo;
+}
+
 export function getChainValidatorInfoFromGenTx(chainId: string, index: i32): (ValidatorInfo | null) {
     const genTxs = getChainValidators(chainId)
     if (genTxs.length <= index) {
-        revert(`index out of bounds: ${index}, validator count ${genTxs.length}`)
+        LoggerDebug(`index out of bounds: ${index}, genTx count ${genTxs.length}`, ["chain_id", chainId])
+        return null;
     }
     const genTx = genTxs[index]
     let genTxStr = String.UTF8.decode(base64.decode(genTx).buffer)
@@ -522,36 +545,46 @@ export function getChainValidatorInfoFromGenTx(chainId: string, index: i32): (Va
         revert(`genTx transaction has empty signer_infos`)
     }
     const signer = tx.auth_info.signer_infos[0]
-    return new ValidatorInfo(msg, signer.public_key, tx.body.memo)
+    return new ValidatorInfo(getValidatorFromMsgCreate(msg), signer.public_key, tx.body.memo)
 }
 
 export function getChainValidatorInfoFromGenesis(chainId: string, index: i32): (ValidatorInfo | null) {
-    const genTxs = getChainValidators(chainId)
-    if (genTxs.length <= index) {
-        revert(`index out of bounds: ${index}, validator count ${genTxs.length}`)
+    const chaindata = getChainData(chainId)
+    if (chaindata == null) {
+        return null;
     }
-    const genTx = genTxs[index]
-    let genTxStr = String.UTF8.decode(base64.decode(genTx).buffer)
-    const tx = JSON.parse<SignedTransaction>(genTxStr)
-    const msg = stakingutils.extractCreateValidatorMsg(tx)
-    if (msg == null) {
-        revert(`invalid gentx: does not contain MsgCreateValidator`);
+    const appstate = utils.base64ToString(chaindata.data.init_chain_request.app_state_bytes)
+    let genesisState: GenesisState = JSON.parse<GenesisState>(appstate)
+    if (!genesisState.has(modnames.MODULE_COSMOSMOD)) {
+        return null;
+    }
+    const datastr = utils.base64ToString(genesisState.get(modnames.MODULE_COSMOSMOD))
+    const data = JSON.parse<CosmosmodGenesisState>(datastr)
+
+    if (data.staking.validators.length <= index) {
+        LoggerDebug(`index out of bounds: ${index}, genesis validator count ${data.staking.validators.length}`, ["chain_id", chainId])
+        return null;
+    }
+    if (chaindata.data.peers.length <= index) {
+        LoggerDebug(`index out of bounds: ${index}, peers count ${chaindata.data.peers.length}`, ["chain_id", chainId])
+        return null;
+    }
+    if (data.auth.accounts.length <= index) {
+        LoggerDebug(`index out of bounds: ${index}, accounts count ${data.auth.accounts.length}`, ["chain_id", chainId])
         return null;
     }
 
-    // get operator public key
-    if (tx.auth_info.signer_infos.length == 0) {
-        revert(`genTx transaction has empty signer_infos`)
-    }
-    const signer = tx.auth_info.signer_infos[0]
-    return new ValidatorInfo(msg, signer.public_key, tx.body.memo)
+    const valid = data.staking.validators[index]
+    const peer = chaindata.data.peers[index]
+    const auth = JSON.parse<authtypes.BaseAccount>(data.auth.accounts[index].value)
+    return new ValidatorInfo(valid, auth.pub_key, peer)
 }
 
-export function includeValidatorAccountInfo(cosmosmodGenesis: CosmosmodGenesisState, msg: MsgCreateValidator, operatorPubKey: PublicKey | null, initial_balance: BigInt): CosmosmodGenesisState {
+export function includeValidatorAccountInfo(cosmosmodGenesis: CosmosmodGenesisState, operatorAddress: Bech32String, operatorPubKey: PublicKey | null, initial_balance: BigInt): CosmosmodGenesisState {
     const baseDenom = cosmosmodGenesis.bank.denom_info[0].metadata.base
 
     // new balance
-    const balance = new banktypes.Balance(msg.validator_address, [new Coin(baseDenom, initial_balance)])
+    const balance = new banktypes.Balance(operatorAddress, [new Coin(baseDenom, initial_balance)])
     cosmosmodGenesis.bank.balances.push(balance);
 
     // new account
@@ -560,15 +593,15 @@ export function includeValidatorAccountInfo(cosmosmodGenesis: CosmosmodGenesisSt
         accPubKey = new PublicKey(operatorPubKey.type_url, operatorPubKey.value);
     }
     // we set account number 0, because it is updated when wasmx-auth initGenesis is ran
-    const account = new authtypes.BaseAccount(msg.validator_address, accPubKey, 0, 0)
+    const account = new authtypes.BaseAccount(operatorAddress, accPubKey, 0, 0)
     let encoded = JSON.stringify<authtypes.BaseAccount>(account)
     const accountAny = AnyWrap.New(authtypes.TypeUrl_BaseAccount, encoded)
     cosmosmodGenesis.auth.accounts.push(accountAny);
     return cosmosmodGenesis;
 }
 
-export function includeValidatorInfos(data: SubChainData, validators: ValidatorInfo[]): InitSubChainDeterministicRequest {
-    if (validators.length == 0) return data.data;
+export function includeValidatorInfos(data: SubChainData, validators: ValidatorInfo[]): SubChainData {
+    if (validators.length == 0) return data;
     const appstate = utils.base64ToString(data.data.init_chain_request.app_state_bytes)
     const genesisState: GenesisState = JSON.parse<GenesisState>(appstate)
 
@@ -580,26 +613,29 @@ export function includeValidatorInfos(data: SubChainData, validators: ValidatorI
     let cosmosmodGenesis = JSON.parse<CosmosmodGenesisState>(cosmosmodGenesisStr)
 
     const chainId = data.data.init_chain_request.chain_id
+    const peers: string[] = [];
     for (let i = 0; i < validators.length; i++) {
         const vinfo = validators[i]
         const val = vinfo.validator
-        addChainValidatorAddress(chainId, val.validator_address);
-        cosmosmodGenesis = includeValidatorAccountInfo(cosmosmodGenesis, val, vinfo.operator_pubkey, data.initial_balance);
+        addChainValidatorAddress(chainId, val.operator_address);
+        cosmosmodGenesis = includeValidatorAccountInfo(cosmosmodGenesis, val.operator_address, vinfo.operator_pubkey, data.initial_balance);
 
         // now also include staking validator info
-        cosmosmodGenesis.staking.validators.push(getValidatorFromMsgCreate(val))
+        cosmosmodGenesis.staking.validators.push(val)
         cosmosmodGenesis.staking.delegations.push(new Delegation(
-            vinfo.validator.validator_address,
-            vinfo.validator.validator_address,
-            vinfo.validator.value.amount,
+            vinfo.validator.operator_address,
+            vinfo.validator.operator_address,
+            vinfo.validator.tokens,
         ))
+        peers.push(vinfo.p2p_address);
     }
     const newcosmosmodGenesisStr = utils.stringToBase64(JSON.stringify<CosmosmodGenesisState>(cosmosmodGenesis))
 
     genesisState.set(modnames.MODULE_COSMOSMOD, newcosmosmodGenesisStr)
     const newGenesisState = JSON.stringify<GenesisState>(genesisState)
     data.data.init_chain_request.app_state_bytes = utils.stringToBase64(newGenesisState);
-    return data.data;
+    data.data.peers = peers;
+    return data;
 }
 
 export function getValidatorCountFromGenesis(genesisState: GenesisState): i32 {
@@ -615,4 +651,10 @@ export function getValidatorCountFromGenesis(genesisState: GenesisState): i32 {
         count += data.staking.validators.length
     }
     return count;
+}
+
+// mythos1ys790lnfkz7sn747wluvez00hap2h2xyxev44c@/ip4/127.0.0.1/tcp/5001/p2p/12D3KooWPZAF1y8x7ACEcnfmXJAkkmuVmpuf7WQEF5DPCYdyAkpk
+function replacePeerOperatorAddress(peerP2PAddr: string, newaddr: Bech32String): string {
+    const parts = peerP2PAddr.split("@")
+    return newaddr + "@" + parts[1]
 }

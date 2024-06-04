@@ -8,13 +8,14 @@ import { BigInt } from "wasmx-env/assembly/bn";
 export const SPLIT = "."
 const PARAMS_KEY = "params"
 const CHAIN_IDS = "chainids"
-const CHAIN_LAST_ID = "chain_last_id"
 const CHAIN_VALIDATORS = "chain_validators."
 const CHAIN_VALIDATOR_ADDRESSES = "chain_validatoraddresses."
 const DATA_KEY = "chain_data."
 const VALIDATOR_CHAINS = "validator_chains."
 const LEVEL_LAST = "level_last"
 const LEVEL_CHAIN_IDS = "level_chainids."
+
+export const INITIAL_LEVEL = 1
 
 // chain_id => chain data
 export function getDataKey(chainId: string): string {
@@ -120,6 +121,10 @@ export function addLevelChainId(levelIndex: i32, chainId: string): void {
     }
     value.push(chainId)
     setLevelChainIds(levelIndex, value)
+    const lastLevel = getLevelLast()
+    if (lastLevel < levelIndex) {
+        setLevelLast(levelIndex)
+    }
 }
 
 export function setLevelChainIds(levelIndex: i32, chainIds: string[]): void {
@@ -145,20 +150,9 @@ export function setChainIds(data: string[]): void {
     return wasmxw.sstore(CHAIN_IDS, JSON.stringify<string[]>(data));
 }
 
-export function getChainLastId(): i32 {
-    const valuestr = wasmxw.sload(CHAIN_LAST_ID);
-    if (valuestr == "") return 0;
-    const value = parseInt(valuestr);
-    return i32(value);
-}
-
-export function setChainLastId(id: i32): void {
-    return wasmxw.sstore(CHAIN_LAST_ID, id.toString());
-}
-
 export function getLevelLast(): i32 {
     const valuestr = wasmxw.sload(LEVEL_LAST);
-    if (valuestr == "") return 0;
+    if (valuestr == "") return INITIAL_LEVEL;
     const value = parseInt(valuestr);
     return i32(value);
 }

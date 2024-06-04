@@ -210,10 +210,10 @@ export class CosmosmodGenesisState {
 // @ts-ignore
 @serializable
 export class ValidatorInfo {
-    validator: stakingtypes.MsgCreateValidator
+    validator: stakingtypes.Validator
     operator_pubkey: PublicKey | null = null
     p2p_address: string
-    constructor(validator: stakingtypes.MsgCreateValidator, operator_pubkey: PublicKey | null, p2p_address: string) {
+    constructor(validator: stakingtypes.Validator, operator_pubkey: PublicKey | null, p2p_address: string) {
         this.validator = validator
         this.operator_pubkey = operator_pubkey
         this.p2p_address = p2p_address
