@@ -20,6 +20,7 @@ import { QuerySubChainIdsResponse } from "wasmx-multichain-registry-local/assemb
 import { LoggerError, LoggerInfo } from "./utils";
 import { InitSubChainDeterministicRequest, StartSubChainMsg } from "wasmx-consensus/assembly/types_multichain";
 import { QueryBuildGenTxRequest } from "./types";
+import { getSelfNodeInfo } from "./action_utils";
 
 
 export function StartNode(): void {
@@ -53,7 +54,6 @@ export function StartNode(): void {
     }
 }
 
-
 export function buildGenTx(
     params: ActionParam[],
     event: EventObject,
@@ -71,10 +71,7 @@ export function buildGenTx(
         revert(`subchain config is null: ${req.chainId}`)
         return;
     }
-
-    const nodeIps = getValidatorNodesInfo();
-    const nodeInfo = nodeIps[0];
-
+    const nodeInfo = getSelfNodeInfo()
     const genTx = createGenTx(nodeInfo, chainConfig.Bech32PrefixAccAddr, chainConfig.BondBaseDenom, req.msg)
     if (genTx == null) {
         revert(`genTx is null`)
