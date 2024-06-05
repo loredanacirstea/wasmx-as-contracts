@@ -494,7 +494,7 @@ export function buildGenesisData(denomUnit: string, baseDenomUnit: u32, bootstra
     const upgradeGenesis = upgradedefaults.getDefaultGenesis()
     const upgradeGenesisBz = utils.stringToBase64(JSON.stringify<upgradedefaults.GenesisState>(upgradeGenesis))
 
-    const wasmxGenesis = wasmxdefaults.getDefaultGenesis(bootstrapAccountBech32, feeCollectorBech32, mintBech32)
+    const wasmxGenesis = wasmxdefaults.getDefaultGenesis(bootstrapAccountBech32, feeCollectorBech32, mintBech32, params.min_validators_count, params.enable_eid_check)
     const wasmxGenesisBz = utils.stringToBase64(JSON.stringify<wasmxtypes.GenesisState>(wasmxGenesis))
 
     const websrvGenesis = websrvdefaults.getDefaultGenesis()

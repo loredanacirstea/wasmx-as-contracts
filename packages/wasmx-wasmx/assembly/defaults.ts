@@ -127,7 +127,6 @@ export const raftInitMsg = wasmxExecMsg(`{"instantiate":{"context":[{"key":"log"
 export const tendermintInitMsg = wasmxExecMsg(`{"instantiate":{"context":[{"key":"log","value":""},{"key":"votedFor","value":"0"},{"key":"nextIndex","value":"[]"},{"key":"currentTerm","value":"0"},{"key":"blockTimeout","value":"roundTimeout"},{"key":"max_tx_bytes","value":"65536"},{"key":"roundTimeout","value":15000},{"key":"currentNodeId","value":"0"},{"key":"max_block_gas","value":"20000000"}],"initialState":"uninitialized"}}`)
 export const tendermintP2PInitMsg = wasmxExecMsg(`{"instantiate":{"context":[{"key":"log","value":""},{"key":"votedFor","value":"0"},{"key":"nextIndex","value":"[]"},{"key":"currentTerm","value":"0"},{"key":"blockTimeout","value":"roundTimeout"},{"key":"max_tx_bytes","value":"65536"},{"key":"roundTimeout","value":"5000"},{"key":"currentNodeId","value":"0"},{"key":"max_block_gas","value":"20000000"},{"key":"timeoutPropose","value":5000},{"key":"timeoutPrevote","value":5000},{"key":"timeoutPrecommit","value":5000}],"initialState":"uninitialized"}}`)
 export const avaInitMsg = wasmxExecMsg(`{"instantiate":{"context":[{"key":"sampleSize","value":"2"},{"key":"betaThreshold","value":2},{"key":"roundsCounter","value":"0"},{"key":"alphaThreshold","value":80}],"initialState":"uninitialized"}}`)
-export const mutichainInitMsg = wasmxExecMsg(`{"params":{"min_validators_count":1,"enable_eid_check":false}}`)
 export const timeInitMsg = wasmxExecMsg(`{"params":{"chain_id":"time_666-1","interval_ms":100}}`)
 export const level0InitMsg = wasmxExecMsg(`{"instantiate":{"context":[{"key":"log","value":""},{"key":"votedFor","value":"0"},{"key":"nextIndex","value":"[]"},{"key":"currentTerm","value":"0"},{"key":"blockTimeout","value":"roundTimeout"},{"key":"max_tx_bytes","value":"65536"},{"key":"roundTimeout","value":4000},{"key":"currentNodeId","value":"0"},{"key":"max_block_gas","value":"20000000"},{"key":"timeoutPrevote","value":3000},{"key":"timeoutPropose","value":3000},{"key":"timeoutPrecommit","value":3000}],"initialState":"uninitialized"}}`)
 export const mutichainLocalInitMsg = wasmxExecMsg(`{"ids":[]}`)
@@ -136,6 +135,10 @@ export const hooksInitMsgNonC = wasmxExecMsg(`{"hooks":${JSON.stringify<hooks.Ho
 
 export function bankInitMsg(feeCollectorBech32: string, mintBech32: string): Base64String {
     return wasmxExecMsg(`{"authorities":["${roles.ROLE_STAKING}","${roles.ROLE_GOVERNANCE}","${roles.ROLE_BANK}","${feeCollectorBech32}","${mintBech32}"]}`)
+}
+
+export function mutichainInitMsg(minValidatorCount: i32, enableEIDCheck: boolean): Base64String {
+    return wasmxExecMsg(`{"params":{"min_validators_count":${minValidatorCount},"enable_eid_check":${enableEIDCheck.toString()},"erc20CodeId":27,"derc20CodeId":28,"level_initial_balance":"10000000000000000000"}}`)
 }
 
 export const sc_auth = new SystemContract(
@@ -670,17 +673,19 @@ export const sc_level0 = new SystemContract(
     CodeMetadata.Empty(),
 )
 
-export const sc_multichain_registry = new SystemContract(
-    ADDR_MULTICHAIN_REGISTRY,
-    MULTICHAIN_REGISTRY_v001,
-    StorageSingleConsensus,
-    mutichainInitMsg,
-    false,
-    false,
-    roles.ROLE_MULTICHAIN_REGISTRY,
-    [],
-    CodeMetadata.Empty(),
-)
+export function sc_multichain_registry(minValidatorCount: i32, enableEIDCheck: boolean): SystemContract {
+    return new SystemContract(
+        ADDR_MULTICHAIN_REGISTRY,
+        MULTICHAIN_REGISTRY_v001,
+        StorageSingleConsensus,
+        mutichainInitMsg(minValidatorCount, enableEIDCheck),
+        false,
+        false,
+        roles.ROLE_MULTICHAIN_REGISTRY,
+        [],
+        CodeMetadata.Empty(),
+    )
+}
 
 export const sc_multichain_registry_local = new SystemContract(
     ADDR_MULTICHAIN_REGISTRY_LOCAL,
@@ -730,7 +735,7 @@ export const sc_hooks_nonc = new SystemContract(
     CodeMetadata.Empty(),
 )
 
-export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32: string): SystemContract[] {
+export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32: string, minValidatorCount: i32, enableEIDCheck: boolean): SystemContract[] {
     return [
         // auth must be first
         sc_auth,
@@ -784,7 +789,7 @@ export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32
         sc_ava_snowman_library,
         sc_ava_snowman,
 
-        sc_multichain_registry,
+        sc_multichain_registry(minValidatorCount, enableEIDCheck),
 
         sc_chat,
         sc_chat_verifier,
@@ -799,8 +804,8 @@ export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32
     ]
 }
 
-export function getDefaultGenesis(bootstrapAccountBech32: string, feeCollectorBech32: string, mintBech32: string): GenesisState {
-    const systemContracts = getDefaultSystemContracts(feeCollectorBech32, mintBech32)
+export function getDefaultGenesis(bootstrapAccountBech32: string, feeCollectorBech32: string, mintBech32: string, minValidatorCount: i32, enableEIDCheck: boolean): GenesisState {
+    const systemContracts = getDefaultSystemContracts(feeCollectorBech32, mintBech32, minValidatorCount, enableEIDCheck)
     return new GenesisState(
         new Params(),
         bootstrapAccountBech32,

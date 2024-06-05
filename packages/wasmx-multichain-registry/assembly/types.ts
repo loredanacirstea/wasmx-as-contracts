@@ -30,11 +30,11 @@ export class MsgInitialize {
 @serializable
 export class Params {
     min_validators_count: i32
-    enable_eid_check: bool
+    enable_eid_check: boolean
     erc20CodeId: u64
     derc20CodeId: u64
     level_initial_balance: BigInt
-    constructor(min_validators_count: i32, enable_eid_check: bool, erc20CodeId: u64, derc20CodeId: u64, level_initial_balance: BigInt) {
+    constructor(min_validators_count: i32, enable_eid_check: boolean, erc20CodeId: u64, derc20CodeId: u64, level_initial_balance: BigInt) {
         this.min_validators_count = min_validators_count
         this.enable_eid_check = enable_eid_check
         this.erc20CodeId = erc20CodeId
