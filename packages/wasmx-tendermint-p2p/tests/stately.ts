@@ -91,6 +91,9 @@ export const machine = createMachine({
                   },
                 },
               ],
+              guard: {
+                type: "ifNewTransaction",
+              },
             },
             receiveStateSyncRequest: {
               actions: {
@@ -630,6 +633,10 @@ export const machine = createMachine({
       return true;
     },
     isNextProposer: function (context, event) {
+      // Add your guard condition here
+      return true;
+    },
+    ifNewTransaction: function (context, event) {
       // Add your guard condition here
       return true;
     },

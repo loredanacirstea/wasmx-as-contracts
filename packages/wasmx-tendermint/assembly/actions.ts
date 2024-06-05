@@ -10,18 +10,20 @@ import {
   CallRequest,
   CallResponse,
   HexString,
+  SignedTransaction,
 } from 'wasmx-env/assembly/types';
 import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as staking from "wasmx-stake/assembly/types";
 import { getPower } from "wasmx-stake/assembly/actions";
-import { CurrentState, Mempool } from "./types_blockchain";
+import { CurrentState, Mempool, MempoolTx } from "./types_blockchain";
 import * as fsm from 'xstate-fsm-as/assembly/storage';
+import { getParamsOrEventParams, actionParamsToMap } from 'xstate-fsm-as/assembly/utils';
 import {
     EventObject,
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
-import { parseInt32, parseInt64, uint8ArrayToHex, parseUint8ArrayToU32BigEndian, base64ToHex, stringToBase64 } from "wasmx-utils/assembly/utils";
+import { parseInt32, parseInt64, uint8ArrayToHex, parseUint8ArrayToU32BigEndian, base64ToHex, stringToBase64, base64ToString } from "wasmx-utils/assembly/utils";
 import { extractUpdateNodeEntryAndVerify, registeredCheckMessage, registeredCheckNeeded, removeNode } from "wasmx-raft/assembly/actions";
 import { LogEntry, LogEntryAggregate, AppendEntry, AppendEntryResponse, TransactionResponse, Precommit, MODULE_NAME, BuildProposal } from "./types";
 import * as cfg from "./config";
@@ -56,6 +58,25 @@ export function isNextProposer(
     LoggerDebug("isNextProposer", ["next proposer", proposerIndex.toString()])
     const currentNode = getCurrentNodeId();
     return proposerIndex == currentNode;
+}
+
+export function ifNewTransaction(
+    params: ActionParam[],
+    event: EventObject,
+): boolean {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("transaction")) {
+        revert("no transaction found");
+    }
+    const transaction = ctx.get("transaction") // base64
+    const txhash = wasmxw.sha256(transaction);
+    const mempool = getMempool();
+    const existent = mempool.map.has(txhash);
+    if (existent) {
+        LoggerDebug("mempool: transaction already added", ["txhash", txhash])
+    }
+    return !existent;
 }
 
 export function ifPrevoteThreshold(
@@ -107,7 +128,7 @@ export function proposeBlockInternalAndStore(lastBlockCommit: typestnd.BlockComm
         maxbytes = cfg.MaxBlockSizeBytes;
     }
     const batch = mempool.batch(cparams.block.max_gas, maxbytes);
-    LoggerDebug("mempool: batch transactions", ["count", batch.txs.length.toString(), "total", mempool.txs.length.toString()])
+    LoggerDebug("mempool: batch transactions", ["count", batch.txs.length.toString(), "total", mempool.map.keys().length.toString()])
 
     // TODO
     // maxDataBytes := types.MaxDataBytes(maxBytes, evSize, state.Validators.Size())
@@ -497,8 +518,9 @@ export function sendPrecommit(
 }
 
 export function addTransactionToMempool(
-    transaction: string, // base64
+    transaction: Base64String,
 ): void {
+    // TODO reenable if if no longer run the antehandler when receiving transactions; otherwise we run it 2 times, which increases account sequence with 2
     // check that tx is valid
     const checktx = new typestnd.RequestCheckTx(transaction, typestnd.CheckTxType.New);
     const checkResp = consensuswrap.CheckTx(checktx);
@@ -510,15 +532,21 @@ export function addTransactionToMempool(
 
     // add to mempool
     const mempool = getMempool();
-    // TODO actually decode tx
-    // const parsedTx = decodeTx(transaction);
-    const parsedTx =  new typestnd.Transaction(30000000);
+    const txhash = wasmxw.sha256(transaction);
+    const parsedTx = JSON.parse<SignedTransaction>(base64ToString(transaction))
+
+    let txGas: u64 = 1000000
+    const fee = parsedTx.auth_info.fee
+    if (fee != null) {
+        txGas = fee.gas_limit
+    }
+
     const cparams = getConsensusParams();
     const maxgas = cparams.block.max_gas;
-    if (maxgas > -1 && maxgas < parsedTx.gas) {
-        return revert(`out of gas: ${parsedTx.gas}; max ${maxgas}`);
+    if (maxgas > -1 && u64(maxgas) < txGas) {
+        return revert(`out of gas: ${txGas}; max ${maxgas}`);
     }
-    mempool.add(transaction, parsedTx.gas);
+    mempool.add(txhash, transaction, txGas);
     setMempool(mempool);
 }
 
@@ -1069,7 +1097,7 @@ export function buildLogEntryAggregate(processReq: typestnd.RequestProcessPropos
 
 export function getMempool(): Mempool {
     const mempool = fsm.getContextValue(cfg.MEMPOOL_KEY);
-    if (mempool === "") return  new Mempool(new Array<string>(0), new Array<i32>(0));
+    if (mempool === "") return  new Mempool(new Map<string, MempoolTx>());
     return JSON.parse<Mempool>(mempool);
 }
 
@@ -1275,11 +1303,15 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     // ! make all state changes before the commit
 
     // save final block
+    // and remove tx from mempool
+    const mempool = getMempool()
     const txhashes: string[] = [];
     for (let i = 0; i < finalizeReq.txs.length; i++) {
         const hash = wasmxw.sha256(finalizeReq.txs[i]);
         txhashes.push(hash);
+        mempool.remove(hash);
     }
+    setMempool(mempool);
 
     const blockData = JSON.stringify<wblocks.BlockEntry>(entryobj.data)
     // also indexes transactions

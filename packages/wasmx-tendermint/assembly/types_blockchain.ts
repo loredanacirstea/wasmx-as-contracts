@@ -93,41 +93,52 @@ class MempoolBatch {
 
 // @ts-ignore
 @serializable
+export class MempoolTx {
+    tx: Base64String
+    gas: u64
+    constructor(
+        tx: Base64String,
+        gas: u64,
+    ) {
+        this.tx = tx
+        this.gas = gas
+    }
+}
+
+// @ts-ignore
+@serializable
 export class Mempool {
-    txs: Base64String[];
-    gas: i32[];
-    constructor(txs: Base64String[] = [], gas: i32[] = []) {
-        this.txs = txs;
-        this.gas = gas;
+    map: Map<Base64String,MempoolTx>
+    constructor(map: Map<Base64String,MempoolTx>) {
+        this.map = map;
     }
 
-    add(tx: Base64String, gas: i32): void {
-        this.gas = this.gas.concat([gas]);
-        this.txs = this.txs.concat([tx]);
+    add(txhash: Base64String, tx: Base64String, gas: u64): void {
+        this.map.set(txhash, new MempoolTx(tx, gas))
+    }
+
+    remove(txhash: Base64String): void {
+        this.map.delete(txhash)
     }
 
     batch(maxGas: i64, maxBytes: i64): MempoolBatch {
         let batch: MempoolBatch = new MempoolBatch([], 0);
         let cummulatedBytes: i64 = 0;
-        for (let i = 0; i < this.txs.length; i++) {
-            if (maxGas > -1 && maxGas < (batch.cummulatedGas + this.gas[i])) {
+        const txhashes = this.map.keys();
+        for (let i = 0; i < txhashes.length; i++) {
+            const tx = this.map.get(txhashes[i])
+            if (maxGas > -1 && maxGas < (batch.cummulatedGas + tx.gas)) {
                 break;
             }
-            const bytelen = base64Len(this.txs[i]);
+            const bytelen = base64Len(tx.tx);
             if (maxBytes < (cummulatedBytes + bytelen)) {
                 break;
             }
-            batch.txs = batch.txs.concat([this.txs[i]]);
-            batch.cummulatedGas += this.gas[i];
+            batch.txs = batch.txs.concat([tx.tx]);
+            batch.cummulatedGas += tx.gas;
             cummulatedBytes += bytelen;
         }
-        this.txs.splice(0, batch.txs.length);
-        this.gas.splice(0, batch.txs.length);
         return batch;
-    }
-
-    spliceTxs(limit: i32): Base64String[] {
-        return this.txs.splice(0, limit);
     }
 }
 

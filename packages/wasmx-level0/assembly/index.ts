@@ -49,6 +49,10 @@ export function main(): void {
     result = wrapGuard(tnd2.newValidatorIsSelf(calld.params, calld.event));
     wasmx.finish(result);
     return;
+  } else if (calld.method === "ifNewTransaction") {
+    result = actions.wrapGuard(tnd.ifNewTransaction(calld.params, calld.event));
+    wasmx.finish(result);
+    return;
   } else if (calld.method === "setRoundProposer") {
     actions.setRoundProposer(calld.params, calld.event);
   } else if (calld.method === "sendBlockProposal") {

@@ -23,6 +23,10 @@ export function main(): void {
     result = actions.wrapGuard(actions.ifPrecommitThreshold(calld.params, calld.event));
     wasmx.finish(result);
     return;
+  } else if (calld.method === "ifNewTransaction") {
+    result = actions.wrapGuard(actions.ifNewTransaction(calld.params, calld.event));
+    wasmx.finish(result);
+    return;
   } else if (calld.method === "sendPrevoteResponse") {
     actions.sendPrevoteResponse(calld.params, calld.event);
   } else if (calld.method === "sendPrecommitResponse") {

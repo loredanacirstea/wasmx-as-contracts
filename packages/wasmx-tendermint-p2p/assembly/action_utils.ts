@@ -310,12 +310,16 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
 
     // ! make all state changes before the commit
 
-    // save final block
+     // save final block
+    // and remove tx from mempool
+    const mempool = getMempool()
     const txhashes: string[] = [];
     for (let i = 0; i < finalizeReq.txs.length; i++) {
         const hash = wasmxw.sha256(finalizeReq.txs[i]);
         txhashes.push(hash);
+        mempool.remove(hash);
     }
+    setMempool(mempool);
 
     const blockData = JSON.stringify<wblocks.BlockEntry>(entryobj.data)
     // also indexes transactions
