@@ -107,9 +107,18 @@ export class QueryGetSubChainIdsByValidatorRequest {
 // @ts-ignore
 @serializable
 export class QueryGetValidatorsByChainIdRequest {
-    chain_id: string
-    constructor(chain_id: string) {
-        this.chain_id = chain_id
+    chainId: string
+    constructor(chainId: string) {
+        this.chainId = chainId
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryValidatorAddressesByChainIdRequest {
+    chainId: string
+    constructor(chainId: string) {
+        this.chainId = chainId
     }
 }
 

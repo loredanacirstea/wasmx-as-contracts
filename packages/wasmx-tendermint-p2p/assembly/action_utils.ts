@@ -465,6 +465,9 @@ export function setFinalizedBlock(blockData: string, hash: string, txhashes: str
 export function getSelfNodeInfo(): NodeInfo {
     const nodeIps = getValidatorNodesInfo();
     const ourId = getCurrentNodeId();
+    if (nodeIps.length < (ourId + 1)) {
+        revert(`index out of range: nodes count ${nodeIps.length}, our node id is ${ourId}`)
+    }
     return nodeIps[ourId];
 }
 

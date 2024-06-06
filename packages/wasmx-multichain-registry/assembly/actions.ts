@@ -35,7 +35,7 @@ import * as wasmxt from "wasmx-env/assembly/types";
 import { Base64String, Coin, SignedTransaction, Event, EventAttribute, PublicKey, Bech32String } from "wasmx-env/assembly/types";
 import { AttributeKeyChainId, AttributeKeyRequest, AttributeKeyValidator, EventTypeInitSubChain, EventTypeRegisterSubChain, EventTypeRegisterSubChainValidator } from "./events";
 import { addChainId, addChainValidator, addChainValidatorAddress, addLevelChainId, getChainData, getChainIds, getChainValidatorAddresses, getChainValidators, getLevelChainIds, getLevelLast, getParams, getValidatorChains, INITIAL_LEVEL, setChainData } from "./storage";
-import { CosmosmodGenesisState, InitSubChainRequest, MODULE_NAME, QueryGetSubChainIdsByLevelRequest, QueryGetSubChainIdsByValidatorRequest, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, QueryGetValidatorsByChainIdRequest, RegisterDefaultSubChainRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest, SubChainData, ValidatorInfo } from "./types";
+import { CosmosmodGenesisState, InitSubChainRequest, MODULE_NAME, QueryGetSubChainIdsByLevelRequest, QueryGetSubChainIdsByValidatorRequest, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, QueryGetValidatorsByChainIdRequest, QueryValidatorAddressesByChainIdRequest, RegisterDefaultSubChainRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest, SubChainData, ValidatorInfo } from "./types";
 import { LoggerDebug, LoggerInfo, revert } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { RequestInitChain } from "wasmx-consensus/assembly/types_tendermint";
@@ -151,7 +151,12 @@ export function GetSubChainIdsByValidator(req: QueryGetSubChainIdsByValidatorReq
 }
 
 export function GetValidatorsByChainId(req: QueryGetValidatorsByChainIdRequest): ArrayBuffer {
-    const addrs = getChainValidators(req.chain_id);
+    const gentxs = getChainValidators(req.chainId);
+    return String.UTF8.encode(JSON.stringify<string[]>(gentxs))
+}
+
+export function GetValidatorAddressesByChainId(req: QueryValidatorAddressesByChainIdRequest): ArrayBuffer {
+    const addrs = getChainValidatorAddresses(req.chainId);
     return String.UTF8.encode(JSON.stringify<string[]>(addrs))
 }
 
