@@ -179,8 +179,6 @@ export function tryRegisterUpperLevel(lastRegisteredLevel: i32, lastRegisteredCh
     const newChainId = subchaindata.data.init_chain_request.chain_id
     LoggerInfo("registered subchain", ["subchain_level", nextLevel.toString(), "subchain_id", newChainId])
 
-    LoggerInfo("registering subchain with validators", ["subchain_level", nextLevel.toString(), "subchain_id", newChainId])
-
     // subchains that will provide a validator each
     const subchainIds = levelchains.slice(count - params.min_validators_count)
     const valInfos: ValidatorInfo[] = []
@@ -215,6 +213,7 @@ export function tryRegisterUpperLevel(lastRegisteredLevel: i32, lastRegisteredCh
         const newValInfo = new ValidatorInfo(newval, valInfo.operator_pubkey, valInfo.p2p_address)
         valInfos.push(newValInfo);
     }
+    LoggerInfo("registering subchain with validators", ["subchain_level", nextLevel.toString(), "subchain_id", newChainId, "validator_count", valInfos.length.toString()])
     subchaindata = includeValidatorInfos(subchaindata, valInfos)
     setChainData(subchaindata)
 
