@@ -2,8 +2,8 @@ import { getPrecommitArray } from "wasmx-tendermint-p2p/assembly/storage";
 import { ValidatorProposalVote } from "wasmx-tendermint-p2p/assembly/types_blockchain";
 import { LoggerDebug } from "./utils";
 
-export function isPrecommitAcceptThreshold(hash: string): boolean {
-    const precommitArr = getPrecommitArray();
+export function isPrecommitAcceptThreshold(blockHeight: i64, hash: string): boolean {
+    const precommitArr = getPrecommitArray(blockHeight);
     const votes = new Array<ValidatorProposalVote>(precommitArr.length);
     for (let i = 0; i < precommitArr.length; i++) {
         votes[i] = precommitArr[i].vote;
@@ -11,8 +11,8 @@ export function isPrecommitAcceptThreshold(hash: string): boolean {
     return calculateVote(votes, hash)
 }
 
-export function isPrecommitAnyThreshold(): boolean {
-    const precommitArr = getPrecommitArray();
+export function isPrecommitAnyThreshold(blockHeight: i64): boolean {
+    const precommitArr = getPrecommitArray(blockHeight);
     const votes = new Array<ValidatorProposalVote>(precommitArr.length);
     for (let i = 0; i < precommitArr.length; i++) {
         votes[i] = precommitArr[i].vote;
@@ -26,7 +26,7 @@ export function calculateVote(votePerNode: Array<ValidatorProposalVote>, hash: s
     let count: u32 = 0;
     for (let i = 0; i < votePerNode.length; i++) {
         if (hash == "") { // any vote
-            if (votePerNode[i].hash != "") {
+            if (votePerNode[i].hash != "") { // valid hash or "nil"
                 count += 1;
             }
         } else if (votePerNode[i].hash == hash) {

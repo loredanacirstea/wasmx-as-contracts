@@ -1522,6 +1522,18 @@ export function getTotalStaked(validators: staking.Validator[]): BigInt {
     return bonded
 }
 
+export function getTotalStakedActive(validators: staking.Validator[]): BigInt {
+    let bonded = BigInt.zero();
+    for (let i = 0; i < validators.length; i++) {
+        if (validators[i].jailed || validators[i].status != staking.BondedS) {
+            continue;
+        }
+        // @ts-ignore
+        bonded += validators[i].tokens;
+    }
+    return bonded
+}
+
 function getBFTThreshold(totalState: BigInt): BigInt {
     return totalState.mul(BigInt.fromU32(2)).div(BigInt.fromU32(3)).add(BigInt.fromU32(1))
 }

@@ -1,4 +1,5 @@
 import { JSON } from "json-as/assembly";
+import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import {HexString, Base64String, Bech32String} from 'wasmx-env/assembly/types';
 import { Version, BlockID, CommitSig, BlockIDFlag } from 'wasmx-consensus/assembly/types_tendermint';
 import { BigInt } from "wasmx-env/assembly/bn";
@@ -176,6 +177,48 @@ export class ValidatorProposalVote {
 
 // @ts-ignore
 @serializable
+export class ValidatorProposalVoteMap {
+    nodeCount: i32
+    map: Map<i64,ValidatorProposalVote[]> = new Map<i64,ValidatorProposalVote[]>()
+    constructor(nodeCount: i32) {
+        this.nodeCount = nodeCount
+        this.map = new Map<i64,ValidatorProposalVote[]>()
+    }
+
+    resize(newsize: i32): void {
+        if (newsize < this.nodeCount) return;
+        this.nodeCount = newsize
+        const keys = this.map.keys()
+        for (let i = 0; i < keys.length; i++) {
+            const arr = this.map.get(keys[i])
+            let termId: i64 = 0;
+            let nextIndex: i64 = 0;
+            if (arr.length > 0) {
+                termId = arr[0].termId;
+                nextIndex = arr[0].index;
+            }
+            const newarr = getEmptyValidatorProposalVoteArray(newsize, nextIndex, termId, SignedMsgType.SIGNED_MSG_TYPE_PREVOTE)
+            // copy old array
+            for (let j = 0; j < arr.length; j++) {
+                newarr[j] = arr[j]
+            }
+            this.map.set(keys[i], arr)
+        }
+    }
+
+    removeLowerHeights(height: i64): void {
+        const keys = this.map.keys()
+        for (let i = 0; i < keys.length; i++) {
+            const key = keys[i]
+            if (key <= height) {
+                this.map.delete(key)
+            }
+        }
+    }
+}
+
+// @ts-ignore
+@serializable
 export class ValidatorCommitVote {
     vote: ValidatorProposalVote
     block_id_flag: BlockIDFlag
@@ -184,6 +227,47 @@ export class ValidatorCommitVote {
         this.vote = vote
         this.block_id_flag = block_id_flag
         this.signature = signature
+    }
+}
+
+// @ts-ignore
+@serializable
+export class ValidatorCommitVoteMap {
+    nodeCount: i32
+    map: Map<i64,ValidatorCommitVote[]> = new Map<i64,ValidatorCommitVote[]>()
+    constructor(nodeCount: i32) {
+        this.nodeCount = nodeCount
+        this.map = new Map<i64,ValidatorCommitVote[]>()
+    }
+    resize(newsize: i32): void {
+        if (newsize < this.nodeCount) return;
+        this.nodeCount = newsize
+        const keys = this.map.keys()
+        for (let i = 0; i < keys.length; i++) {
+            const arr = this.map.get(keys[i])
+            let termId: i64 = 0;
+            let nextIndex: i64 = 0;
+            if (arr.length > 0) {
+                termId = arr[0].vote.termId;
+                nextIndex = arr[0].vote.index;
+            }
+            const newarr = getEmptyPrecommitArray(newsize, nextIndex, termId, SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT)
+            // copy old array
+            for (let j = 0; j < arr.length; j++) {
+                newarr[j] = arr[j]
+            }
+            this.map.set(keys[i], arr)
+        }
+    }
+
+    removeLowerHeights(height: i64): void {
+        const keys = this.map.keys()
+        for (let i = 0; i < keys.length; i++) {
+            const key = keys[i]
+            if (key <= height) {
+                this.map.delete(key)
+            }
+        }
     }
 }
 
@@ -207,4 +291,21 @@ export class Commit {
 // 4 chars represent 3 bytes
 function base64Len(value: Base64String): i32 {
     return i32(Math.ceil(value.length / 4)) * 3;
+}
+
+export function getEmptyValidatorProposalVoteArray(len: i32, nextIndex: i64, termId: i64, type: SignedMsgType): Array<ValidatorProposalVote> {
+    const emptyPrevotes = new Array<ValidatorProposalVote>(len);
+    for (let i = 0; i < len; i++) {
+        emptyPrevotes[i] = new ValidatorProposalVote(type, termId, "", 0, nextIndex, "", new Date(Date.now()), "");
+    }
+    return emptyPrevotes
+}
+
+export function getEmptyPrecommitArray(len: i32, nextIndex: i64, termId: i64, type: SignedMsgType): Array<ValidatorCommitVote> {
+    const emptyCommits = new Array<ValidatorCommitVote>(len);
+    for (let i = 0; i < len; i++) {
+        const vote = new ValidatorProposalVote(type, termId, "", 0, nextIndex, "", new Date(Date.now()), "");
+        emptyCommits[i] = new ValidatorCommitVote(vote, typestnd.BlockIDFlag.Unknown, "");
+    }
+    return emptyCommits
 }

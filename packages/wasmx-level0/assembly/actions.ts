@@ -51,7 +51,7 @@ export function ifPrecommitAnyThreshold(
     params: ActionParam[],
     event: EventObject,
 ): boolean {
-    return isPrecommitAnyThreshold();
+    return isPrecommitAnyThreshold(getCurrentState().nextHeight);
 }
 
 export function ifPrecommitAcceptThreshold(
@@ -62,7 +62,7 @@ export function ifPrecommitAcceptThreshold(
     if (state.nextHash == "") {
         return false;
     }
-    return isPrecommitAcceptThreshold(state.nextHash);
+    return isPrecommitAcceptThreshold(state.nextHeight, state.nextHash);
 }
 
 export function setConsensusParams(value: typestnd.ConsensusParams): void {

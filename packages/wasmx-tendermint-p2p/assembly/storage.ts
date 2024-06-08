@@ -3,7 +3,7 @@ import * as fsm from 'xstate-fsm-as/assembly/storage';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
-import { CurrentState, ValidatorCommitVote, ValidatorProposalVote } from "./types_blockchain";
+import { CurrentState, getEmptyPrecommitArray, getEmptyValidatorProposalVoteArray, SignedMsgType, ValidatorCommitVote, ValidatorCommitVoteMap, ValidatorProposalVote, ValidatorProposalVoteMap } from "./types_blockchain";
 import { parseInt32 } from "wasmx-utils/assembly/utils";
 import { LogEntry, LogEntryAggregate } from "./types";
 import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
@@ -189,28 +189,82 @@ export function setSimpleNodesInfo(ips: Array<NodeInfo>): void {
     fsm.setContextValue(cfg.SIMPLE_NODES_INFO, valuestr);
 }
 
-export function getPrevoteArray(): Array<ValidatorProposalVote> {
+export function addToPrevoteArray(nodeId: i32, data: ValidatorProposalVote): void {
+    const value = getPrevoteArrayMap()
+    let arr: ValidatorProposalVote[] = [];
+    if (value.map.has(data.index)) {
+        arr = value.map.get(data.index)
+    } else {
+        arr = getEmptyValidatorProposalVoteArray(value.nodeCount, data.index, data.termId, SignedMsgType.SIGNED_MSG_TYPE_PREVOTE);
+    }
+    arr[nodeId] = data;
+    value.map.set(data.index, arr);
+    setPrevoteArrayMap(value);
+}
+
+export function getPrevoteArray(blockHeight: i64): Array<ValidatorProposalVote> {
+    const value = getPrevoteArrayMap()
+    if (value.map.has(blockHeight)) {
+        return value.map.get(blockHeight)
+    }
+    return [];
+}
+
+export function setPrevoteArray(blockHeight: i64, arr: Array<ValidatorProposalVote>): void {
+    const value = getPrevoteArrayMap()
+    value.map.set(blockHeight, arr)
+    setPrevoteArrayMap(value);
+}
+
+export function addToPrecommitArray(nodeId: i32, data: ValidatorCommitVote): void {
+    const value = getPrecommitArrayMap()
+    let arr: ValidatorCommitVote[] = [];
+    if (value.map.has(data.vote.index)) {
+        arr = value.map.get(data.vote.index)
+    } else {
+        arr = getEmptyPrecommitArray(value.nodeCount, data.vote.index, data.vote.termId, SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT)
+    }
+    arr[nodeId] = data;
+    value.map.set(data.vote.index, arr);
+    setPrecommitArrayMap(value);
+}
+
+export function getPrecommitArray(blockHeight: i64): Array<ValidatorCommitVote> {
+    const value = getPrecommitArrayMap()
+    if (value.map.has(blockHeight)) {
+        return value.map.get(blockHeight)
+    }
+    return [];
+}
+
+export function setPrecommitArray(blockHeight: i64, arr: Array<ValidatorCommitVote>): void {
+    const value = getPrecommitArrayMap()
+    value.map.set(blockHeight, arr)
+    setPrecommitArrayMap(value);
+}
+
+export function getPrevoteArrayMap(): ValidatorProposalVoteMap {
     const valuestr = fsm.getContextValue(cfg.PREVOTE_ARRAY);
-    let value: Array<ValidatorProposalVote> = [];
+    let value: ValidatorProposalVoteMap = new ValidatorProposalVoteMap(0);
     if (valuestr === "") return value;
-    value = JSON.parse<Array<ValidatorProposalVote>>(valuestr);
+    value = JSON.parse<ValidatorProposalVoteMap>(valuestr);
     return value;
 }
 
-export function setPrevoteArray(arr: Array<ValidatorProposalVote>): void {
-    fsm.setContextValue(cfg.PREVOTE_ARRAY, JSON.stringify<Array<ValidatorProposalVote>>(arr));
+export function setPrevoteArrayMap(value: ValidatorProposalVoteMap): void {
+    fsm.setContextValue(cfg.PREVOTE_ARRAY, JSON.stringify<ValidatorProposalVoteMap>(value));
 }
 
-export function getPrecommitArray(): Array<ValidatorCommitVote> {
+export function getPrecommitArrayMap(): ValidatorCommitVoteMap {
     const valuestr = fsm.getContextValue(cfg.PRECOMMIT_ARRAY);
-    let value: Array<ValidatorCommitVote> = [];
+    let value: ValidatorCommitVoteMap = new ValidatorCommitVoteMap(0);
     if (valuestr === "") return value;
-    value = JSON.parse<Array<ValidatorCommitVote>>(valuestr);
+    value = JSON.parse<ValidatorCommitVoteMap>(valuestr);
     return value;
 }
 
-export function setPrecommitArray(arr: Array<ValidatorCommitVote>): void {
-    fsm.setContextValue(cfg.PRECOMMIT_ARRAY, JSON.stringify<Array<ValidatorCommitVote>>(arr));
+export function setPrecommitArrayMap(value: ValidatorCommitVoteMap): void {
+    fsm.setContextValue(cfg.PRECOMMIT_ARRAY, JSON.stringify<ValidatorCommitVoteMap>(value));
 }
 
 // last log may be an uncommited one or a final one

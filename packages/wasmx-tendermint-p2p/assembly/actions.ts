@@ -26,18 +26,18 @@ import {
 import { parseInt32, stringToBase64, base64ToString } from "wasmx-utils/assembly/utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { StateSyncRequest, StateSyncResponse } from "./sync_types";
-import { getCurrentNodeId, getCurrentState, getPrevoteArray, setPrevoteArray, getPrecommitArray, setPrecommitArray, getValidatorNodesInfo, setValidatorNodesInfo, setTermId, appendLogEntry, setLogEntryAggregate, setCurrentState, setLastLogIndex, getValidatorNodeCount, getLogEntryObj } from "./storage";
+import { getCurrentNodeId, getCurrentState, getPrevoteArray, setPrevoteArray, getPrecommitArray, setPrecommitArray, getValidatorNodesInfo, setValidatorNodesInfo, setTermId, appendLogEntry, setLogEntryAggregate, setCurrentState, setLastLogIndex, getValidatorNodeCount, getLogEntryObj, addToPrevoteArray, addToPrecommitArray, setPrevoteArrayMap, getPrevoteArrayMap, getPrecommitArrayMap, setPrecommitArrayMap } from "./storage";
 import { getP2PAddress } from "wasmx-raft-p2p/assembly/actions"
 import { callHookContract, setMempool, signMessage } from "wasmx-tendermint/assembly/actions"
 import { Mempool } from "wasmx-tendermint/assembly/types_blockchain";
 import * as cfg from "./config";
 import { AppendEntry, AppendEntryResponse, LogEntryAggregate, UpdateNodeRequest } from "./types";
-import { getAllValidatorInfos, getCurrentProposer, getEmptyPrecommitArray, getEmptyValidatorProposalVoteArray, getFinalBlock, getLastBlockCommit, getLastBlockIndex, getLogEntryAggregate, getNextProposer, getProtocolId, getTopic, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
+import { getAllValidatorInfos, getCurrentProposer, getFinalBlock, getLastBlockCommit, getLastBlockIndex, getLogEntryAggregate, getNextProposer, getProtocolId, getTopic, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
 import { extractUpdateNodeEntryAndVerify, removeNode } from "wasmx-raft/assembly/actions";
 import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembly/storage";
 import { getAllValidators, getNodeByAddress, getNodeIdByAddress, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
 import { NodeInfo, NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft"
-import { Commit, CurrentState, SignedMsgType, ValidatorCommitVote, ValidatorProposalVote } from "./types_blockchain";
+import { Commit, CurrentState, getEmptyPrecommitArray, getEmptyValidatorProposalVoteArray, SignedMsgType, ValidatorCommitVote, ValidatorProposalVote } from "./types_blockchain";
 import { callContract } from "wasmx-tendermint/assembly/actions";
 import { InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
 import * as roles from "wasmx-env/assembly/roles";
@@ -905,12 +905,10 @@ export function sendPrevote(
     // get the current proposal & vote on the block hash
     const data = buildPrevoteMessage();
 
-    const prevoteArr = getPrevoteArray();
-    prevoteArr[getCurrentNodeId()] = data;
-    setPrevoteArray(prevoteArr);
+    addToPrevoteArray(getCurrentNodeId(), data);
 
     const msgstr = preparePrevoteMessage(data);
-    LoggerDebug("sending prevote", ["index", data.index.toString(), "hash", data.hash])
+    LoggerDebug("sending prevote", ["index", data.index.toString(), "hash", data.hash, "term_id", data.termId.toString()])
 
     const contract = wasmxw.getAddress();
     const state = getCurrentState()
@@ -930,17 +928,15 @@ export function sendPrevoteNil(
     const ourId = getCurrentNodeId();
     const getOurInfo = nodeIps[ourId];
 
-    const vaddr = wasmxw.addr_humanize(decodeBase64(state.validator_pubkey).buffer)
+    // const vaddr = wasmxw.addr_humanize(decodeBase64(state.validator_pubkey).buffer)
     const consAddr = getOurInfo.address
     // TODO chainId
     const data = new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PREVOTE, termId, consAddr, ourId, nextIndex, "nil", new Date(Date.now()), "")
 
-    const prevoteArr = getPrevoteArray();
-    prevoteArr[getCurrentNodeId()] = data;
-    setPrevoteArray(prevoteArr);
+    addToPrevoteArray(getCurrentNodeId(), data);
 
     const msgstr = preparePrevoteMessage(data);
-    LoggerDebug("sending prevote nil", ["index", data.index.toString()])
+    LoggerDebug("sending prevote nil", ["index", data.index.toString(), "term_id", data.termId.toString()])
 
     const contract = wasmxw.getAddress();
     const protocolId = getProtocolId(state)
@@ -976,11 +972,10 @@ export function sendPrecommit(
     const resp = preparePrecommitMessage(data);
     const msgstr = resp[0]
     const signature = resp[1]
-    LoggerDebug("sending precommit", ["index", data.index.toString(), "hash", data.hash])
+    LoggerDebug("sending precommit", ["index", data.index.toString(), "hash", data.hash, "term_id", data.termId.toString()])
 
-    const arr = getPrecommitArray();
-    arr[getCurrentNodeId()] = new ValidatorCommitVote(data, typestnd.BlockIDFlag.Commit, signature)
-    setPrecommitArray(arr);
+    const precommit = new ValidatorCommitVote(data, typestnd.BlockIDFlag.Commit, signature)
+    addToPrecommitArray(getCurrentNodeId(), precommit)
 
     const contract = wasmxw.getAddress();
     const state = getCurrentState()
@@ -1007,11 +1002,10 @@ export function sendPrecommitNil(
     const resp = preparePrecommitMessage(data);
     const msgstr = resp[0]
     const signature = resp[1]
-    LoggerDebug("sending precommit nil", ["index", data.index.toString()])
+    LoggerDebug("sending precommit nil", ["index", data.index.toString(), "term_id", data.termId.toString()])
 
-    const arr = getPrecommitArray();
-    arr[getCurrentNodeId()] = new ValidatorCommitVote(data, typestnd.BlockIDFlag.Nil, signature)
-    setPrecommitArray(arr);
+    const precommit = new ValidatorCommitVote(data, typestnd.BlockIDFlag.Nil, signature)
+    addToPrecommitArray(getCurrentNodeId(), precommit)
 
     const contract = wasmxw.getAddress();
     const protocolId = getProtocolId(state)
@@ -1068,17 +1062,14 @@ export function receivePrevote(
     }
 
     // we add the prevote to the arrays
-    const prevoteArr = getPrevoteArray();
     const nodes = getValidatorNodesInfo();
     const nodeIndex = getNodeIdByAddress(data.validatorAddress, nodes);
     if (nodeIndex == -1) {
         LoggerError("prevote sender node not found", ["sender", data.validatorAddress]);
         return;
     }
-    prevoteArr[nodeIndex] = data;
-    setPrevoteArray(prevoteArr);
+    addToPrevoteArray(nodeIndex, data);
 }
-
 
 export function receivePrecommit(
     params: ActionParam[],
@@ -1111,28 +1102,27 @@ export function receivePrecommit(
     }
 
     // we add the precommit to the arrays
-    const precommitArr = getPrecommitArray();
+    // const precommitArr = getPrecommitArray();
     const nodes = getValidatorNodesInfo();
     const nodeIndex = getNodeIdByAddress(data.validatorAddress, nodes);
     if (nodeIndex == -1) {
         LoggerError("precommit sender node not found", ["sender", data.validatorAddress]);
         return;
     }
-    precommitArr[nodeIndex].vote = data;
-    precommitArr[nodeIndex].signature = signature;
+
+    let blockIdFlag = typestnd.BlockIDFlag.Nil
     if (data.hash != "" && data.hash != "nil") {
-        precommitArr[nodeIndex].block_id_flag = typestnd.BlockIDFlag.Commit
-    } else {
-        precommitArr[nodeIndex].block_id_flag = typestnd.BlockIDFlag.Nil
+        blockIdFlag = typestnd.BlockIDFlag.Commit
     }
-    setPrecommitArray(precommitArr);
+    const precommit = new ValidatorCommitVote(data, blockIdFlag, signature)
+    addToPrecommitArray(nodeIndex, precommit)
 }
 
 export function ifPrevoteAnyThreshold(
     params: ActionParam[],
     event: EventObject,
 ): boolean {
-    return isPrevoteAnyThreshold();
+    return isPrevoteAnyThreshold(getCurrentState().nextHeight);
 }
 
 export function ifPrevoteAcceptThreshold(
@@ -1140,17 +1130,19 @@ export function ifPrevoteAcceptThreshold(
     event: EventObject,
 ): boolean {
     const state = getCurrentState()
+    // if a block was never proposed (proposer offline or out of sync)
+    // we do not proceed to precommit
     if (state.nextHash == "") {
         return false;
     }
-    return isPrevoteAcceptThreshold(state.nextHash);
+    return isPrevoteAcceptThreshold(getCurrentState().nextHeight, state.nextHash);
 }
 
 export function ifPrecommitAnyThreshold(
     params: ActionParam[],
     event: EventObject,
 ): boolean {
-    return isPrecommitAnyThreshold();
+    return isPrecommitAnyThreshold(getCurrentState().nextHeight);
 }
 
 export function ifPrecommitAcceptThreshold(
@@ -1158,10 +1150,13 @@ export function ifPrecommitAcceptThreshold(
     event: EventObject,
 ): boolean {
     const state = getCurrentState()
+    // if a block was never proposed (proposer offline or out of sync)
+    // we do not proceed to commit
+    // this should never happen, this is caught at prevote
     if (state.nextHash == "") {
         return false;
     }
-    return isPrecommitAcceptThreshold(state.nextHash);
+    return isPrecommitAcceptThreshold(getCurrentState().nextHeight, state.nextHash);
 }
 
 // this actually commits one block at a time
@@ -1184,8 +1179,23 @@ export function resetPrevotes(
     event: EventObject,
 ): void {
     const count = getValidatorNodeCount();
-    const emptyarr = getEmptyValidatorProposalVoteArray(count, SignedMsgType.SIGNED_MSG_TYPE_PREVOTE);
-    setPrevoteArray(emptyarr);
+    const nextIndex = getCurrentState().nextHeight;
+    const termId = getTermId()
+
+    const map = getPrevoteArrayMap()
+    // remove finalized blocks
+    map.removeLowerHeights(nextIndex - 1);
+    if (map.nodeCount < count) {
+        // increase array sizes for all heights
+        map.resize(count)
+    }
+    // we may receive prevotes before this time, so an entry may already be created
+    // prevotes for old termIds are not removed now
+    if (!map.map.has(nextIndex)) {
+        const emptyarr = getEmptyValidatorProposalVoteArray(count, nextIndex, termId, SignedMsgType.SIGNED_MSG_TYPE_PREVOTE);
+        map.map.set(nextIndex, emptyarr)
+    }
+    setPrevoteArrayMap(map);
 }
 
 export function resetPrecommits(
@@ -1194,8 +1204,23 @@ export function resetPrecommits(
 ): void {
     // TODO all validators, only bonded validators???
     const validators = getAllValidatorInfos();
-    const emptyarr = getEmptyPrecommitArray(validators.length, SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT);
-    setPrecommitArray(emptyarr);
+    const count = validators.length;
+    const nextIndex = getCurrentState().nextHeight;
+
+    const map = getPrecommitArrayMap()
+    // remove finalized blocks
+    map.removeLowerHeights(nextIndex - 1);
+    if (map.nodeCount < count) {
+        // increase array sizes for all heights
+        map.resize(count)
+    }
+    // we may receive precommits before this time, so an entry may already be created
+    if (!map.map.has(nextIndex)) {
+        const termId = getTermId()
+        const emptyarr = getEmptyPrecommitArray(count, nextIndex, termId, SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT);
+        map.map.set(nextIndex, emptyarr)
+    }
+    setPrecommitArrayMap(map);
 }
 
 export function setLockedValue(

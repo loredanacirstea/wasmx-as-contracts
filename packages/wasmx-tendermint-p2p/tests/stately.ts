@@ -221,6 +221,11 @@ export const machine = createMachine({
                     },
                   ],
                 },
+                receivePrecommit: {
+                  actions: {
+                    type: "receivePrecommit",
+                  },
+                },
               },
               states: {
                 active: {

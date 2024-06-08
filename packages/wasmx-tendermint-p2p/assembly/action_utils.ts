@@ -159,18 +159,18 @@ export function prepareAppendEntryMessage(
     return msgstr
 }
 
-export function isPrevoteAnyThreshold(): boolean {
-    const prevoteArr = getPrevoteArray();
+export function isPrevoteAnyThreshold(blockHeight: i64): boolean {
+    const prevoteArr = getPrevoteArray(blockHeight);
     return calculateVote(prevoteArr, "")
 }
 
-export function isPrevoteAcceptThreshold(hash: string): boolean {
-    const prevoteArr = getPrevoteArray();
+export function isPrevoteAcceptThreshold(blockHeight: i64, hash: string): boolean {
+    const prevoteArr = getPrevoteArray(blockHeight);
     return calculateVote(prevoteArr, hash)
 }
 
-export function isPrecommitAnyThreshold(): boolean {
-    const precommitArr = getPrecommitArray();
+export function isPrecommitAnyThreshold(blockHeight: i64): boolean {
+    const precommitArr = getPrecommitArray(blockHeight);
     const votes = new Array<ValidatorProposalVote>(precommitArr.length);
     for (let i = 0; i < precommitArr.length; i++) {
         votes[i] = precommitArr[i].vote;
@@ -178,8 +178,8 @@ export function isPrecommitAnyThreshold(): boolean {
     return calculateVote(votes, "")
 }
 
-export function isPrecommitAcceptThreshold(hash: string): boolean {
-    const precommitArr = getPrecommitArray();
+export function isPrecommitAcceptThreshold(blockHeight: i64, hash: string): boolean {
+    const precommitArr = getPrecommitArray(blockHeight);
     const votes = new Array<ValidatorProposalVote>(precommitArr.length);
     for (let i = 0; i < precommitArr.length; i++) {
         votes[i] = precommitArr[i].vote;
@@ -188,15 +188,20 @@ export function isPrecommitAcceptThreshold(hash: string): boolean {
 }
 
 export function calculateVote(votePerNode: Array<ValidatorProposalVote>, hash: string): boolean {
+    // hash is "" ony for threshold any votes
     const validators = getAllValidators();
-    let totalStake = getTotalStaked(validators)
+
+    // only active, bonded validators
+    let totalStake = tnd.getTotalStakedActive(validators)
     const threshold = getBFTThreshold(totalStake);
     // calculate voting stake for the proposed block
-    // TODO exclude jailed validators
     let count: BigInt = BigInt.zero();
     for (let i = 0; i < votePerNode.length; i++) {
+        if (validators[i].jailed || validators[i].status != staking.BondedS) {
+            continue;
+        }
         if (hash == "") { // any vote
-            if (votePerNode[i].hash != "") {
+            if (votePerNode[i].hash != "") { // it can be a valid hash or "nil"
                 // @ts-ignore
                 count += validators[i].tokens;
             }
@@ -207,6 +212,7 @@ export function calculateVote(votePerNode: Array<ValidatorProposalVote>, hash: s
     }
     // @ts-ignore
     const committing = count >= threshold;
+    LoggerDebug("calculate vote", ["threshold", threshold.toString(), "value", count.toString(), "passed", committing.toString(), "hash", hash])
     return committing;
 }
 
@@ -295,8 +301,9 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     state.last_commit_hash = last_commit_hash
     state.last_results_hash = last_results_hash
     state.nextHeight = finalizeReq.height + 1
+    // TODO get precommits for block finalizeReq.height - 1 ??!
     // we move precommit votes for this block to current state, so it is included in the next block proposal
-    state.last_block_signatures = getCommitSigsFromPrecommitArray();
+    state.last_block_signatures = getCommitSigsFromPrecommitArray(finalizeReq.height);
     setCurrentState(state);
     // update consensus params
     LoggerDebug("updating consensus parameters...", [])
@@ -547,34 +554,13 @@ export function getNextProposer(validators: staking.Validator[], queue: Validato
     return new GetProposerResponse(newqueue, proposerIndex);
 }
 
-export function getEmptyValidatorProposalVoteArray(len: i32, type: SignedMsgType): Array<ValidatorProposalVote> {
-    const emptyPrevotes = new Array<ValidatorProposalVote>(len);
-    const termId = getTermId()
-    const nextIndex = getCurrentState().nextHeight;
-    for (let i = 0; i < len; i++) {
-        emptyPrevotes[i] = new ValidatorProposalVote(type, termId, "", 0, nextIndex, "", new Date(Date.now()), "");
-    }
-    return emptyPrevotes
-}
-
-export function getEmptyPrecommitArray(len: i32, type: SignedMsgType): Array<ValidatorCommitVote> {
-    const emptyCommits = new Array<ValidatorCommitVote>(len);
-    const termId = getTermId()
-    const nextIndex = getCurrentState().nextHeight;
-    for (let i = 0; i < len; i++) {
-        const vote = new ValidatorProposalVote(type, termId, "", 0, nextIndex, "", new Date(Date.now()), "");
-        emptyCommits[i] = new ValidatorCommitVote(vote, typestnd.BlockIDFlag.Unknown, "");
-    }
-    return emptyCommits
-}
-
 export function getLastBlockCommit(height: i64, state: CurrentState): typestnd.BlockCommit {
     const bcommit = new typestnd.BlockCommit(height, state.last_round, state.last_block_id, state.last_block_signatures)
     return bcommit
 }
 
-export function getCommitSigsFromPrecommitArray(): typestnd.CommitSig[] {
-    const precommitArr = getPrecommitArray();
+export function getCommitSigsFromPrecommitArray(blockHeight: i64): typestnd.CommitSig[] {
+    const precommitArr = getPrecommitArray(blockHeight);
     const sigs = new Array<typestnd.CommitSig>(precommitArr.length)
     for (let i = 0; i < precommitArr.length; i++) {
         const comm = precommitArr[i]
