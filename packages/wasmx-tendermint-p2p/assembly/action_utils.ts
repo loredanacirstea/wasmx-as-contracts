@@ -605,6 +605,7 @@ export function initSubChain(encodedData: Base64String, state: CurrentState): ty
     const genutilGenesisStr = base64ToString(genesisState.get(modnames.MODULE_GENUTIL))
     const genutilGenesis = JSON.parse<mctypes.GenutilGenesis>(genutilGenesisStr)
     let weAreValidator = false;
+    let currentNodeId = 0;
     for (let i = 0; i < genutilGenesis.gen_txs.length; i++) {
         const gentx = String.UTF8.decode(base64.decode(genutilGenesis.gen_txs[i]).buffer)
         const tx = JSON.parse<SignedTransaction>(gentx);
@@ -614,6 +615,8 @@ export function initSubChain(encodedData: Base64String, state: CurrentState): ty
         if (consKey == null) continue;
         if (consKey.getKey().key == state.validator_pubkey) {
             weAreValidator = true;
+            // NOTE: requires req.peers order is the same as gentx
+            currentNodeId = i;
             break;
         }
     }
@@ -639,6 +642,7 @@ export function initSubChain(encodedData: Base64String, state: CurrentState): ty
         state.validator_privkey,
         state.validator_pubkey,
         req.peers,
+        currentNodeId,
     )
     LoggerInfo("initializing subchain", ["subchain_id", chainId])
     const response = mcwrap.InitSubChain(msg);

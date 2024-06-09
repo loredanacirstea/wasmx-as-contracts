@@ -94,6 +94,7 @@ export class InitSubChainMsg {
     validator_privkey: Base64String
     validator_pubkey: Base64String
     peers: string[]
+    current_node_id: i32 = 0
     constructor(
         init_chain_request: constypes.RequestInitChain,
         chain_config: ChainConfig,
@@ -101,6 +102,7 @@ export class InitSubChainMsg {
         validator_privkey: Base64String,
         validator_pubkey: Base64String,
         peers: string[],
+        current_node_id: i32,
     ) {
         this.init_chain_request = init_chain_request
         this.chain_config = chain_config
@@ -108,6 +110,7 @@ export class InitSubChainMsg {
         this.validator_privkey = validator_privkey
         this.validator_pubkey = validator_pubkey
         this.peers = peers
+        this.current_node_id = current_node_id
     }
 }
 
