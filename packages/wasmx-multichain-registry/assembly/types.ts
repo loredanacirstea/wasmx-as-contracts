@@ -124,6 +124,21 @@ export class QueryValidatorAddressesByChainIdRequest {
 
 // @ts-ignore
 @serializable
+export class QueryConvertAddressByChainIdRequest {
+    chainId: string = ""
+    prefix: string = ""
+    address: Bech32String = ""
+    type: string = "acc"
+    constructor(chainId: string, prefix: string, address: Bech32String, type: string) {
+        this.chainId = chainId
+        this.prefix = prefix
+        this.address = address
+        this.type = type
+    }
+}
+
+// @ts-ignore
+@serializable
 export class RegisterDefaultSubChainRequest {
     denom_unit: string
     base_denom_unit: u32

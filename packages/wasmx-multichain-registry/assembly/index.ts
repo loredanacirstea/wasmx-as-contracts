@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, getCallDataInitialize, getCallDataWrap } from './calldata';
-import { GetSubChainById, GetSubChainConfigById, GetSubChainIds, GetSubChainIdsByLevel, GetSubChainIdsByValidator, GetSubChains, GetSubChainsByIds, GetValidatorAddressesByChainId, GetValidatorsByChainId, InitSubChain, RegisterDefaultSubChain, RegisterSubChain, RegisterSubChainValidator, RemoveSubChain } from "./actions";
+import { ConvertAddressByChainId, GetSubChainById, GetSubChainConfigById, GetSubChainIds, GetSubChainIdsByLevel, GetSubChainIdsByValidator, GetSubChains, GetSubChainsByIds, GetValidatorAddressesByChainId, GetValidatorsByChainId, InitSubChain, RegisterDefaultSubChain, RegisterSubChain, RegisterSubChainValidator, RemoveSubChain } from "./actions";
 import { revert } from "./utils";
 import { setParams } from "./storage";
 
@@ -43,6 +43,8 @@ export function main(): void {
     result = GetValidatorsByChainId(calld.GetValidatorsByChainId!);
   } else if (calld.GetValidatorAddressesByChainId !== null) {
     result = GetValidatorAddressesByChainId(calld.GetValidatorAddressesByChainId!);
+  } else if (calld.ConvertAddressByChainId !== null) {
+    result = ConvertAddressByChainId(calld.ConvertAddressByChainId!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)

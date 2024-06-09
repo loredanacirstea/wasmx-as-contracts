@@ -35,7 +35,7 @@ import * as wasmxt from "wasmx-env/assembly/types";
 import { Base64String, Coin, SignedTransaction, Event, EventAttribute, PublicKey, Bech32String } from "wasmx-env/assembly/types";
 import { AttributeKeyChainId, AttributeKeyRequest, AttributeKeyValidator, EventTypeInitSubChain, EventTypeRegisterSubChain, EventTypeRegisterSubChainValidator } from "./events";
 import { addChainId, addChainValidator, addChainValidatorAddress, addLevelChainId, getChainData, getChainIds, getChainValidatorAddresses, getChainValidators, getLevelChainIds, getLevelLast, getParams, getValidatorChains, INITIAL_LEVEL, setChainData } from "./storage";
-import { CosmosmodGenesisState, InitSubChainRequest, MODULE_NAME, QueryGetSubChainIdsByLevelRequest, QueryGetSubChainIdsByValidatorRequest, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, QueryGetValidatorsByChainIdRequest, QueryValidatorAddressesByChainIdRequest, RegisterDefaultSubChainRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest, SubChainData, ValidatorInfo } from "./types";
+import { CosmosmodGenesisState, InitSubChainRequest, MODULE_NAME, QueryConvertAddressByChainIdRequest, QueryGetSubChainIdsByLevelRequest, QueryGetSubChainIdsByValidatorRequest, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, QueryGetValidatorsByChainIdRequest, QueryValidatorAddressesByChainIdRequest, RegisterDefaultSubChainRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest, SubChainData, ValidatorInfo } from "./types";
 import { LoggerDebug, LoggerInfo, revert } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { RequestInitChain } from "wasmx-consensus/assembly/types_tendermint";
@@ -158,6 +158,28 @@ export function GetValidatorsByChainId(req: QueryGetValidatorsByChainIdRequest):
 export function GetValidatorAddressesByChainId(req: QueryValidatorAddressesByChainIdRequest): ArrayBuffer {
     const addrs = getChainValidatorAddresses(req.chainId);
     return String.UTF8.encode(JSON.stringify<string[]>(addrs))
+}
+
+export function ConvertAddressByChainId(req: QueryConvertAddressByChainIdRequest): ArrayBuffer {
+    const addr = wasmxw.addr_canonicalize_mc(req.address)
+    let prefix = req.prefix;
+    if (req.chainId != "") {
+        let config: ChainConfig;
+        const chaindata = getChainData(req.chainId)
+        if (chaindata == null) {
+            return new ArrayBuffer(0)
+        }
+        config = chaindata.data.chain_config;
+        if (req.type == "acc") {
+            prefix = config.Bech32PrefixAccAddr
+        } else if (req.type == "cons") {
+            prefix = config.Bech32PrefixConsAddr
+        } else if (req.type == "val") {
+            prefix = config.Bech32PrefixValAddr
+        }
+    }
+    const newaddr = wasmxw.addr_humanize_mc(base64.decode(addr.bz).buffer, prefix);
+    return String.UTF8.encode(newaddr)
 }
 
 export function tryRegisterUpperLevel(lastRegisteredLevel: i32, lastRegisteredChainId: string, trynextlevel: i32): void {
