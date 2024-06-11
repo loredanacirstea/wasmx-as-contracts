@@ -6,14 +6,15 @@ import { DEFAULT_DERC20_CODE_ID, DEFAULT_EID_CHECK, DEFAULT_ERC20_CODE_ID, DEFAU
 import { BigInt } from "wasmx-env/assembly/bn";
 
 export const SPLIT = "."
-const PARAMS_KEY = "params"
-const CHAIN_IDS = "chainids"
-const CHAIN_VALIDATORS = "chain_validators."
-const CHAIN_VALIDATOR_ADDRESSES = "chain_validatoraddresses."
-const DATA_KEY = "chain_data."
-const VALIDATOR_CHAINS = "validator_chains."
-const LEVEL_LAST = "level_last"
-const LEVEL_CHAIN_IDS = "level_chainids."
+export const PARAMS_KEY = "params"
+export const CHAIN_IDS = "chainids"
+export const CHAIN_VALIDATORS = "chain_validators."
+export const CHAIN_VALIDATOR_ADDRESSES = "chain_validatoraddresses."
+export const DATA_KEY = "chain_data."
+export const VALIDATOR_CHAINS = "validator_chains."
+export const LEVEL_LAST = "level_last"
+export const LEVEL_CHAIN_IDS = "level_chainids."
+export const CURRENT_LEVEL = "currentlevel"
 
 export const INITIAL_LEVEL = 1
 
@@ -159,6 +160,17 @@ export function getLevelLast(): i32 {
 
 export function setLevelLast(id: i32): void {
     return wasmxw.sstore(LEVEL_LAST, id.toString());
+}
+
+export function getCurrentLevel(): i32 {
+    const valuestr = wasmxw.sload(CURRENT_LEVEL);
+    if (valuestr == "") return 0;
+    const value = parseInt(valuestr);
+    return i32(value);
+}
+
+export function setCurrentLevel(level: i32): void {
+    return wasmxw.sstore(CURRENT_LEVEL, level.toString());
 }
 
 export function getParams(): Params {

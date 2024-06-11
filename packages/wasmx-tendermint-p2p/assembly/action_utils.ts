@@ -17,7 +17,7 @@ import * as wblockscalld from "wasmx-blocks/assembly/calldata";
 import * as tnd from "wasmx-tendermint/assembly/actions";
 import { buildLogEntryAggregate, callContract, callHookContract, getMempool, getTotalStaked, setMempool, updateConsensusParams, updateValidators } from "wasmx-tendermint/assembly/actions";
 import * as cfg from "./config";
-import { AppendEntry, LogEntryAggregate } from "./types";
+import { AppendEntry, CosmosmodGenesisState, IsNodeValidator, LogEntryAggregate } from "./types";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { appendLogEntry, getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getPrecommitArray, getPrevoteArray, getTermId, getValidatorNodeCount, getValidatorNodesInfo, removeLogEntry, setCurrentState, setLogEntryAggregate, setPrecommitArray, setPrevoteArray } from "./storage";
@@ -598,30 +598,10 @@ export function initSubChain(encodedData: Base64String, state: CurrentState): ty
     // we initialize only if we are a validator here
     const appstate = base64ToString(req.init_chain_request.app_state_bytes)
     const genesisState: mctypes.GenesisState = JSON.parse<mctypes.GenesisState>(appstate)
+    const weAreValidator = isNodeValidator(genesisState, state.validator_pubkey)
 
-    if (!genesisState.has(modnames.MODULE_GENUTIL)) {
-        revert(`genesis state missing field: ${modnames.MODULE_GENUTIL}`)
-    }
-    const genutilGenesisStr = base64ToString(genesisState.get(modnames.MODULE_GENUTIL))
-    const genutilGenesis = JSON.parse<mctypes.GenutilGenesis>(genutilGenesisStr)
-    let weAreValidator = false;
-    let currentNodeId = 0;
-    for (let i = 0; i < genutilGenesis.gen_txs.length; i++) {
-        const gentx = String.UTF8.decode(base64.decode(genutilGenesis.gen_txs[i]).buffer)
-        const tx = JSON.parse<SignedTransaction>(gentx);
-        const msg = stakingutils.extractCreateValidatorMsg(tx)
-        if (msg == null) continue;
-        const consKey = msg.pubkey
-        if (consKey == null) continue;
-        if (consKey.getKey().key == state.validator_pubkey) {
-            weAreValidator = true;
-            // NOTE: requires req.peers order is the same as gentx
-            currentNodeId = i;
-            break;
-        }
-    }
-
-    if (!weAreValidator) {
+    if (!weAreValidator.isvalidator) {
+        LoggerInfo("node is not validating the new subchain; not initializing", ["subchain_id", chainId])
         return null;
     }
     LoggerInfo("node is validating the new subchain", ["subchain_id", chainId])
@@ -642,12 +622,58 @@ export function initSubChain(encodedData: Base64String, state: CurrentState): ty
         state.validator_privkey,
         state.validator_pubkey,
         req.peers,
-        currentNodeId,
+        weAreValidator.nodeIndex,
     )
     LoggerInfo("initializing subchain", ["subchain_id", chainId])
     const response = mcwrap.InitSubChain(msg);
     LoggerInfo("initialized subchain", ["subchain_id", chainId])
     return response;
+}
+
+export function isNodeValidator(genesisState: mctypes.GenesisState, ourPublicKey: string): IsNodeValidator {
+    if (!genesisState.has(modnames.MODULE_GENUTIL)) {
+        revert(`genesis state missing field: ${modnames.MODULE_GENUTIL}`)
+    }
+    const genutilGenesisStr = base64ToString(genesisState.get(modnames.MODULE_GENUTIL))
+    const genutilGenesis = JSON.parse<mctypes.GenutilGenesis>(genutilGenesisStr)
+    let weAreValidator = false;
+    let currentNodeId = 0;
+    for (let i = 0; i < genutilGenesis.gen_txs.length; i++) {
+        const gentx = String.UTF8.decode(base64.decode(genutilGenesis.gen_txs[i]).buffer)
+        const tx = JSON.parse<SignedTransaction>(gentx);
+        const msg = stakingutils.extractCreateValidatorMsg(tx)
+        if (msg == null) continue;
+        const consKey = msg.pubkey
+        if (consKey == null) continue;
+        if (consKey.getKey().key == ourPublicKey) {
+            weAreValidator = true;
+            // NOTE: requires req.peers order is the same as gentx
+            currentNodeId = i;
+            break;
+        }
+    }
+    if (genutilGenesis.gen_txs.length > 0) {
+        return new IsNodeValidator(weAreValidator, currentNodeId)
+    }
+
+    // look into staking data
+    if (!genesisState.has(modnames.MODULE_COSMOSMOD)) {
+        revert(`genesis state missing field: ${modnames.MODULE_COSMOSMOD}`)
+    }
+    const cosmosmodGenesisStr = base64ToString(genesisState.get(modnames.MODULE_COSMOSMOD))
+    const cosmosmodGenesis = JSON.parse<CosmosmodGenesisState>(cosmosmodGenesisStr)
+    for (let i = 0; i < cosmosmodGenesis.staking.validators.length; i++) {
+        const v = cosmosmodGenesis.staking.validators[i]
+        const consKey = v.consensus_pubkey
+        if (consKey == null) continue;
+        if (consKey.getKey().key == ourPublicKey) {
+            weAreValidator = true;
+            // NOTE: requires req.peers order is the same as gentx
+            currentNodeId = i;
+            break;
+        }
+    }
+    return new IsNodeValidator(weAreValidator, currentNodeId)
 }
 
 export function getProtocolId(state: CurrentState): string {

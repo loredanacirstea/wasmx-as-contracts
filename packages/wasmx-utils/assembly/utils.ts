@@ -16,6 +16,13 @@ export function uint8ArrayToHex(arr: Uint8Array): string {
     return arr.reduce((accum: string, v: u8) => accum + v.toString(16).padStart(2, '0'), "");
 }
 
+export function strip0x(val: string): string {
+    if (val.substring(0, 2) == "0x") {
+        val = val.substring(2)
+    }
+    return val
+}
+
 export function hexToU8(value: string): u8[] {
     const arr: u8[] = [];
     if (value.length % 2 == 1) value = "0" + value;

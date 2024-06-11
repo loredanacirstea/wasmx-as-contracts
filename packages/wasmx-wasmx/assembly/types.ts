@@ -64,6 +64,7 @@ export class SystemContract {
     role: string
     deps: string[]
     metadata: CodeMetadata
+    contract_state: ContractStorage[] = []
     constructor(
         address: string,
         label: string,
@@ -84,6 +85,7 @@ export class SystemContract {
         this.role = role
         this.deps = deps
         this.metadata = metadata
+        this.contract_state = []
     }
 }
 

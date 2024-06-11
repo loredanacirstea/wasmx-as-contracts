@@ -118,3 +118,23 @@ export class QueryBuildGenTxRequest {
         this.msg = msg
     }
 }
+
+// @ts-ignore
+@serializable
+export class IsNodeValidator {
+    isvalidator: boolean
+    nodeIndex: i32
+    constructor(isvalidator: boolean, nodeIndex: i32) {
+        this.isvalidator = isvalidator
+        this.nodeIndex = nodeIndex
+    }
+}
+
+// @ts-ignore
+@serializable
+export class CosmosmodGenesisState {
+    staking: stakingtypes.GenesisState
+    constructor(staking: stakingtypes.GenesisState) {
+        this.staking = staking
+    }
+}

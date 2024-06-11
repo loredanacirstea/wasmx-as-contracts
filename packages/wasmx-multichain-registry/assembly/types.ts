@@ -97,6 +97,19 @@ export class QueryGetSubChainIdsByLevelRequest {
 
 // @ts-ignore
 @serializable
+export class QueryGetCurrentLevelRequest {}
+
+// @ts-ignore
+@serializable
+export class QueryGetCurrentLevelResponse {
+    level: i32
+    constructor(level: i32) {
+        this.level = level
+    }
+}
+
+// @ts-ignore
+@serializable
 export class QueryGetSubChainIdsByValidatorRequest {
     validator_address: Bech32String
     constructor(validator_address: Bech32String) {
