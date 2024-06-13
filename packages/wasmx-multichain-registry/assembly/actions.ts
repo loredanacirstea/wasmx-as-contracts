@@ -34,7 +34,7 @@ import { buildChainConfig, buildChainId, getDefaultConsensusParams } from "wasmx
 import * as wasmxt from "wasmx-env/assembly/types";
 import { Base64String, Coin, SignedTransaction, Event, EventAttribute, PublicKey, Bech32String } from "wasmx-env/assembly/types";
 import { AttributeKeyChainId, AttributeKeyRequest, AttributeKeyValidator, EventTypeInitSubChain, EventTypeRegisterSubChain, EventTypeRegisterSubChainValidator } from "./events";
-import { addChainId, addChainValidator, addChainValidatorAddress, addLevelChainId, CURRENT_LEVEL, getChainData, getChainIds, getChainValidatorAddresses, getChainValidators, getCurrentLevel, getLevelChainIds, getLevelLast, getParams, getValidatorChains, INITIAL_LEVEL, setChainData } from "./storage";
+import { addChainId, addChainValidator, addChainValidatorAddress, addLevelChainId, CURRENT_LEVEL, getChainData, getChainIds, getChainValidatorAddresses, getChainValidators, getCurrentLevel, getDataKey, getLevelChainIds, getLevelChainIdsKey, getLevelLast, getParams, getValidatorChains, INITIAL_LEVEL, setChainData } from "./storage";
 import { CosmosmodGenesisState, InitSubChainRequest, MODULE_NAME, QueryConvertAddressByChainIdRequest, QueryGetCurrentLevelRequest, QueryGetCurrentLevelResponse, QueryGetSubChainIdsByLevelRequest, QueryGetSubChainIdsByValidatorRequest, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, QueryGetValidatorsByChainIdRequest, QueryValidatorAddressesByChainIdRequest, RegisterDefaultSubChainRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest, SubChainData, ValidatorInfo } from "./types";
 import { LoggerDebug, LoggerInfo, revert } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
@@ -205,21 +205,32 @@ export function tryRegisterUpperLevel(lastRegisteredLevel: i32, lastRegisteredCh
     const subchainIds = levelchains.slice(count - params.min_validators_count)
 
     // genesis state for registry contract
-    // store current level
-    // and the child contracts
+
+    // registry contract storage key-pairs
     const wasmxContractState = new Map<Bech32String,wasmxtypes.ContractStorage[]>()
-    // key: HexString
-    // value: Base64String
-    const registryContractState = new Array<wasmxtypes.ContractStorage>(2)
+    // key: HexString, value: Base64String
+    const registryContractState = new Array<wasmxtypes.ContractStorage>(2+subchainIds.length)
+    // store current level
     registryContractState[0] = new wasmxtypes.ContractStorage(
         utils.uint8ArrayToHex(Uint8Array.wrap(String.UTF8.encode(CURRENT_LEVEL))),
         utils.stringToBase64(nextLevel.toString()),
     )
+    // store child contract chain ids
     // on the last registered level, we only have our own kids
     registryContractState[1] = new wasmxtypes.ContractStorage(
-        utils.uint8ArrayToHex(Uint8Array.wrap(String.UTF8.encode(`level_chainids.${lastRegisteredLevel}`))),
+        utils.uint8ArrayToHex(Uint8Array.wrap(String.UTF8.encode(getLevelChainIdsKey(lastRegisteredLevel)))),
         utils.stringToBase64(JSON.stringify<string[]>(subchainIds)),
     )
+    // store child chain configurations
+    for (let i = 0; i < subchainIds.length; i++) {
+        const subchainId = subchainIds[i]
+        registryContractState[2+i] = new wasmxtypes.ContractStorage(
+            utils.uint8ArrayToHex(Uint8Array.wrap(String.UTF8.encode(getDataKey(subchainId)))),
+            utils.stringToBase64(wasmxw.sload(getDataKey(subchainId))),
+        )
+    }
+    // TODO store other stuff too
+
     wasmxContractState.set(wasmxdefaults.ADDR_MULTICHAIN_REGISTRY, registryContractState)
 
     // we need to create another level

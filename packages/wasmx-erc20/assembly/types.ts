@@ -10,13 +10,13 @@ export const ZERO_ADDRESS_HEX = "0x0000000000000000000000000000000000000000"
 // @ts-ignore
 @serializable
 export class CallDataInstantiate {
-    admins: Base64String[]
-    minters: Base64String[]
+    admins: Bech32String[]
+    minters: Bech32String[]
     name: string
     symbol: string
     decimals: i32
     base_denom: string
-    constructor(admins: Base64String[], minters: Base64String[], name: string, symbol: string,  decimals: i32,  base_denom: string) {
+    constructor(admins: Bech32String[], minters: Bech32String[], name: string, symbol: string,  decimals: i32,  base_denom: string) {
         this.admins = admins
         this.minters = minters
         this.name = name
