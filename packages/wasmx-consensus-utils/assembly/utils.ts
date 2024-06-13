@@ -7,6 +7,12 @@ import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as staking from "wasmx-stake/assembly/types";
 import { hexToUint8Array32, uint8ArrayToHex, i64ToUint8ArrayBE, hex64ToBase64 } from "wasmx-utils/assembly/utils";
 
+// cosmos-sdk store values
+// 128K - 1
+export const MaxKeyLength = 131071
+// 2G - 1
+export const MaxValueLength = 2147483647
+
 export function getValidatorsHash(validators: staking.Validator[]): string {
     let data = new Array<string>(validators.length);
     for (let i = 0; i < validators.length; i++) {
@@ -121,6 +127,10 @@ export function extractIndexedTopics(finalizeResp: typestnd.ResponseFinalizeBloc
                 const attr = ev.attributes[n]
                 if (attr.index) {
                     const topic = getEventTopic(ev.type, attr.key, attr.value)
+                    if (topic.length > MaxKeyLength) {
+                        wasmxw.LoggerDebug("consensus-utils", "cannot index event attribute", ["type", ev.type, "attribute", attr.key, "error", "topic larger than MaxKeyLength", "MaxKeyLength", MaxKeyLength.toString()])
+                        continue;
+                    }
                     if (!topicMap.has(topic)) {
                         topicMap.set(topic, [])
                     }

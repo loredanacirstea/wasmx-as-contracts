@@ -195,9 +195,9 @@ export class LoggerLog {
 // @ts-ignore
 @serializable
 export class EventAttribute {
-    key: string
-	value: Base64String
-	index: bool
+    key: string = ""
+	value: Base64String = ""
+	index: bool = false
     constructor(key: string, value: Base64String, index: bool) {
         this.key = key;
         this.value = value;
@@ -208,8 +208,8 @@ export class EventAttribute {
 // @ts-ignore
 @serializable
 export class Event {
-    type: string
-	attributes: EventAttribute[]
+    type: string = ""
+	attributes: EventAttribute[] = []
     constructor(type: string, attributes: EventAttribute[]) {
         this.type = type;
         this.attributes = attributes;
@@ -219,9 +219,9 @@ export class Event {
 // @ts-ignore
 @serializable
 export class StorageRange {
-	start_key: Base64String
-	end_key: Base64String
-	reverse: bool
+	start_key: Base64String = ""
+	end_key: Base64String = ""
+	reverse: bool = false
     constructor(start_key: Base64String, end_key: Base64String, reverse: bool) {
         this.start_key = start_key
         this.end_key = end_key
@@ -232,8 +232,8 @@ export class StorageRange {
 // @ts-ignore
 @serializable
 export class StoragePair {
-	key: Base64String
-	value: Base64String
+	key: Base64String = ""
+	value: Base64String = ""
     constructor(key: Base64String, value: Base64String) {
         this.key = key
         this.value = value
@@ -243,7 +243,7 @@ export class StoragePair {
 // @ts-ignore
 @serializable
 export class StoragePairs {
-	values: StoragePair[]
+	values: StoragePair[] = []
     constructor(values: StoragePair[]) {
         this.values = values
     }
