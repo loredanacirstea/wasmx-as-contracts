@@ -1,4 +1,5 @@
 export declare function getEnv(): ArrayBuffer
+export declare function getChainId(): ArrayBuffer
 export declare function getCallData(): ArrayBuffer
 export declare function getCaller(): ArrayBuffer
 export declare function getAddress(): ArrayBuffer

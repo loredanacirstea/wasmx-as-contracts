@@ -677,7 +677,7 @@ export function sc_multichain_registry(minValidatorCount: i32, enableEIDCheck: b
     return new SystemContract(
         ADDR_MULTICHAIN_REGISTRY,
         MULTICHAIN_REGISTRY_v001,
-        StorageSingleConsensus,
+        StorageCoreConsensus,
         mutichainInitMsg(minValidatorCount, enableEIDCheck),
         false,
         false,

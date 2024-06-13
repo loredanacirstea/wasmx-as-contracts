@@ -269,6 +269,11 @@ export function addr_equivalent(addr1: Bech32String, addr2: Bech32String): boole
     return resp == 1;
 }
 
+export function getChainId(): string {
+    const resp = wasmx.getChainId()
+    return String.UTF8.decode(resp)
+}
+
 export function getCaller(): Bech32String {
     return addr_humanize(wasmx.getCaller())
 }

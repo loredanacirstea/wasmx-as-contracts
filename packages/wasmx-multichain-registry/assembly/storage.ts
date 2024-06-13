@@ -69,8 +69,9 @@ export function getChainData(chainId: string): SubChainData | null {
 }
 
 export function setChainData(data: SubChainData): void {
+    const chainId = data.data.init_chain_request.chain_id
     const datastr = JSON.stringify<SubChainData>(data);
-    return wasmxw.sstore(getDataKey(data.data.init_chain_request.chain_id), datastr);
+    wasmxw.sstore(getDataKey(chainId), datastr);
 }
 
 export function addChainValidator(chainId: string, validatorAddress: Bech32String, genTx: Base64String): void {
