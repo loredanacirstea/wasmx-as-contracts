@@ -12,6 +12,7 @@ export class MsgEmpty {}
 export class CallData {
     set: MsgSet | null = null;
     get: MsgGet | null = null;
+    testGetWithStore: MsgGet | null = null;
 }
 
 export function getCallDataWrap(): CallData {

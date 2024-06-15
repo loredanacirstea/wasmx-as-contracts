@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as base64 from "as-base64/assembly"
 import { CallData, getCallDataCrossChain, getCallDataWrap } from "./calldata";
-import { get, set } from "./actions";
+import { get, set, testGetWithStore } from "./actions";
 import { LoggerInfo, revert } from "./utils";
 import { WasmxExecutionMessage } from "wasmx-env/assembly/types";
 
@@ -22,6 +22,8 @@ export function mainInternal(calld: CallData): ArrayBuffer {
     set(calld.set!);
   } else if (calld.get !== null) {
     result = get(calld.get!);
+  } else if (calld.testGetWithStore !== null) {
+    result = testGetWithStore(calld.testGetWithStore!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)

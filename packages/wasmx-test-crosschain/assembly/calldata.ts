@@ -10,6 +10,7 @@ export class MsgEmpty {}
 @serializable
 export class CallData {
     CrossChain: MsgCrossChainCallRequest | null = null;
+    CrossChainQuery: MsgCrossChainCallRequest | null = null;
 }
 
 export function getCallDataWrap(): CallData {

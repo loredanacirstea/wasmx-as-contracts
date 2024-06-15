@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, getCallDataWrap } from './calldata';
 import { revert } from "./utils";
-import { CrossChain } from "./actions";
+import { CrossChain, CrossChainQuery } from "./actions";
 
 export function wasmx_env_2(): void {}
 
@@ -16,6 +16,8 @@ export function main(): void {
   const calld = getCallDataWrap();
   if (calld.CrossChain !== null) {
     result = CrossChain(calld.CrossChain!);
+  } else if (calld.CrossChainQuery !== null) {
+    result = CrossChainQuery(calld.CrossChainQuery!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)

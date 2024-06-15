@@ -5,7 +5,7 @@ import * as roles from "wasmx-env/assembly/roles";
 import * as base64 from "as-base64/assembly"
 import * as crosschainw from "wasmx-env/assembly/crosschain_wrap";
 import { BigInt } from "wasmx-env/assembly/bn";
-import { revert } from "./utils";
+import { LoggerInfo, revert } from "./utils";
 import { MsgCrossChainCallRequest } from "wasmx-env/assembly/types";
 import { MODULE_NAME } from "./types";
 
@@ -17,6 +17,16 @@ export function CrossChain(req: MsgCrossChainCallRequest): ArrayBuffer {
     return base64.decode(resp.data).buffer
 }
 
+export function CrossChainQuery(req: MsgCrossChainCallRequest): ArrayBuffer {
+    const resp = crossChainQuery(req)
+    if (resp.error != "") {
+        revert(resp.error);
+    }
+    const response = base64.decode(resp.data).buffer
+    LoggerInfo("CrossChainQuery", ["response", String.UTF8.decode(response)])
+    return response
+}
+
 export function crossChainTx(req: wasmxt.MsgCrossChainCallRequest): wasmxt.MsgCrossChainCallResponse {
     const reqstr = JSON.stringify<wasmxt.MsgCrossChainCallRequest>(req)
     const calldatastr = `{"CrossChainTx":${reqstr}}`;
@@ -24,6 +34,18 @@ export function crossChainTx(req: wasmxt.MsgCrossChainCallRequest): wasmxt.MsgCr
     if (resp.success > 0) {
         // we do not fail, we want the chain to continue
         revert(`multichain crosschain tx failed: ${resp.data}`)
+    }
+    return JSON.parse<wasmxt.MsgCrossChainCallResponse>(resp.data)
+}
+
+
+export function crossChainQuery(req: wasmxt.MsgCrossChainCallRequest): wasmxt.MsgCrossChainCallResponse {
+    const reqstr = JSON.stringify<wasmxt.MsgCrossChainCallRequest>(req)
+    const calldatastr = `{"CrossChainQuery":${reqstr}}`;
+    const resp = callContract(roles.ROLE_MULTICHAIN_REGISTRY, calldatastr, true)
+    if (resp.success > 0) {
+        // we do not fail, we want the chain to continue
+        revert(`multichain crosschain query failed: ${resp.data}`)
     }
     return JSON.parse<wasmxt.MsgCrossChainCallResponse>(resp.data)
 }
