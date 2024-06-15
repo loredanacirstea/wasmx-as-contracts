@@ -1,6 +1,8 @@
 import { JSON } from "json-as/assembly";
 import * as base64 from "as-base64/assembly";
+import * as wasmx from "wasmx-env/assembly/wasmx";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
+import * as cross from "wasmx-env/assembly/crosschain";
 import * as roles from "wasmx-env/assembly/roles";
 import * as modnames from "wasmx-env/assembly/modules";
 import * as authzdefaults from "wasmx-env/assembly/defaults_authz";
@@ -132,11 +134,11 @@ export function GetSubChainById(req: QueryGetSubChainRequest): ArrayBuffer {
 }
 
 export function GetSubChainConfigById(req: QueryGetSubChainRequest): ArrayBuffer {
-    const chaindata = getChainData(req.chainId)
-    if (chaindata == null) {
+    const config = subChainConfigById(req.chainId)
+    if (config == null) {
         return new ArrayBuffer(0)
     }
-    const encoded = JSON.stringify<ChainConfig>(chaindata.data.chain_config)
+    const encoded = JSON.stringify<ChainConfig>(config)
     return String.UTF8.encode(encoded)
 }
 
@@ -166,7 +168,6 @@ export function GetValidatorAddressesByChainId(req: QueryValidatorAddressesByCha
 }
 
 export function ConvertAddressByChainId(req: QueryConvertAddressByChainIdRequest): ArrayBuffer {
-    const addr = wasmxw.addr_canonicalize_mc(req.address)
     let prefix = req.prefix;
     if (req.chainId != "") {
         let config: ChainConfig;
@@ -183,8 +184,72 @@ export function ConvertAddressByChainId(req: QueryConvertAddressByChainIdRequest
             prefix = config.Bech32PrefixValAddr
         }
     }
-    const newaddr = wasmxw.addr_humanize_mc(base64.decode(addr.bz).buffer, prefix);
+    const newaddr = convertAddress(req.address, prefix)
     return String.UTF8.encode(newaddr)
+}
+
+export function CrossChainTx(req: wasmxt.MsgCrossChainCallRequest): ArrayBuffer {
+    const newreq = prepareCrossChainCallRequest(req)
+    if (newreq == null) {
+        // we do not allow calls to chains that we do not have in the registry
+        const resp = new wasmxt.MsgCrossChainCallResponse("target chain configuration not found", "");
+        return String.UTF8.encode(JSON.stringify<wasmxt.MsgCrossChainCallResponse>(resp))
+    }
+    const reqdata = JSON.stringify<wasmxt.MsgCrossChainCallRequest>(newreq)
+    return cross.executeCrossChainTx(String.UTF8.encode(reqdata));
+}
+
+export function CrossChainQuery(req: wasmxt.MsgCrossChainCallRequest): ArrayBuffer {
+    const newreq = prepareCrossChainCallRequest(req)
+    if (newreq == null) {
+        // we do not allow calls to chains that we do not have in the registry
+        const resp = new wasmxt.MsgCrossChainCallResponse("target chain configuration not found", "");
+        return String.UTF8.encode(JSON.stringify<wasmxt.MsgCrossChainCallResponse>(resp))
+    }
+    const reqdata = JSON.stringify<wasmxt.MsgCrossChainCallRequest>(newreq)
+    return cross.executeCrossChainQuery(String.UTF8.encode(reqdata));
+}
+
+export function CrossChainQueryNonDeterministic(req: wasmxt.MsgCrossChainCallRequest): ArrayBuffer {
+    const newreq = prepareCrossChainCallRequest(req)
+    if (newreq == null) {
+        // we do not allow calls to chains that we do not have in the registry
+        const resp = new wasmxt.MsgCrossChainCallResponse("target chain configuration not found", "");
+        return String.UTF8.encode(JSON.stringify<wasmxt.MsgCrossChainCallResponse>(resp))
+    }
+    const reqdata = JSON.stringify<wasmxt.MsgCrossChainCallRequest>(newreq)
+    return cross.executeCrossChainQueryNonDeterministic(String.UTF8.encode(reqdata));
+}
+
+export function prepareCrossChainCallRequest(req: wasmxt.MsgCrossChainCallRequest): wasmxt.MsgCrossChainCallRequest | null {
+    const caller = wasmx.getCaller()
+    const callerBech32 = wasmxw.addr_humanize(caller)
+    const toChainConfig = subChainConfigById(req.to_chain_id)
+    if (toChainConfig == null) {
+        return null;
+    }
+    req.from_chain_id = wasmxw.getChainId()
+    req.from = wasmxw.addr_humanize_mc(String.UTF8.encode(callerBech32), toChainConfig.Bech32PrefixAccAddr)
+
+    // if address does not have the correct prefix, we convert it
+    const toAddr = wasmxw.addr_canonicalize_mc(req.to)
+    if (toAddr.prefix != toChainConfig.Bech32PrefixAccAddr) {
+        req.to = wasmxw.addr_humanize_mc(base64.decode(toAddr.bz).buffer, toChainConfig.Bech32PrefixAccAddr);
+    }
+    return req
+}
+
+export function convertAddress(sourceAddr: string, prefix: string): string {
+    const addr = wasmxw.addr_canonicalize_mc(sourceAddr)
+    return wasmxw.addr_humanize_mc(base64.decode(addr.bz).buffer, prefix);
+}
+
+export function subChainConfigById(chainId: string): ChainConfig | null {
+    const chaindata = getChainData(chainId)
+    if (chaindata == null) {
+        return null
+    }
+    return chaindata.data.chain_config
 }
 
 export function tryRegisterUpperLevel(lastRegisteredLevel: i32, lastRegisteredChainId: string, trynextlevel: i32): void {

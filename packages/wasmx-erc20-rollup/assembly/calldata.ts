@@ -19,11 +19,17 @@ export class CallData {
     mint: erc20.MsgMint | null = null;
     burn: erc20.MsgBurn | null = null;
 
-    // cross-chain
-    totalSupplyCrossChain: MsgTotalSupplyCrossChain | null = null;
-    balanceOfCrossChain: MsgBalanceOfCrossChain | null = null;
+    // cross-chain tx
     transferCrossChain: MsgTransferCrossChain | null = null;
     transferFromCrossChain: MsgTransferFromCrossChain | null = null;
+
+    // cross-chain queries
+    totalSupplyCrossChain: MsgTotalSupplyCrossChain | null = null;
+    balanceOfCrossChain: MsgBalanceOfCrossChain | null = null;
+
+    // cross-chain nondeterministic queries
+    totalSupplyCrossChainNonDeterministic: MsgTotalSupplyCrossChain | null = null;
+    balanceOfCrossChainNonDeterministic: MsgBalanceOfCrossChain | null = null;
 }
 
 export function getCallDataWrap(): CallData {

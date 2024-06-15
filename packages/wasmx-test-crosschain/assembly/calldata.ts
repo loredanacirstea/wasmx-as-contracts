@@ -1,5 +1,5 @@
 import { JSON } from "json-as/assembly";
-import { MsgExecuteCrossChainTxRequest } from "wasmx-env/assembly/types";
+import { MsgCrossChainCallRequest } from "wasmx-env/assembly/types";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 
 // @ts-ignore
@@ -9,7 +9,7 @@ export class MsgEmpty {}
 // @ts-ignore
 @serializable
 export class CallData {
-    CrossChain: MsgExecuteCrossChainTxRequest | null = null;
+    CrossChain: MsgCrossChainCallRequest | null = null;
 }
 
 export function getCallDataWrap(): CallData {

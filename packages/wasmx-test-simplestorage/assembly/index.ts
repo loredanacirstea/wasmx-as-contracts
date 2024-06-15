@@ -32,7 +32,7 @@ export function mainInternal(calld: CallData): ArrayBuffer {
 
 export function crosschain(): void{
   const calld = getCallDataCrossChain();
-  LoggerInfo("crosschain request", ["from_chain_id", calld.from_chain_id, "from", calld.from, "from_role", calld.from_role])
+  LoggerInfo("crosschain request", ["from_chain_id", calld.from_chain_id, "from", calld.from])
 
   const calldstr = String.UTF8.decode(base64.decode(calld.msg).buffer)
   const execmsg = JSON.parse<WasmxExecutionMessage>(calldstr);

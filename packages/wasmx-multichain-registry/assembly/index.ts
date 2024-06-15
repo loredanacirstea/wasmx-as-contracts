@@ -1,11 +1,13 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, getCallDataInitialize, getCallDataWrap } from './calldata';
-import { ConvertAddressByChainId, GetCurrentLevel, GetSubChainById, GetSubChainConfigById, GetSubChainIds, GetSubChainIdsByLevel, GetSubChainIdsByValidator, GetSubChains, GetSubChainsByIds, GetValidatorAddressesByChainId, GetValidatorsByChainId, InitSubChain, RegisterDefaultSubChain, RegisterSubChain, RegisterSubChainValidator, RemoveSubChain } from "./actions";
+import { ConvertAddressByChainId, CrossChainQuery, CrossChainQueryNonDeterministic, CrossChainTx, GetCurrentLevel, GetSubChainById, GetSubChainConfigById, GetSubChainIds, GetSubChainIdsByLevel, GetSubChainIdsByValidator, GetSubChains, GetSubChainsByIds, GetValidatorAddressesByChainId, GetValidatorsByChainId, InitSubChain, RegisterDefaultSubChain, RegisterSubChain, RegisterSubChainValidator, RemoveSubChain } from "./actions";
 import { revert } from "./utils";
 import { setParams } from "./storage";
 
 export function wasmx_env_2(): void {}
+
+export function wasmx_crosschain_1(): void {}
 
 export function instantiate(): void {
   const calld = getCallDataInitialize()
@@ -47,6 +49,12 @@ export function main(): void {
     result = ConvertAddressByChainId(calld.ConvertAddressByChainId!);
   } else if (calld.GetCurrentLevel !== null) {
     result = GetCurrentLevel(calld.GetCurrentLevel!);
+  } else if (calld.CrossChainTx !== null) {
+    result = CrossChainTx(calld.CrossChainTx!);
+  } else if (calld.CrossChainQuery !== null) {
+    result = CrossChainQuery(calld.CrossChainQuery!);
+  } else if (calld.CrossChainQueryNonDeterministic !== null) {
+    result = CrossChainQueryNonDeterministic(calld.CrossChainQueryNonDeterministic!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)

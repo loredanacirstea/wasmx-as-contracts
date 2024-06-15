@@ -1,17 +1,23 @@
 import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as crosschain from './crosschain';
-import { QueryCrossChainRequest, MsgExecuteCrossChainQueryResponse, MsgExecuteCrossChainTxRequest, MsgExecuteCrossChainTxResponse } from "./types";
+import { MsgCrossChainCallRequest, MsgCrossChainCallResponse } from "./types";
 import { LoggerDebug } from "./wasmx";
 
-export function executeCrossChainTx(req: MsgExecuteCrossChainTxRequest): MsgExecuteCrossChainTxResponse {
-    const reqdata = JSON.stringify<MsgExecuteCrossChainTxRequest>(req)
+export function executeCrossChainTx(req: MsgCrossChainCallRequest): MsgCrossChainCallResponse {
+    const reqdata = JSON.stringify<MsgCrossChainCallRequest>(req)
     const resp = crosschain.executeCrossChainTx(String.UTF8.encode(reqdata));
-    return JSON.parse<MsgExecuteCrossChainTxResponse>(String.UTF8.decode(resp));
+    return JSON.parse<MsgCrossChainCallResponse>(String.UTF8.decode(resp));
 }
 
-export function executeCrossChainQuery(req: QueryCrossChainRequest): MsgExecuteCrossChainQueryResponse {
-    const reqdata = JSON.stringify<QueryCrossChainRequest>(req)
+export function executeCrossChainQuery(req: MsgCrossChainCallRequest): MsgCrossChainCallResponse {
+    const reqdata = JSON.stringify<MsgCrossChainCallRequest>(req)
     const resp = crosschain.executeCrossChainQuery(String.UTF8.encode(reqdata));
-    return JSON.parse<MsgExecuteCrossChainQueryResponse>(String.UTF8.decode(resp));
+    return JSON.parse<MsgCrossChainCallResponse>(String.UTF8.decode(resp));
+}
+
+export function executeCrossChainQueryNonDeterministic(req: MsgCrossChainCallRequest): MsgCrossChainCallResponse {
+    const reqdata = JSON.stringify<MsgCrossChainCallRequest>(req)
+    const resp = crosschain.executeCrossChainQueryNonDeterministic(String.UTF8.encode(reqdata));
+    return JSON.parse<MsgCrossChainCallResponse>(String.UTF8.decode(resp));
 }

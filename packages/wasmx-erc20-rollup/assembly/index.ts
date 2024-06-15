@@ -38,14 +38,18 @@ export function main(): void {
     result = erc20.mint(calld.mint!);
   } else if (calld.burn !== null) {
     result = erc20.burn(calld.burn!);
-  } else if (calld.balanceOfCrossChain !== null) {
-    result = actions.balanceOfCrossChain(calld.balanceOfCrossChain!);
-  } else if (calld.totalSupplyCrossChain !== null) {
-    result = actions.totalSupplyCrossChain(calld.totalSupplyCrossChain!);
   } else if (calld.transferCrossChain !== null) {
     result = actions.transferCrossChain(calld.transferCrossChain!);
   } else if (calld.transferFromCrossChain !== null) {
     result = actions.transferFromCrossChain(calld.transferFromCrossChain!);
+  } else if (calld.balanceOfCrossChain !== null) {
+    result = actions.balanceOfCrossChain(calld.balanceOfCrossChain!);
+  } else if (calld.totalSupplyCrossChain !== null) {
+    result = actions.totalSupplyCrossChain(calld.totalSupplyCrossChain!);
+  } else if (calld.balanceOfCrossChainNonDeterministic !== null) {
+    result = actions.balanceOfCrossChainNonDeterministic(calld.balanceOfCrossChainNonDeterministic!);
+  } else if (calld.totalSupplyCrossChainNonDeterministic !== null) {
+    result = actions.totalSupplyCrossChainNonDeterministic(calld.totalSupplyCrossChainNonDeterministic!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)

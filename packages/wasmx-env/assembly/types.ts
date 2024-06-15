@@ -608,23 +608,22 @@ export class ReadFromBackgroundProcessResponse {
 
 // @ts-ignore
 @serializable
-export class MsgExecuteCrossChainTxRequest {
+export class MsgCrossChainCallRequest {
     from: string = ""
-    to_address_or_role: string = ""
+    to: string = ""
     msg: Base64String = ""
     funds: Coin[] = []
     dependencies: string[] = []
     from_chain_id: string = ""
-    from_role: string = ""
     to_chain_id: string = ""
     constructor(
-        to_address_or_role: string,
+        to: string,
         msg: Base64String,
         funds: Coin[],
         dependencies: string[],
         to_chain_id: string,
     ) {
-        this.to_address_or_role = to_address_or_role
+        this.to = to
         this.msg = msg
         this.funds = funds
         this.dependencies = dependencies
@@ -633,54 +632,12 @@ export class MsgExecuteCrossChainTxRequest {
         // set by wasmx
         this.from = ""
         this.from_chain_id = ""
-        this.from_role = ""
     }
 }
 
 // @ts-ignore
 @serializable
-export class MsgExecuteCrossChainTxResponse {
-    error: string
-    data: Base64String
-    constructor(error: string, data: Base64String) {
-        this.error = error
-        this.data = data
-    }
-}
-
-// @ts-ignore
-@serializable
-export class QueryCrossChainRequest {
-    from: string = ""
-    to_address_or_role: string = ""
-    msg: Base64String = ""
-    funds: Coin[] = []
-    dependencies: string[] = []
-    from_chain_id: string = ""
-    from_role: string = ""
-    to_chain_id: string = ""
-    constructor(
-        to_address_or_role: string,
-        msg: Base64String,
-        funds: Coin[],
-        dependencies: string[],
-        to_chain_id: string,
-    ) {
-        this.to_address_or_role = to_address_or_role
-        this.msg = msg
-        this.funds = funds
-        this.dependencies = dependencies
-        this.to_chain_id = to_chain_id
-        // set by wasmx
-        this.from = ""
-        this.from_chain_id = ""
-        this.from_role = ""
-    }
-}
-
-// @ts-ignore
-@serializable
-export class MsgExecuteCrossChainQueryResponse {
+export class MsgCrossChainCallResponse {
     error: string
     data: Base64String
     constructor(error: string, data: Base64String) {

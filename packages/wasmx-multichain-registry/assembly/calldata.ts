@@ -1,5 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import * as wasmxt from "wasmx-env/assembly/types";
 import { InitSubChainRequest, MsgInitialize, QueryConvertAddressByChainIdRequest, QueryGetCurrentLevelRequest, QueryGetSubChainIdsByLevelRequest, QueryGetSubChainIdsByValidatorRequest, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, QueryGetValidatorsByChainIdRequest, QueryValidatorAddressesByChainIdRequest, RegisterDefaultSubChainRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest } from "./types";
 
 // @ts-ignore
@@ -23,6 +24,11 @@ export class CallData {
     GetValidatorsByChainId: QueryGetValidatorsByChainIdRequest | null = null;
     GetValidatorAddressesByChainId: QueryValidatorAddressesByChainIdRequest | null = null;
     ConvertAddressByChainId: QueryConvertAddressByChainIdRequest | null = null;
+
+    // crosschain
+    CrossChainTx: wasmxt.MsgCrossChainCallRequest | null = null;
+    CrossChainQuery: wasmxt.MsgCrossChainCallRequest | null = null;
+    CrossChainQueryNonDeterministic: wasmxt.MsgCrossChainCallRequest | null = null;
 }
 
 export function getCallDataWrap(): CallData {

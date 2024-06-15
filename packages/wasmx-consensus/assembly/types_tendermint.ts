@@ -598,14 +598,14 @@ export enum CodeType {
 // @ts-ignore
 @serializable
 export class ResponseCheckTx { // extends ExecTxResult {}// same as ResponseCheckTx
-    code: u32
-	data: Base64String
-	log: string
-	info: string
-	gas_wanted: i64
-	gas_used: i64
-	events: Event[]
-	codespace: string
+    code: u32 = 0
+	data: Base64String = ""
+	log: string = ""
+	info: string = ""
+	gas_wanted: i64 = 0
+	gas_used: i64 = 0
+	events: Event[] = []
+	codespace: string = ""
     constructor(code: u32, data: Base64String, log: string, info: string, gas_wanted: i64, gas_used: i64, events: Event[], codespace: string) {
         this.code = code;
         this.data = data;
