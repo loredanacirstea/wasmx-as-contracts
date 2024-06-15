@@ -30,7 +30,7 @@ import * as cfg from "./config";
 import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
-import { appendLogEntry, getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLogIndex, getLogEntryObj, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, removeLogEntry, setCurrentState, setLastLogIndex, setLogEntryAggregate, setNextIndexArray, setNodeIPs, setTermId } from "./action_utils";
+import { appendLogEntry, decodeTx, getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLogIndex, getLogEntryObj, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, removeLogEntry, setCurrentState, setLastLogIndex, setLogEntryAggregate, setNextIndexArray, setNodeIPs, setTermId } from "./action_utils";
 import { NodeInfo, NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft";
 import { verifyMessage } from "wasmx-raft/assembly/action_utils";
 import { NetworkNode } from "wasmx-p2p/assembly/types";
@@ -386,7 +386,8 @@ export function addToMempool(
         revert("no transaction found");
     }
     LoggerDebug("new transaction received", ["transaction", transaction])
-    return addTransactionToMempool(transaction)
+    const txhash = addTransactionToMempool(transaction)
+    LoggerInfo("new transaction added to mempool", ["txhash", txhash])
 }
 
 export function sendAppendEntries(
@@ -519,7 +520,7 @@ export function sendPrecommit(
 
 export function addTransactionToMempool(
     transaction: Base64String,
-): void {
+): string {
     // TODO reenable if if no longer run the antehandler when receiving transactions; otherwise we run it 2 times, which increases account sequence with 2
     // check that tx is valid
     const checktx = new typestnd.RequestCheckTx(transaction, typestnd.CheckTxType.New);
@@ -527,14 +528,15 @@ export function addTransactionToMempool(
     // we only check the code type; CheckTx should be stateless, just form checking
     if (checkResp.code !== typestnd.CodeType.Ok) {
         // transaction is not valid, we should finish; we use this error to check forwarded txs to leader
-        return revert(`${cfg.ERROR_INVALID_TX}; code ${checkResp.code}; ${checkResp.log}`);
+        revert(`${cfg.ERROR_INVALID_TX}; code ${checkResp.code}; ${checkResp.log}`);
+        return "";
     }
 
     // add to mempool
     const mempool = getMempool();
     const txhash = wasmxw.sha256(transaction);
-    const parsedTx = JSON.parse<SignedTransaction>(base64ToString(transaction))
 
+    const parsedTx = decodeTx(transaction);
     let txGas: u64 = 1000000
     const fee = parsedTx.auth_info.fee
     if (fee != null) {
@@ -544,10 +546,12 @@ export function addTransactionToMempool(
     const cparams = getConsensusParams();
     const maxgas = cparams.block.max_gas;
     if (maxgas > -1 && u64(maxgas) < txGas) {
-        return revert(`out of gas: ${txGas}; max ${maxgas}`);
+        revert(`out of gas: ${txGas}; max ${maxgas}`);
+        return "";
     }
     mempool.add(txhash, transaction, txGas);
     setMempool(mempool);
+    return txhash;
 }
 
 export function sendNewTransactionResponse(

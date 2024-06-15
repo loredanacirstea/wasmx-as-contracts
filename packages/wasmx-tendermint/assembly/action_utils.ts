@@ -1,4 +1,5 @@
 import { JSON } from "json-as/assembly";
+import * as wasmxw from "wasmx-env/assembly/wasmx_wrap"
 import * as fsm from 'xstate-fsm-as/assembly/storage';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
@@ -9,6 +10,7 @@ import { LogEntry, LogEntryAggregate } from "./types";
 import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
 import * as cfg from "./config";
 import { NodeInfo } from "wasmx-raft/assembly/types_raft";
+import { Base64String, SignedTransaction } from "wasmx-env/assembly/types";
 
 export function getCurrentState(): CurrentState {
     const value = fsm.getContextValue(cfg.STATE_KEY);
@@ -186,4 +188,8 @@ export function setNextIndexArray(arr: Array<i64>): void {
 export function getLastLog(): LogEntry {
     const index = getLastLogIndex();
     return getLogEntryObj(index);
+}
+
+export function decodeTx(tx: Base64String): SignedTransaction {
+    return wasmxw.decodeCosmosTxToJson(decodeBase64(tx).buffer);
 }
