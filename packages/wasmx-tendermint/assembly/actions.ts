@@ -30,6 +30,7 @@ import * as cfg from "./config";
 import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
+import { getLeaderChain } from "wasmx-consensus/assembly/multichain_utils";
 import { appendLogEntry, decodeTx, getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLogIndex, getLogEntryObj, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, removeLogEntry, setCurrentState, setLastLogIndex, setLogEntryAggregate, setNextIndexArray, setNodeIPs, setTermId } from "./action_utils";
 import { NodeInfo, NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft";
 import { verifyMessage } from "wasmx-raft/assembly/action_utils";
@@ -549,7 +550,23 @@ export function addTransactionToMempool(
         revert(`out of gas: ${txGas}; max ${maxgas}`);
         return "";
     }
-    mempool.add(txhash, transaction, txGas);
+
+    // if atomic transaction, we calculate the leader chain id and index it by leader
+    // we revert if extension leader is incorrect
+    const extopts = parsedTx.body.extension_options
+    let leader = ""
+    for (let i = 0; i < extopts.length; i++) {
+        const extany = extopts[i]
+        if (extany.type_url == typestnd.TypeUrl_ExtensionOptionAtomicMultiChainTx) {
+            const ext = typestnd.ExtensionOptionAtomicMultiChainTx.fromAnyWrap(extany)
+            leader = getLeaderChain(ext.chain_ids)
+            if (leader != ext.leader_chain_id) {
+                revert(`atomic transaction wrong leader: expected ${leader}, got ${ext.leader_chain_id}`)
+            }
+        }
+    }
+
+    mempool.add(txhash, transaction, txGas, leader);
     setMempool(mempool);
     return txhash;
 }

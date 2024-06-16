@@ -1,5 +1,11 @@
 import { JSON } from "json-as/assembly";
+import * as base64 from "as-base64/assembly/index";
 import {HexString, Base64String, Bech32String, Event, PublicKey} from 'wasmx-env/assembly/types';
+import { AnyWrap } from "wasmx-env/assembly/wasmx_types";
+
+export const TypeUrl_ExtensionOptionEthereumTx         = "/mythos.wasmx.v1.ExtensionOptionEthereumTx"
+export const TypeUrl_ExtensionOptionAtomicMultiChainTx = "/mythos.network.v1.ExtensionOptionAtomicMultiChainTx"
+export const TypeUrl_ExtensionOptionMultiChainTx       = "/mythos.network.v1.ExtensionOptionMultiChainTx"
 
 // @ts-ignore
 @serializable
@@ -384,9 +390,15 @@ export class ExtensionOptionMultiChainTx {
 // @ts-ignore
 @serializable
 export class  ExtensionOptionAtomicMultiChainTx {
-    leader_chain: string;
-    constructor(leader_chain: string) {
-        this.leader_chain = leader_chain
+    leader_chain_id: string;
+    chain_ids: string[];
+    constructor(leader_chain_id: string, chain_ids: string[]) {
+        this.leader_chain_id = leader_chain_id
+        this.chain_ids = chain_ids
+    }
+
+    static fromAnyWrap(value: AnyWrap): ExtensionOptionAtomicMultiChainTx {
+        return JSON.parse<ExtensionOptionAtomicMultiChainTx>(String.UTF8.decode(base64.decode(value.value).buffer))
     }
 }
 

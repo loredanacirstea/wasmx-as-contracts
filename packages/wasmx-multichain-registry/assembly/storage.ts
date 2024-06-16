@@ -15,6 +15,7 @@ export const VALIDATOR_CHAINS = "validator_chains."
 export const LEVEL_LAST = "level_last"
 export const LEVEL_CHAIN_IDS = "level_chainids."
 export const CURRENT_LEVEL = "currentlevel"
+export const LAST_CHAIN_ID = "chainid_last"
 
 export const INITIAL_LEVEL = 1
 
@@ -172,6 +173,17 @@ export function getCurrentLevel(): i32 {
 
 export function setCurrentLevel(level: i32): void {
     return wasmxw.sstore(CURRENT_LEVEL, level.toString());
+}
+
+export function getChainIdLast(): u64 {
+    const valuestr = wasmxw.sload(LAST_CHAIN_ID);
+    if (valuestr == "") return 0;
+    const value = parseInt(valuestr);
+    return u64(value);
+}
+
+export function setChainIdLast(id: u64): void {
+    return wasmxw.sstore(LAST_CHAIN_ID, id.toString());
 }
 
 export function getParams(): Params {

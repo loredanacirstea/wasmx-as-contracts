@@ -130,3 +130,26 @@ export class StartSubChainMsg {
 export class StartSubChainResponse {
     error: string = ""
 }
+
+// @ts-ignore
+@serializable
+export class ChainId {
+    full: string = ""
+    base_name: string = ""
+    level: u32 = 0
+    evmid: u64 = 0
+    fork_index: u32 = 0
+    constructor(
+        full: string = "",
+        base_name: string = "",
+        level: u32 = 0,
+        evmid: u64 = 0,
+        fork_index: u32 = 0,
+    ) {
+        this.full = full
+        this.base_name = base_name
+        this.level = level
+        this.evmid = evmid
+        this.fork_index = fork_index
+    }
+}

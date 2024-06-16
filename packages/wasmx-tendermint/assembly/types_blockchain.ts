@@ -1,5 +1,6 @@
 import { JSON } from "json-as/assembly";
-import {HexString, Base64String, Bech32String} from 'wasmx-env/assembly/types';
+import * as consw from "wasmx-env/assembly/crosschain_wrap";
+import {HexString, Base64String, Bech32String, MsgIsAtomicTxInExecutionRequest} from 'wasmx-env/assembly/types';
 import { Version, BlockID, CommitSig, BlockIDFlag } from 'wasmx-consensus/assembly/types_tendermint';
 import { BigInt } from "wasmx-env/assembly/bn";
 
@@ -96,12 +97,15 @@ class MempoolBatch {
 export class MempoolTx {
     tx: Base64String
     gas: u64
+    leader: string = ""
     constructor(
         tx: Base64String,
         gas: u64,
+        leader: string = "",
     ) {
         this.tx = tx
         this.gas = gas
+        this.leader = leader
     }
 }
 
@@ -113,8 +117,8 @@ export class Mempool {
         this.map = map;
     }
 
-    add(txhash: Base64String, tx: Base64String, gas: u64): void {
-        this.map.set(txhash, new MempoolTx(tx, gas))
+    add(txhash: Base64String, tx: Base64String, gas: u64, leaderChainId: string): void {
+        this.map.set(txhash, new MempoolTx(tx, gas, leaderChainId))
     }
 
     remove(txhash: Base64String): void {
@@ -127,6 +131,15 @@ export class Mempool {
         const txhashes = this.map.keys();
         for (let i = 0; i < txhashes.length; i++) {
             const tx = this.map.get(txhashes[i])
+            let atomicInExec = false
+            if (tx.leader != "") {
+                // check if leader has begun execution
+                if (consw.isAtomicTxInExecution(new MsgIsAtomicTxInExecutionRequest(tx.leader, txhashes[i]))) {
+                    atomicInExec = true;
+                    batch.txs = []
+                    batch.cummulatedGas = 0;
+                }
+            }
             if (maxGas > -1 && maxGas < (batch.cummulatedGas + tx.gas)) {
                 break;
             }
@@ -137,6 +150,8 @@ export class Mempool {
             batch.txs = batch.txs.concat([tx.tx]);
             batch.cummulatedGas += tx.gas;
             cummulatedBytes += bytelen;
+            // only one atomic transaction per batch
+            if (atomicInExec) return batch;
         }
         return batch;
     }

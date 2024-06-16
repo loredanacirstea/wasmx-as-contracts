@@ -645,3 +645,23 @@ export class MsgCrossChainCallResponse {
         this.data = data
     }
 }
+
+// @ts-ignore
+@serializable
+export class MsgIsAtomicTxInExecutionRequest {
+    sub_chain_id: string = ""
+    tx_hash: Base64String = ""
+    constructor(sub_chain_id: string = "", tx_hash: Base64String = "") {
+        this.sub_chain_id = sub_chain_id
+        this.tx_hash = tx_hash
+    }
+}
+
+// @ts-ignore
+@serializable
+export class MsgIsAtomicTxInExecutionResponse {
+    is_in_execution: bool = false
+    constructor(is_in_execution: bool = false) {
+        this.is_in_execution = is_in_execution
+    }
+}
