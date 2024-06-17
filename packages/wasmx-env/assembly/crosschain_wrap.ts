@@ -22,7 +22,7 @@ export function executeCrossChainQueryNonDeterministic(req: MsgCrossChainCallReq
     return JSON.parse<MsgCrossChainCallResponse>(String.UTF8.decode(resp));
 }
 
-export function isAtomicTxInExecution(req: MsgIsAtomicTxInExecutionRequest): bool {
+export function isAtomicTxInExecution(req: MsgIsAtomicTxInExecutionRequest): boolean {
     const reqdata = JSON.stringify<MsgIsAtomicTxInExecutionRequest>(req)
     const resp = crosschain.isAtomicTxInExecution(String.UTF8.encode(reqdata));
     const response = JSON.parse<MsgIsAtomicTxInExecutionResponse>(String.UTF8.decode(resp));

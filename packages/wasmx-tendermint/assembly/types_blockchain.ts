@@ -3,6 +3,7 @@ import * as consw from "wasmx-env/assembly/crosschain_wrap";
 import {HexString, Base64String, Bech32String, MsgIsAtomicTxInExecutionRequest} from 'wasmx-env/assembly/types';
 import { Version, BlockID, CommitSig, BlockIDFlag } from 'wasmx-consensus/assembly/types_tendermint';
 import { BigInt } from "wasmx-env/assembly/bn";
+import { LoggerDebug } from "./utils";
 
 // @ts-ignore
 @serializable
@@ -125,7 +126,7 @@ export class Mempool {
         this.map.delete(txhash)
     }
 
-    batch(maxGas: i64, maxBytes: i64): MempoolBatch {
+    batch(maxGas: i64, maxBytes: i64, ourchain: string): MempoolBatch {
         let batch: MempoolBatch = new MempoolBatch([], 0);
         let cummulatedBytes: i64 = 0;
         const txhashes = this.map.keys();
@@ -133,11 +134,17 @@ export class Mempool {
             const tx = this.map.get(txhashes[i])
             let atomicInExec = false
             if (tx.leader != "") {
-                // check if leader has begun execution
-                if (consw.isAtomicTxInExecution(new MsgIsAtomicTxInExecutionRequest(tx.leader, txhashes[i]))) {
-                    atomicInExec = true;
+                if (
+                    tx.leader == ourchain ||
+                    consw.isAtomicTxInExecution(new MsgIsAtomicTxInExecutionRequest(tx.leader, txhashes[i]))
+                ) {
+                    atomicInExec = true
+                    LoggerDebug("atomic tx is in execution on leader chain", ["leader", tx.leader, "txhash", txhashes[i]])
                     batch.txs = []
                     batch.cummulatedGas = 0;
+                } else {
+                    LoggerDebug("atomic tx is not in execution on leader chain, skipping...", ["leader", tx.leader, "txhash", txhashes[i]])
+                    continue;
                 }
             }
             if (maxGas > -1 && maxGas < (batch.cummulatedGas + tx.gas)) {

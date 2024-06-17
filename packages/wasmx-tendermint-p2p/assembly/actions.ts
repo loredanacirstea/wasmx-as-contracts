@@ -32,7 +32,7 @@ import { callHookContract, setMempool, signMessage } from "wasmx-tendermint/asse
 import { Mempool } from "wasmx-tendermint/assembly/types_blockchain";
 import * as cfg from "./config";
 import { AppendEntry, AppendEntryResponse, LogEntryAggregate, UpdateNodeRequest } from "./types";
-import { getAllValidatorInfos, getCurrentProposer, getFinalBlock, getLastBlockCommit, getLastBlockIndex, getLogEntryAggregate, getNextProposer, getProtocolId, getTopic, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
+import { getAllValidatorInfos, getConsensusParams, getCurrentProposer, getFinalBlock, getLastBlockCommit, getLastBlockIndex, getLogEntryAggregate, getNextProposer, getProtocolId, getProtocolIdInternal, getTopic, getTopicInternal, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
 import { extractUpdateNodeEntryAndVerify, removeNode } from "wasmx-raft/assembly/actions";
 import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembly/storage";
 import { getAllValidators, getNodeByAddress, getNodeIdByAddress, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
@@ -43,6 +43,8 @@ import { InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types
 import * as roles from "wasmx-env/assembly/roles";
 import * as mcwrap from 'wasmx-consensus/assembly/multichain_wrap';
 import { StartSubChainMsg } from "wasmx-consensus/assembly/types_multichain";
+import { decodeTx } from "wasmx-tendermint/assembly/action_utils";
+import { getLeaderChain } from "wasmx-consensus/assembly/multichain_utils";
 
 
 // TODO add delta to timeouts each failed round
@@ -551,6 +553,110 @@ export function forwardMsgToChat(
     const protocolId = getProtocolId(state)
     const topic = getTopic(state, cfg.CHAT_ROOM_MEMPOOL)
     p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, protocolId, topic))
+}
+
+// TODO
+export function forwardMsgToOtherChains(transaction: Base64String, chainIds: string[]): void {
+    const msgstr = `{"run":{"event":{"type":"newTransaction","params":[{"key":"transaction", "value":"${transaction}"}]}}}`
+    const contract = wasmxw.getAddress();
+    for (let i = 0; i < chainIds.length; i++) {
+        const chainId = chainIds[i]
+        const protocolId = getProtocolIdInternal(chainId)
+        const topic = getTopicInternal(chainId, cfg.CHAT_ROOM_MEMPOOL)
+        p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, protocolId, topic))
+    }
+}
+
+export function addToMempool(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    let transaction: string = "";
+    for (let i = 0; i < event.params.length; i++) {
+        if (event.params[i].key === "transaction") {
+            transaction = event.params[i].value;
+            continue;
+        }
+    }
+    if (transaction === "") {
+        revert("no transaction found");
+    }
+    LoggerDebug("new transaction received", ["transaction", transaction])
+    addTransactionToMempool(transaction)
+}
+
+export function addTransactionToMempool(
+    transaction: Base64String,
+): string {
+    // TODO reenable if if no longer run the antehandler when receiving transactions; otherwise we run it 2 times, which increases account sequence with 2
+    // check that tx is valid
+    const checktx = new typestnd.RequestCheckTx(transaction, typestnd.CheckTxType.New);
+    const checkResp = consensuswrap.CheckTx(checktx);
+    // we only check the code type; CheckTx should be stateless, just form checking
+    if (checkResp.code !== typestnd.CodeType.Ok) {
+        // transaction is not valid, we should finish; we use this error to check forwarded txs to leader
+        revert(`${cfg.ERROR_INVALID_TX}; code ${checkResp.code}; ${checkResp.log}`);
+        return "";
+    }
+
+    // add to mempool
+    const mempool = tnd.getMempool();
+    const txhash = wasmxw.sha256(transaction);
+
+    const parsedTx = decodeTx(transaction);
+    let txGas: u64 = 1000000
+    const fee = parsedTx.auth_info.fee
+    if (fee != null) {
+        txGas = fee.gas_limit
+    }
+
+    const cparams = getConsensusParams();
+    const maxgas = cparams.block.max_gas;
+    if (maxgas > -1 && u64(maxgas) < txGas) {
+        revert(`out of gas: ${txGas}; max ${maxgas}`);
+        return "";
+    }
+
+    // if atomic transaction, we calculate the leader chain id and index it by leader
+    // we revert if extension leader is incorrect
+    const extopts = parsedTx.body.extension_options
+    let leader = ""
+    for (let i = 0; i < extopts.length; i++) {
+        const extany = extopts[i]
+        if (extany.type_url == typestnd.TypeUrl_ExtensionOptionAtomicMultiChainTx) {
+            const ext = typestnd.ExtensionOptionAtomicMultiChainTx.fromAnyWrap(extany)
+            const ourchain = wasmxw.getChainId()
+
+            // if leader is not correct, we revert
+            leader = getLeaderChain(ext.chain_ids)
+            if (leader != ext.leader_chain_id) {
+                revert(`atomic transaction wrong leader: expected ${leader}, got ${ext.leader_chain_id}`)
+            }
+
+            // forward to other chains too
+            const otherchains: string[] = []
+            for (let n = 0; n < ext.chain_ids.length; n++) {
+                if (ext.chain_ids[n] != ourchain) {
+                    otherchains.push(ext.chain_ids[n])
+                }
+            }
+            forwardMsgToOtherChains(transaction, otherchains)
+
+            // this tx is not for our chain, we do not add to mempool
+            if (!ext.chain_ids.includes(ourchain)) {
+                return txhash;
+            }
+        }
+    }
+
+    mempool.add(txhash, transaction, txGas, leader);
+    setMempool(mempool);
+    if (leader != "") {
+        LoggerInfo("new transaction added to mempool", ["txhash", txhash, "atomic_crosschain_tx_leader", leader])
+    } else {
+        LoggerInfo("new transaction added to mempool", ["txhash", txhash])
+    }
+    return txhash;
 }
 
 export function transitionNodeToValidator(

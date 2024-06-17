@@ -677,11 +677,19 @@ export function isNodeValidator(genesisState: mctypes.GenesisState, ourPublicKey
 }
 
 export function getProtocolId(state: CurrentState): string {
-    return cfg.PROTOCOL_ID + "_" + state.chain_id
+    return getProtocolIdInternal(state.chain_id)
 }
 
 export function getTopic(state: CurrentState, topic: string): string {
-    return topic + "_" + state.chain_id
+    return getTopicInternal(state.chain_id, topic)
+}
+
+export function getProtocolIdInternal(chainId: string): string {
+    return cfg.PROTOCOL_ID + "_" + chainId
+}
+
+export function getTopicInternal(chainId: string, topic: string): string {
+    return topic + "_" + chainId
 }
 
 export function getAllValidatorInfos(): staking.ValidatorSimple[] {

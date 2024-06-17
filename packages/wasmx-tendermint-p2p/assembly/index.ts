@@ -72,7 +72,7 @@ export function main(): void {
   } else if (calld.method === "setupNode") {
     actions.setupNode(calld.params, calld.event);
   } else if (calld.method === "addToMempool") {
-    tnd.addToMempool(calld.params, calld.event);
+    actions.addToMempool(calld.params, calld.event);
   } else if (calld.method === "commitBlock") {
     actions.commitBlock(calld.params, calld.event);
   } else if (calld.method === "sendNewTransactionResponse") {

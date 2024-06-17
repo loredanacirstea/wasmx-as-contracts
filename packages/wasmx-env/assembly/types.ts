@@ -660,8 +660,8 @@ export class MsgIsAtomicTxInExecutionRequest {
 // @ts-ignore
 @serializable
 export class MsgIsAtomicTxInExecutionResponse {
-    is_in_execution: bool = false
-    constructor(is_in_execution: bool = false) {
+    is_in_execution: boolean = false
+    constructor(is_in_execution: boolean = false) {
         this.is_in_execution = is_in_execution
     }
 }

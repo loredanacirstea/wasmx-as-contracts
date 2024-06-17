@@ -128,7 +128,7 @@ export function proposeBlockInternalAndStore(lastBlockCommit: typestnd.BlockComm
     if (maxbytes == -1) {
         maxbytes = cfg.MaxBlockSizeBytes;
     }
-    const batch = mempool.batch(cparams.block.max_gas, maxbytes);
+    const batch = mempool.batch(cparams.block.max_gas, maxbytes, getCurrentState().chain_id);
     LoggerDebug("mempool: batch transactions", ["count", batch.txs.length.toString(), "total", mempool.map.keys().length.toString()])
 
     // TODO
@@ -147,7 +147,6 @@ export function proposeBlockInternalAndStore(lastBlockCommit: typestnd.BlockComm
         // we overwrite
         setLogEntryAggregate(result.entry);
     }
-
 
     setMempool(mempool);
     return result;
@@ -559,6 +558,12 @@ export function addTransactionToMempool(
         const extany = extopts[i]
         if (extany.type_url == typestnd.TypeUrl_ExtensionOptionAtomicMultiChainTx) {
             const ext = typestnd.ExtensionOptionAtomicMultiChainTx.fromAnyWrap(extany)
+            const ourchain = getCurrentState().chain_id;
+            if (!ext.chain_ids.includes(ourchain)) {
+                // this tx is not for our chain, we do not add to mempool
+                // but we will continue, so it is forwarded to other nodes
+                return txhash;
+            }
             leader = getLeaderChain(ext.chain_ids)
             if (leader != ext.leader_chain_id) {
                 revert(`atomic transaction wrong leader: expected ${leader}, got ${ext.leader_chain_id}`)

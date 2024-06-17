@@ -26,7 +26,7 @@ export function main(): void {
   if (calld.method === "sendNewTransactionResponse") {
     tnd.sendNewTransactionResponse(calld.params, calld.event);
   } else if (calld.method === "addToMempool") {
-    tnd.addToMempool(calld.params, calld.event);
+    tnd2.addToMempool(calld.params, calld.event);
   } else if (calld.method === "isNextProposer") {
     result = wrapGuard(actions.isNextProposer(calld.params, calld.event));
     wasmx.finish(result);
