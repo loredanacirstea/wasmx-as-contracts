@@ -45,6 +45,7 @@ import * as mcwrap from 'wasmx-consensus/assembly/multichain_wrap';
 import { StartSubChainMsg } from "wasmx-consensus/assembly/types_multichain";
 import { decodeTx } from "wasmx-tendermint/assembly/action_utils";
 import { getLeaderChain } from "wasmx-consensus/assembly/multichain_utils";
+import { getSubChainConfig } from "./multichain";
 
 
 // TODO add delta to timeouts each failed round
@@ -153,7 +154,7 @@ export function sendNodeSyncRequest(protocolId: string): void {
     const contract = wasmxw.getAddress();
 
     // we also post it to the chat room
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, contract, msgstr, protocolId, peers))
 }
 
 // send to all nodes (chat room)
@@ -182,7 +183,7 @@ export function announceValidatorNodeWithNetwork(protocolId: string, topic: stri
     const contract = wasmxw.getAddress();
 
     // we also post it to the chat room
-    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, protocolId, topic))
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, contract, msgstr, protocolId, topic))
 }
 
 export function nodeSyncRequestMessage(ips: NodeInfo[], ourNodeId: i32): string {
@@ -341,7 +342,7 @@ export function sendStateSyncRequest(protocolId: string, nodeId: i32): void {
 
     const peers = [getP2PAddress(receiverNode)]
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, contract, msgstr, protocolId, peers))
 }
 
 export function setupNode(
@@ -532,7 +533,7 @@ export function sendNodeSyncResponse(peeraddr: string): void {
 
     const contract = wasmxw.getAddress();
     const protocolId = getProtocolId(getCurrentState())
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, contract, msgstr, protocolId, peers))
 }
 
 export function forwardMsgToChat(
@@ -552,18 +553,25 @@ export function forwardMsgToChat(
     const state = getCurrentState()
     const protocolId = getProtocolId(state)
     const topic = getTopic(state, cfg.CHAT_ROOM_MEMPOOL)
-    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, protocolId, topic))
+    LoggerDebug("forwarding transaction to other nodes", ["topic", topic, "protocolId", protocolId])
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, contract, msgstr, protocolId, topic))
 }
 
 // TODO
 export function forwardMsgToOtherChains(transaction: Base64String, chainIds: string[]): void {
     const msgstr = `{"run":{"event":{"type":"newTransaction","params":[{"key":"transaction", "value":"${transaction}"}]}}}`
-    const contract = wasmxw.getAddress();
+    const contractAddr = wasmx.getAddress();
+    const contractBech32 = wasmxw.getAddress();
     for (let i = 0; i < chainIds.length; i++) {
         const chainId = chainIds[i]
         const protocolId = getProtocolIdInternal(chainId)
         const topic = getTopicInternal(chainId, cfg.CHAT_ROOM_MEMPOOL)
-        p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, protocolId, topic))
+        LoggerDebug("forwarding transaction to chain", ["chain_id", chainId, "topic", topic, "protocolId", protocolId])
+
+        // TODO contract address should be consensus role
+        let newcontract = base64.encode(Uint8Array.wrap(contractAddr))
+
+        p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(newcontract, contractBech32, msgstr, protocolId, topic))
     }
 }
 
@@ -708,7 +716,7 @@ export function sendBlockProposal(
     const contract = wasmxw.getAddress();
     const protocolId = getProtocolId(state)
     const topic = getTopic(state, cfg.CHAT_ROOM_BLOCK_PROPOSAL)
-    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, protocolId, topic))
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, contract, msgstr, protocolId, topic))
 }
 
 // received statesync request
@@ -779,7 +787,7 @@ function sendStateSyncBatch(start_index: i64, lastIndexToSend: i64, lastIndex: i
 
     const contract = wasmxw.getAddress();
     const protocolId = getProtocolId(getCurrentState())
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, contract, msgstr, protocolId, peers))
 }
 
 export function receiveStateSyncResponse(
@@ -838,7 +846,7 @@ export function sendAppendEntryResponseMessage(response: AppendEntryResponse, le
 
     const contract = wasmxw.getAddress();
     const protocolId = getProtocolId(getCurrentState())
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, contract, msgstr, protocolId, peers))
 }
 
 // validator receiving block proposal
@@ -1020,7 +1028,7 @@ export function sendPrevote(
     const state = getCurrentState()
     const protocolId = getProtocolId(state)
     const topic = getTopic(state, cfg.CHAT_ROOM_PREVOTE)
-    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, protocolId, topic))
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, contract, msgstr, protocolId, topic))
 }
 
 export function sendPrevoteNil(
@@ -1047,7 +1055,7 @@ export function sendPrevoteNil(
     const contract = wasmxw.getAddress();
     const protocolId = getProtocolId(state)
     const topic = getTopic(state, cfg.CHAT_ROOM_PREVOTE)
-    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, protocolId, topic))
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, contract, msgstr, protocolId, topic))
 }
 
 export function buildPrevoteMessage(): ValidatorProposalVote {
@@ -1087,7 +1095,7 @@ export function sendPrecommit(
     const state = getCurrentState()
     const protocolId = getProtocolId(state)
     const topic = getTopic(state, cfg.CHAT_ROOM_PRECOMMIT)
-    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, protocolId, topic))
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, contract, msgstr, protocolId, topic))
 }
 
 export function sendPrecommitNil(
@@ -1116,7 +1124,7 @@ export function sendPrecommitNil(
     const contract = wasmxw.getAddress();
     const protocolId = getProtocolId(state)
     const topic = getTopic(state, cfg.CHAT_ROOM_PREVOTE)
-    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, protocolId, topic))
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, contract, msgstr, protocolId, topic))
 }
 
 export function buildPrecommitMessage(): ValidatorProposalVote {
@@ -1443,7 +1451,7 @@ export function sendCommit(
     const state = getCurrentState()
     const protocolId = getProtocolId(state)
     const topic = getTopic(state, cfg.CHAT_ROOM_PROTOCOL)
-    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, msgstr, protocolId, topic))
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, contract, msgstr, protocolId, topic))
 }
 
 export function receiveCommit(

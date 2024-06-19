@@ -71,11 +71,13 @@ export class SendMessageRequest {
 @serializable
 export class SendMessageToPeersRequest {
     contract: Bech32String
+    sender: Bech32String
     msg: Base64String
     protocolId: string
     peers: string[]
-    constructor(contract: Bech32String, msg: Base64String, protocolId: string, peers: string[]) {
+    constructor(contract: Bech32String, sender: Bech32String, msg: Base64String, protocolId: string, peers: string[]) {
         this.contract = contract
+        this.sender = sender
         this.msg = msg
         this.protocolId = protocolId
         this.peers = peers
@@ -116,11 +118,13 @@ export class ConnectChatRoomResponse {}
 @serializable
 export class SendMessageToChatRoomRequest {
     contract: Bech32String
+    sender: Bech32String
     msg: Base64String
     protocolId: string
     topic: string
-    constructor(contract: Bech32String, msg: Base64String, protocolId: string, topic: string) {
+    constructor(contract: Bech32String, sender: Bech32String, msg: Base64String, protocolId: string, topic: string) {
         this.contract = contract
+        this.sender = sender
         this.msg = msg
         this.protocolId = protocolId
         this.topic = topic

@@ -122,7 +122,6 @@ export function balanceCrossChainInternal(req: MsgBalanceOfCrossChain, determini
 
     for (let i = 0; i < subchains.length; i++) {
         const subchainId = subchains[i]
-        // const subchainconfig = getChainConfig(subchainId)
 
         const newowneraddr = convertAddress(req.owner, subchainId)
         qreq.to_chain_id = subchainId

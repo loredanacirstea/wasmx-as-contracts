@@ -81,7 +81,6 @@ export function buildGenTx(
     wasmx.setFinishData(resp)
 }
 
-
 export function createGenTx(
     node: NodeInfo,
     accprefix: string,
@@ -135,6 +134,7 @@ export function getSubChainConfig(chainId: string): ChainConfig | null {
         // we do not fail, we want the chain to continue
         return null
     }
+    if (resp.data == "") return null;
     return JSON.parse<ChainConfig>(resp.data);
 }
 
