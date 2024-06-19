@@ -241,6 +241,7 @@ export function callGetValidatorBalance(validator: Bech32String): Coin {
     if (resp.success > 0) {
         revert(`balanceOfValidator not found`)
     }
+    LoggerDebug("validator balance", ["response", resp.data])
     const amount = JSON.parse<erc20types.MsgBalanceOfResponse>(resp.data)
     return amount.balance
 }

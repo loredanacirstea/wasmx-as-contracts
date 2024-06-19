@@ -192,7 +192,7 @@ export function CrossChainTx(req: wasmxt.MsgCrossChainCallRequest): ArrayBuffer 
     const newreq = prepareCrossChainCallRequest(req)
     if (newreq == null) {
         // we do not allow calls to chains that we do not have in the registry
-        const resp = new wasmxt.MsgCrossChainCallResponse("target chain configuration not found", "");
+        const resp = new wasmxt.MsgCrossChainCallResponse(`target chain configuration not found: ${req.to_chain_id}`, "");
         return String.UTF8.encode(JSON.stringify<wasmxt.MsgCrossChainCallResponse>(resp))
     }
     const reqdata = JSON.stringify<wasmxt.MsgCrossChainCallRequest>(newreq)
@@ -321,7 +321,8 @@ export function tryRegisterUpperLevel(lastRegisteredLevel: i32, lastRegisteredCh
             val.consensus_pubkey,
             false,
             BondedS,
-            params.level_initial_balance,
+            // must be smaller than overall balance
+            params.level_initial_balance.div(BigInt.fromU64(u64(100))),
             val.delegator_shares,
             val.description,
             val.unbonding_height,

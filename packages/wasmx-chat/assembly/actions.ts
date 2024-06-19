@@ -97,7 +97,7 @@ export function sendMessage(ctx: wasmxt.MsgExecuteContract, tx: Base64String, re
     const blockstr = JSON.stringify<ChatBlock>(block);
 
     const contract = wasmxw.getAddress()
-    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, blockstr, contract, req.roomId))
+    p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, contract, blockstr, contract, req.roomId))
 }
 
 export function receiveMessage(ctx: wasmxt.MsgExecuteContract, peerblock: ChatBlock, req: MsgReceiveMessage, calld: CallDataInternal): void {

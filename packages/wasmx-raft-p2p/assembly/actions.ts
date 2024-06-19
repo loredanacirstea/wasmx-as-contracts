@@ -152,7 +152,7 @@ export function updateNodeAndReturn(
 
     const contract = wasmxw.getAddress();
     const protocolId = getProtocolId(getCurrentState())
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, contract, msgstr, protocolId, peers))
 }
 
 // forward transactions to leader
@@ -190,7 +190,7 @@ export function forwardTxsToLeader(
         const msgstr = `{"run":{"event":{"type":"newTransaction","params":[{"key": "transaction","value":"${tx}"}]}}}`
         const peers = [getP2PAddress(nodeInfo)]
         LoggerDebug("forwarding tx to leader", ["nodeId", nodeId.toString(), "nodeIp", nodeInfo.node.ip, "tx_batch_index", i.toString()])
-        p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
+        p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, contract, msgstr, protocolId, peers))
     }
     // TODO we will remove the tx from mempool now
     // if it is an invalid transaction (it can happen), then the leader will
@@ -238,7 +238,7 @@ export function registeredCheck(protocolId: string): void {
 
     LoggerDebug("sending node registration", ["peers", peers.join(","), "data", msgstr])
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, contract, msgstr, protocolId, peers))
 }
 
 // received an updated node list from Leader
@@ -339,7 +339,7 @@ export function sendStateSyncRequest(protocolId: string, nodeId: i32): void {
 
     const peers = [getP2PAddress(receiverNode)]
     const contract = wasmxw.getAddress();
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, contract, msgstr, protocolId, peers))
 }
 
 export function sendVoteRequests(
@@ -376,7 +376,7 @@ function sendVoteRequest(nodeId: i32, node: NodeInfo, request: VoteRequest, term
     const peers = [getP2PAddress(node)]
     const contract = wasmxw.getAddress();
     const protocolId = getProtocolId(getCurrentState())
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, contract, msgstr, protocolId, peers))
 }
 
 export function receiveVoteResponse(
@@ -479,7 +479,7 @@ export function sendAppendEntry(
     const peers = [getP2PAddress(node)]
     const contract = wasmxw.getAddress();
     const protocolId = getProtocolId(getCurrentState())
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, contract, msgstr, protocolId, peers))
     // Uint8Array.wrap(contract)
 }
 
@@ -649,7 +649,7 @@ function sendStateSyncBatch(start_index: i64, lastIndexToSend: i64, lastIndex: i
     const peers = [getP2PAddress(nodeInfo)]
     const contract = wasmxw.getAddress();
     const protocolId = getProtocolId(getCurrentState())
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, contract, msgstr, protocolId, peers))
 }
 
 // received vote request
@@ -705,7 +705,7 @@ export function vote(
 
     const contract = wasmxw.getAddress();
     const protocolId = getProtocolId(getCurrentState())
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, contract, msgstr, protocolId, peers))
 
 }
 
@@ -734,7 +734,7 @@ export function sendHeartbeatResponseMessage(response: AppendEntryResponse, lead
 
     const contract = wasmxw.getAddress();
     const protocolId = getProtocolId(getCurrentState())
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, msgstr, protocolId, peers))
+    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, contract, msgstr, protocolId, peers))
 }
 
 export function getP2PAddress(nodeInfo: NodeInfo): string {
