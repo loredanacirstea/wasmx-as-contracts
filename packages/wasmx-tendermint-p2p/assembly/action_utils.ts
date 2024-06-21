@@ -189,6 +189,7 @@ export function isPrecommitAcceptThreshold(blockHeight: i64, hash: string): bool
 
 export function calculateVote(votePerNode: Array<ValidatorProposalVote>, hash: string): boolean {
     // hash is "" ony for threshold any votes
+    // we recalculate token balance for each validator, each time we get the validator infos
     const validators = getAllValidators();
 
     // only active, bonded validators
@@ -564,8 +565,6 @@ export function getCommitSigsFromPrecommitArray(blockHeight: i64): typestnd.Comm
     const sigs = new Array<typestnd.CommitSig>(precommitArr.length)
     for (let i = 0; i < precommitArr.length; i++) {
         const comm = precommitArr[i]
-        // TODO vote.validatorAddress make it hex; now is bech32
-        // we need the consensus key
         const validator = getValidator(comm.vote.validatorAddress);
         const consKey = validator.consensus_pubkey
         if (consKey == null) {

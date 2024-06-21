@@ -32,7 +32,6 @@ export function crossChainTx(req: wasmxt.MsgCrossChainCallRequest): wasmxt.MsgCr
     const calldatastr = `{"CrossChainTx":${reqstr}}`;
     const resp = callContract(roles.ROLE_MULTICHAIN_REGISTRY, calldatastr, false)
     if (resp.success > 0) {
-        // we do not fail, we want the chain to continue
         revert(`multichain crosschain tx failed: ${resp.data}`)
     }
     return JSON.parse<wasmxt.MsgCrossChainCallResponse>(resp.data)
@@ -44,7 +43,6 @@ export function crossChainQuery(req: wasmxt.MsgCrossChainCallRequest): wasmxt.Ms
     const calldatastr = `{"CrossChainQuery":${reqstr}}`;
     const resp = callContract(roles.ROLE_MULTICHAIN_REGISTRY, calldatastr, true)
     if (resp.success > 0) {
-        // we do not fail, we want the chain to continue
         revert(`multichain crosschain query failed: ${resp.data}`)
     }
     return JSON.parse<wasmxt.MsgCrossChainCallResponse>(resp.data)

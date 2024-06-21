@@ -6,7 +6,7 @@ import * as banktypes from "wasmx-bank/assembly/types"
 import * as derc20types from "wasmx-derc20/assembly/types"
 import * as erc20types from "wasmx-erc20/assembly/types"
 import { getParamsInternal, setParams, setNewValidator, getParams, getValidator, getValidatorsAddresses, getValidatorAddrByConsAddr, setValidator, getValidatorOperatorByHexAddr, setBaseDenom, getBaseDenom } from './storage';
-import { GenesisState, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool, BondedS, AfterValidatorCreated, AfterValidatorBonded, QueryValidatorDelegationsRequest, QueryValidatorDelegationsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryParamsRequest, QueryParamsResponse, ValidatorSimple, QueryValidatorInfosResponse, getValidatorFromMsgCreate } from './types';
+import { GenesisState, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool, BondedS, AfterValidatorCreated, AfterValidatorBonded, QueryValidatorDelegationsRequest, QueryValidatorDelegationsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryParamsRequest, QueryParamsResponse, ValidatorSimple, QueryValidatorInfosResponse, getValidatorFromMsgCreate, Description } from './types';
 import { LoggerDebug, LoggerError, revert } from './utils';
 import { parseInt64 } from "wasmx-utils/assembly/utils";
 import { Bech32String, CallRequest, CallResponse, Coin, PageRequest, PageResponse, ValidatorAddressString } from "wasmx-env/assembly/types";
@@ -103,6 +103,7 @@ export function UpdateValidators(req: MsgUpdateValidators): ArrayBuffer {
     return new ArrayBuffer(0)
 }
 
+// does not recalculate token balances!
 export function GetAllValidatorInfos(): ArrayBuffer {
     const addrs = getValidatorsAddresses()
     const validators = new Array<ValidatorSimple>(addrs.length)
@@ -110,12 +111,15 @@ export function GetAllValidatorInfos(): ArrayBuffer {
         const valid = getValidator(addrs[i]);
         if (valid != null) {
             validators[i] = ValidatorSimple.fromValidator(valid);
+        } else {
+            validators[i] = new ValidatorSimple("", null, false, UnbondedS, new Description("", "", "", "", ""), 0, new Date(0), new Commission(new CommissionRates("0", "0", "0"), new Date(0)), BigInt.zero(), 0, [])
         }
     }
     let data = JSON.stringify<QueryValidatorInfosResponse>(new QueryValidatorInfosResponse(validators, new PageResponse(validators.length)))
     return String.UTF8.encode(data)
 }
 
+// recalculates token balances!
 export function GetAllValidators(): ArrayBuffer {
     const addrs = getValidatorsAddresses()
     const validators = new Array<Validator>(addrs.length)
@@ -123,6 +127,8 @@ export function GetAllValidators(): ArrayBuffer {
         const valid = getValidatorWithBalance(addrs[i]);
         if (valid != null) {
             validators[i] = valid;
+        } else {
+            validators[i] = new Validator("", null, false, UnbondedS, BigInt.zero(), "0", new Description("", "", "", "", ""), 0, new Date(0), new Commission(new CommissionRates("0", "0", "0"), new Date(0)), BigInt.zero(), 0, [])
         }
     }
     let data = JSON.stringify<QueryValidatorsResponse>(new QueryValidatorsResponse(validators, new PageResponse(validators.length)))

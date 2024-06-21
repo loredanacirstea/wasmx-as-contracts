@@ -1044,8 +1044,7 @@ export function sendPrevoteNil(
 
     // const vaddr = wasmxw.addr_humanize(decodeBase64(state.validator_pubkey).buffer)
     const consAddr = getOurInfo.address
-    // TODO chainId
-    const data = new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PREVOTE, termId, consAddr, ourId, nextIndex, "nil", new Date(Date.now()), "")
+    const data = new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PREVOTE, termId, consAddr, ourId, nextIndex, "nil", new Date(Date.now()), state.chain_id)
 
     addToPrevoteArray(getCurrentNodeId(), data);
 
@@ -1066,7 +1065,7 @@ export function buildPrevoteMessage(): ValidatorProposalVote {
     const vaddr = wasmxw.addr_humanize(decodeBase64(state.validator_pubkey).buffer)
     const consAddr = nodeInfo.address
      // TODO chainId
-    return new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PREVOTE, getTermId(), consAddr, ourId, state.nextHeight, state.nextHash, new Date(Date.now()), "");
+    return new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PREVOTE, getTermId(), consAddr, ourId, state.nextHeight, state.nextHash, new Date(Date.now()), state.chain_id);
 }
 
 export function preparePrevoteMessage(data: ValidatorProposalVote): string {
@@ -1111,7 +1110,7 @@ export function sendPrecommitNil(
     const vaddr = wasmxw.addr_humanize(decodeBase64(state.validator_pubkey).buffer)
     const consAddr = getOurInfo.address
     // TODO chainId
-    const data = new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT, termId, consAddr, ourId, nextIndex, "nil", new Date(Date.now()), "")
+    const data = new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT, termId, consAddr, ourId, nextIndex, "nil", new Date(Date.now()), state.chain_id)
 
     const resp = preparePrecommitMessage(data);
     const msgstr = resp[0]
@@ -1135,7 +1134,7 @@ export function buildPrecommitMessage(): ValidatorProposalVote {
     const vaddr = wasmxw.addr_humanize(decodeBase64(state.validator_pubkey).buffer)
     const consAddr = nodeInfo.address
     // TODO chainId
-    return new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT, getTermId(), consAddr, ourId, state.nextHeight, state.nextHash, new Date(Date.now()), "");
+    return new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT, getTermId(), consAddr, ourId, state.nextHeight, state.nextHash, new Date(Date.now()), state.chain_id);
 }
 
 export function preparePrecommitMessage(data: ValidatorProposalVote): string[] {
@@ -1166,6 +1165,7 @@ export function receivePrevote(
     LoggerDebug("prevote received", ["sender", data.validatorAddress, "index", data.index.toString(), "hash", data.hash])
 
     const state = getCurrentState();
+    if (state.chain_id != data.chainId) return;
     if (state.nextHeight != data.index) return;
 
     // verify signature
@@ -1206,6 +1206,7 @@ export function receivePrecommit(
     LoggerDebug("precommit received", ["sender", data.validatorAddress, "index", data.index.toString(), "hash", data.hash])
 
     const state = getCurrentState();
+    if (state.chain_id != data.chainId) return;
     if (state.nextHeight != data.index) return;
 
     // verify signature
@@ -1292,7 +1293,8 @@ export function resetPrevotes(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    const count = getValidatorNodeCount();
+    const validators = getAllValidatorInfos();
+    const count = validators.length;
     const nextIndex = getCurrentState().nextHeight;
     const termId = getTermId()
 
@@ -1301,12 +1303,16 @@ export function resetPrevotes(
     map.removeLowerHeights(nextIndex - 1);
     if (map.nodeCount < count) {
         // increase array sizes for all heights
-        map.resize(count)
+        map.resize(validators)
     }
     // we may receive prevotes before this time, so an entry may already be created
     // prevotes for old termIds are not removed now
     if (!map.map.has(nextIndex)) {
         const emptyarr = getEmptyValidatorProposalVoteArray(count, nextIndex, termId, SignedMsgType.SIGNED_MSG_TYPE_PREVOTE);
+        // we need to store the validator address
+        for (let i = 0 ; i < emptyarr.length; i++) {
+            emptyarr[i].validatorAddress = validators[i].operator_address;
+        }
         map.map.set(nextIndex, emptyarr)
     }
     setPrevoteArrayMap(map);
@@ -1319,19 +1325,24 @@ export function resetPrecommits(
     // TODO all validators, only bonded validators???
     const validators = getAllValidatorInfos();
     const count = validators.length;
-    const nextIndex = getCurrentState().nextHeight;
+    const state = getCurrentState();
+    const nextIndex = state.nextHeight;
 
     const map = getPrecommitArrayMap()
     // remove finalized blocks
     map.removeLowerHeights(nextIndex - 1);
     if (map.nodeCount < count) {
         // increase array sizes for all heights
-        map.resize(count)
+        map.resize(validators)
     }
     // we may receive precommits before this time, so an entry may already be created
     if (!map.map.has(nextIndex)) {
         const termId = getTermId()
         const emptyarr = getEmptyPrecommitArray(count, nextIndex, termId, SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT);
+        // we need to store the validator address
+        for (let i = 0 ; i < emptyarr.length; i++) {
+            emptyarr[i].vote.validatorAddress = validators[i].operator_address;
+        }
         map.map.set(nextIndex, emptyarr)
     }
     setPrecommitArrayMap(map);

@@ -3,6 +3,7 @@ import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import {HexString, Base64String, Bech32String} from 'wasmx-env/assembly/types';
 import { Version, BlockID, CommitSig, BlockIDFlag } from 'wasmx-consensus/assembly/types_tendermint';
 import { BigInt } from "wasmx-env/assembly/bn";
+import * as staking from "wasmx-stake/assembly/types";
 
 // @ts-ignore
 @serializable
@@ -185,7 +186,8 @@ export class ValidatorProposalVoteMap {
         this.map = new Map<i64,ValidatorProposalVote[]>()
     }
 
-    resize(newsize: i32): void {
+    resize(validators: staking.ValidatorSimple[]): void {
+        const newsize = validators.length;
         if (newsize < this.nodeCount) return;
         this.nodeCount = newsize
         const keys = this.map.keys()
@@ -201,6 +203,9 @@ export class ValidatorProposalVoteMap {
             // copy old array
             for (let j = 0; j < arr.length; j++) {
                 newarr[j] = arr[j]
+            }
+            for (let j = arr.length; j < newsize; j++) {
+                newarr[j].validatorAddress = validators[j].operator_address
             }
             this.map.set(keys[i], arr)
         }
@@ -239,7 +244,8 @@ export class ValidatorCommitVoteMap {
         this.nodeCount = nodeCount
         this.map = new Map<i64,ValidatorCommitVote[]>()
     }
-    resize(newsize: i32): void {
+    resize(validators: staking.ValidatorSimple[]): void {
+        const newsize = validators.length;
         if (newsize < this.nodeCount) return;
         this.nodeCount = newsize
         const keys = this.map.keys()
@@ -255,6 +261,9 @@ export class ValidatorCommitVoteMap {
             // copy old array
             for (let j = 0; j < arr.length; j++) {
                 newarr[j] = arr[j]
+            }
+            for (let j = arr.length; j < newsize; j++) {
+                newarr[j].vote.validatorAddress = validators[j].operator_address
             }
             this.map.set(keys[i], arr)
         }
@@ -296,7 +305,7 @@ function base64Len(value: Base64String): i32 {
 export function getEmptyValidatorProposalVoteArray(len: i32, nextIndex: i64, termId: i64, type: SignedMsgType): Array<ValidatorProposalVote> {
     const emptyPrevotes = new Array<ValidatorProposalVote>(len);
     for (let i = 0; i < len; i++) {
-        emptyPrevotes[i] = new ValidatorProposalVote(type, termId, "", 0, nextIndex, "", new Date(Date.now()), "");
+        emptyPrevotes[i] = new ValidatorProposalVote(type, termId, "", i, nextIndex, "", new Date(Date.now()), "");
     }
     return emptyPrevotes
 }
@@ -304,7 +313,7 @@ export function getEmptyValidatorProposalVoteArray(len: i32, nextIndex: i64, ter
 export function getEmptyPrecommitArray(len: i32, nextIndex: i64, termId: i64, type: SignedMsgType): Array<ValidatorCommitVote> {
     const emptyCommits = new Array<ValidatorCommitVote>(len);
     for (let i = 0; i < len; i++) {
-        const vote = new ValidatorProposalVote(type, termId, "", 0, nextIndex, "", new Date(Date.now()), "");
+        const vote = new ValidatorProposalVote(type, termId, "", i, nextIndex, "", new Date(Date.now()), "");
         emptyCommits[i] = new ValidatorCommitVote(vote, typestnd.BlockIDFlag.Unknown, "");
     }
     return emptyCommits

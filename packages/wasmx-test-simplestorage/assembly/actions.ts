@@ -1,5 +1,4 @@
 import { JSON } from "json-as/assembly";
-import * as wasmx from "wasmx-env/assembly/wasmx"
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap"
 import { MsgGet, MsgSet } from "./types";
 import { LoggerDebug } from "./utils";
