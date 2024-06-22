@@ -43,7 +43,7 @@ import { InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types
 import * as roles from "wasmx-env/assembly/roles";
 import * as mcwrap from 'wasmx-consensus/assembly/multichain_wrap';
 import { StartSubChainMsg } from "wasmx-consensus/assembly/types_multichain";
-import { decodeTx } from "wasmx-tendermint/assembly/action_utils";
+import { decodeTx, getNodeIPs } from "wasmx-tendermint/assembly/action_utils";
 import { getLeaderChain } from "wasmx-consensus/assembly/multichain_utils";
 import { getSubChainConfig } from "./multichain";
 
@@ -79,6 +79,7 @@ export function connectPeersInternal(protocolId: string): void {
     const state = getCurrentState()
     const index = getCurrentNodeId();
     const nodeInfos = getValidatorNodesInfo();
+
     const node = nodeInfos[index];
 
     const reqstart = new p2ptypes.StartNodeWithIdentityRequest(node.node.port, protocolId, state.validator_privkey);
@@ -326,9 +327,14 @@ export function receiveUpdateNodeResponseInternal(
 // this is executed each time the node is started in Follower or Candidate state if needed
 // and is also called after node registration with the leader
 export function sendStateSyncRequest(protocolId: string, nodeId: i32): void {
+    const nodes = getValidatorNodesInfo();
+    // if we are alone, return
+    if (nodes.length < 2) {
+        return;
+    }
     const lastIndex = getLastBlockIndex();
     const ourNodeId = getCurrentNodeId()
-    const nodes = getValidatorNodesInfo();
+
     const receiverNode = nodes[nodeId]
     const peerAddress = getP2PAddress(nodes[ourNodeId])
     const request = new StateSyncRequest(lastIndex + 1, peerAddress);
@@ -540,6 +546,10 @@ export function forwardMsgToChat(
     params: ActionParam[],
     event: EventObject,
 ): void {
+    // if we are alone, return
+    if (getValidatorNodesInfo().length < 2) {
+        return;
+    }
     const p = getParamsOrEventParams(params, event);
     const ctx = actionParamsToMap(p);
     if (!ctx.has("transaction")) {
@@ -559,6 +569,10 @@ export function forwardMsgToChat(
 
 // TODO
 export function forwardMsgToOtherChains(transaction: Base64String, chainIds: string[]): void {
+    // if we are alone, return
+    if (getValidatorNodesInfo().length < 2) {
+        return;
+    }
     const msgstr = `{"run":{"event":{"type":"newTransaction","params":[{"key":"transaction", "value":"${transaction}"}]}}}`
     const contractAddr = wasmx.getAddress();
     const contractBech32 = wasmxw.getAddress();
@@ -708,6 +722,10 @@ export function sendBlockProposal(
     params: ActionParam[],
     event: EventObject,
 ): void {
+    // if we are alone, return
+    if (getValidatorNodesInfo().length < 2) {
+        return;
+    }
     const state = getCurrentState();
     const data = prepareAppendEntry(state.nextHeight);
     const msgstr = prepareAppendEntryMessage(data);
@@ -1021,6 +1039,11 @@ export function sendPrevote(
 
     addToPrevoteArray(getCurrentNodeId(), data);
 
+    // if we are alone, return
+    if (getValidatorNodesInfo().length < 2) {
+        return;
+    }
+
     const msgstr = preparePrevoteMessage(data);
     LoggerDebug("sending prevote", ["index", data.index.toString(), "hash", data.hash, "term_id", data.termId.toString()])
 
@@ -1047,6 +1070,11 @@ export function sendPrevoteNil(
     const data = new ValidatorProposalVote(SignedMsgType.SIGNED_MSG_TYPE_PREVOTE, termId, consAddr, ourId, nextIndex, "nil", new Date(Date.now()), state.chain_id)
 
     addToPrevoteArray(getCurrentNodeId(), data);
+
+    // if we are alone, return
+    if (getValidatorNodesInfo().length < 2) {
+        return;
+    }
 
     const msgstr = preparePrevoteMessage(data);
     LoggerDebug("sending prevote nil", ["index", data.index.toString(), "term_id", data.termId.toString()])
@@ -1090,6 +1118,11 @@ export function sendPrecommit(
     const precommit = new ValidatorCommitVote(data, typestnd.BlockIDFlag.Commit, signature)
     addToPrecommitArray(getCurrentNodeId(), precommit)
 
+    // if we are alone, return
+    if (getValidatorNodesInfo().length < 2) {
+        return;
+    }
+
     const contract = wasmxw.getAddress();
     const state = getCurrentState()
     const protocolId = getProtocolId(state)
@@ -1119,6 +1152,11 @@ export function sendPrecommitNil(
 
     const precommit = new ValidatorCommitVote(data, typestnd.BlockIDFlag.Nil, signature)
     addToPrecommitArray(getCurrentNodeId(), precommit)
+
+    // if we are alone, return
+    if (getValidatorNodesInfo().length < 2) {
+        return;
+    }
 
     const contract = wasmxw.getAddress();
     const protocolId = getProtocolId(state)
@@ -1450,6 +1488,10 @@ export function sendCommit(
     params: ActionParam[],
     event: EventObject,
 ): void {
+    // if we are alone, return
+    if (getValidatorNodesInfo().length < 2) {
+        return;
+    }
     // get the current proposal & vote on the block hash
     const data = buildCommitMessage();
     const datastr = JSON.stringify<Commit>(data);
