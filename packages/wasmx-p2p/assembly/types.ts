@@ -21,6 +21,20 @@ export class NetworkNode {
 
 // @ts-ignore
 @serializable
+export class NodeInfo {
+    // validator operator address taken from node identifier (memo)
+    address: Bech32String
+    node: NetworkNode
+    outofsync: bool
+    constructor(address: Bech32String, node: NetworkNode, outofsync: bool) {
+        this.address = address
+        this.node = node
+        this.outofsync = outofsync
+    }
+}
+
+// @ts-ignore
+@serializable
 export class StartNodeRequest {
     port: string
     protocolId: string

@@ -21,7 +21,6 @@ import { callContract, callStaking } from "wasmx-tendermint/assembly/actions";
 import { InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
 import { QuerySubChainIdsResponse } from "wasmx-multichain-registry-local/assembly/types";
 import { getCurrentNodeId, getCurrentState, getTermId, getValidatorNodesInfo, setCurrentState, setValidatorNodesInfo } from "wasmx-tendermint-p2p/assembly/storage";
-import { NodeInfo } from "wasmx-raft/assembly/types_raft"
 import { isPrecommitAcceptThreshold, isPrecommitAnyThreshold } from "./action_utils";
 import { CurrentState } from "wasmx-tendermint-p2p/assembly/types_blockchain";
 

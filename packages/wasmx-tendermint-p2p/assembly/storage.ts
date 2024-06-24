@@ -5,10 +5,10 @@ import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assemb
 import * as wblocks from "wasmx-blocks/assembly/types";
 import { CurrentState, getEmptyPrecommitArray, getEmptyValidatorProposalVoteArray, SignedMsgType, ValidatorCommitVote, ValidatorCommitVoteMap, ValidatorProposalVote, ValidatorProposalVoteMap } from "./types_blockchain";
 import { parseInt32 } from "wasmx-utils/assembly/utils";
+import { NodeInfo } from "wasmx-p2p/assembly/types";
 import { LogEntry, LogEntryAggregate } from "./types";
 import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
 import * as cfg from "./config";
-import { NodeInfo } from "wasmx-raft/assembly/types_raft";
 import { Bech32String } from "wasmx-env/assembly/types";
 
 export function getCurrentState(): CurrentState {

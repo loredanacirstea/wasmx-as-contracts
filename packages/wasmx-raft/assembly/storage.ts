@@ -5,7 +5,8 @@ import { LoggerDebug, LoggerDebugExtended, revert } from "./utils";
 import { CurrentState, Mempool } from "./types_blockchain";
 import * as fsm from 'xstate-fsm-as/assembly/storage';
 import { parseInt32, parseInt64 } from "wasmx-utils/assembly/utils";
-import { LogEntry, LogEntryAggregate, NodeInfo } from "./types_raft";
+import { NodeInfo } from "wasmx-p2p/assembly/types";
+import { LogEntry, LogEntryAggregate } from "./types_raft";
 import * as cfg from "./config";
 
 export function getCurrentState(): CurrentState {

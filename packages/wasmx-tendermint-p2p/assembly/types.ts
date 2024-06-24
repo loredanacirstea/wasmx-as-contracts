@@ -2,7 +2,6 @@ import { JSON } from "json-as/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
 import * as stakingtypes from "wasmx-stake/assembly/types";
 import { Base64String, Bech32String, Coin } from "wasmx-env/assembly/types";
-import { NodeInfo } from "wasmx-raft/assembly/types_raft";
 
 // @ts-ignore
 @serializable

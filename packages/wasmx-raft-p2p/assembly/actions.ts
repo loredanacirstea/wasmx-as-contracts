@@ -1,12 +1,10 @@
 import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import { getParamsOrEventParams, actionParamsToMap } from 'xstate-fsm-as/assembly/utils';
-import * as wblocks from "wasmx-blocks/assembly/types";
-import * as wblockscalld from "wasmx-blocks/assembly/calldata";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
-import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as p2pw from "wasmx-p2p/assembly/p2p_wrap";
 import * as p2ptypes from "wasmx-p2p/assembly/types";
+import { NodeInfo } from "wasmx-p2p/assembly/types";
 import { LoggerDebug, LoggerInfo, LoggerError, revert } from "./utils";
 import {
   Base64String,
@@ -20,7 +18,7 @@ import {
     EventObject,
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
-import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse, NodeInfo, MODULE_NAME, AppendEntryResponse } from "wasmx-raft/assembly/types_raft";
+import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse, MODULE_NAME, AppendEntryResponse } from "wasmx-raft/assembly/types_raft";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getMatchIndexArray, getMempool, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, getVoteIndexArray, hasVotedFor, removeLogEntry, setCommitIndex, setCurrentNodeId, setLastApplied, setLastLogIndex, setMatchIndexArray, setMempool, setNextIndexArray, setNodeIPs, setTermId, setVoteIndexArray, setVotedFor } from "wasmx-raft/assembly/storage";
 import * as cfg from "wasmx-raft/assembly/config";

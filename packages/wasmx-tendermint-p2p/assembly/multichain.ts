@@ -14,7 +14,7 @@ import { getValidatorNodesInfo } from "./storage";
 import { ChainConfig } from "wasmx-consensus/assembly/types_multichain";
 import { callContract } from "wasmx-tendermint/assembly/actions";
 import { BaseAccount, QueryAccountResponse } from "wasmx-auth/assembly/types";
-import { NodeInfo } from "wasmx-raft/assembly/types_raft";
+import { NodeInfo } from "wasmx-p2p/assembly/types";
 import { base64ToString, stringToBase64 } from "wasmx-utils/assembly/utils";
 import { QuerySubChainIdsResponse } from "wasmx-multichain-registry-local/assembly/types";
 import { LoggerError, LoggerInfo } from "./utils";

@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
 import { Base64String, Bech32String, Coin } from "wasmx-env/assembly/types";
-import { NetworkNode } from "wasmx-p2p/assembly/types";
+import { NodeInfo } from "wasmx-p2p/assembly/types";
 
 export const MODULE_NAME = "raft"
 
@@ -163,15 +163,3 @@ export class VoteResponse {
     }
 }
 
-// @ts-ignore
-@serializable
-export class NodeInfo {
-    address: Bech32String
-    node: NetworkNode
-    outofsync: bool
-    constructor(address: Bech32String, node: NetworkNode, outofsync: bool) {
-        this.address = address
-        this.node = node
-        this.outofsync = outofsync
-    }
-}

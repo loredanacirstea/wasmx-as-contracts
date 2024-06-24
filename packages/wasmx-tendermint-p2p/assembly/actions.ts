@@ -2,12 +2,12 @@ import { JSON } from "json-as/assembly";
 import * as base64 from "as-base64/assembly"
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import { getParamsOrEventParams, actionParamsToMap } from 'xstate-fsm-as/assembly/utils';
-import * as wblocks from "wasmx-blocks/assembly/types";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as tnd from "wasmx-tendermint/assembly/actions";
 import * as p2pw from "wasmx-p2p/assembly/p2p_wrap";
 import * as p2ptypes from "wasmx-p2p/assembly/types";
+import { NodeInfo } from "wasmx-p2p/assembly/types";
 import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
 import {
   Base64String,
@@ -36,7 +36,7 @@ import { getAllValidatorInfos, getConsensusParams, getCurrentProposer, getFinalB
 import { extractUpdateNodeEntryAndVerify, removeNode } from "wasmx-raft/assembly/actions";
 import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembly/storage";
 import { getAllValidators, getNodeByAddress, getNodeIdByAddress, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
-import { NodeInfo, NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft"
+import { NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft"
 import { Commit, CurrentState, getEmptyPrecommitArray, getEmptyValidatorProposalVoteArray, SignedMsgType, ValidatorCommitVote, ValidatorProposalVote } from "./types_blockchain";
 import { callContract } from "wasmx-tendermint/assembly/actions";
 import { InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
