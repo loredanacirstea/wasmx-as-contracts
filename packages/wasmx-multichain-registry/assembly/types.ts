@@ -1,5 +1,5 @@
 import { JSON } from "json-as/assembly";
-import { InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
+import { ChainConfig, InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
 import { Base64String, Bech32String, Coin, PublicKey } from "wasmx-env/assembly/types";
 import * as authtypes from "wasmx-auth/assembly/types";
 import * as banktypes from "wasmx-bank/assembly/types";
@@ -254,5 +254,35 @@ export class ValidatorInfo {
         this.validator = validator
         this.operator_pubkey = operator_pubkey
         this.p2p_address = p2p_address
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryRegisterWithProgenitorChainRequest {
+    // lower level chain id
+    chainId: string
+    constructor(chainId: string) {
+        this.chainId = chainId
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryRegisterDescendantChainRequest {
+    data: SubChainData
+    constructor(data: SubChainData) {
+        this.data = data
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryBuildGenAtomicLevelRegistrationRequest {
+    higherLevelChainId: string
+    lowerLevelChainId: string
+    constructor( higherLevelChainId: string, lowerLevelChainId: string) {
+        this.higherLevelChainId = higherLevelChainId
+        this.lowerLevelChainId = lowerLevelChainId
     }
 }

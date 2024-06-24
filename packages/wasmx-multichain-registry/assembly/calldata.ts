@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxt from "wasmx-env/assembly/types";
-import { InitSubChainRequest, MsgInitialize, QueryConvertAddressByChainIdRequest, QueryGetCurrentLevelRequest, QueryGetSubChainIdsByLevelRequest, QueryGetSubChainIdsByValidatorRequest, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, QueryGetValidatorsByChainIdRequest, QueryValidatorAddressesByChainIdRequest, RegisterDefaultSubChainRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest } from "./types";
+import { InitSubChainRequest, MsgInitialize, QueryBuildGenAtomicLevelRegistrationRequest, QueryConvertAddressByChainIdRequest, QueryGetCurrentLevelRequest, QueryGetSubChainIdsByLevelRequest, QueryGetSubChainIdsByValidatorRequest, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, QueryGetValidatorsByChainIdRequest, QueryRegisterDescendantChainRequest, QueryRegisterWithProgenitorChainRequest, QueryValidatorAddressesByChainIdRequest, RegisterDefaultSubChainRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest } from "./types";
 
 // @ts-ignore
 @serializable
@@ -29,6 +29,16 @@ export class CallData {
     CrossChainTx: wasmxt.MsgCrossChainCallRequest | null = null;
     CrossChainQuery: wasmxt.MsgCrossChainCallRequest | null = null;
     CrossChainQueryNonDeterministic: wasmxt.MsgCrossChainCallRequest | null = null;
+
+    // crosschain query
+    BuildGenAtomicLevelRegistration: QueryBuildGenAtomicLevelRegistrationRequest | null = null;
+    RegisterWithProgenitorChain: QueryRegisterWithProgenitorChainRequest | null = null;
+}
+
+// @ts-ignore
+@serializable
+export class CallDataCrossChain {
+    RegisterDescendantChain: QueryRegisterDescendantChainRequest | null = null;
 }
 
 export function getCallDataWrap(): CallData {
@@ -41,4 +51,10 @@ export function getCallDataInitialize(): MsgInitialize {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)
     return JSON.parse<MsgInitialize>(calldstr);
+}
+
+export function getCallDataCrossChain(): wasmxt.MsgCrossChainCallRequest {
+    const calldraw = wasmx.getCallData();
+    let calldstr = String.UTF8.decode(calldraw)
+    return JSON.parse<wasmxt.MsgCrossChainCallRequest>(calldstr);
 }
