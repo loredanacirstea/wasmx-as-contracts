@@ -115,6 +115,21 @@ export class ConnectPeerResponse {}
 
 // @ts-ignore
 @serializable
+export class DisconnectPeerRequest {
+    protocolId: string
+    peer: string
+    constructor( protocolId: string, peer: string) {
+        this.protocolId = protocolId
+        this.peer = peer
+    }
+}
+
+// @ts-ignore
+@serializable
+export class DisconnectPeerResponse {}
+
+// @ts-ignore
+@serializable
 export class ConnectChatRoomRequest {
     protocolId: string
     topic: string
@@ -127,6 +142,21 @@ export class ConnectChatRoomRequest {
 // @ts-ignore
 @serializable
 export class ConnectChatRoomResponse {}
+
+// @ts-ignore
+@serializable
+export class DisconnectChatRoomRequest {
+    protocolId: string
+    topic: string
+    constructor(protocolId: string, topic: string) {
+        this.protocolId = protocolId
+        this.topic = topic
+    }
+}
+
+// @ts-ignore
+@serializable
+export class DisconnectChatRoomResponse {}
 
 // @ts-ignore
 @serializable

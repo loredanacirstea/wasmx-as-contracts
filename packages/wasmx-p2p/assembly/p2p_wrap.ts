@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64, decode } from "as-base64/assembly";
 import * as p2p from './p2p';
 import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
-import {WasmxResponse, StartNodeWithIdentityRequest, SendMessageRequest, ConnectPeerRequest, ConnectPeerResponse, SendMessageToPeersRequest, ConnectChatRoomRequest, SendMessageToChatRoomRequest, NetworkNode } from "./types";
+import {WasmxResponse, StartNodeWithIdentityRequest, SendMessageRequest, ConnectPeerRequest, ConnectPeerResponse, SendMessageToPeersRequest, ConnectChatRoomRequest, SendMessageToChatRoomRequest, NetworkNode, DisconnectChatRoomRequest, DisconnectPeerRequest } from "./types";
 
 export function StartNodeWithIdentity(req: StartNodeWithIdentityRequest): WasmxResponse {
     const data = JSON.stringify<StartNodeWithIdentityRequest>(req);
@@ -14,11 +14,6 @@ export function StartNodeWithIdentity(req: StartNodeWithIdentityRequest): WasmxR
 export function GetNodeInfo(): NetworkNode {
     const resp = p2p.GetNodeInfo();
     return JSON.parse<NetworkNode>(String.UTF8.decode(resp));
-}
-
-export function CloseNode(): WasmxResponse {
-    const resp = p2p.CloseNode();
-    return JSON.parse<WasmxResponse>(String.UTF8.decode(resp));
 }
 
 export function ConnectPeer(req: ConnectPeerRequest): ConnectPeerResponse {
@@ -68,4 +63,21 @@ export function LoggerDebug(msg: string, parts: string[]): void {
 
 export function LoggerDebugExtended(msg: string, parts: string[]): void {
     wasmxwrap.LoggerDebugExtended("wasmx_p2p", msg, parts)
+}
+
+export function CloseNode(): WasmxResponse {
+    const resp = p2p.CloseNode();
+    return JSON.parse<WasmxResponse>(String.UTF8.decode(resp));
+}
+
+export function DisconnectChatRoom(req: DisconnectChatRoomRequest): void {
+    LoggerDebug("disconnect p2p rooms", ["protocolId", req.protocolId, "topic", req.topic])
+    const data = JSON.stringify<DisconnectChatRoomRequest>(req);
+    p2p.DisconnectChatRoom(String.UTF8.encode(data));
+}
+
+export function DisconnectPeer(req: DisconnectPeerRequest): void {
+    const data = JSON.stringify<DisconnectPeerRequest>(req);
+    LoggerDebug("disconnect peer", ["data", data])
+    p2p.DisconnectPeer(String.UTF8.encode(data));
 }
