@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import { Base64String, Bech32String } from "wasmx-env/assembly/types";
 import { LogEntryAggregate } from "./types";
-import { NodeInfo } from "wasmx-raft/assembly/types_raft";
+import { NodeInfo } from "wasmx-p2p/assembly/types";
 
 // @ts-ignore
 @serializable

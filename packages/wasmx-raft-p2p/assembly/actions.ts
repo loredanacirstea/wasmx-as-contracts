@@ -61,25 +61,16 @@ export function setupNode(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    let currentNodeId: string = "";
     let initChainSetup: string = "";
     for (let i = 0; i < event.params.length; i++) {
-        if (event.params[i].key === cfg.CURRENT_NODE_ID) {
-            currentNodeId = event.params[i].value;
-            continue;
-        }
-        if (event.params[i].key === "initChainSetup") {
+        if (event.params[i].key === "data") {
             initChainSetup = event.params[i].value;
             continue;
         }
     }
-    if (currentNodeId === "") {
-        revert("no currentNodeId found");
-    }
     if (initChainSetup === "") {
         revert("no initChainSetup found");
     }
-    fsm.setContextValue(cfg.CURRENT_NODE_ID, currentNodeId);
 
     // TODO ID@host:ip
     // 6efc12ab37fc0e096d8618872f6930df53972879@0.0.0.0:26757
@@ -89,8 +80,9 @@ export function setupNode(
 
     const datajson = String.UTF8.decode(decodeBase64(initChainSetup).buffer);
     // TODO remove validator private key from logs in initChainSetup
-    LoggerDebug("setupNode", ["currentNodeId", currentNodeId, "initChainSetup", datajson])
+    LoggerDebug("setupNode", ["initChainSetup", datajson])
     const data = JSON.parse<typestnd.InitChainSetup>(datajson);
+    fsm.setContextValue(cfg.CURRENT_NODE_ID, data.node_index.toString());
 
     const peers = new Array<NodeInfo>(data.peers.length);
     for (let i = 0; i < data.peers.length; i++) {

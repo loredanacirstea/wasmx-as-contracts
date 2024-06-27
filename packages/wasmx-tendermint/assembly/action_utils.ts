@@ -9,8 +9,8 @@ import { parseInt32 } from "wasmx-utils/assembly/utils";
 import { LogEntry, LogEntryAggregate } from "./types";
 import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
 import * as cfg from "./config";
-import { NodeInfo } from "wasmx-raft/assembly/types_raft";
 import { Base64String, SignedTransaction } from "wasmx-env/assembly/types";
+import { NodeInfo } from "wasmx-p2p/assembly/types";
 
 export function getCurrentState(): CurrentState {
     const value = fsm.getContextValue(cfg.STATE_KEY);

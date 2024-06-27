@@ -11,6 +11,7 @@ import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, CallDataRun, getCallDataWrap, getInterpreterCalldata } from './calldata';
 import { arrayBufferToU8Array, base64ToString, uint8ArrayToHex } from 'wasmx-utils/assembly/utils';
 import {
+  ActionParam,
   EventObject,
   MODULE_NAME,
   TimerArgs,
@@ -53,6 +54,9 @@ export function main(): u8[] {
     } else if (calldata.StartNode !== null) {
       StartNodeInternal(config)
       result = new ArrayBuffer(0);
+    } else if (calldata.SetupNode !== null) {
+      SetupNodeInternal(config, calldata.SetupNode!.data)
+      result = new ArrayBuffer(0);
     } else if (calldata.query !== null) {
       const action = calldata.query!.action;
       const _event = new EventObject("", []);
@@ -89,6 +93,26 @@ export function StartNode(): void {
   // we may have set the return data during execution
   result = wasmx.getFinishData();
   wasmx.finish(result);
+}
+
+// forward SetupNode hook to "setupNode" event
+export function SetupNode(): void {
+  let result: ArrayBuffer = new ArrayBuffer(0);
+  const icalld = getInterpreterCalldata();
+  const configBz = icalld[0];
+  const calld = icalld[1];
+  const argsStr = String.UTF8.decode(calld);
+  const config = JSON.parse<MachineExternal>(String.UTF8.decode(configBz));
+  SetupNodeInternal(config, argsStr)
+  // we may have set the return data during execution
+  result = wasmx.getFinishData();
+  wasmx.finish(result);
+}
+
+export function SetupNodeInternal(config: MachineExternal, calld: Base64String): void {
+  LoggerInfo("emit setupNode event", ["module", MODULE_NAME])
+  const _event = new EventObject("setupNode", [new ActionParam("data", calld)]);
+  runInternal(config, _event);
 }
 
 export function StartNodeInternal(config: MachineExternal): void {

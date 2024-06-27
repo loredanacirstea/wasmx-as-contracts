@@ -32,9 +32,9 @@ import { BigInt } from "wasmx-env/assembly/bn";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
 import { getLeaderChain } from "wasmx-consensus/assembly/multichain_utils";
 import { appendLogEntry, decodeTx, getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLogIndex, getLogEntryObj, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, removeLogEntry, setCurrentState, setLastLogIndex, setLogEntryAggregate, setNextIndexArray, setNodeIPs, setTermId } from "./action_utils";
-import { NodeInfo, NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft";
+import { NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft";
 import { verifyMessage } from "wasmx-raft/assembly/action_utils";
-import { NetworkNode } from "wasmx-p2p/assembly/types";
+import { NetworkNode, NodeInfo } from "wasmx-p2p/assembly/types";
 import { hexToUint8Array } from "as-tally/assembly/tally";
 
 // guards
@@ -179,25 +179,16 @@ export function setupNode(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    let currentNodeId: string = "";
     let initChainSetup: string = "";
     for (let i = 0; i < event.params.length; i++) {
-        if (event.params[i].key === cfg.CURRENT_NODE_ID) {
-            currentNodeId = event.params[i].value;
-            continue;
-        }
-        if (event.params[i].key === "initChainSetup") {
+        if (event.params[i].key === "data") {
             initChainSetup = event.params[i].value;
             continue;
         }
     }
-    if (currentNodeId === "") {
-        revert("no currentNodeId found");
-    }
     if (initChainSetup === "") {
         revert("no initChainSetup found");
     }
-    fsm.setContextValue(cfg.CURRENT_NODE_ID, currentNodeId);
 
     // !! nodeIps must be the same for all nodes
 
@@ -206,9 +197,10 @@ export function setupNode(
 
     const datajson = String.UTF8.decode(decodeBase64(initChainSetup).buffer);
     // TODO remove validator private key from logs in initChainSetup
-    LoggerDebug("setupNode", ["currentNodeId", currentNodeId, "initChainSetup", datajson])
+    LoggerDebug("setupNode", ["initChainSetup", datajson])
     const data = JSON.parse<typestnd.InitChainSetup>(datajson);
     // const ips = JSON.parse<string[]>(nodeIPs);
+    fsm.setContextValue(cfg.CURRENT_NODE_ID, data.node_index.toString());
 
     const peers = new Array<NodeInfo>(data.peers.length);
     for (let i = 0; i < data.peers.length; i++) {

@@ -21,13 +21,13 @@ import {
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
 import { parseInt32, parseInt64, base64ToHex, stringToBase64 } from "wasmx-utils/assembly/utils";
-import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, AppendEntryResponse, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse, NodeInfo, MODULE_NAME } from "./types_raft";
+import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, AppendEntryResponse, VoteResponse, VoteRequest, NodeUpdate, UpdateNodeResponse, MODULE_NAME } from "./types_raft";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { appendLogEntry, getCommitIndex, getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getMatchIndexArray, getMempool, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, getVoteIndexArray, hasVotedFor, removeLogEntry, setCommitIndex, setCurrentNodeId, setCurrentState, setElectionTimeout, setLastApplied, setLastLogIndex, setMatchIndexArray, setMempool, setNextIndexArray, setNodeIPs, setTermId, setVoteIndexArray, setVotedFor } from "./storage";
 import * as cfg from "./config";
 import { callHookContract, checkValidatorsUpdate, getAllValidators,getConsensusParams, getCurrentValidator, getFinalBlock, getLastBlockIndex, getLastLog, getMajority, getRandomInRange, initChain, initializeIndexArrays, setFinalizedBlock, signMessage, updateConsensusParams, updateValidators, verifyMessage, verifyMessageByAddr } from "./action_utils";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
-import { NetworkNode } from "wasmx-p2p/assembly/types";
+import { NetworkNode, NodeInfo } from "wasmx-p2p/assembly/types";
 
 // Docs: https://raft.github.io/raft.pdf
 
@@ -509,25 +509,16 @@ export function setupNode(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    let currentNodeId: string = "";
     let initChainSetup: string = "";
     for (let i = 0; i < event.params.length; i++) {
-        if (event.params[i].key === cfg.CURRENT_NODE_ID) {
-            currentNodeId = event.params[i].value;
-            continue;
-        }
-        if (event.params[i].key === "initChainSetup") {
+        if (event.params[i].key === "data") {
             initChainSetup = event.params[i].value;
             continue;
         }
     }
-    if (currentNodeId === "") {
-        revert("no currentNodeId found");
-    }
     if (initChainSetup === "") {
         revert("no initChainSetup found");
     }
-    fsm.setContextValue(cfg.CURRENT_NODE_ID, currentNodeId);
 
     // TODO ID@host:ip
     // 6efc12ab37fc0e096d8618872f6930df53972879@0.0.0.0:26757
@@ -537,8 +528,9 @@ export function setupNode(
 
     const datajson = String.UTF8.decode(decodeBase64(initChainSetup).buffer);
     // TODO remove validator private key from logs in initChainSetup
-    LoggerDebug("setupNode", ["currentNodeId", currentNodeId, "initChainSetup", datajson])
+    LoggerDebug("setupNode", ["initChainSetup", datajson])
     const data = JSON.parse<typestnd.InitChainSetup>(datajson);
+    fsm.setContextValue(cfg.CURRENT_NODE_ID, data.node_index.toString());
 
     const peers = new Array<NodeInfo>(data.peers.length);
     for (let i = 0; i < data.peers.length; i++) {

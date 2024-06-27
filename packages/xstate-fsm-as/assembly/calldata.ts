@@ -22,7 +22,7 @@ export class InterpreterCallData {
 
 // @ts-ignore
 @serializable
-export class StartNodeCalld {
+export class HookCalld {
     data: Base64String = ""
 }
 
@@ -37,7 +37,8 @@ export class CallData {
     query: CallDataQuery | null = null;
 
     // consensusless hooks
-    StartNode: StartNodeCalld | null = null;
+    StartNode: HookCalld | null = null;
+    SetupNode: HookCalld | null = null;
 }
 
 // @ts-ignore

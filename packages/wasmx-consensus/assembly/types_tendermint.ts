@@ -698,7 +698,8 @@ export class InitChainSetup {
     validator_privkey: Base64String
     validator_pubkey: Base64String
     peers: string[]
-    constructor(chain_id: string, version: Version, consensus_params: ConsensusParams, app_hash: Base64String, last_results_hash: Base64String, validator_address: HexString, validator_privkey: Base64String, validator_pubkey: Base64String, peers: string[]) {
+    node_index: i32
+    constructor(chain_id: string, version: Version, consensus_params: ConsensusParams, app_hash: Base64String, last_results_hash: Base64String, validator_address: HexString, validator_privkey: Base64String, validator_pubkey: Base64String, peers: string[], node_index: i32) {
         this.chain_id = chain_id
         this.version = version
         this.consensus_params = consensus_params
@@ -708,5 +709,6 @@ export class InitChainSetup {
         this.validator_privkey = validator_privkey
         this.validator_pubkey = validator_pubkey
         this.peers = peers
+        this.node_index = node_index
     }
 }

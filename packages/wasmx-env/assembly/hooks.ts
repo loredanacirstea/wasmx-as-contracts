@@ -3,6 +3,7 @@ import * as roles from "./roles";
 
 // nonconsensusless
 export const HOOK_START_NODE = "StartNode"
+export const HOOK_SETUP_NODE = "SetupNode"
 
 // consenssus
 export const HOOK_BEGIN_BLOCK      = "BeginBlock"
@@ -46,6 +47,11 @@ export const  DEFAULT_HOOKS_NONC: Hook[] = [
         HOOK_START_NODE,
         roles.ROLE_HOOKS_NONC,
         [roles.ROLE_CONSENSUS, roles.ROLE_CHAT, roles.ROLE_TIME],
+    ),
+    new Hook(
+        HOOK_SETUP_NODE,
+        roles.ROLE_HOOKS_NONC,
+        [roles.ROLE_CONSENSUS],
     ),
 ]
 

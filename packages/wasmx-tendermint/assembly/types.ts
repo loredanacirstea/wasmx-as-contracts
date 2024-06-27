@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import { Base64String, Bech32String, Coin } from "wasmx-env/assembly/types";
-import { NodeInfo } from "wasmx-raft/assembly/types_raft";
+import { NodeInfo } from "wasmx-p2p/assembly/types";
 
 export const MODULE_NAME = "tendermint"
 

@@ -5,7 +5,7 @@ import { Base64String } from "wasmx-env/assembly/types";
 
 // @ts-ignore
 @serializable
-export class StartNodeCalld {
+export class HookCalld {
     data: Base64String = ""
 }
 

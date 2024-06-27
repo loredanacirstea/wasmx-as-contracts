@@ -5,7 +5,7 @@ import { Base64String } from "wasmx-env/assembly/types";
 
 // @ts-ignore
 @serializable
-export class StartNodeCalld {
+export class HookCalld {
     data: Base64String = ""
 }
 
@@ -22,7 +22,7 @@ export class CallData {
     GetBlock: QueryGetBlock | null = null;
 
     // consensusless hooks
-    StartNode: StartNodeCalld | null = null;
+    StartNode: HookCalld | null = null;
 }
 
 // @ts-ignore
