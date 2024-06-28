@@ -46,12 +46,12 @@ export const  DEFAULT_HOOKS_NONC: Hook[] = [
     new Hook(
         HOOK_START_NODE,
         roles.ROLE_HOOKS_NONC,
-        [roles.ROLE_CONSENSUS, roles.ROLE_CHAT, roles.ROLE_TIME],
+        [roles.ROLE_CONSENSUS, roles.ROLE_CHAT, roles.ROLE_TIME, roles.ROLE_LOBBY],
     ),
     new Hook(
         HOOK_SETUP_NODE,
         roles.ROLE_HOOKS_NONC,
-        [roles.ROLE_CONSENSUS],
+        [roles.ROLE_CONSENSUS, roles.ROLE_LOBBY],
     ),
 ]
 

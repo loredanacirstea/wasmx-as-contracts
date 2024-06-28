@@ -27,9 +27,13 @@
     "as-tally": "file:../as-tally",
     "json-as": "file:../../../as-json",
     "visitor-as": "^0.11.4",
+    "wasmx-consensus": "file:../wasmx-consensus",
     "wasmx-env": "file:../wasmx-env",
+    "wasmx-multichain-registry": "file:../wasmx-multichain-registry",
     "wasmx-p2p": "file:../wasmx-p2p",
+    "wasmx-tendermint-p2p": "file:../wasmx-tendermint-p2p",
     "wasmx-utils": "file:../wasmx-utils",
+    "wasmx-wasmx": "file:../wasmx-wasmx",
     "xstate-fsm-as": "file:../xstate-fsm-as"
   }
 }

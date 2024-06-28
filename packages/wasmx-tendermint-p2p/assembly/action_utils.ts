@@ -24,7 +24,7 @@ import { appendLogEntry, getCurrentNodeId, getCurrentState, getLastLogIndex, get
 import { getAllValidators, signMessage } from "wasmx-raft/assembly/action_utils";
 import { NodeInfo } from "wasmx-p2p/assembly/types";
 import { CurrentState, GetProposerResponse, SignedMsgType, ValidatorCommitVote, ValidatorProposalVote, ValidatorQueueEntry } from "./types_blockchain";
-import { Base64String, Bech32String, CallRequest, CallResponse, SignedTransaction } from "wasmx-env/assembly/types";
+import { Base64String, Bech32String, CallRequest, CallResponse, HexString, SignedTransaction } from "wasmx-env/assembly/types";
 import { LOG_START } from "./config";
 import { base64ToHex, base64ToString, parseUint8ArrayToU32BigEndian, uint8ArrayToHex } from "wasmx-utils/assembly/utils";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils";
@@ -360,7 +360,9 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
 
     if (info.initChainRequests.length > 0) {
         for (let i = 0; i < info.initChainRequests.length; i++) {
-            initSubChain(info.initChainRequests[i], state);
+            const data = String.UTF8.decode(base64.decode(info.initChainRequests[i]).buffer)
+            const req = JSON.parse<mctypes.InitSubChainDeterministicRequest>(data);
+            initSubChain(req, state.validator_pubkey, state.validator_address, state.validator_privkey);
         }
     }
 
@@ -588,16 +590,19 @@ export function getValidator(addr: Bech32String): staking.Validator {
     return result.validator;
 }
 
-export function initSubChain(encodedData: Base64String, state: CurrentState): typestnd.ResponseInitChain | null {
-    const data = String.UTF8.decode(base64.decode(encodedData).buffer)
-    const req = JSON.parse<mctypes.InitSubChainDeterministicRequest>(data);
+export function initSubChain(
+    req: mctypes.InitSubChainDeterministicRequest,
+    validatorPublicKey: Base64String,
+    validatorHexAddr: HexString,
+    validatorPrivateKey: Base64String,
+): typestnd.ResponseInitChain | null {
     const chainId = req.init_chain_request.chain_id
     LoggerInfo("new subchain created", ["subchain_id", chainId])
 
     // we initialize only if we are a validator here
     const appstate = base64ToString(req.init_chain_request.app_state_bytes)
     const genesisState: mctypes.GenesisState = JSON.parse<mctypes.GenesisState>(appstate)
-    const weAreValidator = isNodeValidator(genesisState, state.validator_pubkey)
+    const weAreValidator = isNodeValidator(genesisState, validatorPublicKey)
 
     if (!weAreValidator.isvalidator) {
         LoggerInfo("node is not validating the new subchain; not initializing", ["subchain_id", chainId])
@@ -617,9 +622,9 @@ export function initSubChain(encodedData: Base64String, state: CurrentState): ty
     const msg = new mctypes.InitSubChainMsg(
         req.init_chain_request,
         req.chain_config,
-        state.validator_address,
-        state.validator_privkey,
-        state.validator_pubkey,
+        validatorHexAddr,
+        validatorPrivateKey,
+        validatorPublicKey,
         req.peers,
         weAreValidator.nodeIndex,
     )

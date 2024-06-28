@@ -17,6 +17,7 @@ import {
   RAFT_P2P,
   TendermintP2P,
   Level0,
+  Lobby,
 } from './data.js';
 
 let currentState, value;
@@ -370,6 +371,11 @@ async function runTests() {
     // Level0
     machineConfig = parseMachine(Level0);
     console.log("==Level0==");
+    console.log(JSON.stringify(machineConfig));
+
+    // Lobby
+    machineConfig = parseMachine(Lobby);
+    console.log("==Lobby==");
     console.log(JSON.stringify(machineConfig));
 }
 

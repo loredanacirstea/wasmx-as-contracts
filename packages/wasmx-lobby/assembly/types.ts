@@ -1,19 +1,19 @@
 import { JSON } from "json-as/assembly";
 import { Base64String } from "wasmx-env/assembly/types";
-import { NetworkNode } from "wasmx-p2p/assembly/types";
+import { NetworkNode, NodeInfo } from "wasmx-p2p/assembly/types";
+import { ChainId, InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
+import { BigInt } from "wasmx-env/assembly/bn";
+import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
+import { SubChainData } from "wasmx-multichain-registry/assembly/types";
 
 export const MODULE_NAME = "lobby"
 
 // @ts-ignore
 @serializable
 export class MsgLastChainId {
-    id: string = ""
-    level: i32 = 0
-    numberid: i64 = 0
-    constructor(id: string, level: i32 = 0, numberid: i64 = 0) {
+    id: ChainId
+    constructor(id: ChainId) {
         this.id = id
-        this.level = level
-        this.numberid = numberid
     }
 }
 
@@ -30,10 +30,23 @@ export class MsgLastNodeId {
 @serializable
 export class PotentialValidator {
     node: NetworkNode
-    operatorPublicKey: Base64String
-    constructor(node: NetworkNode, operatorPublicKey: Base64String) {
+    addressBytes: Base64String
+    consensusPublicKey: Base64String
+    constructor(node: NetworkNode, addressBytes: Base64String, consensusPublicKey: Base64String) {
         this.node = node
-        this.operatorPublicKey = operatorPublicKey
+        this.addressBytes = addressBytes
+        this.consensusPublicKey = consensusPublicKey
+    }
+}
+
+// @ts-ignore
+@serializable
+export class PotentialValidatorWithSignature {
+    validator: PotentialValidator
+    signature: string
+    constructor(validator: PotentialValidator, signature: string) {
+        this.validator = validator
+        this.signature = signature
     }
 }
 
@@ -52,9 +65,9 @@ export class MsgNewChainRequest {
 @serializable
 export class MsgNewChainAccepted {
     level: i32 = 0
-    chainId: i64 = 0
+    chainId: ChainId
     validators: PotentialValidator[]
-    constructor(level: i32, chainId: i64, validators: PotentialValidator[]) {
+    constructor(level: i32, chainId: ChainId, validators: PotentialValidator[]) {
         this.level = level
         this.chainId = chainId
         this.validators = validators
@@ -74,11 +87,28 @@ export class MsgNewChainResponse {
 
 // @ts-ignore
 @serializable
-export class ChainPreGenesis {
-    genTx: Base64String[]
-    signatures: Base64String[]
-    constructor(msg: MsgNewChainAccepted, signatures: Base64String[]) {
-        this.msg = msg
+export class MsgNewChainGenesisData {
+    data: SubChainData
+    validators: PotentialValidator[]
+    signatures: Base64String[] // signature on data.data
+    constructor(
+        data: SubChainData,
+        validators: PotentialValidator[],
+        signatures: Base64String[],
+    ) {
+        this.data = data
+        this.validators = validators
         this.signatures = signatures
+    }
+}
+
+// @ts-ignore
+@serializable
+export class CurrentChainSetup {
+    data: typestnd.InitChainSetup
+    node: NodeInfo
+    constructor(data: typestnd.InitChainSetup, node: NodeInfo) {
+        this.data = data
+        this.node = node
     }
 }

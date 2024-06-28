@@ -38,7 +38,7 @@ export function RunHook(req: MsgRunHook): ArrayBuffer {
 
     requireSource(hook, "RunHook")
     if (!hook) return new ArrayBuffer(0)
-    LoggerDebug("run hooks", ["modules", hook.targetModules.join(",")])
+    LoggerDebug("run hooks", ["hook", req.hook, "modules", hook.targetModules.join(",")])
     for (let i = 0; i < hook.targetModules.length; i++) {
         const moduleOrContract = hook.targetModules[i]
         makeHookCall(req.hook, moduleOrContract, req.data);
