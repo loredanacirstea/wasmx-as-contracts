@@ -29,6 +29,10 @@ export function main(): void {
     result = wrapGuard(actions.ifLobbyDisconnect(calld.params, calld.event));
     wasmx.finish(result);
     return;
+  } else if (calld.method === "ifIncludesUs") {
+    result = wrapGuard(actions.ifIncludesUs(calld.params, calld.event));
+    wasmx.finish(result);
+    return;
   } else if (calld.method === "setupNode") {
     actions.setupNode(calld.params, calld.event);
   } else if (calld.method === "p2pConnectLobbyRoom") {
@@ -43,6 +47,8 @@ export function main(): void {
     actions.sendNewChainRequest(calld.params, calld.event);
   } else if (calld.method === "sendNewChainResponse") {
     actions.sendNewChainResponse(calld.params, calld.event);
+  } else if (calld.method === "createNewChainResponse") {
+    actions.createNewChainResponse(calld.params, calld.event);
   } else if (calld.method === "sendLastChainId") {
     actions.sendLastChainId(calld.params, calld.event);
   } else if (calld.method === "sendLastNodeId") {
@@ -59,12 +65,22 @@ export function main(): void {
     actions.tryCreateNewChainGenesisData(calld.params, calld.event);
   } else if (calld.method === "receiveNewChainGenesisData") {
     actions.receiveNewChainGenesisData(calld.params, calld.event);
+  } else if (calld.method === "sendNewChainGenesisData") {
+    actions.sendNewChainGenesisData(calld.params, calld.event);
   } else if (calld.method === "initializeChain") {
     actions.initializeChain(calld.params, calld.event);
   } else if (calld.method === "addGenTx") {
     actions.addGenTx(calld.params, calld.event);
   } else if (calld.method === "buildGenTx") {
     actions.buildGenTx(calld.params, calld.event);
+    wasmx.finish(wasmx.getFinishData());
+    return;
+  } else if (calld.method === "getGenesisData") {
+    actions.getGenesisData(calld.params, calld.event);
+    wasmx.finish(wasmx.getFinishData());
+    return;
+  } else if (calld.method === "getConfigData") {
+    actions.getConfigData(calld.params, calld.event);
     wasmx.finish(wasmx.getFinishData());
     return;
   } else {

@@ -56,6 +56,7 @@ export const machine = createMachine({
           },
         },
         started: {
+          initial: "requesting",
           on: {
             receiveLastChainId: {
               actions: {
@@ -65,12 +66,6 @@ export const machine = createMachine({
             receiveLastNodeId: {
               actions: {
                 type: "receiveLastNodeId",
-              },
-            },
-            receiveNewChainResponse: {
-              target: "started",
-              actions: {
-                type: "receiveNewChainResponse",
               },
             },
             start: {
@@ -84,32 +79,75 @@ export const machine = createMachine({
                 },
               ],
             },
-            receiveNewChainRequest: {
-              actions: {
-                type: "receiveNewChainRequest",
+          },
+          states: {
+            requesting: {
+              on: {
+                receiveNewChainResponse: {
+                  target: "negotiating",
+                  actions: {
+                    type: "receiveNewChainResponse",
+                  },
+                  guard: {
+                    type: "ifIncludesUs",
+                  },
+                },
+                receiveNewChainRequest: {
+                  actions: {
+                    type: "receiveNewChainRequest",
+                  },
+                },
+              },
+              after: {
+                newchainTimeout: {
+                  target: "negotiating",
+                  actions: [
+                    {
+                      type: "createNewChainResponse",
+                    },
+                    {
+                      type: "sendNewChainResponse",
+                    },
+                  ],
+                },
               },
             },
-          },
-          after: {
-            newchainTimeout: {
-              target: "started",
-              actions: {
-                type: "sendNewChainResponse",
+            negotiating: {
+              on: {
+                receiveNewChainResponse: {
+                  target: "negotiating",
+                  actions: {
+                    type: "receiveNewChainResponse",
+                  },
+                  guard: {
+                    type: "ifIncludesUs",
+                  },
+                },
+                receiveNewChainRequest: {
+                  actions: [
+                    {
+                      type: "receiveNewChainRequest",
+                    },
+                    {
+                      type: "sendNewChainResponse",
+                    },
+                  ],
+                },
               },
-            },
-          },
-          always: {
-            target: "initializing",
-            actions: [
-              {
-                type: "p2pConnectNewChainRoom",
+              always: {
+                target: "#Lobby-P2P-1.initialized.initializing",
+                actions: [
+                  {
+                    type: "p2pConnectNewChainRoom",
+                  },
+                  {
+                    type: "tryCreateNewChainGenesisData",
+                  },
+                ],
+                guard: {
+                  type: "ifValidatorThreshold",
+                },
               },
-              {
-                type: "tryCreateNewChainGenesisData",
-              },
-            ],
-            guard: {
-              type: "ifValidatorThreshold",
             },
           },
         },
@@ -124,19 +162,20 @@ export const machine = createMachine({
           on: {
             receiveNewChainGenesisData: {
               target: "initializing",
-              actions: [
-                {
-                  type: "receiveNewChainGenesisData",
-                },
-                {
-                  type: "sendNewChainGenesisData",
-                },
-              ],
+              actions: {
+                type: "receiveNewChainGenesisData",
+              },
             },
             start: {
               target: "initializing",
               actions: {
                 type: "p2pConnectNewChainRoom",
+              },
+            },
+            addGenTx: {
+              target: "initializing",
+              actions: {
+                type: "addGenTx",
               },
             },
           },
@@ -245,15 +284,15 @@ export const machine = createMachine({
       // Add your action code here
       // ...
     },
-    sendNewChainGenesisData: function (context, event) {
-      // Add your action code here
-      // ...
-    },
     sendLastChainId: function (context, event) {
       // Add your action code here
       // ...
     },
     sendLastNodeId: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    createNewChainResponse: function (context, event) {
       // Add your action code here
       // ...
     },
@@ -265,8 +304,16 @@ export const machine = createMachine({
       // Add your action code here
       // ...
     },
+    addGenTx: function (context, event) {
+      // Add your action code here
+      // ...
+    },
   },
   guards: {
+    ifIncludesUs: function (context, event) {
+      // Add your guard condition here
+      return true;
+    },
     ifGenesisDataComplete: function (context, event) {
       // Add your guard condition here
       return true;

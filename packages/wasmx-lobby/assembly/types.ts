@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import { Base64String } from "wasmx-env/assembly/types";
 import { NetworkNode, NodeInfo } from "wasmx-p2p/assembly/types";
-import { ChainId, InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
+import { ChainConfig, ChainId, InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
 import { BigInt } from "wasmx-env/assembly/bn";
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import { SubChainData } from "wasmx-multichain-registry/assembly/types";
@@ -112,3 +112,16 @@ export class CurrentChainSetup {
         this.node = node
     }
 }
+
+// @ts-ignore
+@serializable
+export class ChainConfigData {
+    chain_id: string
+    chain_config: ChainConfig
+    constructor(chain_id: string, chain_config: ChainConfig) {
+        this.chain_id = chain_id
+        this.chain_config = chain_config
+    }
+}
+
+

@@ -29,6 +29,12 @@ export function sortValidators(validators: PotentialValidatorWithSignature[]): P
     });
 }
 
+export function sortValidatorsSimple(validators: PotentialValidator[]): PotentialValidator[] {
+    return validators.sort((a: PotentialValidator, b: PotentialValidator): i32 => {
+      return a.addressBytes < b.addressBytes ? -1 : a.addressBytes > b.addressBytes ? 1 : 0;
+    });
+}
+
 export function mergeValidators(validators: PotentialValidatorWithSignature[], validators2: PotentialValidatorWithSignature[]): PotentialValidatorWithSignature[] {
     const m = new Map<string,bool>()
     for (let i = 0; i < validators.length; i++) {

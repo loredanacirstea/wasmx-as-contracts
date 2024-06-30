@@ -12,12 +12,13 @@ import * as p2ptypes from "wasmx-p2p/assembly/types";
 import * as p2pw from "wasmx-p2p/assembly/p2p_wrap";
 import * as tnd2utils from "wasmx-tendermint-p2p/assembly/action_utils";
 import * as tnd2mc from "wasmx-tendermint-p2p/assembly/multichain";
+import * as stakingutils from "wasmx-stake/assembly/msg_utils";
 import * as cfg from "./config";
-import { getChainIdLast, getChainSetupData, getCurrentLevel, getNewChainResponse, getParams, getSubChainData, getValidatorsCount, setChainIdLast, setChainSetupData, setNewChainResponse, setSubChainData } from "./storage";
-import { CurrentChainSetup, MsgLastChainId, MsgNewChainAccepted, MsgNewChainGenesisData, MsgNewChainRequest, MsgNewChainResponse, PotentialValidator } from "./types";
-import { getProtocolId, getTopic, mergeValidators, signMessage, sortValidators, wrapValidators } from "./actions_utils";
-import { LoggerDebug, LoggerInfo, revert } from "./utils";
-import { ChainId, InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
+import { addNewChainRequests, getChainIdLast, getChainSetupData, getCurrentLevel, getNewChainRequests, getNewChainResponse, getParams, getSubChainData, getValidatorsCount, setChainIdLast, setChainSetupData, setNewChainRequests, setNewChainResponse, setSubChainData } from "./storage";
+import { ChainConfigData, CurrentChainSetup, MsgLastChainId, MsgNewChainAccepted, MsgNewChainGenesisData, MsgNewChainRequest, MsgNewChainResponse, PotentialValidator } from "./types";
+import { getProtocolId, getTopic, mergeValidators, signMessage, sortValidators, sortValidatorsSimple, wrapValidators } from "./actions_utils";
+import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
+import { ChainConfig, ChainId, InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
 import * as mcregistry from "wasmx-multichain-registry/assembly/actions";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { Bech32String } from "wasmx-env/assembly/types";
@@ -48,6 +49,10 @@ export function ifValidatorThreshold(
     const data = getNewChainResponse();
     if (data == null) return false;
     if (data.signatures.length < getValidatorsCount()) return false;
+    if (data.signatures.length != data.msg.validators.length) return false;
+    for (let i = 0; i < data.signatures.length; i++) {
+        if (data.signatures[i] == "") return false;
+    }
     return true;
 }
 
@@ -70,8 +75,41 @@ export function ifGenesisDataComplete(
         if (data.signatures[i] == "") {
             return false
         }
+        if (chaindata.data.genTxs[i] == "") {
+            return false
+        }
     }
     return true;
+}
+
+export function ifIncludesUs(
+    params: ActionParam[],
+    event: EventObject,
+): boolean {
+    const state = getChainSetupData()
+    if (state == null) {
+        revert(`no setup data`)
+        return false;
+    }
+
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("msg")) {
+        revert("no MsgNewChainResponse msg found");
+    }
+    if (!ctx.has("signature")) {
+        revert("no MsgNewChainResponse signature found");
+    }
+    const msgstr = base64ToString(ctx.get("msg"))
+    const newdata = JSON.parse<MsgNewChainResponse>(msgstr)
+
+    for (let i = 0; i < newdata.msg.validators.length; i++) {
+        const v = newdata.msg.validators[i]
+        if (v.consensusPublicKey == state.data.validator_pubkey) {
+            return true;
+        }
+    }
+    return false;
 }
 
 export function setupNode(
@@ -230,7 +268,7 @@ export function receiveLastChainId(
 ): void {
     const p = getParamsOrEventParams(params, event);
     const ctx = actionParamsToMap(p);
-    if (!ctx.has("id")) {
+    if (!ctx.has("msg")) {
         revert("no chain id found");
     }
     if (!ctx.has("signature")) {
@@ -258,6 +296,8 @@ export function receiveLastNodeId(
 
 }
 
+// receive a chain request from another node
+// we only handle this if we are in negotiating phase & we need additional validators
 export function receiveNewChainRequest(
     params: ActionParam[],
     event: EventObject,
@@ -276,28 +316,76 @@ export function receiveNewChainRequest(
     const signature = ctx.get("signature")
     // TODO check signature!!
 
-    // check if our set of validators is filled, if not send a response
+    if (data.level != getCurrentLevel()) return;
+
     const tempdata = getNewChainResponse()
-    if (tempdata == null) return;
-    if (data.level != tempdata.msg.level) return;
+
+    // if we don't have temporary chain data, then we just store the requests for when we will have
+    if (tempdata == null) {
+        addNewChainRequests(data);
+        return;
+    }
+
+    // if our set of validators is filled, don't respond
     if (tempdata.msg.validators.length >= getValidatorsCount()) return;
 
     // we add this validator to our set and add an empty signature for now.
     tempdata.msg.validators.push(data.validator);
+    // push empty signature, the node will fill it in
     tempdata.signatures.push("");
     setNewChainResponse(tempdata);
-
-    const state = getChainSetupData()
-    if (state == null) {
-        revert(`setup state not stored`)
-        return;
-    }
-
-    // we send this tempdata as MsgNewChainResponse
-    sendNewChainResponseInternal(state, tempdata);
 }
 
-// this is a new chain response, that we are creating
+// we have not received data from other nodes, so we are creating
+// our own chain, waiting for other validators to join
+export function createNewChainResponse(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const state = getChainSetupData()
+    if (state == null) {
+        revert(`no setup data`)
+        return;
+    }
+    const validator = getOurValidatorData(state)
+    const lastChainId = getChainIdLast()
+    const levelIndex = getCurrentLevel()
+    const chainBaseName = mcregistry.getChainBaseNameSubChainLevel(levelIndex)
+    const chainId = new ChainId("", chainBaseName, levelIndex, lastChainId.evmid + 1, 1)
+    chainId.full = buildChainId(chainId.base_name, chainId.level, chainId.evmid, chainId.fork_index)
+
+    let count = getValidatorsCount()
+    let reqs = getNewChainRequests()
+    reqs = reqs.slice(0, count - 1)
+    count = reqs.length + 1
+
+    let validators = new Array<PotentialValidator>(count)
+    const signatures = new Array<string>(count)
+    validators[0] = validator;
+    signatures[0] = "";
+    for (let i = 0; i < reqs.length; i++) {
+        validators[i+1] = reqs[i].validator
+        signatures[i+1] = "";
+    }
+    validators = sortValidatorsSimple(validators)
+    let ourindex = 0;
+    for (let i = 0; i < validators.length; i++) {
+        if (validators[i].consensusPublicKey == state.data.validator_pubkey) {
+            ourindex = i;
+        }
+    }
+
+    const msg = new MsgNewChainAccepted(getCurrentLevel(), chainId, validators)
+    const datastr = JSON.stringify<MsgNewChainAccepted>(msg)
+    const signature = signMessage(state.data.validator_privkey, datastr);
+    signatures[ourindex] = signature
+    const data = new MsgNewChainResponse(msg, signatures)
+    setNewChainResponse(data);
+    // empty requests
+    setNewChainRequests([]);
+}
+
+// send our temporary new chain data to others
 export function sendNewChainResponse(
     params: ActionParam[],
     event: EventObject,
@@ -308,25 +396,16 @@ export function sendNewChainResponse(
         return;
     }
 
-    const validator = getOurValidatorData(state)
-
-    const lastChainId = getChainIdLast()
-    const levelIndex = getCurrentLevel()
-    const chainBaseName = mcregistry.getChainBaseNameSubChainLevel(levelIndex)
-    const chainId = new ChainId("", chainBaseName, levelIndex, lastChainId.evmid + 1, 1)
-    chainId.full = buildChainId(chainId.base_name, chainId.level, chainId.evmid, chainId.fork_index)
-
-    const msg = new MsgNewChainAccepted(getCurrentLevel(), chainId, [validator])
-    const datastr = JSON.stringify<MsgNewChainAccepted>(msg)
-    const signature = signMessage(state.data.validator_privkey, datastr);
-    const data = new MsgNewChainResponse(msg, [signature])
-
-    setNewChainResponse(data);
+    const data = getNewChainResponse()
+    if (data == null) {
+        revert(`no temporary chain data`)
+        return;
+    }
     // we send this tempdata as MsgNewChainResponse
     sendNewChainResponseInternal(state, data);
 }
 
-// may be our first message or not
+// we receive temporary new chain data from others
 export function receiveNewChainResponse(
     params: ActionParam[],
     event: EventObject,
@@ -334,10 +413,10 @@ export function receiveNewChainResponse(
     const p = getParamsOrEventParams(params, event);
     const ctx = actionParamsToMap(p);
     if (!ctx.has("msg")) {
-        revert("no MsgNewChainRequest msg found");
+        revert("no MsgNewChainResponse msg found");
     }
     if (!ctx.has("signature")) {
-        revert("no MsgNewChainRequest signature found");
+        revert("no MsgNewChainResponse signature found");
     }
     const msgstr = base64ToString(ctx.get("msg"))
     LoggerDebug("receiveNewChainResponse", ["msg", msgstr])
@@ -345,21 +424,59 @@ export function receiveNewChainResponse(
     const signature = ctx.get("signature")
     // TODO check signature!!
 
-    const tempdata = getNewChainResponse()
-    if (tempdata == null) {
-        setNewChainResponse(newdata);
+    if (newdata.msg.level != getCurrentLevel()) return;
+
+    const state = getChainSetupData()
+    if (state == null) {
+        revert(`no setup data`)
         return;
     }
-    if (newdata.msg.level != tempdata.msg.level) return;
-    if (newdata.msg.chainId != tempdata.msg.chainId) return;
+
+    let ourindex = 0
+    for (let i = 0; i < newdata.msg.validators.length; i++) {
+        const v = newdata.msg.validators[i]
+        if (v.consensusPublicKey == state.data.validator_pubkey) {
+            ourindex = i
+        }
+    }
+
+    const tempdata = getNewChainResponse()
+    // if we got here, it means we are among the validators in this data
+    // if we don't have already temporary newchain data, we just need to sign it & resend
+    // if we have temporary data that only contains us as validator, we replace it
+    if (
+        tempdata == null ||
+        (tempdata.msg.validators.length == 1 && newdata.msg.validators.length > 1)
+    ) {
+        const datastr = JSON.stringify<MsgNewChainAccepted>(newdata.msg)
+        const signature = signMessage(state.data.validator_privkey, datastr);
+        newdata.signatures[ourindex] = signature;
+        setNewChainResponse(newdata);
+        sendNewChainResponseInternal(state, newdata);
+        return;
+    }
+
+    if (newdata.msg.chainId.full != tempdata.msg.chainId.full) return;
     if (newdata.msg.validators.length != newdata.signatures.length) return;
 
-    // TODO check newdata signatures!
+    // we check our signature
+    if (newdata.signatures.length == tempdata.signatures.length && newdata.signatures[ourindex] != tempdata.signatures[ourindex]) {
+        LoggerError("received unauthorized NewChainResponse", ["subchain_id", newdata.msg.chainId.full])
+    }
 
-    // if we receve other validators than we chose,
+    // messages may contain additional signatures
+    let count = newdata.msg.validators.length
+    if (count > tempdata.msg.validators.length) {
+        count = tempdata.msg.validators.length
+    }
+    for (let i = 0; i < count; i++) {
+        if (newdata.msg.validators[i].consensusPublicKey == tempdata.msg.validators[i].consensusPublicKey && tempdata.signatures[i] == "") {
+            tempdata.signatures[i] = newdata.signatures[i]
+        }
+    }
+
+    // if we receive other validators than we chose,
     // we alphabetically order & them & select 3 (or our min-validator number)
-    // check validators.length == signatures.length
-    // each signature is on all validators
 
     let allvalid = sortValidators(mergeValidators(
         wrapValidators(tempdata.msg.validators, tempdata.signatures),
@@ -395,31 +512,43 @@ export function tryCreateNewChainGenesisData(
     createNewChainGenesisData(tempdata, state)
 }
 
-export function createNewChainGenesisData(tempdata: MsgNewChainResponse, state: CurrentChainSetup): void {
+export function createNewChainGenesisData(chaindata: MsgNewChainResponse, state: CurrentChainSetup): void {
     const levelIndex = getCurrentLevel()
     const params = getParams()
-    const chaindata = getNewChainResponse()
-    if (chaindata == null) {
-        return revert(`no NewChainResponse data found`)
-    }
     const chainId = chaindata.msg.chainId
+    const validCount = chaindata.msg.validators.length
 
     // create new genesis data
     const wasmxContractState = new Map<Bech32String,wasmxtypes.ContractStorage[]>()
+    // TODO storage key-pairs for subchain configs
 
     const denomUnit = `lvl${levelIndex}`
     const req = new RegisterDefaultSubChainRequest(denomUnit, 18, chainId.base_name, levelIndex, params.level_initial_balance, [])
 
     const data = mcregistry.buildDefaultSubChainGenesisInternal(params, chainId.full, req, wasmxContractState)
-    const subchaindata = new SubChainData(data, [], params.level_initial_balance, levelIndex)
+    data.peers = new Array<string>(validCount)
+    const genTx = new Array<string>(validCount)
+    for (let i = 0; i < validCount; i++) {
+        data.peers[i] = ""
+        genTx[i] = ""
+    }
+
+    const subchaindata = new SubChainData(data, genTx, params.level_initial_balance, levelIndex)
 
     const reqstr = JSON.stringify<InitSubChainDeterministicRequest>(subchaindata.data);
     const signature = signMessage(state.data.validator_privkey, reqstr);
-    const gendata = new MsgNewChainGenesisData(subchaindata, chaindata.msg.validators, [signature])
+    const signatures = new Array<string>(validCount)
+    for (let i = 0; i < signatures.length; i++) {
+        signatures[i] = ""
+        if (chaindata.msg.validators[i].consensusPublicKey == state.data.validator_pubkey) {
+            signatures[i] = signature
+        }
+    }
+    const gendata = new MsgNewChainGenesisData(subchaindata, chaindata.msg.validators, signatures)
     setSubChainData(gendata)
 
     // TODO event that this user should create genTx
-    LoggerInfo("genesis data created", ["chain_id", chainId.full])
+    LoggerInfo("genesis data created", ["subchain_id", chainId.full])
     // send this data to the network
     sendNewChainGenesisDataInternal(gendata, state)
 }
@@ -463,6 +592,7 @@ export function receiveNewChainGenesisData(
     const data = JSON.parse<MsgNewChainGenesisData>(msgstr)
     // const signature = ctx.get("signature")
     // we don't need signature, it is contained in the genesis data
+    // TODO check genesisTx signatures
 
     const state = getChainSetupData()
     if (state == null) {
@@ -470,32 +600,49 @@ export function receiveNewChainGenesisData(
         return;
     }
 
+    let ourindex = 0;
+    for (let i = 0; i < data.validators.length; i++) {
+        if (data.validators[i].consensusPublicKey == state.data.validator_pubkey) {
+            ourindex = i;
+        }
+    }
+
     const oldData = getSubChainData()
     if (oldData != null) {
         // TODO check our signature is good if we received an updated version
         // check that genesis data is unchanged
+        // TODO maybe introduce a message only for gentxs, so we do not resend genesis data
 
-        // return if old data
+        // return if genesis data is old
         if (oldData.signatures.length > data.signatures.length) return;
         if (oldData.data.genTxs.length > data.data.genTxs.length) return;
+        if (oldData.data.data.peers.length > data.data.data.peers.length) return;
+
+        // TODO if same number validators
+        // if (oldData.data.data.peers[ourindex] != data.data.data.peers[ourindex]) {
+        //     revert(`peer mismatch: expected ${oldData.data.data.peers[ourindex]}, found ${data.data.data.peers[ourindex]}`)
+        // }
+        // if (oldData.signatures[ourindex] != data.signatures[ourindex]) {
+        //     revert(`signature mismatch: expected ${oldData.signatures[ourindex]}, found ${data.signatures[ourindex]}`)
+        // }
+        // if (oldData.data.genTxs[ourindex] != data.data.genTxs[ourindex]) {
+        //     revert(`genTx mismatch: expected ${oldData.data.genTxs[ourindex]}, found ${data.data.genTxs[ourindex]}`)
+        // }
+
+        LoggerInfo("genesis data received", ["subchain_id", data.data.data.init_chain_request.chain_id])
     } else {
-        // we need to add our signature on the genesis data
-        const datastr = JSON.stringify<InitSubChainDeterministicRequest>(data.data.data)
-        const signature = signMessage(state.data.validator_privkey, datastr);
+        LoggerInfo("genesis data received", ["subchain_id", data.data.data.init_chain_request.chain_id])
 
-        let ourindex = 0;
-        for (let i = 0; i < data.validators.length; i++) {
-            if (data.validators[i].consensusPublicKey == state.data.validator_pubkey) {
-                ourindex = i;
-            }
+        if (data.signatures[ourindex] == "") {
+            // we need to add our signature on the genesis data
+            const datastr = JSON.stringify<InitSubChainDeterministicRequest>(data.data.data)
+            const signature = signMessage(state.data.validator_privkey, datastr);
+            data.signatures[ourindex] = signature;
+
+            // we send the new message after we sign the genesis tx for the validator
+            // sendNewChainGenesisDataInternal(data, state)
         }
-        data.signatures[ourindex] = signature;
-
         // TODO create genTx
-        LoggerInfo("genesis data received", ["chain_id", data.data.data.init_chain_request.chain_id])
-
-        // send the new message
-        sendNewChainGenesisDataInternal(data, state)
     }
 
     // store new data
@@ -519,18 +666,18 @@ export function initializeChain(
 
     const chaindata = mcregistry.initSubChainPrepareData(gendata.data, gendata.data.genTxs, getValidatorsCount())
 
+    // send new chainid to the network
+    const chainIdFull = gendata.data.data.init_chain_request.chain_id
+    const chainId = parseChainId(chainIdFull)
+    setChainIdLast(chainId)
+    sendLastChainIdInternal(state, chainId)
+
     tnd2utils.initSubChain(
         chaindata.data,
         state.data.validator_pubkey,
         state.data.validator_address,
         state.data.validator_privkey,
     )
-
-    // TODO send new chainid after init
-    const chainIdFull = gendata.data.data.init_chain_request.chain_id
-    const chainId = parseChainId(chainIdFull)
-    setChainIdLast(chainId)
-    sendLastChainIdInternal(state, chainId)
 }
 
 export function addGenTx(
@@ -543,6 +690,19 @@ export function addGenTx(
         revert("no message found");
     }
     const gentx = ctx.get("gentx") // base64
+    let genTxStr = String.UTF8.decode(base64.decode(gentx).buffer)
+    const tx = JSON.parse<wasmxt.SignedTransaction>(genTxStr)
+    const msg = stakingutils.extractCreateValidatorMsg(tx)
+    if (msg == null) {
+        revert(`invalid gentx: does not contain MsgCreateValidator`);
+        return;
+    }
+    // TODO fix me?
+    // const caller = wasmxw.getCaller();
+    // if (!wasmxw.addr_equivalent(caller, msg.validator_address)) {
+    //     revert(`unauthorized: caller ${caller}, validator ${msg.validator_address}`)
+    // }
+
     const state = getChainSetupData()
     if (state == null) {
         revert(`setup state not stored`)
@@ -556,6 +716,10 @@ export function addGenTx(
     for (let i = 0; i < gendata.validators.length; i++) {
         if (gendata.validators[i].consensusPublicKey == state.data.validator_pubkey) {
             gendata.data.genTxs[i] = gentx
+            // we add the peer from the tx memo
+            gendata.data.data.peers[i] = tx.body.memo
+
+            LoggerInfo("added gentx", ["subchain_id", gendata.data.data.init_chain_request.chain_id, "peer", tx.body.memo])
         }
     }
     // already added
@@ -563,6 +727,32 @@ export function addGenTx(
 
     setSubChainData(gendata)
     sendNewChainGenesisDataInternal(gendata, state)
+}
+
+export function getGenesisData(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const gendata = getSubChainData()
+    if (gendata == null) {
+        wasmx.setFinishData(new ArrayBuffer(0))
+        return;
+    }
+    const resp = String.UTF8.encode(JSON.stringify<MsgNewChainGenesisData>(gendata))
+    wasmx.setFinishData(resp)
+}
+
+export function getConfigData(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const gendata = getSubChainData()
+    if (gendata == null) {
+        wasmx.setFinishData(new ArrayBuffer(0))
+        return;
+    }
+    const resp = String.UTF8.encode(JSON.stringify<ChainConfigData>(new ChainConfigData(gendata.data.data.init_chain_request.chain_id, gendata.data.data.chain_config)))
+    wasmx.setFinishData(resp)
 }
 
 export function buildGenTx(

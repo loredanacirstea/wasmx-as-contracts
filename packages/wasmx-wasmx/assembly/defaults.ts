@@ -138,7 +138,7 @@ export const hooksInitMsg = wasmxExecMsg(`{"hooks":${JSON.stringify<hooks.Hook[]
 export const hooksInitMsgNonC = wasmxExecMsg(`{"hooks":${JSON.stringify<hooks.Hook[]>(hooks.DEFAULT_HOOKS_NONC)}}`)
 
 export function lobbyInitMsg (minValidatorsCount: i32, enableEID: boolean): Base64String {
-    return wasmxExecMsg(`{"instantiate":{"context":[{"key":"heartbeatTimeout","value":5000},{"key":"newchainTimeout","value":20000},{"key":"min_validators_count","value":${minValidatorsCount}},{"key":"enable_eid_check","value":${enableEID}},{"key":"erc20CodeId","value":27},{"key":"derc20CodeId","value":28},{"key":"level_initial_balance","value":10000000000000000000}],"initialState":"uninitialized"}}`)
+    return wasmxExecMsg(`{"instantiate":{"context":[{"key":"heartbeatTimeout","value":5000},{"key":"newchainTimeout","value":20000},{"key":"min_validators_count","value":${minValidatorsCount}},{"key":"enable_eid_check","value":${enableEID}},{"key":"erc20CodeId","value":27},{"key":"derc20CodeId","value":28},{"key":"level_initial_balance","value":10000000000000000000},{"key":"newchainRequestTimeout","value":1000}],"initialState":"uninitialized"}}`)
 }
 
 export function bankInitMsg(feeCollectorBech32: string, mintBech32: string): Base64String {
@@ -823,13 +823,6 @@ export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32
         sc_ava_snowman_library,
         sc_ava_snowman,
 
-        sc_multichain_registry(minValidatorCount, enableEIDCheck),
-
-        sc_chat,
-        sc_chat_verifier,
-
-        // for leveln
-
         sc_time,
         sc_level0_library,
         sc_level0,
@@ -838,6 +831,11 @@ export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32
 
         sc_lobby_library,
         sc_lobby(minValidatorCount, enableEIDCheck),
+
+        sc_multichain_registry(minValidatorCount, enableEIDCheck),
+
+        sc_chat,
+        sc_chat_verifier,
     ]
 }
 

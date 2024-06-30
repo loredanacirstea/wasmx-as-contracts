@@ -33,6 +33,7 @@
     "wasmx-p2p": "file:../wasmx-p2p",
     "wasmx-tendermint-p2p": "file:../wasmx-tendermint-p2p",
     "wasmx-utils": "file:../wasmx-utils",
+    "wasmx-stake": "file:../wasmx-stake",
     "wasmx-wasmx": "file:../wasmx-wasmx",
     "xstate-fsm-as": "file:../xstate-fsm-as"
   }

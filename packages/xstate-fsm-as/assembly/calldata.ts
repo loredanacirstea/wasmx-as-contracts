@@ -34,7 +34,7 @@ export class CallData {
     getCurrentState: CallDataGetCurrentState | null = null;
     getContextValue: CallDataGetContextValue | null = null;
     run: CallDataRun | null = null;
-    query: CallDataQuery | null = null;
+    execute: CallDataExecuteAction | null = null;
 
     // consensusless hooks
     StartNode: HookCalld | null = null;
@@ -76,7 +76,7 @@ export class CallDataRun {
 
 // @ts-ignore
 @serializable
-export class CallDataQuery {
+export class CallDataExecuteAction {
     action: ActionObject
     constructor(action: ActionObject) {
         this.action = action;

@@ -57,8 +57,8 @@ export function main(): u8[] {
     } else if (calldata.SetupNode !== null) {
       SetupNodeInternal(config, calldata.SetupNode!.data)
       result = new ArrayBuffer(0);
-    } else if (calldata.query !== null) {
-      const action = calldata.query!.action;
+    } else if (calldata.execute !== null) {
+      const action = calldata.execute!.action;
       const _event = new EventObject("", []);
       executeInternal(config, _event, action);
       // we may have set the return data during execution
