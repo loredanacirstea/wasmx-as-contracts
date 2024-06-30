@@ -354,10 +354,13 @@ export function createNewChainResponse(
     const chainId = new ChainId("", chainBaseName, levelIndex, lastChainId.evmid + 1, 1)
     chainId.full = buildChainId(chainId.base_name, chainId.level, chainId.evmid, chainId.fork_index)
 
-    let count = getValidatorsCount()
-    let reqs = getNewChainRequests()
-    reqs = reqs.slice(0, count - 1)
-    count = reqs.length + 1
+    let vcount = getValidatorsCount()
+    let allreqs = getNewChainRequests()
+    const reqs = allreqs.slice(0, vcount - 1)
+    LoggerInfo("create new chain response", ["all_requests_count", allreqs.length.toString(), "selected_requests", JSON.stringify<MsgNewChainRequest[]>(reqs)])
+
+    const count = reqs.length + 1
+    LoggerInfo("create new chain response", ["min_validator_count", vcount.toString(), "validators", count.toString()])
 
     let validators = new Array<PotentialValidator>(count)
     const signatures = new Array<string>(count)

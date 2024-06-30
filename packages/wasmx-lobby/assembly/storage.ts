@@ -5,7 +5,7 @@ import { ChainId } from "wasmx-consensus/assembly/types_multichain";
 import { Params } from "wasmx-multichain-registry/assembly/types";
 import { BigInt } from "wasmx-env/assembly/bn";
 import * as fsm from 'xstate-fsm-as/assembly/storage';
-import { INIT_CHAIN_INDEX, INIT_FORK_INDEX, INIT_LEVEL, KEY_DERC20_CODE_ID, KEY_ERC20_CODE_ID, KEY_INITIAL_BALANCE, KEY_MIN_VALIDATORS_COUNT } from "./config";
+import { INIT_CHAIN_INDEX, INIT_FORK_INDEX, INIT_LEVEL, KEY_DERC20_CODE_ID, KEY_ENABLE_EID_CHECK, KEY_ERC20_CODE_ID, KEY_INITIAL_BALANCE, KEY_MIN_VALIDATORS_COUNT } from "./config";
 import { parseInt32, parseInt64 } from "../../wasmx-utils/assembly/utils";
 
 export const TEMP_NEW_CHAIN_REQUESTS = "newchain_requests"
@@ -99,7 +99,7 @@ export function getParams(): Params {
     const erc20CodeId = parseInt64(fsm.getContextValue(KEY_ERC20_CODE_ID))
     const derc20CodeId = parseInt64(fsm.getContextValue(KEY_DERC20_CODE_ID))
     const initialBalance = BigInt.fromString(fsm.getContextValue(KEY_INITIAL_BALANCE))
-    const enableEidCheckStr = fsm.getContextValue(KEY_MIN_VALIDATORS_COUNT)
+    const enableEidCheckStr = fsm.getContextValue(KEY_ENABLE_EID_CHECK)
     let enableEidCheck = false
     if (enableEidCheckStr == "true") {
         enableEidCheck = true
