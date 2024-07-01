@@ -1237,9 +1237,9 @@ export function receivePrecommit(
 
     const datastr = String.UTF8.decode(decodeBase64(entry).buffer)
     const data = JSON.parse<ValidatorProposalVote>(datastr)
-    LoggerDebug("precommit received", ["sender", data.validatorAddress, "index", data.index.toString(), "hash", data.hash])
 
     const state = getCurrentState();
+    LoggerDebug("precommit received", ["sender", data.validatorAddress, "index", data.index.toString(), "hash", data.hash, "termId", data.termId.toString(), "timestamp", data.timestamp.toISOString(), "accepted", (state.nextHeight == data.index).toString()])
     if (state.chain_id != data.chainId) return;
     if (state.nextHeight != data.index) return;
 
