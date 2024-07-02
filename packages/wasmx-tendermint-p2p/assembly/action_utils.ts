@@ -2,6 +2,7 @@ import { JSON } from "json-as/assembly";
 import { decode as decodeBase64, encode as encodeBase64 } from "as-base64/assembly";
 import * as base64 from "as-base64/assembly"
 import { ActionParam, EventObject, ExternalActionCallData } from "xstate-fsm-as/assembly/types";
+import * as hooks from "wasmx-env/assembly/hooks";
 import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
 import * as wblocks from "wasmx-blocks/assembly/types";
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
@@ -15,7 +16,7 @@ import * as mctypes from "wasmx-consensus/assembly/types_multichain";
 import * as mcwrap from 'wasmx-consensus/assembly/multichain_wrap';
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
 import * as tnd from "wasmx-tendermint/assembly/actions";
-import { buildLogEntryAggregate, callContract, callHookContract, getMempool, getTotalStaked, setMempool, updateConsensusParams, updateValidators } from "wasmx-tendermint/assembly/actions";
+import { buildLogEntryAggregate, callContract, callHookContract, callHookNonCContract, getMempool, getTotalStaked, setMempool, updateConsensusParams, updateValidators } from "wasmx-tendermint/assembly/actions";
 import * as cfg from "./config";
 import { AppendEntry, CosmosmodGenesisState, IsNodeValidator, LogEntryAggregate } from "./types";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
@@ -631,6 +632,9 @@ export function initSubChain(
     LoggerInfo("initializing subchain", ["subchain_id", chainId])
     const response = mcwrap.InitSubChain(msg);
     LoggerInfo("initialized subchain", ["subchain_id", chainId])
+
+    const deterministicData = new mctypes.NewSubChainDeterministicData(req.init_chain_request, req.chain_config)
+    callHookNonCContract(hooks.HOOK_NEW_SUBCHAIN, JSON.stringify<mctypes.NewSubChainDeterministicData>(deterministicData));
     return response;
 }
 

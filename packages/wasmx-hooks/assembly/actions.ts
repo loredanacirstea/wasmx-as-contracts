@@ -2,7 +2,8 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap"
 import { BigInt } from "wasmx-env/assembly/bn"
-import { Hook, MODULE_NAME, MsgInitialize, MsgRunHook, MsgSetHook, Params, QueryHookModulesRequest, QueryHookModulesResponse, QueryHooksRequest, QueryHooksResponse } from "./types";
+import { Hook } from "wasmx-env/assembly/hooks"
+import { MODULE_NAME, MsgInitialize, MsgRunHook, MsgSetHook, Params, QueryHookModulesRequest, QueryHookModulesResponse, QueryHooksRequest, QueryHooksResponse } from "./types";
 import { LoggerDebug, LoggerError, revert } from "./utils";
 import { getHookNames, getHookByName, setHooks, setHookByName } from "./storage";
 import { Base64String, CallRequest } from "wasmx-env/assembly/types";
@@ -68,7 +69,19 @@ function setHookInternal(hookName: string, sourceModule: string, targetModules: 
         hooks.push(hookName)
         setHooks(hooks)
     }
-    const hook = new Hook(hookName, sourceModule, targetModules);
+    let hook = getHookByName(hookName)
+    if (hook == null) {
+        hook = new Hook(hookName, [sourceModule], targetModules);
+    } else {
+        if (!hook.sourceModules.includes(sourceModule)) {
+            hook.sourceModules.push(sourceModule);
+        }
+        for (let i = 0; i < targetModules.length; i++) {
+            if (!hook.targetModules.includes(targetModules[i])) {
+                hook.targetModules.push(targetModules[i]);
+            }
+        }
+    }
     setHookByName(hook);
 }
 
@@ -88,9 +101,9 @@ function requireSource(hook: Hook, message: string): void {
     const caller = wasmxw.getCaller()
     const role = wasmxw.getRoleByAddress(caller);
     if (role == "") {
-        revert(`unauthorized hook action: ${message}: caller ${caller}`)
+        revert(`unauthorized hook action: ${hook.name}: caller ${caller}: ${message}`)
     }
-    if (role != hook.sourceModule) {
-        revert(`unauthorized hook action: ${message}: caller ${caller} is not ${hook.sourceModule}`)
+    if (!hook.sourceModules.includes(role)) {
+        revert(`unauthorized hook action: ${hook.name}: caller ${caller} role ${role} is not included in ${hook.sourceModules.join(",")}: ${message}`)
     }
 }

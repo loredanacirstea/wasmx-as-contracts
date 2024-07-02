@@ -10,6 +10,25 @@ export const MODULE_NAME = "lobby"
 
 // @ts-ignore
 @serializable
+export class Params {
+    current_level: i32
+    min_validators_count: i32
+    enable_eid_check: boolean
+    erc20CodeId: u64
+    derc20CodeId: u64
+    level_initial_balance: BigInt
+    constructor(current_level: i32, min_validators_count: i32, enable_eid_check: boolean, erc20CodeId: u64, derc20CodeId: u64, level_initial_balance: BigInt) {
+        this.current_level = current_level
+        this.min_validators_count = min_validators_count
+        this.enable_eid_check = enable_eid_check
+        this.erc20CodeId = erc20CodeId
+        this.derc20CodeId = derc20CodeId
+        this.level_initial_balance = level_initial_balance
+    }
+}
+
+// @ts-ignore
+@serializable
 export class MsgLastChainId {
     id: ChainId
     constructor(id: ChainId) {

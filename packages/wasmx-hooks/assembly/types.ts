@@ -1,20 +1,8 @@
 import { JSON } from "json-as/assembly";
 import { Base64String } from "wasmx-env/assembly/types";
+import { Hook } from "wasmx-env/assembly/hooks";
 
 export const MODULE_NAME = "hooks"
-
-// @ts-ignore
-@serializable
-export class Hook {
-    name: string
-    sourceModule: string
-    targetModules: string[]
-    constructor(name: string, sourceModule: string, targetModules: string[]) {
-        this.name = name
-        this.sourceModule = sourceModule
-        this.targetModules = targetModules
-    }
-}
 
 // @ts-ignore
 @serializable

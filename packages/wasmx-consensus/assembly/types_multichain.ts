@@ -1,5 +1,8 @@
 import { JSON } from "json-as/assembly";
+import { revert } from "wasmx-env/assembly/wasmx_wrap";
 import * as constypes from "./types_tendermint"
+
+const START_EVM_ID = 1000;
 
 // @ts-ignore
 @serializable
@@ -116,6 +119,20 @@ export class InitSubChainMsg {
 
 // @ts-ignore
 @serializable
+export class NewSubChainDeterministicData {
+    init_chain_request: constypes.RequestInitChain
+    chain_config: ChainConfig
+    constructor(
+        init_chain_request: constypes.RequestInitChain,
+        chain_config: ChainConfig,
+    ) {
+        this.init_chain_request = init_chain_request
+        this.chain_config = chain_config
+    }
+}
+
+// @ts-ignore
+@serializable
 export class StartSubChainMsg {
     chain_id: string
     chain_config: ChainConfig
@@ -151,5 +168,37 @@ export class ChainId {
         this.level = level
         this.evmid = evmid
         this.fork_index = fork_index
+
+        if (full == "") {
+            this.full = ChainId.toString(base_name, level, evmid, fork_index)
+        }
+    }
+
+    // mythos_1_7000-1
+    // mythos_7000-1
+    static fromString(chainId: string): ChainId {
+        const parts = chainId.split("_")
+        if (parts.length < 2) {
+            revert(`invalid chain id: ${chainId}`);
+        }
+        const baseName = parts[0];
+        let level: u32 = 0;
+        let lastpart = "";
+        if (parts.length == 2) {
+            lastpart = parts[1]
+        } else {
+            level = u32(parseInt(parts[1]))
+            lastpart = parts[2]
+        }
+        const parts2 = lastpart.split("-")
+        const evmid = u64(parseInt(parts2[0]))
+        const forkIndex = u32(parseInt(parts2[1]))
+        return new ChainId(chainId, baseName, level, evmid, forkIndex)
+    }
+
+    // level1ch_1_7000-1
+    static toString(chain_base_name: string, level: u32, id: i64, forkIndex: u32): string {
+        let evmid = `${START_EVM_ID+id}`
+        return `${chain_base_name}_${level}_${evmid}-${forkIndex}`
     }
 }

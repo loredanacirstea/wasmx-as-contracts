@@ -8,6 +8,7 @@ export const INIT_CHAIN_INDEX = 1;
 export const INIT_FORK_INDEX = 1;
 
 // context values
+export const KEY_CURRENT_LEVEL = "current_level"
 export const KEY_MIN_VALIDATORS_COUNT = "min_validators_count"
 export const KEY_ENABLE_EID_CHECK = "enable_eid_check"
 export const KEY_ERC20_CODE_ID = "erc20CodeId"

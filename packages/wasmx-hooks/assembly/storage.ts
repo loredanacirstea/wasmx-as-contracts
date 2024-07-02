@@ -1,6 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
-import { Hook, Params } from "./types";
+import { Hook } from "wasmx-env/assembly/hooks"
+import { Params } from "./types";
 
 export const SPLIT = "."
 export const PARAMS_KEY = "params"

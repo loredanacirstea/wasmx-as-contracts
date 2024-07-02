@@ -4,6 +4,7 @@ import * as wblocks from "wasmx-blocks/assembly/types";
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import * as roles from "wasmx-env/assembly/roles"
 import {
   Base64String,
   Bech32String,
@@ -1514,9 +1515,17 @@ export function callStaking(calldata: string, isQuery: boolean): CallResponse {
 }
 
 export function callHookContract(hookName: string, data: string): void {
+    callHookContractInternal(roles.ROLE_HOOKS, hookName, data)
+}
+
+export function callHookNonCContract(hookName: string, data: string): void {
+    callHookContractInternal(roles.ROLE_HOOKS_NONC, hookName, data)
+}
+
+export function callHookContractInternal(contractRole: string, hookName: string, data: string): void {
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(data)))
     const calldatastr = `{"RunHook":{"hook":"${hookName}","data":"${dataBase64}"}}`;
-    const resp = callContract("hooks", calldatastr, false)
+    const resp = callContract(contractRole, calldatastr, false)
     if (resp.success > 0) {
         // we do not fail, we want the chain to continue
         LoggerError(`hooks failed`, ["error", resp.data])

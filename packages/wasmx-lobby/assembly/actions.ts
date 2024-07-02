@@ -14,7 +14,7 @@ import * as tnd2utils from "wasmx-tendermint-p2p/assembly/action_utils";
 import * as tnd2mc from "wasmx-tendermint-p2p/assembly/multichain";
 import * as stakingutils from "wasmx-stake/assembly/msg_utils";
 import * as cfg from "./config";
-import { addNewChainRequests, getChainIdLast, getChainSetupData, getCurrentLevel, getNewChainRequests, getNewChainResponse, getParams, getSubChainData, getValidatorsCount, setChainIdLast, setChainSetupData, setNewChainRequests, setNewChainResponse, setSubChainData } from "./storage";
+import { addNewChainRequests, getChainIdLast, getChainSetupData, getNextLevel, getNewChainRequests, getNewChainResponse, getParams, getSubChainData, getValidatorsCount, setChainIdLast, setChainSetupData, setNewChainRequests, setNewChainResponse, setSubChainData } from "./storage";
 import { ChainConfigData, CurrentChainSetup, MsgLastChainId, MsgNewChainAccepted, MsgNewChainGenesisData, MsgNewChainRequest, MsgNewChainResponse, PotentialValidator } from "./types";
 import { getProtocolId, getTopic, mergeValidators, signMessage, sortValidators, sortValidatorsSimple, wrapValidators } from "./actions_utils";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
@@ -23,8 +23,7 @@ import * as mcregistry from "wasmx-multichain-registry/assembly/actions";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { Bech32String } from "wasmx-env/assembly/types";
 import * as wasmxtypes from "wasmx-wasmx/assembly/types";
-import { RegisterDefaultSubChainRequest, SubChainData } from "wasmx-multichain-registry/assembly/types";
-import { buildChainId, parseChainId } from "wasmx-consensus/assembly/multichain_utils";
+import { Params, RegisterDefaultSubChainRequest, SubChainData } from "wasmx-multichain-registry/assembly/types";
 import { QueryBuildGenTxRequest } from "wasmx-tendermint-p2p/assembly/types";
 import { base64ToString } from "wasmx-utils/assembly/utils";
 
@@ -217,7 +216,7 @@ export function sendNewChainRequest(
         return;
     }
 
-    const data = new MsgNewChainRequest(getCurrentLevel(), getOurValidatorData(state))
+    const data = new MsgNewChainRequest(getNextLevel(), getOurValidatorData(state))
     const signeddata = prepareNewChainRequest(data, state.data.validator_privkey);
     const contract = wasmxw.getAddress();
     const protocolId = getProtocolId(state.data.chain_id)
@@ -316,7 +315,7 @@ export function receiveNewChainRequest(
     const signature = ctx.get("signature")
     // TODO check signature!!
 
-    if (data.level != getCurrentLevel()) return;
+    if (data.level != getNextLevel()) return;
 
     const tempdata = getNewChainResponse()
 
@@ -349,10 +348,9 @@ export function createNewChainResponse(
     }
     const validator = getOurValidatorData(state)
     const lastChainId = getChainIdLast()
-    const levelIndex = getCurrentLevel()
+    const levelIndex = getNextLevel()
     const chainBaseName = mcregistry.getChainBaseNameSubChainLevel(levelIndex)
     const chainId = new ChainId("", chainBaseName, levelIndex, lastChainId.evmid + 1, 1)
-    chainId.full = buildChainId(chainId.base_name, chainId.level, chainId.evmid, chainId.fork_index)
 
     let vcount = getValidatorsCount()
     let allreqs = getNewChainRequests()
@@ -378,7 +376,7 @@ export function createNewChainResponse(
         }
     }
 
-    const msg = new MsgNewChainAccepted(getCurrentLevel(), chainId, validators)
+    const msg = new MsgNewChainAccepted(getNextLevel(), chainId, validators)
     const datastr = JSON.stringify<MsgNewChainAccepted>(msg)
     const signature = signMessage(state.data.validator_privkey, datastr);
     signatures[ourindex] = signature
@@ -427,7 +425,7 @@ export function receiveNewChainResponse(
     const signature = ctx.get("signature")
     // TODO check signature!!
 
-    if (newdata.msg.level != getCurrentLevel()) return;
+    if (newdata.msg.level != getNextLevel()) return;
 
     const state = getChainSetupData()
     if (state == null) {
@@ -516,7 +514,7 @@ export function tryCreateNewChainGenesisData(
 }
 
 export function createNewChainGenesisData(chaindata: MsgNewChainResponse, state: CurrentChainSetup): void {
-    const levelIndex = getCurrentLevel()
+    const levelIndex = getNextLevel()
     const params = getParams()
     const chainId = chaindata.msg.chainId
     const validCount = chaindata.msg.validators.length
@@ -528,7 +526,8 @@ export function createNewChainGenesisData(chaindata: MsgNewChainResponse, state:
     const denomUnit = `lvl${levelIndex}`
     const req = new RegisterDefaultSubChainRequest(denomUnit, 18, chainId.base_name, levelIndex, params.level_initial_balance, [])
 
-    const data = mcregistry.buildDefaultSubChainGenesisInternal(params, chainId.full, req, wasmxContractState)
+    const regparams = new Params(params.min_validators_count, params.enable_eid_check, params.erc20CodeId, params.derc20CodeId, params.level_initial_balance)
+    const data = mcregistry.buildDefaultSubChainGenesisInternal(regparams, chainId.full, levelIndex, req, wasmxContractState)
     data.peers = new Array<string>(validCount)
     const genTx = new Array<string>(validCount)
     for (let i = 0; i < validCount; i++) {
@@ -671,7 +670,7 @@ export function initializeChain(
 
     // send new chainid to the network
     const chainIdFull = gendata.data.data.init_chain_request.chain_id
-    const chainId = parseChainId(chainIdFull)
+    const chainId = ChainId.fromString(chainIdFull)
     setChainIdLast(chainId)
     sendLastChainIdInternal(state, chainId)
 

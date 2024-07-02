@@ -54,6 +54,7 @@ export const ADDR_MULTICHAIN_REGISTRY = "0x0000000000000000000000000000000000000
 export const ADDR_MULTICHAIN_REGISTRY_LOCAL = "0x000000000000000000000000000000000000004b"
 export const ADDR_LOBBY = "0x000000000000000000000000000000000000004d"
 export const ADDR_LOBBY_LIBRARY = "0x000000000000000000000000000000000000004e"
+export const ADDR_METAREGISTRY = "0x000000000000000000000000000000000000004f"
 
 export const ADDR_SYS_PROXY = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 
@@ -111,6 +112,7 @@ export const LEVELN_v001 = "leveln_0.0.1"
 export const MULTICHAIN_REGISTRY_v001 = "multichain_registry_0.0.1"
 export const MULTICHAIN_REGISTRY_LOCAL_v001 = "multichain_registry_local_0.0.1"
 export const LOBBY_v001 = "lobby_json_0.0.1"
+export const METAREGISTRY_v001 = "metaregistry_json_0.0.1"
 
 // WasmxExecutionMessage{Data: []byte{}}
 export const EMPTY_INIT_MSG = "eyJkYXRhIjoiIn0="
@@ -137,8 +139,12 @@ export const mutichainLocalInitMsg = wasmxExecMsg(`{"ids":[]}`)
 export const hooksInitMsg = wasmxExecMsg(`{"hooks":${JSON.stringify<hooks.Hook[]>(hooks.DEFAULT_HOOKS)}}`)
 export const hooksInitMsgNonC = wasmxExecMsg(`{"hooks":${JSON.stringify<hooks.Hook[]>(hooks.DEFAULT_HOOKS_NONC)}}`)
 
-export function lobbyInitMsg (minValidatorsCount: i32, enableEID: boolean): Base64String {
-    return wasmxExecMsg(`{"instantiate":{"context":[{"key":"heartbeatTimeout","value":5000},{"key":"newchainTimeout","value":20000},{"key":"min_validators_count","value":${minValidatorsCount}},{"key":"enable_eid_check","value":${enableEID}},{"key":"erc20CodeId","value":27},{"key":"derc20CodeId","value":28},{"key":"level_initial_balance","value":10000000000000000000},{"key":"newchainRequestTimeout","value":1000}],"initialState":"uninitialized"}}`)
+export function lobbyInitMsg (minValidatorsCount: i32, enableEID: boolean, currentLevel: i32): Base64String {
+    return wasmxExecMsg(`{"instantiate":{"context":[{"key":"heartbeatTimeout","value":5000},{"key":"newchainTimeout","value":20000},{"key":"current_level","value":${currentLevel}},{"key":"min_validators_count","value":${minValidatorsCount}},{"key":"enable_eid_check","value":${enableEID}},{"key":"erc20CodeId","value":27},{"key":"derc20CodeId","value":28},{"key":"level_initial_balance","value":10000000000000000000},{"key":"newchainRequestTimeout","value":1000}],"initialState":"uninitialized"}}`)
+}
+
+export function metaregistryInitMsg(currentLevel: i32): Base64String {
+    return wasmxExecMsg(`{"params":{"current_level":${currentLevel}}}`)
 }
 
 export function bankInitMsg(feeCollectorBech32: string, mintBech32: string): Base64String {
@@ -719,16 +725,30 @@ export const sc_lobby_library = new SystemContract(
     CodeMetadata.Empty(),
 )
 
-export function sc_lobby(minValidatorCount: i32, enableEIDCheck: boolean): SystemContract {
+export function sc_lobby(minValidatorCount: i32, enableEIDCheck: boolean, currentLevel: i32): SystemContract {
     return new SystemContract(
         ADDR_LOBBY,
         LOBBY_v001,
         StorageSingleConsensus,
-        lobbyInitMsg(minValidatorCount, enableEIDCheck),
+        lobbyInitMsg(minValidatorCount, enableEIDCheck, currentLevel),
         false,
         false,
         roles.ROLE_LOBBY,
         [INTERPRETER_FSM, BuildDep(ADDR_LOBBY_LIBRARY, roles.ROLE_LIBRARY)],
+        CodeMetadata.Empty(),
+    )
+}
+
+export function sc_metaregistry(currentLevel: i32): SystemContract {
+    return new SystemContract(
+        ADDR_METAREGISTRY,
+        METAREGISTRY_v001,
+        StorageMetaConsensus,
+        metaregistryInitMsg(currentLevel),
+        false,
+        false,
+        roles.ROLE_METAREGISTRY,
+        [],
         CodeMetadata.Empty(),
     )
 }
@@ -769,7 +789,7 @@ export const sc_hooks_nonc = new SystemContract(
     CodeMetadata.Empty(),
 )
 
-export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32: string, minValidatorCount: i32, enableEIDCheck: boolean): SystemContract[] {
+export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32: string, minValidatorCount: i32, enableEIDCheck: boolean, currentLevel: i32): SystemContract[] {
     return [
         // auth must be first
         sc_auth,
@@ -830,7 +850,8 @@ export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32
         sc_multichain_registry_local,
 
         sc_lobby_library,
-        sc_lobby(minValidatorCount, enableEIDCheck),
+        sc_lobby(minValidatorCount, enableEIDCheck, currentLevel),
+        sc_metaregistry(currentLevel),
 
         sc_multichain_registry(minValidatorCount, enableEIDCheck),
 
@@ -839,8 +860,8 @@ export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32
     ]
 }
 
-export function getDefaultGenesis(bootstrapAccountBech32: string, feeCollectorBech32: string, mintBech32: string, minValidatorCount: i32, enableEIDCheck: boolean): GenesisState {
-    const systemContracts = getDefaultSystemContracts(feeCollectorBech32, mintBech32, minValidatorCount, enableEIDCheck)
+export function getDefaultGenesis(bootstrapAccountBech32: string, feeCollectorBech32: string, mintBech32: string, minValidatorCount: i32, enableEIDCheck: boolean, currentLevel: i32): GenesisState {
+    const systemContracts = getDefaultSystemContracts(feeCollectorBech32, mintBech32, minValidatorCount, enableEIDCheck, currentLevel)
     return new GenesisState(
         new Params(),
         bootstrapAccountBech32,

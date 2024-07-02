@@ -4,6 +4,7 @@ import * as roles from "./roles";
 // nonconsensusless
 export const HOOK_START_NODE = "StartNode"
 export const HOOK_SETUP_NODE = "SetupNode"
+export const HOOK_NEW_SUBCHAIN = "NewSubChain"
 
 // consenssus
 export const HOOK_BEGIN_BLOCK      = "BeginBlock"
@@ -29,15 +30,15 @@ export const BeforeValidatorSlashed         = "BeforeValidatorSlashed"
 @serializable
 export class Hook {
     name: string
-    sourceModule: string
+    sourceModules: string[]
     targetModules: string[]
     constructor(
         name: string,
-        sourceModule: string,
+        sourceModules: string[],
         targetModules: string[],
     ) {
         this.name = name
-        this.sourceModule = sourceModule
+        this.sourceModules = sourceModules
         this.targetModules = targetModules
     }
 }
@@ -45,85 +46,90 @@ export class Hook {
 export const  DEFAULT_HOOKS_NONC: Hook[] = [
     new Hook(
         HOOK_START_NODE,
-        roles.ROLE_HOOKS_NONC,
+        [roles.ROLE_HOOKS_NONC],
         [roles.ROLE_CONSENSUS, roles.ROLE_CHAT, roles.ROLE_TIME, roles.ROLE_LOBBY],
     ),
     new Hook(
         HOOK_SETUP_NODE,
-        roles.ROLE_HOOKS_NONC,
+        [roles.ROLE_HOOKS_NONC],
         [roles.ROLE_CONSENSUS, roles.ROLE_LOBBY],
+    ),
+    new Hook(
+        HOOK_NEW_SUBCHAIN,
+        [roles.ROLE_HOOKS_NONC, roles.ROLE_LOBBY, roles.ROLE_CONSENSUS],
+        [roles.ROLE_METAREGISTRY],
     ),
 ]
 
 export const DEFAULT_HOOKS: Hook[] = [
     new Hook(
         HOOK_BEGIN_BLOCK,
-        roles.ROLE_CONSENSUS,
+        [roles.ROLE_CONSENSUS],
         [roles.ROLE_SLASHING],
     ),
     new Hook(
         HOOK_END_BLOCK,
-        roles.ROLE_CONSENSUS,
+        [roles.ROLE_CONSENSUS],
         [roles.ROLE_GOVERNANCE, roles.ROLE_DISTRIBUTION],
     ),
     new Hook(
         HOOK_CREATE_VALIDATOR,
-        roles.ROLE_CONSENSUS,
+        [roles.ROLE_CONSENSUS],
         [],
     ),
     new Hook(
         AfterValidatorCreated,
-        roles.ROLE_STAKING,
+        [roles.ROLE_STAKING],
         [roles.ROLE_SLASHING],
     ),
     new Hook(
         AfterValidatorBonded,
-        roles.ROLE_STAKING,
+        [roles.ROLE_STAKING],
         [roles.ROLE_SLASHING],
     ),
     new Hook(
         AfterValidatorRemoved,
-        roles.ROLE_STAKING,
+        [roles.ROLE_STAKING],
         [roles.ROLE_SLASHING],
     ),
     new Hook(
         AfterValidatorBeginUnbonding,
-        roles.ROLE_STAKING,
+        [roles.ROLE_STAKING],
         [roles.ROLE_SLASHING],
     ),
     new Hook(
         AfterDelegationModified,
-        roles.ROLE_STAKING,
+        [roles.ROLE_STAKING],
         [roles.ROLE_SLASHING],
     ),
     new Hook(
         AfterUnbondingInitiated,
-        roles.ROLE_STAKING,
+        [roles.ROLE_STAKING],
         [roles.ROLE_SLASHING],
     ),
     new Hook(
         BeforeValidatorModified,
-        roles.ROLE_STAKING,
+        [roles.ROLE_STAKING],
         [roles.ROLE_SLASHING],
     ),
     new Hook(
         BeforeDelegationCreated,
-        roles.ROLE_STAKING,
+        [roles.ROLE_STAKING],
         [roles.ROLE_SLASHING],
     ),
     new Hook(
         BeforeDelegationSharesModified,
-        roles.ROLE_STAKING,
+        [roles.ROLE_STAKING],
         [roles.ROLE_SLASHING],
     ),
     new Hook(
         BeforeDelegationRemoved,
-        roles.ROLE_STAKING,
+        [roles.ROLE_STAKING],
         [roles.ROLE_SLASHING],
     ),
     new Hook(
         BeforeValidatorSlashed,
-        roles.ROLE_STAKING,
+        [roles.ROLE_STAKING],
         [roles.ROLE_SLASHING],
     ),
 ]

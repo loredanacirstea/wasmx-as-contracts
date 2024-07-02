@@ -1,11 +1,10 @@
 import { JSON } from "json-as/assembly";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
-import { CurrentChainSetup, MsgNewChainGenesisData, MsgNewChainRequest, MsgNewChainResponse } from "./types";
+import { CurrentChainSetup, MsgNewChainGenesisData, MsgNewChainRequest, MsgNewChainResponse, Params } from "./types";
 import { ChainId } from "wasmx-consensus/assembly/types_multichain";
-import { Params } from "wasmx-multichain-registry/assembly/types";
 import { BigInt } from "wasmx-env/assembly/bn";
 import * as fsm from 'xstate-fsm-as/assembly/storage';
-import { INIT_CHAIN_INDEX, INIT_FORK_INDEX, INIT_LEVEL, KEY_DERC20_CODE_ID, KEY_ENABLE_EID_CHECK, KEY_ERC20_CODE_ID, KEY_INITIAL_BALANCE, KEY_MIN_VALIDATORS_COUNT } from "./config";
+import { INIT_CHAIN_INDEX, INIT_FORK_INDEX, INIT_LEVEL, KEY_CURRENT_LEVEL, KEY_DERC20_CODE_ID, KEY_ENABLE_EID_CHECK, KEY_ERC20_CODE_ID, KEY_INITIAL_BALANCE, KEY_MIN_VALIDATORS_COUNT } from "./config";
 import { parseInt32, parseInt64 } from "../../wasmx-utils/assembly/utils";
 
 export const TEMP_NEW_CHAIN_REQUESTS = "newchain_requests"
@@ -13,7 +12,6 @@ export const TEMP_NEW_CHAIN_RESPONSE = "newchain_response"
 export const SUBCHAIN_DATA = "subchain_data"
 export const SETUP_DATA = "setup_data"
 export const LAST_CHAIN_ID = "chainid_last"
-export const CURRENT_LEVEL = "current_level"
 
 export function getNewChainRequests(): MsgNewChainRequest[] {
     const value = wasmxw.sload(TEMP_NEW_CHAIN_REQUESTS);
@@ -69,17 +67,6 @@ export function setSubChainData(data: MsgNewChainGenesisData): void {
     return wasmxw.sstore(SUBCHAIN_DATA, JSON.stringify<MsgNewChainGenesisData>(data));
 }
 
-export function getCurrentLevel(): i32 {
-    const valuestr = wasmxw.sload(CURRENT_LEVEL);
-    if (valuestr == "") return INIT_LEVEL;
-    const value = parseInt(valuestr);
-    return i32(value);
-}
-
-export function setCurrentLevel(level: i32): void {
-    return wasmxw.sstore(CURRENT_LEVEL, level.toString());
-}
-
 export function getChainIdLast(): ChainId {
     const value = wasmxw.sload(LAST_CHAIN_ID);
     if (value == "") return new ChainId("", "", getCurrentLevel(), INIT_CHAIN_INDEX, INIT_FORK_INDEX);
@@ -94,7 +81,16 @@ export function getValidatorsCount(): i32 {
     return parseInt32(fsm.getContextValue(KEY_MIN_VALIDATORS_COUNT))
 }
 
+export function getCurrentLevel(): i32 {
+    return parseInt32(fsm.getContextValue(KEY_CURRENT_LEVEL))
+}
+
+export function getNextLevel(): i32 {
+    return getCurrentLevel() + 1
+}
+
 export function getParams(): Params {
+    const currentLevel = getCurrentLevel()
     const minValidatorCount = getValidatorsCount()
     const erc20CodeId = parseInt64(fsm.getContextValue(KEY_ERC20_CODE_ID))
     const derc20CodeId = parseInt64(fsm.getContextValue(KEY_DERC20_CODE_ID))
@@ -105,5 +101,5 @@ export function getParams(): Params {
         enableEidCheck = true
     }
 
-    return new Params(minValidatorCount, enableEidCheck, erc20CodeId, derc20CodeId, initialBalance)
+    return new Params(currentLevel, minValidatorCount, enableEidCheck, erc20CodeId, derc20CodeId, initialBalance)
 }
