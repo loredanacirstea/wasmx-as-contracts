@@ -19,10 +19,11 @@ import * as wasmxdefaults from "wasmx-wasmx/assembly/defaults";
 import * as utils from "wasmx-utils/assembly/utils";
 import * as metaregstore from "wasmx-metaregistry/assembly/storage";
 import * as metaregtypes from "wasmx-metaregistry/assembly/types";
+import * as staking from "wasmx-stake/assembly/types";
 import * as cfg from "./config";
-import { addNewChainRequests, getChainIdLast, getChainSetupData, getNextLevel, getNewChainRequests, getNewChainResponse, getParams, getSubChainData, getValidatorsCount, setChainIdLast, setChainSetupData, setNewChainRequests, setNewChainResponse, setSubChainData } from "./storage";
+import { addNewChainRequests, getChainIdLast, getChainSetupData, getNextLevel, getNewChainRequests, getNewChainResponse, getParams, getSubChainData, getValidatorsCount, setChainIdLast, setChainSetupData, setNewChainRequests, setNewChainResponse, setSubChainData, getCurrentLevel } from "./storage";
 import { ChainConfigData, CurrentChainSetup, MODULE_NAME, MsgLastChainId, MsgNewChainAccepted, MsgNewChainGenesisData, MsgNewChainRequest, MsgNewChainResponse, PotentialValidator } from "./types";
-import { getProtocolId, getTopic, mergeValidators, signMessage, sortValidators, sortValidatorsSimple, wrapValidators } from "./actions_utils";
+import { getProtocolId, getTopic, getTopicLevel, getTopicLobby, getTopicNewChain, mergeValidators, signMessage, sortValidators, sortValidatorsSimple, wrapValidators } from "./actions_utils";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
 import { ChainConfig, ChainId, InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
 import * as mcregistry from "wasmx-multichain-registry/assembly/actions";
@@ -166,8 +167,8 @@ export function p2pConnectLobbyRoom(
         revert(`setup state not stored`)
         return;
     }
-    const protocolId = getProtocolId(state.data.chain_id)
-    const topic = getTopic(state.data.chain_id, cfg.ROOM_LOBBY)
+    const protocolId = getProtocolId()
+    const topic = getTopicLobby()
     p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, topic))
 }
 
@@ -175,13 +176,13 @@ export function p2pConnectNewChainRoom(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    const state = getChainSetupData()
-    if (state == null) {
-        revert(`setup state not stored`)
+    const data = getNewChainResponse()
+    if (data == null) {
+        revert(`no temporary chain data`)
         return;
     }
-    const protocolId = getProtocolId(state.data.chain_id)
-    const topic = getTopic(state.data.chain_id, cfg.ROOM_NEW_CHAIN)
+    const protocolId = getProtocolId()
+    const topic = getTopicNewChain(data.msg.chainId.full)
     p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, topic))
 }
 
@@ -194,8 +195,8 @@ export function p2pDisconnectLobbyRoom(
         revert(`setup state not stored`)
         return;
     }
-    const protocolId = getProtocolId(state.data.chain_id)
-    const topic = getTopic(state.data.chain_id, cfg.ROOM_LOBBY)
+    const protocolId = getProtocolId()
+    const topic = getTopicLobby()
     p2pw.DisconnectChatRoom(new p2ptypes.DisconnectChatRoomRequest(protocolId, topic))
 }
 
@@ -203,13 +204,13 @@ export function p2pDisconnectNewChainRoom(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    const state = getChainSetupData()
-    if (state == null) {
-        revert(`setup state not stored`)
+    const data = getNewChainResponse()
+    if (data == null) {
+        revert(`no temporary chain data`)
         return;
     }
-    const protocolId = getProtocolId(state.data.chain_id)
-    const topic = getTopic(state.data.chain_id, cfg.ROOM_NEW_CHAIN)
+    const protocolId = getProtocolId()
+    const topic = getTopicNewChain(data.msg.chainId.full)
     p2pw.DisconnectChatRoom(new p2ptypes.DisconnectChatRoomRequest(protocolId, topic))
 }
 
@@ -223,11 +224,16 @@ export function sendNewChainRequest(
         return;
     }
 
+    // TODO move this check to diagram
+    // we only allow the first validator of a level to validate for the next level
+    const cansend = isFirstValidator(state);
+    if (!cansend) return;
+
     const data = new MsgNewChainRequest(getNextLevel(), getOurValidatorData(state))
     const signeddata = prepareNewChainRequest(data, state.data.validator_privkey);
     const contract = wasmxw.getAddress();
-    const protocolId = getProtocolId(state.data.chain_id)
-    const topic = getTopic(state.data.chain_id, cfg.ROOM_LOBBY)
+    const protocolId = getProtocolId()
+    const topic = getTopicLobby()
     p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, contract, signeddata, protocolId, topic))
 }
 
@@ -246,8 +252,8 @@ export function sendLastChainId(
 export function sendLastChainIdInternal(state: CurrentChainSetup, chainId: ChainId): void {
     const signeddata = prepareMsgLastChainId(new MsgLastChainId(chainId), state.data.validator_privkey);
     const contract = wasmxw.getAddress();
-    const protocolId = getProtocolId(state.data.chain_id)
-    const topic = getTopic(state.data.chain_id, cfg.ROOM_LOBBY)
+    const protocolId = getProtocolId()
+    const topic = getTopicLobby()
     p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, contract, signeddata, protocolId, topic))
 }
 
@@ -263,8 +269,8 @@ export function sendLastNodeId(
     // const data = buildMsgLastNodeId();
     // const signeddata = prepareMsgLastNodeId(data);
     // const contract = wasmxw.getAddress();
-    // const protocolId = getProtocolId(state.data.chain_id)
-    // const topic = getTopic(state.data.chain_id, cfg.ROOM_LOBBY)
+    // const protocolId = getProtocolId()
+    // const topic = getTopicLobby()
     // p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, contract, signeddata, protocolId, topic))
 }
 
@@ -289,7 +295,8 @@ export function receiveLastChainId(
 
     // update last known chainid
     const lastid = getChainIdLast()
-    if (lastid.level != msg.id.level) return;
+    const nextIndex = getNextLevel()
+    if (nextIndex != msg.id.level) return;
     if (lastid.evmid < msg.id.evmid) {
         setChainIdLast(msg.id)
     }
@@ -323,6 +330,16 @@ export function receiveNewChainRequest(
     // TODO check signature!!
 
     if (data.level != getNextLevel()) return;
+
+    const state = getChainSetupData()
+    if (state == null) {
+        revert(`setup state not stored`)
+        return;
+    }
+    const cansend = isFirstValidator(state);
+    if (!cansend) return;
+
+    LoggerInfo("processing receiveNewChainRequest", ["msg", msgstr])
 
     const tempdata = getNewChainResponse()
 
@@ -362,10 +379,10 @@ export function createNewChainResponse(
     let vcount = getValidatorsCount()
     let allreqs = getNewChainRequests()
     const reqs = allreqs.slice(0, vcount - 1)
-    LoggerInfo("create new chain response", ["all_requests_count", allreqs.length.toString(), "selected_requests", JSON.stringify<MsgNewChainRequest[]>(reqs)])
+    LoggerInfo("create new chain response", ["chain_id", chainId.full, "all_requests_count", allreqs.length.toString(), "selected_requests", JSON.stringify<MsgNewChainRequest[]>(reqs)])
 
     const count = reqs.length + 1
-    LoggerInfo("create new chain response", ["min_validator_count", vcount.toString(), "validators", count.toString()])
+    LoggerInfo("create new chain response", ["chain_id", chainId.full, "min_validator_count", vcount.toString(), "validators", count.toString()])
 
     let validators = new Array<PotentialValidator>(count)
     const signatures = new Array<string>(count)
@@ -848,8 +865,8 @@ export function buildGenTx(
 export function sendNewChainGenesisDataInternal(gendata: MsgNewChainGenesisData, state: CurrentChainSetup): void {
     const signeddata = prepareMsgNewChainGenesisData(gendata, state.data.validator_privkey);
     const contract = wasmxw.getAddress();
-    const protocolId = getProtocolId(state.data.chain_id)
-    const topic = getTopic(state.data.chain_id, cfg.ROOM_NEW_CHAIN)
+    const protocolId = getProtocolId()
+    const topic = getTopicNewChain(gendata.data.data.init_chain_request.chain_id)
     p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, contract, signeddata, protocolId, topic))
 }
 
@@ -892,9 +909,31 @@ export function prepareMsgNewChainGenesisData(data: MsgNewChainGenesisData, priv
 export function sendNewChainResponseInternal(state: CurrentChainSetup, data: MsgNewChainResponse): void {
     const signeddata = prepareNewChainResponse(data, state.data.validator_privkey);
     const contract = wasmxw.getAddress();
-    const protocolId = getProtocolId(state.data.chain_id)
-    const topic = getTopic(state.data.chain_id, cfg.ROOM_LOBBY)
+    const protocolId = getProtocolId()
+    const topic = getTopicLobby()
     p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, contract, signeddata, protocolId, topic))
+}
+
+export function isFirstValidator(state: CurrentChainSetup): boolean {
+    const validators = getAllValidatorInfos();
+    if (validators.length < 2) return true;
+
+    const pubkey = validators[0].consensus_pubkey
+    if (pubkey == null) return false;
+    if (pubkey.getKey().key == state.data.validator_pubkey) return true;
+    return false
+}
+
+export function getAllValidatorInfos(): staking.ValidatorSimple[] {
+    const calldata = `{"GetAllValidatorInfos":{}}`
+    const resp = callContract(roles.ROLE_STAKING, calldata, true);
+    if (resp.success > 0) {
+        revert("could not get validators");
+    }
+    if (resp.data === "") return [];
+    LoggerDebug("GetAllValidatorInfos", ["data", resp.data])
+    const result = JSON.parse<staking.QueryValidatorInfosResponse>(resp.data);
+    return result.validators;
 }
 
 export function getChainConfigFromMetaregistry(chainId: string): metaregtypes.ChainConfigData | null {

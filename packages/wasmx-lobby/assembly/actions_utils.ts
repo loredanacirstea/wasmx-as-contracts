@@ -2,13 +2,26 @@ import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as cfg from "./config";
 import { Base64String } from "wasmx-env/assembly/types";
 import { PotentialValidator, PotentialValidatorWithSignature } from "./types";
+import { getCurrentLevel } from "./storage";
 
 export function signMessage(validator_privkey: string, msgstr: string): Base64String {
     return wasmxw.ed25519Sign(validator_privkey, msgstr);
 }
 
-export function getProtocolId(chainId: string): string {
-    return cfg.PROTOCOL_ID + "_" + chainId
+export function getTopicLobby(): string {
+    return getTopicLevel(getCurrentLevel(), cfg.ROOM_LOBBY)
+}
+
+export function getTopicNewChain(newchainId: string): string {
+    return getTopic(newchainId, cfg.ROOM_NEW_CHAIN)
+}
+
+export function getProtocolId(): string {
+    return cfg.PROTOCOL_ID
+}
+
+export function getTopicLevel(level: i32, topic: string): string {
+    return `${level}_${topic}`
 }
 
 export function getTopic(chainId: string, topic: string): string {

@@ -197,8 +197,10 @@ export class ChainId {
     }
 
     // level1ch_1_7000-1
-    static toString(chain_base_name: string, level: u32, id: i64, forkIndex: u32): string {
-        let evmid = `${START_EVM_ID+id}`
+    static toString(chain_base_name: string, level: u32, evmid: i64, forkIndex: u32): string {
+        if (evmid < START_EVM_ID) {
+            evmid += START_EVM_ID
+        }
         return `${chain_base_name}_${level}_${evmid}-${forkIndex}`
     }
 }
