@@ -22,6 +22,12 @@ export function executeCrossChainQueryNonDeterministic(req: MsgCrossChainCallReq
     return JSON.parse<MsgCrossChainCallResponse>(String.UTF8.decode(resp));
 }
 
+export function executeCrossChainTxNonDeterministic(req: MsgCrossChainCallRequest): MsgCrossChainCallResponse {
+    const reqdata = JSON.stringify<MsgCrossChainCallRequest>(req)
+    const resp = crosschain.executeCrossChainTxNonDeterministic(String.UTF8.encode(reqdata));
+    return JSON.parse<MsgCrossChainCallResponse>(String.UTF8.decode(resp));
+}
+
 export function isAtomicTxInExecution(req: MsgIsAtomicTxInExecutionRequest): boolean {
     const reqdata = JSON.stringify<MsgIsAtomicTxInExecutionRequest>(req)
     const resp = crosschain.isAtomicTxInExecution(String.UTF8.encode(reqdata));

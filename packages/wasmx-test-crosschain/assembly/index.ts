@@ -1,12 +1,16 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { CallData, getCallDataWrap } from './calldata';
+import { CallData, getCallDataInitialize, getCallDataWrap } from './calldata';
 import { revert } from "./utils";
 import { CrossChain, CrossChainQuery } from "./actions";
+import { setCrossChainContract } from "./storage";
 
 export function wasmx_env_2(): void {}
 
-export function instantiate(): void {}
+export function instantiate(): void {
+  const calld = getCallDataInitialize();
+  setCrossChainContract(calld.crosschain_contract)
+}
 
 export function main(): void {
   // TODO check allowed caller!! is an authority

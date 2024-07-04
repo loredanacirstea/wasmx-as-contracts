@@ -1,5 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import * as wasmxt from "wasmx-env/assembly/types";
 import { MsgInitialize, MsgSetChainDataRequest, QueryGetChainDataRequest, QueryGetSubChainRequest } from "./types";
 import { Base64String } from "wasmx-env/assembly/types";
 
@@ -20,6 +21,11 @@ export class CallData {
 
     // consensusless hooks
     NewSubChain: HookCalld | null = null;
+
+    // crosschain
+    CrossChainTx: wasmxt.MsgCrossChainCallRequest | null = null;
+    CrossChainQuery: wasmxt.MsgCrossChainCallRequest | null = null;
+    CrossChainQueryNonDeterministic: wasmxt.MsgCrossChainCallRequest | null = null;
 }
 
 export function getCallDataWrap(): CallData {

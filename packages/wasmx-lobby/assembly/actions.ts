@@ -6,6 +6,8 @@ import * as wasmx from "wasmx-env/assembly/wasmx";
 import * as wasmxt from "wasmx-env/assembly/types";
 import * as fsm from 'xstate-fsm-as/assembly/storage';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
+import * as level0 from "wasmx-consensus/assembly/level0"
+import * as mcutils from "wasmx-consensus/assembly/multichain_utils"
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { NodeInfo } from "wasmx-p2p/assembly/types";
 import * as p2ptypes from "wasmx-p2p/assembly/types";
@@ -13,9 +15,13 @@ import * as p2pw from "wasmx-p2p/assembly/p2p_wrap";
 import * as tnd2utils from "wasmx-tendermint-p2p/assembly/action_utils";
 import * as tnd2mc from "wasmx-tendermint-p2p/assembly/multichain";
 import * as stakingutils from "wasmx-stake/assembly/msg_utils";
+import * as wasmxdefaults from "wasmx-wasmx/assembly/defaults";
+import * as utils from "wasmx-utils/assembly/utils";
+import * as metaregstore from "wasmx-metaregistry/assembly/storage";
+import * as metaregtypes from "wasmx-metaregistry/assembly/types";
 import * as cfg from "./config";
 import { addNewChainRequests, getChainIdLast, getChainSetupData, getNextLevel, getNewChainRequests, getNewChainResponse, getParams, getSubChainData, getValidatorsCount, setChainIdLast, setChainSetupData, setNewChainRequests, setNewChainResponse, setSubChainData } from "./storage";
-import { ChainConfigData, CurrentChainSetup, MsgLastChainId, MsgNewChainAccepted, MsgNewChainGenesisData, MsgNewChainRequest, MsgNewChainResponse, PotentialValidator } from "./types";
+import { ChainConfigData, CurrentChainSetup, MODULE_NAME, MsgLastChainId, MsgNewChainAccepted, MsgNewChainGenesisData, MsgNewChainRequest, MsgNewChainResponse, PotentialValidator } from "./types";
 import { getProtocolId, getTopic, mergeValidators, signMessage, sortValidators, sortValidatorsSimple, wrapValidators } from "./actions_utils";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
 import { ChainConfig, ChainId, InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
@@ -26,6 +32,7 @@ import * as wasmxtypes from "wasmx-wasmx/assembly/types";
 import { Params, RegisterDefaultSubChainRequest, SubChainData } from "wasmx-multichain-registry/assembly/types";
 import { QueryBuildGenTxRequest } from "wasmx-tendermint-p2p/assembly/types";
 import { base64ToString } from "wasmx-utils/assembly/utils";
+import * as roles from "wasmx-env/assembly/roles";
 
 export function wrapGuard(value: boolean): ArrayBuffer {
     if (value) return String.UTF8.encode("1");
@@ -518,16 +525,37 @@ export function createNewChainGenesisData(chaindata: MsgNewChainResponse, state:
     const params = getParams()
     const chainId = chaindata.msg.chainId
     const validCount = chaindata.msg.validators.length
+    const denomUnit = `lvl${levelIndex}`
+    const req = new RegisterDefaultSubChainRequest(denomUnit, 18, chainId.base_name, levelIndex, params.level_initial_balance, [])
+    const chainConfig = mcutils.buildChainConfig(req.denom_unit, req.base_denom_unit, req.chain_base_name)
 
     // create new genesis data
     const wasmxContractState = new Map<Bech32String,wasmxtypes.ContractStorage[]>()
-    // TODO storage key-pairs for subchain configs
 
-    const denomUnit = `lvl${levelIndex}`
-    const req = new RegisterDefaultSubChainRequest(denomUnit, 18, chainId.base_name, levelIndex, params.level_initial_balance, [])
+    // store common configuration now
+    // additional config is set by each validator
+    // TODO lobby - check that only metaregistry contract has wasmxstate set separately by each validator
+    const registryContractState = new Array<wasmxtypes.ContractStorage>(0)
+
+    // store level0 config - TODO chainID may change
+    const level0Config = new wasmxtypes.ContractStorage(
+        utils.uint8ArrayToHex(Uint8Array.wrap(String.UTF8.encode(metaregstore.getDataKey(level0.Level0ChainIdFull)))),
+        utils.stringToBase64(JSON.stringify<metaregtypes.ChainConfigData>(new metaregtypes.ChainConfigData(level0.Level0Config, level0.Level0ChainId))),
+    )
+    registryContractState.push(level0Config)
+
+    // store newchain config in its metaregistry contract
+    const newChainConfig = new wasmxtypes.ContractStorage(
+        utils.uint8ArrayToHex(Uint8Array.wrap(String.UTF8.encode(metaregstore.getDataKey(chainId.full)))),
+        utils.stringToBase64(JSON.stringify<metaregtypes.ChainConfigData>(new metaregtypes.ChainConfigData(chainConfig, chainId))),
+    )
+    registryContractState.push(newChainConfig)
+    // the parent chains are added when signing gentxs
+    wasmxContractState.set(wasmxdefaults.ADDR_METAREGISTRY, registryContractState)
+
 
     const regparams = new Params(params.min_validators_count, params.enable_eid_check, params.erc20CodeId, params.derc20CodeId, params.level_initial_balance)
-    const data = mcregistry.buildDefaultSubChainGenesisInternal(regparams, chainId.full, levelIndex, req, wasmxContractState)
+    const data = mcregistry.buildDefaultSubChainGenesisInternal(regparams, chainId.full, levelIndex, chainConfig, req, wasmxContractState)
     data.peers = new Array<string>(validCount)
     const genTx = new Array<string>(validCount)
     for (let i = 0; i < validCount; i++) {
@@ -727,6 +755,29 @@ export function addGenTx(
     // already added
     // gendata.signatures[i] = signature
 
+    const chainId = wasmxw.getChainId()
+    if (!chainId.includes(level0.Level0ChainId.base_name)) {
+        // also add our chain configuration to the wasmx genesis metaregistry
+        let metaregState = new Array<wasmxtypes.ContractStorage>(0)
+        if (gendata.data.wasmxContractState.has(wasmxdefaults.ADDR_METAREGISTRY)) {
+            metaregState = gendata.data.wasmxContractState.get(wasmxdefaults.ADDR_METAREGISTRY)
+        }
+
+        // duplicates are removed by merging the state
+        const newMetaregState = new Array<wasmxtypes.ContractStorage>(0)
+        const parentConfig = getChainConfigFromMetaregistry(chainId)
+        if (parentConfig != null) {
+            const parentconfigst = new wasmxtypes.ContractStorage(
+                utils.uint8ArrayToHex(Uint8Array.wrap(String.UTF8.encode(metaregstore.getDataKey(chainId)))),
+                utils.stringToBase64(JSON.stringify<metaregtypes.ChainConfigData>(parentConfig)),
+            )
+            newMetaregState.push(parentconfigst)
+        }
+
+        metaregState = mcregistry.mergeWasmxState(metaregState, newMetaregState)
+        gendata.data.wasmxContractState.set(wasmxdefaults.ADDR_METAREGISTRY, metaregState)
+    }
+
     setSubChainData(gendata)
     sendNewChainGenesisDataInternal(gendata, state)
 }
@@ -844,4 +895,22 @@ export function sendNewChainResponseInternal(state: CurrentChainSetup, data: Msg
     const protocolId = getProtocolId(state.data.chain_id)
     const topic = getTopic(state.data.chain_id, cfg.ROOM_LOBBY)
     p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, contract, signeddata, protocolId, topic))
+}
+
+export function getChainConfigFromMetaregistry(chainId: string): metaregtypes.ChainConfigData | null {
+    const calldatastr = `{"GetChainData":{"chain_id":"${chainId}"}}`;
+    const resp = callContract(roles.ROLE_METAREGISTRY, calldatastr, true);
+    if (resp.success > 0) {
+        return null;
+    }
+    const response = JSON.parse<metaregtypes.MsgSetChainDataRequest>(resp.data);
+    return response.data
+}
+
+export function callContract(addr: Bech32String, calldata: string, isQuery: boolean): wasmxt.CallResponse {
+    const req = new wasmxt.CallRequest(addr, calldata, BigInt.zero(), 100000000, isQuery);
+    const resp = wasmxw.call(req, MODULE_NAME);
+    // result or error
+    resp.data = utils.base64ToString(resp.data);
+    return resp;
 }

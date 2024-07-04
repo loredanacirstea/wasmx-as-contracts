@@ -1,13 +1,13 @@
 import { JSON } from "json-as/assembly";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as wasmxt from "wasmx-env/assembly/types";
-import * as roles from "wasmx-env/assembly/roles";
 import * as base64 from "as-base64/assembly"
 import * as crosschainw from "wasmx-env/assembly/crosschain_wrap";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { LoggerInfo, revert } from "./utils";
 import { MsgCrossChainCallRequest } from "wasmx-env/assembly/types";
 import { MODULE_NAME } from "./types";
+import { getCrossChainContract } from "./storage";
 
 export function CrossChain(req: MsgCrossChainCallRequest): ArrayBuffer {
     const resp = crossChainTx(req)
@@ -30,7 +30,7 @@ export function CrossChainQuery(req: MsgCrossChainCallRequest): ArrayBuffer {
 export function crossChainTx(req: wasmxt.MsgCrossChainCallRequest): wasmxt.MsgCrossChainCallResponse {
     const reqstr = JSON.stringify<wasmxt.MsgCrossChainCallRequest>(req)
     const calldatastr = `{"CrossChainTx":${reqstr}}`;
-    const resp = callContract(roles.ROLE_MULTICHAIN_REGISTRY, calldatastr, false)
+    const resp = callContract(getCrossChainContract(), calldatastr, false)
     if (resp.success > 0) {
         revert(`multichain crosschain tx failed: ${resp.data}`)
     }
@@ -41,7 +41,7 @@ export function crossChainTx(req: wasmxt.MsgCrossChainCallRequest): wasmxt.MsgCr
 export function crossChainQuery(req: wasmxt.MsgCrossChainCallRequest): wasmxt.MsgCrossChainCallResponse {
     const reqstr = JSON.stringify<wasmxt.MsgCrossChainCallRequest>(req)
     const calldatastr = `{"CrossChainQuery":${reqstr}}`;
-    const resp = callContract(roles.ROLE_MULTICHAIN_REGISTRY, calldatastr, true)
+    const resp = callContract(getCrossChainContract(), calldatastr, true)
     if (resp.success > 0) {
         revert(`multichain crosschain query failed: ${resp.data}`)
     }

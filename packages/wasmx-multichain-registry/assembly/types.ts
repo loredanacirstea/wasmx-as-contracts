@@ -8,6 +8,7 @@ import * as govtypes from "wasmx-gov/assembly/types";
 import * as slashingtypes from "wasmx-slashing/assembly/types";
 import * as distributiontypes from "wasmx-distribution/assembly/types";
 import { BigInt } from "wasmx-env/assembly/bn";
+import { ContractStorage } from "wasmx-wasmx/assembly/types";
 
 export const MODULE_NAME = "multichain_registry"
 
@@ -48,6 +49,7 @@ export class Params {
 export class SubChainData {
     data: InitSubChainDeterministicRequest
     genTxs: Base64String[] // json format!!
+    wasmxContractState: Map<Bech32String,ContractStorage[]> = new Map<Bech32String,ContractStorage[]>()
     initial_balance: BigInt
     initialized: bool
     level: i32 = 1
@@ -57,6 +59,7 @@ export class SubChainData {
         this.initial_balance = initial_balance
         this.initialized = false
         this.level = level
+        this.wasmxContractState = new Map<Bech32String,ContractStorage[]>()
     }
 }
 

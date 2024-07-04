@@ -7,6 +7,8 @@ import * as actions from "./actions";
 
 export function wasmx_env_2(): void {}
 
+export function wasmx_crosschain_1(): void {}
+
 export function instantiate(): void {
   const calld = getCallDataInitialize()
   setParams(calld.params);
@@ -17,6 +19,12 @@ export function main(): void {
   const calld = getCallDataWrap();
   if (calld.SetChainData !== null) {
     result = actions.SetChainData(calld.SetChainData!);
+  } else if (calld.CrossChainTx !== null) {
+    result = actions.CrossChainTx(calld.CrossChainTx!);
+  } else if (calld.CrossChainQuery !== null) {
+    result = actions.CrossChainQuery(calld.CrossChainQuery!);
+  } else if (calld.CrossChainQueryNonDeterministic !== null) {
+    result = actions.CrossChainQueryNonDeterministic(calld.CrossChainQueryNonDeterministic!);
   } else if (calld.NewSubChain !== null) {
     actions.NewSubChain(calld.NewSubChain!)
     result = new ArrayBuffer(0);

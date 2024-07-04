@@ -374,11 +374,10 @@ export function registerDefaultChainId(chainBaseName: string, levelIndex: i32): 
 
 // TODO each level can create a chain for the next level only?
 // so add the level number in genesis
-export function buildDefaultSubChainGenesisInternal(params: Params, chainId: string, currentLevel: i32, req: RegisterDefaultSubChainRequest, wasmxContractState: Map<Bech32String,wasmxtypes.ContractStorage[]>): InitSubChainDeterministicRequest {
+export function buildDefaultSubChainGenesisInternal(params: Params, chainId: string, currentLevel: i32, chainConfig: ChainConfig, req: RegisterDefaultSubChainRequest, wasmxContractState: Map<Bech32String,wasmxtypes.ContractStorage[]>): InitSubChainDeterministicRequest {
     const peers: string[] = [];
     const defaultInitialHeight: i64 = 1;
     const consensusParams = getDefaultConsensusParams()
-    const chainConfig = buildChainConfig(req.denom_unit, req.base_denom_unit, req.chain_base_name)
 
     const bootstrapAccountBech32 = wasmxw.addr_humanize_mc(utils.hexToUint8Array(modnames.ADDR_BOOTSTRAP_ACCOUNT).buffer, chainConfig.Bech32PrefixAccAddr)
     const feeCollectorBech32 =  wasmxw.addr_humanize_mc(utils.hexToUint8Array(modnames.ADDR_FEE_COLLECTOR).buffer, chainConfig.Bech32PrefixAccAddr)
@@ -402,7 +401,8 @@ export function buildDefaultSubChainGenesisInternal(params: Params, chainId: str
 // TODO each level can create a chain for the next level only?
 // so add the level number in genesis
 export function registerDefaultSubChainInternal(params: Params, chainId: string, req: RegisterDefaultSubChainRequest, levelIndex: i32, wasmxContractState: Map<Bech32String,wasmxtypes.ContractStorage[]>): SubChainData {
-    const data = buildDefaultSubChainGenesisInternal(params, chainId, levelIndex, req, wasmxContractState)
+    const chainConfig = buildChainConfig(req.denom_unit, req.base_denom_unit, req.chain_base_name)
+    const data = buildDefaultSubChainGenesisInternal(params, chainId, levelIndex, chainConfig, req, wasmxContractState)
     return registerSubChainInternal(data, req.gen_txs, req.initial_balance, levelIndex);
 }
 
@@ -514,6 +514,7 @@ export function initSubChainPrepareData(chaindata: SubChainData, genTxs: Base64S
     const appstate = utils.base64ToString(chaindata.data.init_chain_request.app_state_bytes)
     let genesisState: GenesisState = JSON.parse<GenesisState>(appstate)
     genesisState = includeGenTxs(genesisState, genTxs, chaindata.initial_balance)
+    genesisState = includeWasmxState(genesisState, chaindata.wasmxContractState)
 
     const validatorCount = getValidatorCountFromGenesis(genesisState)
     if (validatorCount < minValidatorCount) {
@@ -523,6 +524,47 @@ export function initSubChainPrepareData(chaindata: SubChainData, genTxs: Base64S
     chaindata.data.init_chain_request.app_state_bytes = utils.stringToBase64(newGenesisState);
     chaindata.initialized = true;
     return chaindata;
+}
+
+export function includeWasmxState(genesisState: GenesisState, wasmxContractState: Map<string, wasmxtypes.ContractStorage[]>): GenesisState {
+    // update wasmx state
+    if (!genesisState.has(modnames.MODULE_WASMX)) {
+        revert(`genesis state missing field: ${modnames.MODULE_WASMX}`)
+    }
+    const wasmxGenesisStr = utils.base64ToString(genesisState.get(modnames.MODULE_WASMX))
+    let wasmxGenesis = JSON.parse<wasmxtypes.GenesisState>(wasmxGenesisStr)
+
+    // set any contract storage key-value pairs
+    for (let i = 0; i < wasmxGenesis.system_contracts.length; i++) {
+        const c = wasmxGenesis.system_contracts[i]
+        if (wasmxContractState.has(c.address)) {
+            // merge state - if we have contradicting states, we revert
+            const mergedState = mergeWasmxState(wasmxGenesis.system_contracts[i].contract_state, wasmxContractState.get(c.address))
+            wasmxGenesis.system_contracts[i].contract_state = mergedState;
+        }
+    }
+
+    const newwasmxGenesisStr = utils.stringToBase64(JSON.stringify<wasmxtypes.GenesisState>(wasmxGenesis))
+    genesisState.set(modnames.MODULE_WASMX, newwasmxGenesisStr)
+    return genesisState;
+}
+
+export function mergeWasmxState(oldstate: wasmxtypes.ContractStorage[], newstate: wasmxtypes.ContractStorage[]): wasmxtypes.ContractStorage[] {
+    // merge state - if we have contradicting states, we revert
+    const extantKeys = new Map<string,string>()
+    for (let j = 0; j < oldstate.length; j++) {
+        extantKeys.set(oldstate[j].key, oldstate[j].value)
+    }
+    for (let j = 0; j < newstate.length; j++) {
+        if (extantKeys.has(newstate[j].key)) {
+            if (extantKeys.get(newstate[j].key) != newstate[j].value) {
+                revert(`genesis wasmx contract storage value mismatch: key ${newstate[j].key}, value ${newstate[j].value}`)
+            }
+        } else {
+            oldstate.push(newstate[j])
+        }
+    }
+    return oldstate;
 }
 
 export function includeGenTxs(genesisState: GenesisState, genTxs: Base64String[], initial_balance: BigInt): GenesisState {

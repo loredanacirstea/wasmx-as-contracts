@@ -32,6 +32,7 @@
     "wasmx-multichain-registry": "file:../wasmx-multichain-registry",
     "wasmx-p2p": "file:../wasmx-p2p",
     "wasmx-tendermint-p2p": "file:../wasmx-tendermint-p2p",
+    "wasmx-metaregistry": "file:../wasmx-metaregistry",
     "wasmx-utils": "file:../wasmx-utils",
     "wasmx-stake": "file:../wasmx-stake",
     "wasmx-wasmx": "file:../wasmx-wasmx",
