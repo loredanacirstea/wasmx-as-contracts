@@ -1,7 +1,7 @@
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as cfg from "./config";
 import { Base64String } from "wasmx-env/assembly/types";
-import { PotentialValidator, PotentialValidatorWithSignature } from "./types";
+import { MsgNewChainResponse, PotentialValidator, PotentialValidatorWithSignature } from "./types";
 import { getCurrentLevel } from "./storage";
 
 export function signMessage(validator_privkey: string, msgstr: string): Base64String {
@@ -34,6 +34,16 @@ export function wrapValidators(validators: PotentialValidator[], signatures: str
        v[i] = new PotentialValidatorWithSignature(validators[i], signatures[i])
     }
     return v;
+}
+
+export function unwrapValidators(tempdata: MsgNewChainResponse, allvalid: PotentialValidatorWithSignature[]): MsgNewChainResponse {
+    tempdata.msg.validators = new Array<PotentialValidator>(allvalid.length)
+    tempdata.signatures = new Array<string>(allvalid.length)
+    for (let i = 0; i < allvalid.length; i++) {
+        tempdata.msg.validators[i] = allvalid[i].validator
+        tempdata.signatures[i] = allvalid[i].signature
+    }
+    return tempdata
 }
 
 export function sortValidators(validators: PotentialValidatorWithSignature[]): PotentialValidatorWithSignature[] {

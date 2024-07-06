@@ -22,8 +22,8 @@ import * as metaregtypes from "wasmx-metaregistry/assembly/types";
 import * as staking from "wasmx-stake/assembly/types";
 import * as cfg from "./config";
 import { addNewChainRequests, getChainIdLast, getChainSetupData, getNextLevel, getNewChainRequests, getNewChainResponse, getParams, getSubChainData, getValidatorsCount, setChainIdLast, setChainSetupData, setNewChainRequests, setNewChainResponse, setSubChainData, getCurrentLevel } from "./storage";
-import { ChainConfigData, CurrentChainSetup, MODULE_NAME, MsgLastChainId, MsgNewChainAccepted, MsgNewChainGenesisData, MsgNewChainRequest, MsgNewChainResponse, PotentialValidator } from "./types";
-import { getProtocolId, getTopic, getTopicLevel, getTopicLobby, getTopicNewChain, mergeValidators, signMessage, sortValidators, sortValidatorsSimple, wrapValidators } from "./actions_utils";
+import { ChainConfigData, CurrentChainSetup, MODULE_NAME, MsgLastChainId, MsgNewChainAccepted, MsgNewChainGenesisData, MsgNewChainRequest, MsgNewChainResponse, PotentialValidator, PotentialValidatorWithSignature } from "./types";
+import { getProtocolId, getTopic, getTopicLevel, getTopicLobby, getTopicNewChain, mergeValidators, signMessage, sortValidators, sortValidatorsSimple, unwrapValidators, wrapValidators } from "./actions_utils";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
 import { ChainConfig, ChainId, InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
 import * as mcregistry from "wasmx-multichain-registry/assembly/actions";
@@ -346,6 +346,7 @@ export function receiveNewChainRequest(
     // if we don't have temporary chain data, then we just store the requests for when we will have
     if (tempdata == null) {
         addNewChainRequests(data);
+        LoggerInfo("empty new chain response, added new chain request", ["msg", msgstr])
         return;
     }
 
@@ -356,7 +357,13 @@ export function receiveNewChainRequest(
     tempdata.msg.validators.push(data.validator);
     // push empty signature, the node will fill it in
     tempdata.signatures.push("");
-    setNewChainResponse(tempdata);
+
+    // sort validators alphabetically
+    const allvalid = sortValidators(wrapValidators(tempdata.msg.validators, tempdata.signatures))
+    const newtempdata = unwrapValidators(tempdata, allvalid)
+
+    setNewChainResponse(newtempdata);
+    LoggerInfo("update new chain response", ["msg", JSON.stringify<MsgNewChainResponse>(newtempdata)])
 }
 
 // we have not received data from other nodes, so we are creating
@@ -509,13 +516,9 @@ export function receiveNewChainResponse(
     ))
     allvalid = allvalid.slice(0, getValidatorsCount())
 
-    tempdata.msg.validators = new Array<PotentialValidator>(allvalid.length)
-    tempdata.signatures = new Array<string>(allvalid.length)
-    for (let i = 0; i < allvalid.length; i++) {
-        tempdata.msg.validators[i] = allvalid[i].validator
-        tempdata.signatures[i] = allvalid[i].signature
-    }
-    setNewChainResponse(tempdata);
+    const newtempdata = unwrapValidators(tempdata, allvalid)
+    setNewChainResponse(newtempdata);
+    LoggerInfo("update new chain response", ["msg", JSON.stringify<MsgNewChainResponse>(newtempdata)])
 }
 
 export function tryCreateNewChainGenesisData(
@@ -533,7 +536,11 @@ export function tryCreateNewChainGenesisData(
         revert(`no setup data`)
         return;
     }
-    if (tempdata.msg.validators[0].consensusPublicKey != state.data.validator_pubkey) return;
+    if (tempdata.msg.validators[0].consensusPublicKey != state.data.validator_pubkey) {
+        LoggerInfo("not proposing genesis data, not the first validator", ["subchain_id", tempdata.msg.chainId.full, "proposer", tempdata.msg.validators[0].consensusPublicKey, "validator", state.data.validator_pubkey])
+        return;
+    }
+    LoggerInfo("proposing genesis data, as the first validator", ["subchain_id", tempdata.msg.chainId.full, "proposer", tempdata.msg.validators[0].consensusPublicKey, "validator", state.data.validator_pubkey])
     createNewChainGenesisData(tempdata, state)
 }
 

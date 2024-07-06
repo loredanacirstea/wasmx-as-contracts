@@ -60,6 +60,8 @@ export function connectRooms(
     const topic = getTopic(state, cfg.CHAT_ROOM_PROTOCOL)
     p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, topic))
 
+    p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, getTopic(state, cfg.CHAT_ROOM_CROSSCHAIN_MEMPOOL)))
+
     // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, cfg.CHAT_ROOM_BLOCK_PROPOSAL))
     // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, cfg.CHAT_ROOM_MEMPOOL))
     // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, cfg.CHAT_ROOM_NODEINFO))
@@ -570,18 +572,21 @@ export function forwardMsgToOtherChains(transaction: Base64String, chainIds: str
         return;
     }
     const msgstr = `{"run":{"event":{"type":"newTransaction","params":[{"key":"transaction", "value":"${transaction}"}]}}}`
-    const contractAddr = wasmx.getAddress();
-    const contractBech32 = wasmxw.getAddress();
+    // const contractAddr = wasmx.getAddress();
+    // const fromcontract = wasmxw.getAddress();
+    LoggerDebug("forwarding transaction to chains", ["chain_ids", chainIds.join(",")])
     for (let i = 0; i < chainIds.length; i++) {
         const chainId = chainIds[i]
         const protocolId = getProtocolIdInternal(chainId)
-        const topic = getTopicInternal(chainId, cfg.CHAT_ROOM_MEMPOOL)
+        const topic = getTopicInternal(chainId, cfg.CHAT_ROOM_CROSSCHAIN_MEMPOOL)
         LoggerDebug("forwarding transaction to chain", ["chain_id", chainId, "topic", topic, "protocolId", protocolId])
 
         // TODO contract address should be consensus role
-        let newcontract = base64.encode(Uint8Array.wrap(contractAddr))
+        // let tocontract = base64.encode(Uint8Array.wrap(contractAddr))
+        const tocontract = roles.ROLE_CONSENSUS
+        const fromcontract = roles.ROLE_CONSENSUS
 
-        p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(newcontract, contractBech32, msgstr, protocolId, topic))
+        p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(tocontract, fromcontract, msgstr, protocolId, topic))
     }
 }
 

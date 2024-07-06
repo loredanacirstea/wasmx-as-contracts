@@ -139,7 +139,11 @@ export class Mempool {
                     consw.isAtomicTxInExecution(new MsgIsAtomicTxInExecutionRequest(tx.leader, txhashes[i]))
                 ) {
                     atomicInExec = true
-                    LoggerDebug("atomic tx is in execution on leader chain", ["leader", tx.leader, "txhash", txhashes[i]])
+                    if (tx.leader == ourchain) {
+                        LoggerDebug("adding atomic tx to block proposal", ["leader", tx.leader, "txhash", txhashes[i]])
+                    } else {
+                        LoggerDebug("atomic tx is in execution on leader chain", ["leader", tx.leader, "txhash", txhashes[i]])
+                    }
                     batch.txs = []
                     batch.cummulatedGas = 0;
                 } else {
