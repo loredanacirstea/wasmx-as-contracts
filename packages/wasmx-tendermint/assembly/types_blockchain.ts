@@ -87,9 +87,13 @@ export class CurrentState {
 class MempoolBatch {
     txs: Base64String[];
     cummulatedGas: i64;
-    constructor(txs: Base64String[] = [], cummulatedGas: i64 = 0) {
+    isAtomicTx: boolean
+    isLeader: boolean
+    constructor(txs: Base64String[] = [], cummulatedGas: i64 = 0, isAtomicTx: boolean = false, isLeader: boolean = false) {
         this.txs = txs;
         this.cummulatedGas = cummulatedGas;
+        this.isAtomicTx = isAtomicTx;
+        this.isLeader = isLeader;
     }
 }
 
@@ -127,7 +131,7 @@ export class Mempool {
     }
 
     batch(maxGas: i64, maxBytes: i64, ourchain: string): MempoolBatch {
-        let batch: MempoolBatch = new MempoolBatch([], 0);
+        let batch: MempoolBatch = new MempoolBatch([], 0, false, false);
         let cummulatedBytes: i64 = 0;
         const txhashes = this.map.keys();
         for (let i = 0; i < txhashes.length; i++) {
@@ -141,11 +145,13 @@ export class Mempool {
                     atomicInExec = true
                     if (tx.leader == ourchain) {
                         LoggerDebug("adding atomic tx to block proposal", ["leader", tx.leader, "txhash", txhashes[i]])
+                        batch.isLeader = true
                     } else {
                         LoggerDebug("atomic tx is in execution on leader chain", ["leader", tx.leader, "txhash", txhashes[i]])
                     }
                     batch.txs = []
                     batch.cummulatedGas = 0;
+                    batch.isAtomicTx = true;
                 } else {
                     LoggerDebug("atomic tx is not in execution on leader chain, skipping...", ["leader", tx.leader, "txhash", txhashes[i]])
                     continue;

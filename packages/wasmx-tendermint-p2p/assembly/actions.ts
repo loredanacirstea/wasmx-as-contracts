@@ -936,13 +936,15 @@ export function receiveBlockProposal(
 // receive new block
 export function processAppendEntry(entry: LogEntryAggregate): void {
     const data = decodeBase64(entry.data.data);
-    const processReq = JSON.parse<typestnd.RequestProcessProposal>(String.UTF8.decode(data.buffer));
+    const processReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(String.UTF8.decode(data.buffer));
+    const processReq = processReqWithMeta.request
 
     // TODO check all the validator signatures on the previous block, for correctness
     // TODO do we compare with our own signatures?
     // entry.data.last_commit
 
-    const processResp = consensuswrap.ProcessProposal(processReq);
+    const processReqWrap = new typestnd.WrapRequestProcessProposal(processReq, false)
+    const processResp = consensuswrap.ProcessProposal(processReqWrap);
     if (processResp.status === typestnd.ProposalStatus.REJECT) {
         // TODO - what to do here? returning just discards the block and does not return a response to the leader
         // but this node will not sync with the leader anymore

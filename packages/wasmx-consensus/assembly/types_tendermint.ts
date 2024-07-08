@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as base64 from "as-base64/assembly/index";
-import {HexString, Base64String, Bech32String, Event, PublicKey} from 'wasmx-env/assembly/types';
+import {HexString, Base64String, Bech32String, Event, PublicKey, MsgCrossChainCallRequest} from 'wasmx-env/assembly/types';
 import { AnyWrap } from "wasmx-env/assembly/wasmx_types";
 
 export const TypeUrl_ExtensionOptionEthereumTx         = "/mythos.wasmx.v1.ExtensionOptionEthereumTx"
@@ -312,6 +312,17 @@ export class RequestProcessProposal {
 
 // @ts-ignore
 @serializable
+export class WrapRequestProcessProposal {
+    req: RequestProcessProposal
+    optimistic_execution: boolean
+    constructor(req: RequestProcessProposal, optimistic_execution: boolean) {
+        this.req = req
+        this.optimistic_execution = optimistic_execution
+    }
+}
+
+// @ts-ignore
+@serializable
 export enum ProposalStatus {
     UNKNOWN = 0,
     ACCEPT = 1,
@@ -321,9 +332,11 @@ export enum ProposalStatus {
 // @ts-ignore
 @serializable
 export class ResponseProcessProposal {
-    status: ProposalStatus;
-    constructor(status: ProposalStatus) {
+    status: ProposalStatus = 0;
+    metainfo: Map<string,Base64String> = new Map<string,Base64String>()
+    constructor(status: ProposalStatus, metainfo: Map<string,Base64String>) {
         this.status = status;
+        this.metainfo = metainfo
     }
 }
 
@@ -347,6 +360,28 @@ export class RequestFinalizeBlock {
         this.time = time;
         this.next_validators_hash = nextValidatorsHash;
         this.proposer_address = proposerAddress;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class WrapRequestFinalizeBlock {
+    request: RequestFinalizeBlock
+    metainfo: Map<string, Base64String>
+    constructor(request: RequestFinalizeBlock, metainfo: Map<string, Base64String>) {
+        this.request = request
+        this.metainfo = metainfo;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class RequestProcessProposalWithMetaInfo {
+    request: RequestProcessProposal
+    metainfo: Map<string, Base64String>
+    constructor(request: RequestProcessProposal, metainfo: Map<string, Base64String>) {
+        this.request = request
+        this.metainfo = metainfo;
     }
 }
 

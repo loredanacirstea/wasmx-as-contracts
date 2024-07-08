@@ -18,6 +18,8 @@ import {
     ResponseCheckTx,
     ResponseBeginBlockWrap,
     ResponseBeginBlock,
+    WrapRequestProcessProposal,
+    WrapRequestFinalizeBlock,
 } from './types_tendermint';
 
 export function CheckTx(req: RequestCheckTx): ResponseCheckTx {
@@ -38,8 +40,8 @@ export function PrepareProposal(req: RequestPrepareProposal): ResponsePreparePro
     return JSON.parse<ResponsePrepareProposal>(respstr);
 }
 
-export function ProcessProposal(req: RequestProcessProposal): ResponseProcessProposal {
-    const reqstr = JSON.stringify<RequestProcessProposal>(req);
+export function ProcessProposal(req: WrapRequestProcessProposal): ResponseProcessProposal {
+    const reqstr = JSON.stringify<WrapRequestProcessProposal>(req);
     LoggerDebug("ProcessProposal", ["request", reqstr]);
     const respbz = consensus.ProcessProposal(String.UTF8.encode(reqstr));
     const respstr = String.UTF8.decode(respbz);
@@ -47,8 +49,8 @@ export function ProcessProposal(req: RequestProcessProposal): ResponseProcessPro
     return JSON.parse<ResponseProcessProposal>(respstr);
 }
 
-export function FinalizeBlock(req: RequestFinalizeBlock): ResponseFinalizeBlockWrap {
-    const reqstr = JSON.stringify<RequestFinalizeBlock>(req);
+export function FinalizeBlock(req: WrapRequestFinalizeBlock): ResponseFinalizeBlockWrap {
+    const reqstr = JSON.stringify<WrapRequestFinalizeBlock>(req);
     LoggerDebug("FinalizeBlock", ["request", reqstr]);
     const respbz = consensus.FinalizeBlock(String.UTF8.encode(reqstr));
     const respstr = String.UTF8.decode(respbz);

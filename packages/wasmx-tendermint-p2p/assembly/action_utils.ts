@@ -237,7 +237,8 @@ export function startBlockFinalizationFollowerInternal(entryobj: LogEntryAggrega
 // TODO CommitInfo saved in block! from voting process
 function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: boolean): boolean {
     const processReqStr = String.UTF8.decode(decodeBase64(entryobj.data.data).buffer);
-    const processReq = JSON.parse<typestnd.RequestProcessProposal>(processReqStr);
+    const processReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(processReqStr);
+    const processReq = processReqWithMeta.request
     const finalizeReq = new typestnd.RequestFinalizeBlock(
         processReq.txs,
         processReq.proposed_last_commit, // TODO we retrieve the signatures
@@ -256,7 +257,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         revert(`${resbegin.error}`);
     }
 
-    let respWrap = consensuswrap.FinalizeBlock(finalizeReq);
+    let respWrap = consensuswrap.FinalizeBlock(new typestnd.WrapRequestFinalizeBlock(finalizeReq, processReqWithMeta.metainfo));
     if (respWrap.error.length > 0 && !retry) {
         // ERR invalid height: 3232; expected: 3233
         const mismatchErr = `expected: ${(finalizeReq.height + 1).toString()}`

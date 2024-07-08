@@ -639,7 +639,7 @@ export function processAppendEntry(entry: LogEntryAggregate): void {
     const data = decodeBase64(entry.data.data);
     const processReq = JSON.parse<typestnd.RequestProcessProposal>(String.UTF8.decode(data.buffer));
 
-    const processResp = consensuswrap.ProcessProposal(processReq);
+    const processResp = consensuswrap.ProcessProposal(new typestnd.WrapRequestProcessProposal(processReq, false));
     if (processResp.status === typestnd.ProposalStatus.REJECT) {
         // TODO - what to do here? returning just discards the block and does not return a response to the leader
         // but this node will not sync with the leader anymore
@@ -1004,7 +1004,7 @@ function startBlockProposal(txs: string[], cummulatedGas: i64, maxDataBytes: i64
         prepareReq.next_validators_hash,
         prepareReq.proposer_address,
     )
-    const processResp = consensuswrap.ProcessProposal(processReq);
+    const processResp = consensuswrap.ProcessProposal(new typestnd.WrapRequestProcessProposal(processReq, false));
     if (processResp.status === typestnd.ProposalStatus.REJECT) {
         // TODO - what to do here? returning just discards the block and the transactions
         LoggerError("new block rejected", ["height", processReq.height.toString(), "node type", "Leader"])
@@ -1050,7 +1050,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         processReq.next_validators_hash,
         processReq.proposer_address,
     )
-    let respWrap = consensuswrap.FinalizeBlock(finalizeReq);
+    let respWrap = consensuswrap.FinalizeBlock(new typestnd.WrapRequestFinalizeBlock(finalizeReq, new Map<string,Base64String>()));
     if (respWrap.error.length > 0 && !retry) {
         // ERR invalid height: 3232; expected: 3233
         const mismatchErr = `expected: ${(finalizeReq.height + 1).toString()}`

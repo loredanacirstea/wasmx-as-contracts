@@ -616,6 +616,7 @@ export class MsgCrossChainCallRequest {
     dependencies: string[] = []
     from_chain_id: string = ""
     to_chain_id: string = ""
+    is_query: boolean
     constructor(
         to: string,
         msg: Base64String,
@@ -632,6 +633,7 @@ export class MsgCrossChainCallRequest {
         // set by wasmx
         this.from = ""
         this.from_chain_id = ""
+        this.is_query = false
     }
 }
 
