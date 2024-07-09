@@ -18,8 +18,8 @@ import {
     ResponseCheckTx,
     ResponseBeginBlockWrap,
     ResponseBeginBlock,
-    WrapRequestProcessProposal,
     WrapRequestFinalizeBlock,
+    ResponseOptimisticExecution,
 } from './types_tendermint';
 
 export function CheckTx(req: RequestCheckTx): ResponseCheckTx {
@@ -40,13 +40,23 @@ export function PrepareProposal(req: RequestPrepareProposal): ResponsePreparePro
     return JSON.parse<ResponsePrepareProposal>(respstr);
 }
 
-export function ProcessProposal(req: WrapRequestProcessProposal): ResponseProcessProposal {
-    const reqstr = JSON.stringify<WrapRequestProcessProposal>(req);
+export function ProcessProposal(req: RequestProcessProposal): ResponseProcessProposal {
+    const reqstr = JSON.stringify<RequestProcessProposal>(req);
     LoggerDebug("ProcessProposal", ["request", reqstr]);
     const respbz = consensus.ProcessProposal(String.UTF8.encode(reqstr));
     const respstr = String.UTF8.decode(respbz);
     LoggerDebug("ProcessProposal", ["response", respstr]);
     return JSON.parse<ResponseProcessProposal>(respstr);
+}
+
+export function OptimisticExecution(req: RequestProcessProposal, resp: ResponseProcessProposal): ResponseOptimisticExecution {
+    const reqstr = JSON.stringify<RequestProcessProposal>(req);
+    const respstr = JSON.stringify<ResponseProcessProposal>(resp);
+    LoggerDebug("OptimisticExecution", []);
+    const respbz = consensus.OptimisticExecution(String.UTF8.encode(reqstr), String.UTF8.encode(respstr));
+    const responsestr = String.UTF8.decode(respbz);
+    LoggerDebug("OptimisticExecution", ["response", responsestr]);
+    return JSON.parse<ResponseOptimisticExecution>(responsestr);
 }
 
 export function FinalizeBlock(req: WrapRequestFinalizeBlock): ResponseFinalizeBlockWrap {

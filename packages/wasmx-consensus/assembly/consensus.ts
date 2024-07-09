@@ -1,5 +1,6 @@
 export declare function CheckTx(value: ArrayBuffer): ArrayBuffer
 export declare function PrepareProposal(value: ArrayBuffer): ArrayBuffer
+export declare function OptimisticExecution(request: ArrayBuffer, response: ArrayBuffer): ArrayBuffer
 export declare function ProcessProposal(value: ArrayBuffer): ArrayBuffer
 export declare function FinalizeBlock(value: ArrayBuffer): ArrayBuffer
 export declare function BeginBlock(value: ArrayBuffer): ArrayBuffer

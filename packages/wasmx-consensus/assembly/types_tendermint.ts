@@ -312,17 +312,6 @@ export class RequestProcessProposal {
 
 // @ts-ignore
 @serializable
-export class WrapRequestProcessProposal {
-    req: RequestProcessProposal
-    optimistic_execution: boolean
-    constructor(req: RequestProcessProposal, optimistic_execution: boolean) {
-        this.req = req
-        this.optimistic_execution = optimistic_execution
-    }
-}
-
-// @ts-ignore
-@serializable
 export enum ProposalStatus {
     UNKNOWN = 0,
     ACCEPT = 1,
@@ -333,9 +322,16 @@ export enum ProposalStatus {
 @serializable
 export class ResponseProcessProposal {
     status: ProposalStatus = 0;
-    metainfo: Map<string,Base64String> = new Map<string,Base64String>()
-    constructor(status: ProposalStatus, metainfo: Map<string,Base64String>) {
+    constructor(status: ProposalStatus) {
         this.status = status;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class ResponseOptimisticExecution {
+    metainfo: Map<string,Base64String> = new Map<string,Base64String>()
+    constructor(metainfo: Map<string,Base64String>) {
         this.metainfo = metainfo
     }
 }
@@ -378,9 +374,11 @@ export class WrapRequestFinalizeBlock {
 @serializable
 export class RequestProcessProposalWithMetaInfo {
     request: RequestProcessProposal
+    optimistic_execution: boolean
     metainfo: Map<string, Base64String>
-    constructor(request: RequestProcessProposal, metainfo: Map<string, Base64String>) {
+    constructor(request: RequestProcessProposal, optimistic_execution: boolean, metainfo: Map<string, Base64String>) {
         this.request = request
+        this.optimistic_execution = optimistic_execution
         this.metainfo = metainfo;
     }
 }

@@ -6,6 +6,8 @@ import { revert } from "./utils";
 
 export function wasmx_env_2(): void {}
 
+export function wasmx_consensus_json_1(): void {}
+
 export function instantiate(): void {}
 
 export function main(): void {

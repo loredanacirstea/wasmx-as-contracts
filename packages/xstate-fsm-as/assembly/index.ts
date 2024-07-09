@@ -24,7 +24,6 @@ import { LoggerDebug, LoggerInfo, revert } from './utils';
 import { Base64String } from "wasmx-env/assembly/types";
 
 export function wasmx_env_2(): void {}
-export function wasmx_consensus_json_1(): void {}
 
 export function instantiate(): void {}
 

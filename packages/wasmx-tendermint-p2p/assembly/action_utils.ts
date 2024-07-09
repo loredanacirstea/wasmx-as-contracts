@@ -252,9 +252,14 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
 
     // const blockDataBeginBlock = JSON.stringify<typestnd.RequestFinalizeBlock>(finalizeReq)
     // callHookContract("BeginBlock", blockDataBeginBlock);
-    const resbegin = consensuswrap.BeginBlock(finalizeReq);
-    if (resbegin.error.length > 0) {
-        revert(`${resbegin.error}`);
+
+    // if we have done optimisting execution, BeginBlock was already ran
+    const oeran = processReqWithMeta.optimistic_execution && processReq.proposer_address == getSelfNodeInfo().address
+    if (!oeran) {
+        const resbegin = consensuswrap.BeginBlock(finalizeReq);
+        if (resbegin.error.length > 0) {
+            revert(`${resbegin.error}`);
+        }
     }
 
     let respWrap = consensuswrap.FinalizeBlock(new typestnd.WrapRequestFinalizeBlock(finalizeReq, processReqWithMeta.metainfo));

@@ -586,7 +586,7 @@ function startBlockProposal(txs: string[], cummulatedGas: i64, maxDataBytes: i64
         prepareReq.next_validators_hash,
         prepareReq.proposer_address,
     )
-    const processResp = consensuswrap.ProcessProposal(new typestnd.WrapRequestProcessProposal(processReq, false));
+    const processResp = consensuswrap.ProcessProposal(processReq);
     if (processResp.status === typestnd.ProposalStatus.REJECT) {
         // TODO - what to do here? returning just discards the block and the transactions
         LoggerError("new block rejected", ["height", processReq.height.toString(), "node type", "Leader"])

@@ -37,7 +37,6 @@ export function crossChainTx(req: wasmxt.MsgCrossChainCallRequest): wasmxt.MsgCr
     return JSON.parse<wasmxt.MsgCrossChainCallResponse>(resp.data)
 }
 
-
 export function crossChainQuery(req: wasmxt.MsgCrossChainCallRequest): wasmxt.MsgCrossChainCallResponse {
     const reqstr = JSON.stringify<wasmxt.MsgCrossChainCallRequest>(req)
     const calldatastr = `{"CrossChainQuery":${reqstr}}`;

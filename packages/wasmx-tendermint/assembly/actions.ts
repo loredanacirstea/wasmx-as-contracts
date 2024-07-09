@@ -734,8 +734,7 @@ export function processAppendEntry(entry: LogEntryAggregate): void {
     const data = decodeBase64(entry.data.data);
     const processReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(String.UTF8.decode(data.buffer));
     const processReq = processReqWithMeta.request
-    const processReqWrap = new typestnd.WrapRequestProcessProposal(processReq, false)
-    const processResp = consensuswrap.ProcessProposal(processReqWrap);
+    const processResp = consensuswrap.ProcessProposal(processReq);
     if (processResp.status === typestnd.ProposalStatus.REJECT) {
         // TODO - what to do here? returning just discards the block and does not return a response to the leader
         // but this node will not sync with the leader anymore
@@ -1077,19 +1076,45 @@ export function buildBlockProposal(txs: string[], optimisticExecution: boolean, 
         prepareReq.next_validators_hash,
         prepareReq.proposer_address,
     )
-    const processResp = consensuswrap.ProcessProposal(new typestnd.WrapRequestProcessProposal(processReq, optimisticExecution));
+    const processResp = consensuswrap.ProcessProposal(processReq);
     if (processResp.status === typestnd.ProposalStatus.REJECT) {
         // TODO - what to do here? returning just discards the block and the transactions
         LoggerError("new block rejected", ["height", processReq.height.toString(), "node type", "Leader"])
         return null;
     }
+    let metainfo = new Map<string,Base64String>()
+    if (optimisticExecution) {
+        const oeresp = doOptimisticExecution(processReq, processResp);
+        metainfo = oeresp.metainfo;
+    }
     // We have a valid proposal to propagate to other nodes
-    const entry = buildLogEntryAggregate(processReq, header, lastBlockCommit, processResp.metainfo);
+    const entry = buildLogEntryAggregate(processReq, header, lastBlockCommit, optimisticExecution, metainfo);
     return new BuildProposal(entry, processReq);
 }
 
-export function buildLogEntryAggregate(processReq: typestnd.RequestProcessProposal, header: typestnd.Header, blockCommit: typestnd.BlockCommit, meta: Map<string,Base64String>): LogEntryAggregate {
-    const blockData = JSON.stringify<typestnd.RequestProcessProposalWithMetaInfo>(new typestnd.RequestProcessProposalWithMetaInfo(processReq, meta));
+export function doOptimisticExecution(processReq: typestnd.RequestProcessProposal, processResp: typestnd.ResponseProcessProposal): typestnd.ResponseOptimisticExecution {
+    // run block start first
+    // we run block end when we actually finalize the block
+    const finalizeReq = new typestnd.RequestFinalizeBlock(
+        processReq.txs,
+        processReq.proposed_last_commit, // TODO we retrieve the signatures
+        processReq.misbehavior,
+        processReq.hash,
+        processReq.height,
+        processReq.time,
+        processReq.next_validators_hash,
+        processReq.proposer_address,
+    )
+    const resbegin = consensuswrap.BeginBlock(finalizeReq);
+    if (resbegin.error.length > 0) {
+        revert(`${resbegin.error}`);
+    }
+
+    return consensuswrap.OptimisticExecution(processReq, processResp);
+}
+
+export function buildLogEntryAggregate(processReq: typestnd.RequestProcessProposal, header: typestnd.Header, blockCommit: typestnd.BlockCommit, optimisticExecution: boolean, meta: Map<string,Base64String>): LogEntryAggregate {
+    const blockData = JSON.stringify<typestnd.RequestProcessProposalWithMetaInfo>(new typestnd.RequestProcessProposalWithMetaInfo(processReq, optimisticExecution, meta));
     const blockDataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(blockData)))
     const blockHeader = JSON.stringify<typestnd.Header>(header);
     const blockHeaderBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(blockHeader)))
@@ -1264,7 +1289,14 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         processReq.next_validators_hash,
         processReq.proposer_address,
     )
-    // TODO "BeginBlock"
+
+    // TODO optimistic execution?
+    // TODO endblock
+    const resbegin = consensuswrap.BeginBlock(finalizeReq);
+    if (resbegin.error.length > 0) {
+        revert(`${resbegin.error}`);
+    }
+
     let respWrap = consensuswrap.FinalizeBlock(new typestnd.WrapRequestFinalizeBlock(finalizeReq, processReqWithMeta.metainfo));
     if (respWrap.error.length > 0 && !retry) {
         // ERR invalid height: 3232; expected: 3233
@@ -1284,7 +1316,6 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
             return false;
         }
     }
-
     const finalizeResp = respWrap.data;
     if (finalizeResp == null) {
         revert("FinalizeBlock response is null");
@@ -1295,7 +1326,6 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     //     revert(`AppHash verification failed: actual ${finalizeResp.app_hash} expected ${expected.app_hash}`);
     //     return false;
     // }
-
 
     const resultstr = JSON.stringify<typestnd.ResponseFinalizeBlock>(finalizeResp);
     const resultBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(resultstr)));

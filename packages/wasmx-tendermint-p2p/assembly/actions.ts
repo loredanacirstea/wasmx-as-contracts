@@ -943,8 +943,7 @@ export function processAppendEntry(entry: LogEntryAggregate): void {
     // TODO do we compare with our own signatures?
     // entry.data.last_commit
 
-    const processReqWrap = new typestnd.WrapRequestProcessProposal(processReq, false)
-    const processResp = consensuswrap.ProcessProposal(processReqWrap);
+    const processResp = consensuswrap.ProcessProposal(processReq);
     if (processResp.status === typestnd.ProposalStatus.REJECT) {
         // TODO - what to do here? returning just discards the block and does not return a response to the leader
         // but this node will not sync with the leader anymore
