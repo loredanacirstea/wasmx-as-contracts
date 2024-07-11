@@ -11,7 +11,7 @@ export class BlockEntry {
     readerContract: Base64String
     writerContract: Base64String
     // in tendermint, data is {txs: tx[]}
-    data: Base64String; // base64-encoded RequestFinalizeBlock
+    data: Base64String; // base64-encoded RequestProcessProposalWithMetaInfo
     header: Base64String // base64-encoded Header
     proposer_address: Bech32String // operator address
     last_commit: Base64String // base64-encoded BlockCommit

@@ -373,7 +373,7 @@ export class WrapRequestFinalizeBlock {
 // @ts-ignore
 @serializable
 export class RequestProcessProposalWithMetaInfo {
-    request: RequestProcessProposal
+    request: RequestProcessProposal // same content as RequestFinalizeBloc
     optimistic_execution: boolean
     metainfo: Map<string, Base64String>
     constructor(request: RequestProcessProposal, optimistic_execution: boolean, metainfo: Map<string, Base64String>) {
