@@ -2,6 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as base64 from "as-base64/assembly/index";
 import {HexString, Base64String, Bech32String, Event, PublicKey, MsgCrossChainCallRequest} from 'wasmx-env/assembly/types';
 import { AnyWrap } from "wasmx-env/assembly/wasmx_types";
+import { NodePorts } from "./types_multichain";
 
 export const TypeUrl_ExtensionOptionEthereumTx         = "/mythos.wasmx.v1.ExtensionOptionEthereumTx"
 export const TypeUrl_ExtensionOptionAtomicMultiChainTx = "/mythos.network.v1.ExtensionOptionAtomicMultiChainTx"
@@ -732,7 +733,8 @@ export class InitChainSetup {
     validator_pubkey: Base64String
     peers: string[]
     node_index: i32
-    constructor(chain_id: string, version: Version, consensus_params: ConsensusParams, app_hash: Base64String, last_results_hash: Base64String, validator_address: HexString, validator_privkey: Base64String, validator_pubkey: Base64String, peers: string[], node_index: i32) {
+    initial_ports: NodePorts
+    constructor(chain_id: string, version: Version, consensus_params: ConsensusParams, app_hash: Base64String, last_results_hash: Base64String, validator_address: HexString, validator_privkey: Base64String, validator_pubkey: Base64String, peers: string[], node_index: i32, initial_ports: NodePorts) {
         this.chain_id = chain_id
         this.version = version
         this.consensus_params = consensus_params
@@ -743,5 +745,6 @@ export class InitChainSetup {
         this.validator_pubkey = validator_pubkey
         this.peers = peers
         this.node_index = node_index
+        this.initial_ports = initial_ports
     }
 }

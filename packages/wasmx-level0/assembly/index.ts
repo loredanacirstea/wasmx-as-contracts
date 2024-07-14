@@ -115,8 +115,6 @@ export function main(): void {
     tnd2.receiveStateSyncResponse(calld.params, calld.event);
   } else if (calld.method === "receiveUpdateNodeResponse") {
     tnd2.receiveUpdateNodeResponse(calld.params, calld.event);
-  } else if (calld.method === "StartNode") {
-    tnd2mc.StartNode();
   } else if (calld.method === "buildGenTx") {
     tnd2mc.buildGenTx(calld.params, calld.event);
     wasmx.finish(wasmx.getFinishData());

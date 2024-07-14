@@ -22,38 +22,6 @@ import { InitSubChainDeterministicRequest, StartSubChainMsg } from "wasmx-consen
 import { QueryBuildGenTxRequest } from "./types";
 import { getSelfNodeInfo } from "./action_utils";
 
-
-export function StartNode(): void {
-    // get chain ids from our local registry
-    const resp = callContract(roles.ROLE_MULTICHAIN_REGISTRY_LOCAL, `{"GetSubChainIds":{}}`, true)
-    if (resp.success > 0) {
-        // we do not fail, we want the chain to continue
-        LoggerError(`call failed: could not start subchains`, ["error", resp.data, "contract", roles.ROLE_MULTICHAIN_REGISTRY_LOCAL])
-        return;
-    }
-    const idresp = JSON.parse<QuerySubChainIdsResponse>(resp.data);
-    if (idresp.ids.length == 0) return;
-
-    // call chain registry & get all subchains & start each node
-    const calldatastr = `{"GetSubChainsByIds":${resp.data}}`;
-    const resp2 = callContract(roles.ROLE_MULTICHAIN_REGISTRY, calldatastr, true);
-    if (resp2.success > 0) {
-        // we do not fail, we want the chain to continue
-        LoggerError(`call failed: could not start subchains`, ["contract", roles.ROLE_MULTICHAIN_REGISTRY, "error", resp2.data])
-        return
-    }
-    const chains = JSON.parse<InitSubChainDeterministicRequest[]>(resp.data);
-    LoggerInfo("starting subchains", ["count", chains.length.toString()])
-    for (let i = 0; i < chains.length; i++) {
-        const chain = chains[i];
-        LoggerInfo("starting subchain", ["subchain_id", chain.init_chain_request.chain_id])
-        const resp = mcwrap.StartSubChain(new StartSubChainMsg(chain.init_chain_request.chain_id, chain.chain_config))
-        if (resp.error.length > 0) {
-            LoggerError("could not start subchain", ["subchain_id", chain.init_chain_request.chain_id])
-        }
-    }
-}
-
 export function buildGenTx(
     params: ActionParam[],
     event: EventObject,

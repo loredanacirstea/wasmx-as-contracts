@@ -25,7 +25,7 @@ import { addNewChainRequests, getChainIdLast, getChainSetupData, getNextLevel, g
 import { ChainConfigData, CurrentChainSetup, MODULE_NAME, MsgLastChainId, MsgNewChainAccepted, MsgNewChainGenesisData, MsgNewChainRequest, MsgNewChainResponse, PotentialValidator, PotentialValidatorWithSignature } from "./types";
 import { getProtocolId, getTopic, getTopicLevel, getTopicLobby, getTopicNewChain, mergeValidators, signMessage, sortValidators, sortValidatorsSimple, unwrapValidators, wrapValidators } from "./actions_utils";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
-import { ChainConfig, ChainId, InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
+import { ChainConfig, ChainId, InitSubChainDeterministicRequest, NodePorts } from "wasmx-consensus/assembly/types_multichain";
 import * as mcregistry from "wasmx-multichain-registry/assembly/actions";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { Bech32String } from "wasmx-env/assembly/types";
@@ -156,6 +156,24 @@ export function setupNode(
         peers[i] = new NodeInfo(addr, new p2ptypes.NetworkNode(p2pid, host, port, parts1[1]), false);
     }
     setChainSetupData(new CurrentChainSetup(data, peers[data.node_index]))
+}
+
+export function connectNode(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const state = getChainSetupData()
+    if (state == null) {
+        revert(`setup state not stored`)
+        return;
+    }
+    const protocolId = getProtocolId()
+
+    const reqstart = new p2ptypes.StartNodeWithIdentityRequest(state.node.node.port, protocolId, state.data.validator_privkey);
+    const resp = p2pw.StartNodeWithIdentity(reqstart);
+    if (resp.error != "") {
+        revert(`start node with identity: ${resp.error}`)
+    }
 }
 
 export function p2pConnectLobbyRoom(
@@ -577,9 +595,8 @@ export function createNewChainGenesisData(chaindata: MsgNewChainResponse, state:
     // the parent chains are added when signing gentxs
     wasmxContractState.set(wasmxdefaults.ADDR_METAREGISTRY, registryContractState)
 
-
     const regparams = new Params(params.min_validators_count, params.enable_eid_check, params.erc20CodeId, params.derc20CodeId, params.level_initial_balance)
-    const data = mcregistry.buildDefaultSubChainGenesisInternal(regparams, chainId.full, levelIndex, chainConfig, req, wasmxContractState)
+    const data = mcregistry.buildDefaultSubChainGenesisInternal(regparams, chainId.full, levelIndex, chainConfig, req, wasmxContractState,  new NodePorts())
     data.peers = new Array<string>(validCount)
     const genTx = new Array<string>(validCount)
     for (let i = 0; i < validCount; i++) {
@@ -726,6 +743,7 @@ export function initializeChain(
     setChainIdLast(chainId)
     sendLastChainIdInternal(state, chainId)
 
+    // initSubChain will initialize the chain & send the chain data to be registered on level0, on metaregistry & the local registry
     tnd2utils.initSubChain(
         chaindata.data,
         state.data.validator_pubkey,

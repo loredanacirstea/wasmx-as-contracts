@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, getCallDataInitialize, getCallDataWrap } from './calldata';
-import { ConvertAddressByChainId, CrossChainQuery, CrossChainQueryNonDeterministic, CrossChainTx, GetCurrentLevel, GetSubChainById, GetSubChainConfigById, GetSubChainIds, GetSubChainIdsByLevel, GetSubChainIdsByValidator, GetSubChains, GetSubChainsByIds, GetValidatorAddressesByChainId, GetValidatorsByChainId, InitSubChain, RegisterDefaultSubChain, RegisterSubChain, RegisterSubChainValidator, RemoveSubChain } from "./actions";
+import { ConvertAddressByChainId, CrossChainQuery, CrossChainQueryNonDeterministic, CrossChainTx, GetCurrentLevel, GetSubChainById, GetSubChainConfigById, GetSubChainConfigByIds, GetSubChainIds, GetSubChainIdsByLevel, GetSubChainIdsByValidator, GetSubChains, GetSubChainsByIds, GetValidatorAddressesByChainId, GetValidatorsByChainId, InitSubChain, RegisterDefaultSubChain, RegisterSubChain, RegisterSubChainValidator, RemoveSubChain } from "./actions";
 import { revert } from "./utils";
 import { setParams } from "./storage";
 
@@ -31,6 +31,8 @@ export function main(): void {
     result = GetSubChainById(calld.GetSubChainById!);
   } else if (calld.GetSubChainConfigById !== null) {
     result = GetSubChainConfigById(calld.GetSubChainConfigById!);
+  } else if (calld.GetSubChainConfigByIds !== null) {
+    result = GetSubChainConfigByIds(calld.GetSubChainConfigByIds!);
   } else if (calld.GetSubChainsByIds !== null) {
     result = GetSubChainsByIds(calld.GetSubChainsByIds!);
   } else if (calld.GetSubChains !== null) {

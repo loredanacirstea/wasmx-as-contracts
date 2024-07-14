@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxt from "wasmx-env/assembly/types";
-import { MsgInitialize, MsgSetChainDataRequest, QueryGetChainDataRequest, QueryGetSubChainRequest } from "./types";
+import { MsgInitialize, MsgSetChainDataRequest, QueryGetChainDataRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QuerySubChainConfigByIdsRequest } from "./types";
 import { Base64String } from "wasmx-env/assembly/types";
 
 // @ts-ignore
@@ -18,6 +18,7 @@ export class CallData {
     // queries
     GetChainData: QueryGetChainDataRequest | null = null
     GetSubChainConfigById: QueryGetSubChainRequest | null = null;  // common registry API used by mythos cli
+    GetSubChainConfigByIds: QuerySubChainConfigByIdsRequest | null = null;
 
     // consensusless hooks
     NewSubChain: HookCalld | null = null;

@@ -141,8 +141,6 @@ export function main(): void {
     actions.receiveStateSyncResponse(calld.params, calld.event);
   } else if (calld.method === "receiveUpdateNodeResponse") {
     actions.receiveUpdateNodeResponse(calld.params, calld.event);
-  } else if (calld.method === "StartNode") {
-    actionsmc.StartNode();
   } else if (calld.method === "buildGenTx") {
     actionsmc.buildGenTx(calld.params, calld.event);
     wasmx.finish(wasmx.getFinishData());

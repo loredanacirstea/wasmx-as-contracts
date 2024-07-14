@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxt from "wasmx-env/assembly/types";
-import { InitSubChainRequest, MsgInitialize, QueryConvertAddressByChainIdRequest, QueryGetCurrentLevelRequest, QueryGetSubChainIdsByLevelRequest, QueryGetSubChainIdsByValidatorRequest, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, QueryGetValidatorsByChainIdRequest, QueryValidatorAddressesByChainIdRequest, RegisterDefaultSubChainRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest } from "./types";
+import { InitSubChainRequest, MsgInitialize, QueryConvertAddressByChainIdRequest, QueryGetCurrentLevelRequest, QueryGetSubChainIdsByLevelRequest, QueryGetSubChainIdsByValidatorRequest, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, QueryGetValidatorsByChainIdRequest, QuerySubChainConfigByIdsRequest, QueryValidatorAddressesByChainIdRequest, RegisterDefaultSubChainRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest } from "./types";
 
 // @ts-ignore
 @serializable
@@ -19,6 +19,7 @@ export class CallData {
     GetSubChainIds: QueryGetSubChainIdsRequest | null = null;
     GetSubChainById: QueryGetSubChainRequest | null = null;
     GetSubChainConfigById: QueryGetSubChainRequest | null = null;
+    GetSubChainConfigByIds: QuerySubChainConfigByIdsRequest | null = null;
     GetSubChainIdsByLevel: QueryGetSubChainIdsByLevelRequest | null = null;
     GetSubChainIdsByValidator: QueryGetSubChainIdsByValidatorRequest | null = null;
     GetValidatorsByChainId: QueryGetValidatorsByChainIdRequest | null = null;

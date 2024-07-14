@@ -98,6 +98,7 @@ export class InitSubChainMsg {
     validator_pubkey: Base64String
     peers: string[]
     current_node_id: i32 = 0
+    initial_ports: NodePorts
     constructor(
         init_chain_request: constypes.RequestInitChain,
         chain_config: ChainConfig,
@@ -106,6 +107,7 @@ export class InitSubChainMsg {
         validator_pubkey: Base64String,
         peers: string[],
         current_node_id: i32,
+        initial_ports: NodePorts,
     ) {
         this.init_chain_request = init_chain_request
         this.chain_config = chain_config
@@ -114,6 +116,7 @@ export class InitSubChainMsg {
         this.validator_pubkey = validator_pubkey
         this.peers = peers
         this.current_node_id = current_node_id
+        this.initial_ports = initial_ports
     }
 }
 
@@ -136,9 +139,11 @@ export class NewSubChainDeterministicData {
 export class StartSubChainMsg {
     chain_id: string
     chain_config: ChainConfig
-    constructor(chain_id: string, chain_config: ChainConfig) {
+    node_ports: NodePorts
+    constructor(chain_id: string, chain_config: ChainConfig, node_ports: NodePorts) {
         this.chain_id = chain_id
         this.chain_config = chain_config
+        this.node_ports = node_ports
     }
 }
 
@@ -202,5 +207,60 @@ export class ChainId {
             evmid += START_EVM_ID
         }
         return `${chain_base_name}_${level}_${evmid}-${forkIndex}`
+    }
+}
+
+// @ts-ignore
+@serializable
+export class NodePorts {
+    cosmos_rest_api: i32 = 1330 // 1317 // -> 1417
+    cosmos_grpc: i32 = 9100 // 9090 // -> 9190
+    tendermint_rpc: i32 = 26670 // 26657 // -> 26757
+    // tendermint_p2p: i32 = 26656 // not used
+    wasmx_network_grpc: i32 = 8100 // 8090 // -> 8190
+    evm_jsonrpc: i32 = 8555 // 8545 // -> 8645
+    evm_jsonrpc_ws: i32 = 8656 // 8646 // -> 8746
+    websrv_web_server: i32 = 9910 // 9900 // -> 9999
+    pprof: i32 = 6070 // 6060 // -> 6160
+    wasmx_network_p2p: i32 = 5010 // 5001 // -> 5101
+    constructor() {
+        this.cosmos_rest_api = 1330
+        this.cosmos_grpc = 9100
+        this.tendermint_rpc = 26670
+        // this.tendermint_p2p = 26656
+        this.wasmx_network_grpc = 8100
+        this.evm_jsonrpc = 8555
+        this.evm_jsonrpc_ws = 8656
+        this.websrv_web_server = 9910
+        this.pprof = 6070
+        this.wasmx_network_p2p = 5010
+    }
+
+    increment(): NodePorts {
+        const node = new NodePorts();
+        node.cosmos_rest_api = this.cosmos_rest_api + 1
+        node.cosmos_grpc = this.cosmos_grpc + 1
+        node.tendermint_rpc = this.tendermint_rpc + 1
+        node.wasmx_network_grpc = this.wasmx_network_grpc + 1
+        node.evm_jsonrpc = this.evm_jsonrpc + 1
+        node.evm_jsonrpc_ws = this.evm_jsonrpc_ws + 1
+        node.websrv_web_server = this.websrv_web_server + 1
+        node.pprof = this.pprof + 1
+        node.wasmx_network_p2p = this.wasmx_network_p2p + 1
+        return node;
+    }
+
+    static empty(): NodePorts {
+        const node = new NodePorts();
+        node.cosmos_rest_api = 0
+        node.cosmos_grpc = 0
+        node.tendermint_rpc = 0
+        node.wasmx_network_grpc = 0
+        node.evm_jsonrpc = 0
+        node.evm_jsonrpc_ws = 0
+        node.websrv_web_server = 0
+        node.pprof = 0
+        node.wasmx_network_p2p = 0
+        return node;
     }
 }

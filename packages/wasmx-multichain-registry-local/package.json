@@ -27,6 +27,8 @@
     "as-tally": "file:../as-tally",
     "json-as": "file:../../../as-json",
     "visitor-as": "^0.11.4",
-    "wasmx-env": "file:../wasmx-env"
+    "wasmx-consensus": "file:../wasmx-consensus",
+    "wasmx-env": "file:../wasmx-env",
+    "wasmx-utils": "file:../wasmx-utils"
   }
 }

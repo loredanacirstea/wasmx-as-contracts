@@ -602,7 +602,7 @@ export function initSubChain(
     validatorPublicKey: Base64String,
     validatorHexAddr: HexString,
     validatorPrivateKey: Base64String,
-): typestnd.ResponseInitChain | null {
+): void {
     const chainId = req.init_chain_request.chain_id
     LoggerInfo("new subchain created", ["subchain_id", chainId])
 
@@ -613,17 +613,9 @@ export function initSubChain(
 
     if (!weAreValidator.isvalidator) {
         LoggerInfo("node is not validating the new subchain; not initializing", ["subchain_id", chainId])
-        return null;
+        return;
     }
     LoggerInfo("node is validating the new subchain", ["subchain_id", chainId])
-
-    // add the chainId to our internal node registry
-    const calldatastr = `{"AddSubChainId":{"id":"${chainId}"}}`
-    const resp = callContract(roles.ROLE_MULTICHAIN_REGISTRY_LOCAL, calldatastr, false)
-    if (resp.success > 0) {
-        // we do not fail, we want the chain to continue
-        LoggerError(`call to ${roles.ROLE_MULTICHAIN_REGISTRY_LOCAL} failed`, ["error", resp.data, "subchain_id", chainId.toString()])
-    }
 
     // initialize the chain
     const msg = new mctypes.InitSubChainMsg(
@@ -634,14 +626,14 @@ export function initSubChain(
         validatorPublicKey,
         req.peers,
         weAreValidator.nodeIndex,
+        // multichain local registry will fill in the ports
+        new mctypes.NodePorts(),
     )
-    LoggerInfo("initializing subchain", ["subchain_id", chainId])
-    const response = mcwrap.InitSubChain(msg);
-    LoggerInfo("initialized subchain", ["subchain_id", chainId])
 
-    const deterministicData = new mctypes.NewSubChainDeterministicData(req.init_chain_request, req.chain_config)
-    callHookNonCContract(hooks.HOOK_NEW_SUBCHAIN, JSON.stringify<mctypes.NewSubChainDeterministicData>(deterministicData));
-    return response;
+    // pass the data to the metaregistry contract on this chain
+    // the metaregistry contract will forward the data to level0 metaregistry
+    // level0 metaregistry will call the local registry, which will assign ports so the subchain is started
+    callHookNonCContract(hooks.HOOK_NEW_SUBCHAIN, JSON.stringify<mctypes.InitSubChainMsg>(msg));
 }
 
 export function isNodeValidator(genesisState: mctypes.GenesisState, ourPublicKey: string): IsNodeValidator {

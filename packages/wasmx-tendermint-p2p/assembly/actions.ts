@@ -39,7 +39,7 @@ import { getAllValidators, getNodeByAddress, getNodeIdByAddress, verifyMessage, 
 import { NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft"
 import { Commit, CurrentState, getEmptyPrecommitArray, getEmptyValidatorProposalVoteArray, SignedMsgType, ValidatorCommitVote, ValidatorProposalVote } from "./types_blockchain";
 import { callContract } from "wasmx-tendermint/assembly/actions";
-import { InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
+import { InitSubChainDeterministicRequest, NodePorts } from "wasmx-consensus/assembly/types_multichain";
 import * as roles from "wasmx-env/assembly/roles";
 import * as mcwrap from 'wasmx-consensus/assembly/multichain_wrap';
 import { StartSubChainMsg } from "wasmx-consensus/assembly/types_multichain";
@@ -392,6 +392,18 @@ export function setupNode(
     }
     setValidatorNodesInfo(peers);
     initChain(data);
+
+    // set initial ports on multichain registry local
+    // we only use this on level0 now
+    // we may decide to use them on each level later (hierarchically)
+
+
+    const calldatastr = `{"SetInitialPorts":{"initialPorts":${JSON.stringify<NodePorts>(data.initial_ports)}}}`;
+    const resp = callContract(roles.ROLE_MULTICHAIN_REGISTRY_LOCAL, calldatastr, false);
+    if (resp.success > 0) {
+        // we do not fail, we want the chain to continue
+        LoggerError(`call failed: could not set initial ports`, ["contract", roles.ROLE_MULTICHAIN_REGISTRY_LOCAL, "error", resp.data])
+    }
 }
 
 export function setup(

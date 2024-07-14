@@ -5,6 +5,9 @@ import { setParams } from "./storage";
 import { revert } from "./utils";
 import * as actions from "./actions";
 
+// this should be a meta-deterministic contract
+// this is why it was separated from the local registry
+
 export function wasmx_env_2(): void {}
 
 export function wasmx_crosschain_1(): void {}
@@ -32,6 +35,10 @@ export function main(): void {
     result = actions.GetChainData(calld.GetChainData!);
   } else if (calld.GetSubChainConfigById !== null) {
     result = actions.GetSubChainConfigById(calld.GetSubChainConfigById!);
+  } else if (calld.GetSubChainConfigByIds !== null) {
+    result = actions.GetSubChainConfigByIds(calld.GetSubChainConfigByIds!);
+  } else if (calld.GetSubChainConfigByIds !== null) {
+    result = actions.GetSubChainConfigByIds(calld.GetSubChainConfigByIds!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)

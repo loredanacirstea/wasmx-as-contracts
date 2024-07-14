@@ -71,3 +71,21 @@ export class QueryGetSubChainRequest {
         this.chainId = chainId
     }
 }
+
+// @ts-ignore
+@serializable
+export class QueryGetSubChainsByIdsRequest {
+    ids: string[]
+    constructor(ids: string[]) {
+        this.ids = ids
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QuerySubChainConfigByIdsRequest {
+    ids: string[]
+    constructor(ids: string[]) {
+        this.ids = ids
+    }
+}

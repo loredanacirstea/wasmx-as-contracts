@@ -1,6 +1,7 @@
 import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import { HookCalld } from 'wasmx-env/assembly/hooks'
 import { parseUint8ArrayToI32BigEndian } from 'wasmx-utils/assembly/utils';
 import {
     EventObject,
@@ -18,12 +19,6 @@ export class InterpreterCallData {
         this.config = config;
         this.calldata = calldata;
     }
-}
-
-// @ts-ignore
-@serializable
-export class HookCalld {
-    data: Base64String = ""
 }
 
 // @ts-ignore

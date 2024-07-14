@@ -5,10 +5,10 @@ import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as roles from "wasmx-env/assembly/roles";
 import * as cross from "wasmx-env/assembly/crosschain";
 import * as crossw from "wasmx-env/assembly/crosschain_wrap";
-import { ChainConfig, ChainId, NewSubChainDeterministicData } from "wasmx-consensus/assembly/types_multichain";
+import { ChainConfig, ChainId, InitSubChainMsg, NewSubChainDeterministicData } from "wasmx-consensus/assembly/types_multichain";
 import * as level0 from "wasmx-consensus/assembly/level0"
 import * as utils from "wasmx-utils/assembly/utils"
-import { ChainConfigData, MsgSetChainDataRequest, MsgSetChainDataResponse, QueryGetChainDataRequest, QueryGetChainDataResponse, QueryGetSubChainRequest } from "./types";
+import { ChainConfigData, MsgSetChainDataRequest, MsgSetChainDataResponse, QueryGetChainDataRequest, QueryGetChainDataResponse, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QuerySubChainConfigByIdsRequest } from "./types";
 import { getChainData, setChainData } from "./storage";
 import { CallData, HookCalld } from "./calldata";
 import * as base64 from "as-base64/assembly";
@@ -35,6 +35,18 @@ export function GetSubChainConfigById(req: QueryGetSubChainRequest): ArrayBuffer
         return new ArrayBuffer(0)
     }
     const encoded = JSON.stringify<ChainConfig>(data.config)
+    return String.UTF8.encode(encoded)
+}
+
+export function GetSubChainConfigByIds(req: QuerySubChainConfigByIdsRequest): ArrayBuffer {
+    const data: ChainConfig[] = [];
+    for (let i = 0; i < req.ids.length; i++) {
+        const chain = subChainConfigById(req.ids[i])
+        if (chain != null) {
+            data.push(chain);
+        }
+    }
+    const encoded = JSON.stringify<ChainConfig[]>(data)
     return String.UTF8.encode(encoded)
 }
 
@@ -73,7 +85,9 @@ export function CrossChainQueryNonDeterministic(req: wasmxt.MsgCrossChainCallReq
 
 export function NewSubChain(req: HookCalld): void {
     const datastr = String.UTF8.decode(base64.decode(req.data).buffer);
-    const data = JSON.parse<NewSubChainDeterministicData>(datastr);
+    const data = JSON.parse<InitSubChainMsg>(datastr);
+    // only init_chain_request, chain_config are deterministic
+    // so limit to this
     const chainId = ChainId.fromString(data.init_chain_request.chain_id)
     const configdata = new ChainConfigData(data.chain_config, chainId)
     setChainData(configdata)

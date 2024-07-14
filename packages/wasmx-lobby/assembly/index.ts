@@ -35,6 +35,8 @@ export function main(): void {
     return;
   } else if (calld.method === "setupNode") {
     actions.setupNode(calld.params, calld.event);
+  } else if (calld.method === "connectNode") {
+    actions.connectNode(calld.params, calld.event);
   } else if (calld.method === "p2pConnectLobbyRoom") {
     actions.p2pConnectLobbyRoom(calld.params, calld.event);
   } else if (calld.method === "p2pConnectNewChainRoom") {

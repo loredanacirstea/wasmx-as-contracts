@@ -1,5 +1,12 @@
 import { JSON } from "json-as/assembly";
 import * as roles from "./roles";
+import { Base64String } from "./types";
+
+// @ts-ignore
+@serializable
+export class HookCalld {
+    data: Base64String = ""
+}
 
 // nonconsensusless
 export const HOOK_START_NODE = "StartNode"
@@ -47,7 +54,7 @@ export const  DEFAULT_HOOKS_NONC: Hook[] = [
     new Hook(
         HOOK_START_NODE,
         [roles.ROLE_HOOKS_NONC],
-        [roles.ROLE_CONSENSUS, roles.ROLE_CHAT, roles.ROLE_TIME, roles.ROLE_LOBBY],
+        [roles.ROLE_CONSENSUS, roles.ROLE_MULTICHAIN_REGISTRY_LOCAL, roles.ROLE_CHAT, roles.ROLE_TIME, roles.ROLE_LOBBY],
     ),
     new Hook(
         HOOK_SETUP_NODE,
@@ -57,7 +64,7 @@ export const  DEFAULT_HOOKS_NONC: Hook[] = [
     new Hook(
         HOOK_NEW_SUBCHAIN,
         [roles.ROLE_HOOKS_NONC, roles.ROLE_LOBBY, roles.ROLE_CONSENSUS],
-        [roles.ROLE_METAREGISTRY],
+        [roles.ROLE_METAREGISTRY, roles.ROLE_MULTICHAIN_REGISTRY_LOCAL],
     ),
 ]
 

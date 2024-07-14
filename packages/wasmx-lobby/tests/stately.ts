@@ -4,12 +4,13 @@ import { createMachine } from "xstate";
 
 export const machine = createMachine({
   context: {
-    heartbeatTimeout: 5000,
-    newchainTimeout: 20000,
-    min_validators_count: 2,
-    enable_eid_check: false,
     erc20CodeId: 27,
     derc20CodeId: 28,
+    current_level: 1,
+    newchainTimeout: 20000,
+    enable_eid_check: false,
+    heartbeatTimeout: 5000,
+    min_validators_count: 2,
     level_initial_balance: 10000000000000000000,
   },
   id: "Lobby-P2P-1",
@@ -30,6 +31,9 @@ export const machine = createMachine({
             start: {
               target: "started",
               actions: [
+                {
+                  type: "connectNode",
+                },
                 {
                   type: "p2pConnectLobbyRoom",
                 },
@@ -71,6 +75,9 @@ export const machine = createMachine({
             start: {
               target: "started",
               actions: [
+                {
+                  type: "connectNode",
+                },
                 {
                   type: "p2pConnectLobbyRoom",
                 },
@@ -168,9 +175,14 @@ export const machine = createMachine({
             },
             start: {
               target: "initializing",
-              actions: {
-                type: "p2pConnectNewChainRoom",
-              },
+              actions: [
+                {
+                  type: "connectNode",
+                },
+                {
+                  type: "p2pConnectNewChainRoom",
+                },
+              ],
             },
             addGenTx: {
               target: "initializing",
@@ -233,6 +245,10 @@ export const machine = createMachine({
 }).withConfig({
   actions: {
     p2pDisconnectLobbyRoom: function (context, event) {
+      // Add your action code here
+      // ...
+    },
+    connectNode: function (context, event) {
       // Add your action code here
       // ...
     },

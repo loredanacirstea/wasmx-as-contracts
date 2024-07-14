@@ -1,14 +1,22 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { MsgAddSubChainId, MsgInitialize, QuerySubChainIds } from "./types";
+import { HookCalld } from 'wasmx-env/assembly/hooks';
+import { MsgAddSubChainId, MsgInitialize, MsgSetInitialPorts, QueryNodePortsPerChainId, QuerySubChainIds, QuerySubChainIdsWithPorts } from "./types";
 
 // @ts-ignore
 @serializable
 export class CallData {
     AddSubChainId: MsgAddSubChainId | null = null;
+    SetInitialPorts: MsgSetInitialPorts | null = null;
 
     // query
     GetSubChainIds: QuerySubChainIds | null = null;
+    GetNodePortsPerChainId: QueryNodePortsPerChainId | null = null;
+    GetSubChainIdsWithPorts: QuerySubChainIdsWithPorts | null = null;
+
+    // consensusless hooks
+    StartNode: HookCalld | null = null;
+    NewSubChain: HookCalld | null = null;
 }
 
 export function getCallDataWrap(): CallData {

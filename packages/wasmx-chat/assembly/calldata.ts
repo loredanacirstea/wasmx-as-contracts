@@ -1,13 +1,8 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import { HookCalld } from 'wasmx-env/assembly/hooks';
 import { MsgJoinRoom, MsgSendMessage, QueryGetBlock, QueryGetBlocks, QueryGetMessage, QueryGetMessages, QueryGetRooms } from './types';
 import { Base64String } from "wasmx-env/assembly/types";
-
-// @ts-ignore
-@serializable
-export class HookCalld {
-    data: Base64String = ""
-}
 
 // @ts-ignore
 @serializable

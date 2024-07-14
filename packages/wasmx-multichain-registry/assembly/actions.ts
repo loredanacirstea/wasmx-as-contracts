@@ -31,13 +31,13 @@ import * as govdefaults from "wasmx-gov/assembly/defaults";
 import * as slashingtypes from "wasmx-slashing/assembly/types";
 import * as slashingdefaults from "wasmx-slashing/assembly/defaults";
 import { AnyWrap } from "wasmx-env/assembly/wasmx_types";
-import { ChainConfig, ChainId, GenesisState, GenutilGenesis, InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
+import { ChainConfig, ChainId, GenesisState, GenutilGenesis, InitSubChainDeterministicRequest, NodePorts } from "wasmx-consensus/assembly/types_multichain";
 import { buildChainConfig, getDefaultConsensusParams } from "wasmx-consensus/assembly/multichain_utils";
 import * as wasmxt from "wasmx-env/assembly/types";
 import { Base64String, Coin, SignedTransaction, Event, EventAttribute, PublicKey, Bech32String } from "wasmx-env/assembly/types";
 import { AttributeKeyChainId, AttributeKeyRequest, AttributeKeyValidator, EventTypeInitSubChain, EventTypeRegisterSubChain, EventTypeRegisterSubChainValidator } from "./events";
 import { addChainId, addChainValidator, addChainValidatorAddress, addLevelChainId, CURRENT_LEVEL, getChainData, getChainIdLast, getChainIds, getChainValidatorAddresses, getChainValidators, getCurrentLevel, getDataKey, getLevelChainIds, getLevelChainIdsKey, getLevelLast, getParams, getValidatorChains, INITIAL_LEVEL, setChainData, setChainIdLast } from "./storage";
-import { CosmosmodGenesisState, InitSubChainRequest, MODULE_NAME, Params, QueryConvertAddressByChainIdRequest, QueryGetCurrentLevelRequest, QueryGetCurrentLevelResponse, QueryGetSubChainIdsByLevelRequest, QueryGetSubChainIdsByValidatorRequest, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, QueryGetValidatorsByChainIdRequest, QueryValidatorAddressesByChainIdRequest, RegisterDefaultSubChainRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest, SubChainData, ValidatorInfo } from "./types";
+import { CosmosmodGenesisState, InitSubChainRequest, MODULE_NAME, Params, QueryConvertAddressByChainIdRequest, QueryGetCurrentLevelRequest, QueryGetCurrentLevelResponse, QueryGetSubChainIdsByLevelRequest, QueryGetSubChainIdsByValidatorRequest, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, QueryGetValidatorsByChainIdRequest, QuerySubChainConfigByIdsRequest, QueryValidatorAddressesByChainIdRequest, RegisterDefaultSubChainRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest, SubChainData, ValidatorInfo } from "./types";
 import { LoggerDebug, LoggerInfo, revert } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { RequestInitChain } from "wasmx-consensus/assembly/types_tendermint";
@@ -141,6 +141,18 @@ export function GetSubChainConfigById(req: QueryGetSubChainRequest): ArrayBuffer
         return new ArrayBuffer(0)
     }
     const encoded = JSON.stringify<ChainConfig>(config)
+    return String.UTF8.encode(encoded)
+}
+
+export function GetSubChainConfigByIds(req: QuerySubChainConfigByIdsRequest): ArrayBuffer {
+    const data: ChainConfig[] = [];
+    for (let i = 0; i < req.ids.length; i++) {
+        const chain = subChainConfigById(req.ids[i])
+        if (chain != null) {
+            data.push(chain);
+        }
+    }
+    const encoded = JSON.stringify<ChainConfig[]>(data)
     return String.UTF8.encode(encoded)
 }
 
@@ -374,7 +386,7 @@ export function registerDefaultChainId(chainBaseName: string, levelIndex: i32): 
 
 // TODO each level can create a chain for the next level only?
 // so add the level number in genesis
-export function buildDefaultSubChainGenesisInternal(params: Params, chainId: string, currentLevel: i32, chainConfig: ChainConfig, req: RegisterDefaultSubChainRequest, wasmxContractState: Map<Bech32String,wasmxtypes.ContractStorage[]>): InitSubChainDeterministicRequest {
+export function buildDefaultSubChainGenesisInternal(params: Params, chainId: string, currentLevel: i32, chainConfig: ChainConfig, req: RegisterDefaultSubChainRequest, wasmxContractState: Map<Bech32String,wasmxtypes.ContractStorage[]>, initialPorts: NodePorts): InitSubChainDeterministicRequest {
     const peers: string[] = [];
     const defaultInitialHeight: i64 = 1;
     const consensusParams = getDefaultConsensusParams()
@@ -383,7 +395,7 @@ export function buildDefaultSubChainGenesisInternal(params: Params, chainId: str
     const feeCollectorBech32 =  wasmxw.addr_humanize_mc(utils.hexToUint8Array(modnames.ADDR_FEE_COLLECTOR).buffer, chainConfig.Bech32PrefixAccAddr)
     const mintBech32 =  wasmxw.addr_humanize_mc(utils.hexToUint8Array(modnames.ADDR_MINT).buffer, chainConfig.Bech32PrefixAccAddr)
 
-    const genesisState = buildGenesisData(params, req.denom_unit, req.base_denom_unit, bootstrapAccountBech32, feeCollectorBech32, mintBech32, currentLevel, wasmxContractState)
+    const genesisState = buildGenesisData(params, req.denom_unit, req.base_denom_unit, bootstrapAccountBech32, feeCollectorBech32, mintBech32, currentLevel, wasmxContractState, initialPorts)
 
     const appStateBz = utils.stringToBase64(JSON.stringify<GenesisState>(genesisState))
 
@@ -402,7 +414,8 @@ export function buildDefaultSubChainGenesisInternal(params: Params, chainId: str
 // so add the level number in genesis
 export function registerDefaultSubChainInternal(params: Params, chainId: string, req: RegisterDefaultSubChainRequest, levelIndex: i32, wasmxContractState: Map<Bech32String,wasmxtypes.ContractStorage[]>): SubChainData {
     const chainConfig = buildChainConfig(req.denom_unit, req.base_denom_unit, req.chain_base_name)
-    const data = buildDefaultSubChainGenesisInternal(params, chainId, levelIndex, chainConfig, req, wasmxContractState)
+    const initialPorts = new NodePorts()
+    const data = buildDefaultSubChainGenesisInternal(params, chainId, levelIndex, chainConfig, req, wasmxContractState, initialPorts)
     return registerSubChainInternal(data, req.gen_txs, req.initial_balance, levelIndex);
 }
 
@@ -635,7 +648,7 @@ export function callEvmContract(addr: Bech32String, calldata: string, isQuery: b
     return resp;
 }
 
-export function buildGenesisData(params: Params, denomUnit: string, baseDenomUnit: u32, bootstrapAccountBech32: string, feeCollectorBech32: string, mintBech32: string, currentLevel: i32, wasmxContractState: Map<Bech32String,wasmxtypes.ContractStorage[]>): GenesisState {
+export function buildGenesisData(params: Params, denomUnit: string, baseDenomUnit: u32, bootstrapAccountBech32: string, feeCollectorBech32: string, mintBech32: string, currentLevel: i32, wasmxContractState: Map<Bech32String,wasmxtypes.ContractStorage[]>, initialPorts: NodePorts): GenesisState {
     // validators are only added through genTxs
     const bankGenesis = bankdefaults.getDefaultGenesis(denomUnit, baseDenomUnit, params.erc20CodeId, params.derc20CodeId)
 
@@ -689,7 +702,7 @@ export function buildGenesisData(params: Params, denomUnit: string, baseDenomUni
     const upgradeGenesis = upgradedefaults.getDefaultGenesis()
     const upgradeGenesisBz = utils.stringToBase64(JSON.stringify<upgradedefaults.GenesisState>(upgradeGenesis))
 
-    const wasmxGenesis = wasmxdefaults.getDefaultGenesis(bootstrapAccountBech32, feeCollectorBech32, mintBech32, params.min_validators_count, params.enable_eid_check, currentLevel)
+    const wasmxGenesis = wasmxdefaults.getDefaultGenesis(bootstrapAccountBech32, feeCollectorBech32, mintBech32, params.min_validators_count, params.enable_eid_check, currentLevel, JSON.stringify<NodePorts>(initialPorts))
 
     // set any contract storage key-value pairs
     for (let i = 0; i < wasmxGenesis.system_contracts.length; i++) {
