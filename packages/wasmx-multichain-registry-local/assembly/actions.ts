@@ -25,8 +25,6 @@ export function setInitialPorts(req: MsgSetInitialPorts): ArrayBuffer {
 
 export function addSubChainId(req: MsgAddSubChainId): ArrayBuffer {
     addSubChainIdInternal(req.id)
-    // we are also starting the node after it is added
-    startNode([req.id])
     return new ArrayBuffer(0)
 }
 
@@ -79,18 +77,8 @@ export function NewSubChain(req: HookCalld): void {
     const chainId = data.init_chain_request.chain_id
     const portlist = addSubChainIdInternal(chainId)
 
-    // send this hook data to level0
-    if (!wasmxw.getChainId().includes(level0.Level0ChainId.base_name)) {
-        LoggerInfo("forwarding subchain config to level0", ["subchain_id", chainId])
-        const msg = new CallData()
-        msg.AddSubChainId = new MsgAddSubChainId(chainId)
-        const msgstr = JSON.stringify<CallData>(msg)
-        const ccreq = level0CrossChainCallRequest(msgstr)
-        const resp = crossw.executeCrossChainTxNonDeterministic(ccreq);
-        if (resp.error.length > 0) {
-            LoggerError("forwarding subchain config to level0 failed", ["subchain_id", chainId, "error", resp.error])
-        }
-    } else {
+    // if we are on level0, we instantiate & start the chain
+    if (wasmxw.getChainId().includes(level0.Level0ChainId.base_name)) {
         // initialize the chain
         data.initial_ports = portlist
         LoggerInfo("initializing subchain", ["subchain_id", chainId])
@@ -98,8 +86,20 @@ export function NewSubChain(req: HookCalld): void {
         // TODO response?
         LoggerInfo("initialized subchain", ["subchain_id", chainId])
 
-        // we are also initializing & starting the node
+        LoggerInfo("starting subchain", ["subchain_id", chainId])
         startNode([chainId])
+        LoggerInfo("started subchain", ["subchain_id", chainId])
+    } else {
+        // send this hook data to level0
+        LoggerInfo("forwarding subchain config to level0", ["subchain_id", chainId])
+        const msg = new CallData()
+        msg.NewSubChain = req
+        const msgstr = JSON.stringify<CallData>(msg)
+        const ccreq = level0CrossChainCallRequest(msgstr)
+        const resp = crossw.executeCrossChainTxNonDeterministic(ccreq);
+        if (resp.error.length > 0) {
+            LoggerError("forwarding subchain config to level0 failed", ["subchain_id", chainId, "error", resp.error])
+        }
     }
 }
 
