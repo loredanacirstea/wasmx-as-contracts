@@ -22,3 +22,10 @@ export function StartSubChain(req: StartSubChainMsg): StartSubChainResponse {
     LoggerDebug("StartSubChain", ["response", respdata]);
     return JSON.parse<StartSubChainResponse>(respdata);
 }
+
+export function GetSubChainIds(): string[] {
+    const resp = mc.GetSubChainIds();
+    const respdata = String.UTF8.decode(resp)
+    LoggerDebug("GetSubChainIds", ["response", respdata]);
+    return JSON.parse<string[]>(respdata);
+}

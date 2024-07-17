@@ -656,6 +656,8 @@ export function addTransactionToMempool(
     // we revert if extension leader is incorrect
     const extopts = parsedTx.body.extension_options
     let leader = ""
+    let weCanIncludeInBlock = true;
+    let atomicChains: string[] = [];
     for (let i = 0; i < extopts.length; i++) {
         const extany = extopts[i]
         if (extany.type_url == typestnd.TypeUrl_ExtensionOptionAtomicMultiChainTx) {
@@ -681,15 +683,28 @@ export function addTransactionToMempool(
             if (!ext.chain_ids.includes(ourchain)) {
                 return txhash;
             }
+            atomicChains = ext.chain_ids
+            // don't propose atomic transactions if we do not have all subchains
+            const oursubchains = mcwrap.GetSubChainIds();
+            for (let i = 0; i < ext.chain_ids.length; i++) {
+                if (!oursubchains.includes(ext.chain_ids[i])) {
+                    weCanIncludeInBlock = false;
+                    break;
+                }
+            }
         }
     }
+    if (weCanIncludeInBlock) {
+        mempool.add(txhash, transaction, txGas, leader);
+        setMempool(mempool);
 
-    mempool.add(txhash, transaction, txGas, leader);
-    setMempool(mempool);
-    if (leader != "") {
-        LoggerInfo("new transaction added to mempool", ["txhash", txhash, "atomic_crosschain_tx_leader", leader])
+        if (leader != "") {
+            LoggerInfo("new transaction added to mempool", ["txhash", txhash, "atomic_crosschain_tx_leader", leader, "subchains", atomicChains.join(",")])
+        } else {
+            LoggerInfo("new transaction added to mempool", ["txhash", txhash])
+        }
     } else {
-        LoggerInfo("new transaction added to mempool", ["txhash", txhash])
+        LoggerInfo("atomic transaction not added to mempool, node cannot be proposer", ["txhash", txhash, "subchains", atomicChains.join(",")])
     }
     return txhash;
 }
