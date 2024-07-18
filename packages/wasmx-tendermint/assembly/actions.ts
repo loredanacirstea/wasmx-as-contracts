@@ -32,7 +32,7 @@ import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } fro
 import { BigInt } from "wasmx-env/assembly/bn";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
 import { getLeaderChain } from "wasmx-consensus/assembly/multichain_utils";
-import { appendLogEntry, decodeTx, getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLogIndex, getLogEntryObj, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, removeLogEntry, setCurrentState, setLastLogIndex, setLogEntryAggregate, setNextIndexArray, setNodeIPs, setTermId } from "./action_utils";
+import { appendLogEntry, decodeTx, getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLogIndex, getLogEntryObj, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, removeLogEntry, setCurrentState, setLastLogIndex, setLogEntryAggregate, setLogEntryObj, setNextIndexArray, setNodeIPs, setTermId } from "./action_utils";
 import { NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft";
 import { verifyMessage } from "wasmx-raft/assembly/action_utils";
 import { NetworkNode, NodeInfo } from "wasmx-p2p/assembly/types";
@@ -74,9 +74,9 @@ export function ifNewTransaction(
     const transaction = ctx.get("transaction") // base64
     const txhash = wasmxw.sha256(transaction);
     const mempool = getMempool();
-    const existent = mempool.map.has(txhash);
+    const existent = mempool.map.has(txhash) || mempool.temp.has(txhash);
     if (existent) {
-        LoggerDebug("mempool: transaction already added", ["txhash", txhash])
+        LoggerDebug("mempool: transaction already added or seen", ["txhash", txhash])
     }
     return !existent;
 }
@@ -119,7 +119,17 @@ export function proposeBlockInternalAndStore(lastBlockCommit: typestnd.BlockComm
     const height = getLastLogIndex();
     const lastCommitIndex = getLastBlockIndex();
     if (lastCommitIndex < height) {
-        LoggerInfo("cannot propose new block, last block not commited", ["height", height.toString(), "lastCommitIndex", lastCommitIndex.toString()])
+        // if we are at a new term and previous proposal was not committed,
+        // we update the termId & proposer on the proposal
+        // and we will reuse it in this term
+        // LoggerInfo("cannot propose new block, last block not commited", ["height", height.toString(), "lastCommitIndex", lastCommitIndex.toString(), "termId", getTermId().toString()])
+
+        const entry = getLogEntryObj(height);
+        entry.termId = getTermId()
+        entry.leaderId = getCurrentNodeId()
+        setLogEntryObj(entry);
+
+        LoggerInfo("reuse previous term block proposal", ["height", height.toString(), "lastCommitIndex", lastCommitIndex.toString(), "termId", getTermId().toString()])
         return null;
     }
 
@@ -137,7 +147,7 @@ export function proposeBlockInternalAndStore(lastBlockCommit: typestnd.BlockComm
     const maxDataBytes = maxbytes;
 
     // start proposal protocol
-    const result = buildBlockProposal(batch.txs, batch.isAtomicTx && batch.isLeader, batch.cummulatedGas, maxDataBytes, lastBlockCommit);
+    const result = buildBlockProposal(batch.txs, batch.isAtomicTx, batch.cummulatedGas, maxDataBytes, lastBlockCommit);
     if (result == null) return null;
 
     // we just save this as a temporary block
@@ -173,7 +183,7 @@ export function incrementCurrentTerm(
 ): void {
     const termId = getTermId();
     setTermId(termId + 1);
-    LoggerDebug("incrementCurrentTerm", ["newterm", (termId + 1).toString()])
+    LoggerInfo("incrementCurrentTerm", ["newterm", (termId + 1).toString()])
 }
 
 export function setupNode(
@@ -314,10 +324,6 @@ export function processBlock(
     LoggerDebugExtended("received new block proposal", ["block", entryStr]);
 
     let entry: AppendEntry = JSON.parse<AppendEntry>(entryStr);
-    LoggerInfo("received new block proposal", [
-        "proposerId", entry.proposerId.toString(),
-        "termId", entry.termId.toString(),
-    ]);
 
     // TODO only accept proposal from expected proposer
     // verify signature
@@ -380,7 +386,6 @@ export function addToMempool(
     }
     LoggerDebug("new transaction received", ["transaction", transaction])
     const txhash = addTransactionToMempool(transaction)
-    LoggerInfo("new transaction added to mempool", ["txhash", txhash])
 }
 
 export function sendAppendEntries(
@@ -514,20 +519,10 @@ export function sendPrecommit(
 export function addTransactionToMempool(
     transaction: Base64String,
 ): string {
-    // TODO reenable if if no longer run the antehandler when receiving transactions; otherwise we run it 2 times, which increases account sequence with 2
-    // check that tx is valid
-    const checktx = new typestnd.RequestCheckTx(transaction, typestnd.CheckTxType.New);
-    const checkResp = consensuswrap.CheckTx(checktx);
-    // we only check the code type; CheckTx should be stateless, just form checking
-    if (checkResp.code !== typestnd.CodeType.Ok) {
-        // transaction is not valid, we should finish; we use this error to check forwarded txs to leader
-        revert(`${cfg.ERROR_INVALID_TX}; code ${checkResp.code}; ${checkResp.log}`);
-        return "";
-    }
-
-    // add to mempool
-    const mempool = getMempool();
     const txhash = wasmxw.sha256(transaction);
+    const mempool = getMempool();
+    mempool.seen(txhash);
+    setMempool(mempool);
 
     const parsedTx = decodeTx(transaction);
     let txGas: u64 = 1000000
@@ -564,8 +559,26 @@ export function addTransactionToMempool(
         }
     }
 
+    // check that tx is valid
+    // we run CheckTx last, because it persists temporary state between tx checks and if CheckTx passes, but the tx is not included in the mempool,
+    // cosmos-sdk still believes the tx has passed, so the account sequence is increased in the temporary context
+    const checktx = new typestnd.RequestCheckTx(transaction, typestnd.CheckTxType.New);
+    const checkResp = consensuswrap.CheckTx(checktx);
+    // we only check the code type; CheckTx should be stateless, just form checking
+    if (checkResp.code !== typestnd.CodeType.Ok) {
+        // transaction is not valid, we should finish; we use this error to check forwarded txs to leader
+        revert(`${cfg.ERROR_INVALID_TX}; code ${checkResp.code}; ${checkResp.log}`);
+        return "";
+    }
+
+    // add to mempool
     mempool.add(txhash, transaction, txGas, leader);
     setMempool(mempool);
+    if (leader != "") {
+        LoggerInfo("new transaction added to mempool", ["txhash", txhash, "atomic_crosschain_tx_leader", leader, "subchains"])
+    } else {
+        LoggerInfo("new transaction added to mempool", ["txhash", txhash])
+    }
     return txhash;
 }
 
@@ -734,6 +747,11 @@ export function processAppendEntry(entry: LogEntryAggregate): void {
     const data = decodeBase64(entry.data.data);
     const processReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(String.UTF8.decode(data.buffer));
     const processReq = processReqWithMeta.request
+    LoggerInfo("received new block proposal", [
+        "height", processReq.height.toString(),
+        "proposerId", entry.leaderId.toString(),
+        "termId", entry.termId.toString(),
+    ]);
     const processResp = consensuswrap.ProcessProposal(processReq);
     if (processResp.status === typestnd.ProposalStatus.REJECT) {
         // TODO - what to do here? returning just discards the block and does not return a response to the leader
@@ -1001,7 +1019,8 @@ export function getNextProposer(blockHash: Base64String, totalStaked: BigInt, va
 export function buildBlockProposal(txs: string[], optimisticExecution: boolean, cummulatedGas: i64, maxDataBytes: i64, lastBlockCommit: typestnd.BlockCommit): BuildProposal | null {
     // PrepareProposal TODO finish
     const height = getLastLogIndex() + 1;
-    LoggerDebug("start block proposal", ["height", height.toString()])
+    const termId = getTermId()
+    LoggerDebug("start block proposal", ["height", height.toString(), "termId", termId.toString()])
 
     const currentState = getCurrentState();
     const validators = getAllValidators();
@@ -1065,7 +1084,7 @@ export function buildBlockProposal(txs: string[], optimisticExecution: boolean, 
         prepareReq.proposer_address,
     );
     const hash = getHeaderHash(header);
-    LoggerInfo("start block proposal", ["height", height.toString(), "hash", hash])
+    LoggerInfo("start block proposal", ["height", height.toString(), "hash", hash, "termId", termId.toString(), "optimistic_execution", optimisticExecution.toString()])
     const processReq = new typestnd.RequestProcessProposal(
         prepareResp.txs,
         lastCommit,
@@ -1231,10 +1250,10 @@ export function signMessage(msgstr: string): Base64String {
 }
 
 export function startBlockFinalizationLeader(index: i64): boolean {
-    LoggerInfo("start block finalization", ["height", index.toString()])
     // get entry and apply it
     const entryobj = getLogEntryAggregate(index);
-    LoggerDebug("start block finalization", ["height", index.toString(), "proposerId", entryobj.leaderId.toString(), "termId", entryobj.termId.toString(), "data", JSON.stringify<wblocks.BlockEntry>(entryobj.data)])
+    LoggerInfo("start block finalization", ["height", index.toString(), "termId",  entryobj.termId.toString(), "proposerId", entryobj.leaderId.toString()])
+    LoggerDebug("start block finalization", ["height", index.toString(), "data", JSON.stringify<wblocks.BlockEntry>(entryobj.data)])
 
     const currentTerm = getTermId();
     if (currentTerm == entryobj.termId) {
@@ -1252,7 +1271,7 @@ export function startBlockFinalizationFollower(index: i64): boolean {
 }
 
 export function startBlockFinalizationFollowerInternal(entryobj: LogEntryAggregate): boolean {
-    LoggerInfo("start block finalization", ["height", entryobj.index.toString()])
+    LoggerInfo("start block finalization", ["height", entryobj.index.toString(), "termId", entryobj.termId.toString()])
     LoggerDebug("start block finalization", ["height", entryobj.index.toString(), "proposerId", entryobj.leaderId.toString(), "termId", entryobj.termId.toString(), "data", JSON.stringify<wblocks.BlockEntry>(entryobj.data)])
     return startBlockFinalizationInternal(entryobj, false);
 }

@@ -64,6 +64,13 @@ export function appendLogEntry(
     // TODO rollback entries in case of a network split (e.g. entries with higher termId than we have have priority); they must be uncommited
     // and just return if already saved
     if (index > entry.index) {
+        // replace if termId > entry.termId
+        const logentry = getLogEntryObj(entry.index);
+        if (logentry.termId < entry.termId) {
+            setLogEntryAggregate(entry);
+            LoggerInfo("replace existing block proposal", ["height", entry.index.toString(), "termId", entry.termId.toString()])
+            return;
+        }
         LoggerDebug("already appended entry", ["height", entry.index.toString()])
         return;
     }

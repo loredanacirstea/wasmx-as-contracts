@@ -118,8 +118,14 @@ export class MempoolTx {
 @serializable
 export class Mempool {
     map: Map<Base64String,MempoolTx>
+    temp: Map<Base64String,bool>
     constructor(map: Map<Base64String,MempoolTx>) {
         this.map = map;
+        this.temp = new Map<Base64String,bool>()
+    }
+
+    seen(txhash: Base64String): void {
+        this.temp.set(txhash, true);
     }
 
     add(txhash: Base64String, tx: Base64String, gas: u64, leaderChainId: string): void {
@@ -128,6 +134,9 @@ export class Mempool {
 
     remove(txhash: Base64String): void {
         this.map.delete(txhash)
+
+        // clear out temporary txhashes too
+        this.temp = new Map<Base64String,bool>()
     }
 
     batch(maxGas: i64, maxBytes: i64, ourchain: string): MempoolBatch {

@@ -14,6 +14,8 @@ import { getSubChains, setSubChains } from "./storage";
 import { base64ToString, stringToBase64 } from "wasmx-utils/assembly/utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 
+export const CROSS_CHAIN_TIMEOUT_MS = 120000 // 2 min
+
 export function instantiateToken(): void {
     const calldraw = wasmx.getCallData();
     const calldrawstr = String.UTF8.decode(calldraw);
@@ -71,6 +73,7 @@ export function totalSupplyCrossChainInternal(req: MsgTotalSupplyCrossChain, det
         [],
         [],
         "",
+        CROSS_CHAIN_TIMEOUT_MS,
     )
 
     for (let i = 0; i < subchains.length; i++) {
@@ -118,6 +121,7 @@ export function balanceCrossChainInternal(req: MsgBalanceOfCrossChain, determini
         [],
         [],
         "",
+        CROSS_CHAIN_TIMEOUT_MS,
     )
 
     for (let i = 0; i < subchains.length; i++) {

@@ -28,6 +28,7 @@ export function CrossChainQuery(req: MsgCrossChainCallRequest): ArrayBuffer {
 }
 
 export function crossChainTx(req: wasmxt.MsgCrossChainCallRequest): wasmxt.MsgCrossChainCallResponse {
+    req.timeout_ms = 120000 // 2 min
     const reqstr = JSON.stringify<wasmxt.MsgCrossChainCallRequest>(req)
     const calldatastr = `{"CrossChainTx":${reqstr}}`;
     const resp = callContract(getCrossChainContract(), calldatastr, false)
@@ -38,6 +39,7 @@ export function crossChainTx(req: wasmxt.MsgCrossChainCallRequest): wasmxt.MsgCr
 }
 
 export function crossChainQuery(req: wasmxt.MsgCrossChainCallRequest): wasmxt.MsgCrossChainCallResponse {
+    req.timeout_ms = 120000 // 2 min
     const reqstr = JSON.stringify<wasmxt.MsgCrossChainCallRequest>(req)
     const calldatastr = `{"CrossChainQuery":${reqstr}}`;
     const resp = callContract(getCrossChainContract(), calldatastr, true)

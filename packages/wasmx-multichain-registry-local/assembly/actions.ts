@@ -9,7 +9,7 @@ import * as level0 from "wasmx-consensus/assembly/level0"
 import * as crossw from "wasmx-env/assembly/crosschain_wrap";
 import * as utils from "wasmx-utils/assembly/utils"
 import { ChainConfig, ChainId, InitSubChainDeterministicRequest, InitSubChainMsg, NewSubChainDeterministicData, NodePorts, StartSubChainMsg } from "wasmx-consensus/assembly/types_multichain"
-import { MODULE_NAME, MsgAddSubChainId, MsgSetInitialPorts, QueryNodePortsPerChainId, QueryNodePortsPerChainIdResponse, QuerySubChainIds, QuerySubChainIdsResponse, QuerySubChainIdsWithPorts, QuerySubChainIdsWithPortsResponse } from "./types";
+import { CROSS_CHAIN_TIMEOUT_MS, MODULE_NAME, MsgAddSubChainId, MsgSetInitialPorts, QueryNodePortsPerChainId, QueryNodePortsPerChainIdResponse, QuerySubChainIds, QuerySubChainIdsResponse, QuerySubChainIdsWithPorts, QuerySubChainIdsWithPortsResponse } from "./types";
 import { addChainId, CHAIN_IDS, getChainIds, getLastNodePorts, getNodePorts, setLastNodePorts, setNodePorts } from "./storage";
 import { LoggerError, LoggerInfo, revert } from "./utils";
 import { callContract } from "wasmx-env/assembly/utils";
@@ -75,10 +75,15 @@ export function NewSubChain(req: HookCalld): void {
     const datastr = String.UTF8.decode(base64.decode(req.data).buffer);
     const data = JSON.parse<InitSubChainMsg>(datastr);
     const chainId = data.init_chain_request.chain_id
-    const portlist = addSubChainIdInternal(chainId)
+
+    // right now we only add the subchains on level0
+    // so we just forward the data to level0
+    // const portlist = addSubChainIdInternal(chainId)
 
     // if we are on level0, we instantiate & start the chain
     if (wasmxw.getChainId().includes(level0.Level0ChainId.base_name)) {
+        const portlist = addSubChainIdInternal(chainId)
+
         // initialize the chain
         data.initial_ports = portlist
         LoggerInfo("initializing subchain", ["subchain_id", chainId])
@@ -147,7 +152,7 @@ export function level0CrossChainCallRequest(msg: string): wasmxt.MsgCrossChainCa
     const to = roles.ROLE_MULTICHAIN_REGISTRY_LOCAL
     // TODO be able to send a request to the last version of a chain, by its base name
     // without knowing the current chain id
-    const req = new wasmxt.MsgCrossChainCallRequest(to, utils.stringToBase64(msg), [], [], level0.Level0ChainId.full)
+    const req = new wasmxt.MsgCrossChainCallRequest(to, utils.stringToBase64(msg), [], [], level0.Level0ChainId.full, CROSS_CHAIN_TIMEOUT_MS)
     // req.from = from
     req.from = roles.ROLE_MULTICHAIN_REGISTRY_LOCAL
     req.from_chain_id = wasmxw.getChainId()

@@ -3,6 +3,8 @@ import { NodePorts } from "wasmx-consensus/assembly/types_multichain"
 
 export const MODULE_NAME = "multichain_registry_local"
 
+export const CROSS_CHAIN_TIMEOUT_MS = 120000 // 2 min
+
 // @ts-ignore
 @serializable
 export class MsgInitialize {

@@ -3,6 +3,8 @@ import { ChainConfig, ChainId } from "wasmx-consensus/assembly/types_multichain"
 
 export const MODULE_NAME = "metaregistry"
 
+export const CROSS_CHAIN_TIMEOUT_MS = 120000 // 2 min
+
 // @ts-ignore
 @serializable
 export class Params {

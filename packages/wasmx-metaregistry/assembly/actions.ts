@@ -8,7 +8,7 @@ import * as crossw from "wasmx-env/assembly/crosschain_wrap";
 import { ChainConfig, ChainId, InitSubChainMsg, NewSubChainDeterministicData } from "wasmx-consensus/assembly/types_multichain";
 import * as level0 from "wasmx-consensus/assembly/level0"
 import * as utils from "wasmx-utils/assembly/utils"
-import { ChainConfigData, MsgSetChainDataRequest, MsgSetChainDataResponse, QueryGetChainDataRequest, QueryGetChainDataResponse, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QuerySubChainConfigByIdsRequest } from "./types";
+import { ChainConfigData, CROSS_CHAIN_TIMEOUT_MS, MsgSetChainDataRequest, MsgSetChainDataResponse, QueryGetChainDataRequest, QueryGetChainDataResponse, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QuerySubChainConfigByIdsRequest } from "./types";
 import { getChainData, setChainData } from "./storage";
 import { CallData, HookCalld } from "./calldata";
 import * as base64 from "as-base64/assembly";
@@ -115,7 +115,7 @@ export function level0CrossChainCallRequest(msg: string): wasmxt.MsgCrossChainCa
     const to = roles.ROLE_METAREGISTRY
     // TODO be able to send a request to the last version of a chain, by its base name
     // without knowing the current chain id
-    const req = new wasmxt.MsgCrossChainCallRequest(to, utils.stringToBase64(msg), [], [], level0.Level0ChainId.full)
+    const req = new wasmxt.MsgCrossChainCallRequest(to, utils.stringToBase64(msg), [], [], level0.Level0ChainId.full, CROSS_CHAIN_TIMEOUT_MS)
     // req.from = from
     req.from = roles.ROLE_METAREGISTRY
     req.from_chain_id = wasmxw.getChainId()

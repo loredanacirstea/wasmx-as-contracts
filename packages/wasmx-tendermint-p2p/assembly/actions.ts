@@ -623,20 +623,10 @@ export function addToMempool(
 export function addTransactionToMempool(
     transaction: Base64String,
 ): string {
-    // TODO reenable if if no longer run the antehandler when receiving transactions; otherwise we run it 2 times, which increases account sequence with 2
-    // check that tx is valid
-    const checktx = new typestnd.RequestCheckTx(transaction, typestnd.CheckTxType.New);
-    const checkResp = consensuswrap.CheckTx(checktx);
-    // we only check the code type; CheckTx should be stateless, just form checking
-    if (checkResp.code !== typestnd.CodeType.Ok) {
-        // transaction is not valid, we should finish; we use this error to check forwarded txs to leader
-        revert(`${cfg.ERROR_INVALID_TX}; code ${checkResp.code}; ${checkResp.log}`);
-        return "";
-    }
-
-    // add to mempool
-    const mempool = tnd.getMempool();
     const txhash = wasmxw.sha256(transaction);
+    const mempool = tnd.getMempool();
+    mempool.seen(txhash);
+    setMempool(mempool);
 
     const parsedTx = decodeTx(transaction);
     let txGas: u64 = 1000000
@@ -656,8 +646,7 @@ export function addTransactionToMempool(
     // we revert if extension leader is incorrect
     const extopts = parsedTx.body.extension_options
     let leader = ""
-    let weCanIncludeInBlock = true;
-    let atomicChains: string[] = [];
+    let atomicChains: string[] = []
     for (let i = 0; i < extopts.length; i++) {
         const extany = extopts[i]
         if (extany.type_url == typestnd.TypeUrl_ExtensionOptionAtomicMultiChainTx) {
@@ -683,28 +672,43 @@ export function addTransactionToMempool(
             if (!ext.chain_ids.includes(ourchain)) {
                 return txhash;
             }
-            atomicChains = ext.chain_ids
+
             // don't propose atomic transactions if we do not have all subchains
             const oursubchains = mcwrap.GetSubChainIds();
+            let weCanIncludeInBlock = true;
+            atomicChains = ext.chain_ids;
             for (let i = 0; i < ext.chain_ids.length; i++) {
                 if (!oursubchains.includes(ext.chain_ids[i])) {
                     weCanIncludeInBlock = false;
                     break;
                 }
             }
+            if (!weCanIncludeInBlock) {
+                LoggerInfo("atomic transaction not added to mempool, node cannot be proposer", ["txhash", txhash, "subchains", ext.chain_ids.join(",")])
+                return txhash;
+            }
         }
     }
-    if (weCanIncludeInBlock) {
-        mempool.add(txhash, transaction, txGas, leader);
-        setMempool(mempool);
 
-        if (leader != "") {
-            LoggerInfo("new transaction added to mempool", ["txhash", txhash, "atomic_crosschain_tx_leader", leader, "subchains", atomicChains.join(",")])
-        } else {
-            LoggerInfo("new transaction added to mempool", ["txhash", txhash])
-        }
+    // check that tx is valid
+    // we run CheckTx last, because it persists temporary state between tx checks and if CheckTx passes, but the tx is not included in the mempool,
+    // cosmos-sdk still believes the tx has passed, so the account sequence is increased in the temporary context
+    const checktx = new typestnd.RequestCheckTx(transaction, typestnd.CheckTxType.New);
+    const checkResp = consensuswrap.CheckTx(checktx);
+    // we only check the code type; CheckTx should be stateless, just form checking
+    if (checkResp.code !== typestnd.CodeType.Ok) {
+        // transaction is not valid, we should finish; we use this error to check forwarded txs to leader
+        revert(`${cfg.ERROR_INVALID_TX}; code ${checkResp.code}; ${checkResp.log}; txhash: ${txhash}`);
+        return "";
+    }
+
+    // add to mempool
+    mempool.add(txhash, transaction, txGas, leader);
+    setMempool(mempool);
+    if (leader != "") {
+        LoggerInfo("new transaction added to mempool", ["txhash", txhash, "atomic_crosschain_tx_leader", leader, "subchains", atomicChains.join(",")])
     } else {
-        LoggerInfo("atomic transaction not added to mempool, node cannot be proposer", ["txhash", txhash, "subchains", atomicChains.join(",")])
+        LoggerInfo("new transaction added to mempool", ["txhash", txhash])
     }
     return txhash;
 }
@@ -922,11 +926,6 @@ export function receiveBlockProposal(
     LoggerDebugExtended("received new block proposal", ["block", entryStr]);
 
     let entry: AppendEntry = JSON.parse<AppendEntry>(entryStr);
-    LoggerInfo("received new block proposal", [
-        "proposerId", entry.proposerId.toString(),
-        "termId", entry.termId.toString(),
-        "sender", sender,
-    ]);
 
     // verify signature
     const isSender = verifyMessageByAddr(sender, signature, entryStr);
@@ -965,6 +964,11 @@ export function processAppendEntry(entry: LogEntryAggregate): void {
     const data = decodeBase64(entry.data.data);
     const processReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(String.UTF8.decode(data.buffer));
     const processReq = processReqWithMeta.request
+    LoggerInfo("received new block proposal", [
+        "height", processReq.height.toString(),
+        "proposerId", entry.leaderId.toString(),
+        "termId", entry.termId.toString(),
+    ]);
 
     // TODO check all the validator signatures on the previous block, for correctness
     // TODO do we compare with our own signatures?

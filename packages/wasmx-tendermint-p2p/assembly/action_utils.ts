@@ -229,8 +229,8 @@ export function startBlockFinalizationFollower(index: i64): boolean {
 }
 
 export function startBlockFinalizationFollowerInternal(entryobj: LogEntryAggregate): boolean {
-    LoggerInfo("start block finalization", ["height", entryobj.index.toString()])
-    LoggerDebug("start block finalization", ["height", entryobj.index.toString(), "proposerId", entryobj.leaderId.toString(), "termId", entryobj.termId.toString(), "data", JSON.stringify<wblocks.BlockEntry>(entryobj.data)])
+    LoggerInfo("start block finalization", ["height", entryobj.index.toString(), "termId", entryobj.termId.toString(), "proposerId", entryobj.leaderId.toString()])
+    LoggerDebug("start block finalization", ["height", entryobj.index.toString(),  "data", JSON.stringify<wblocks.BlockEntry>(entryobj.data)])
     return startBlockFinalizationInternal(entryobj, false);
 }
 
