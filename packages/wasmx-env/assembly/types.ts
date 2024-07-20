@@ -624,19 +624,18 @@ export class MsgCrossChainCallRequest {
         funds: Coin[],
         dependencies: string[],
         to_chain_id: string,
-        timeout_ms: u64,
     ) {
         this.to = to
         this.msg = msg
         this.funds = funds
         this.dependencies = dependencies
         this.to_chain_id = to_chain_id
-        this.timeout_ms = timeout_ms
 
         // set by wasmx
         this.from = ""
         this.from_chain_id = ""
         this.is_query = false
+        this.timeout_ms = 0
     }
 }
 

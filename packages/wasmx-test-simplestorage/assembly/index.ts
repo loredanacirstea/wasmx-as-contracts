@@ -1,14 +1,17 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as base64 from "as-base64/assembly"
-import { CallData, getCallDataCrossChain, getCallDataWrap } from "./calldata";
-import { get, set, testGetWithStore } from "./actions";
+import { CallData, getCallDataCrossChain, getCallDataInitialize, getCallDataWrap } from "./calldata";
+import { get, increment, incrementAndCall, set, setCrossChainContract, testGetWithStore } from "./actions";
 import { LoggerInfo, revert } from "./utils";
 import { WasmxExecutionMessage } from "wasmx-env/assembly/types";
 
 export function wasmx_env_2(): void {}
 
-export function instantiate(): void {}
+export function instantiate(): void {
+  const calld = getCallDataInitialize();
+  setCrossChainContract(calld.crosschain_contract)
+}
 
 export function main(): void {
   const calld = getCallDataWrap();
@@ -24,6 +27,8 @@ export function mainInternal(calld: CallData): ArrayBuffer {
     result = get(calld.get!);
   } else if (calld.testGetWithStore !== null) {
     result = testGetWithStore(calld.testGetWithStore!);
+  } else if (calld.increment !== null) {
+    increment();
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)
@@ -40,6 +45,13 @@ export function crosschain(): void{
   const execmsg = JSON.parse<WasmxExecutionMessage>(calldstr);
   const execmsgstr = String.UTF8.decode(base64.decode(execmsg.data).buffer)
   const msg = JSON.parse<CallData>(execmsgstr);
+
+  if (msg.incrementAndCall != null) {
+    incrementAndCall(calld.from_chain_id, calld.from)
+    wasmx.finish(new ArrayBuffer(0));
+    return;
+  }
+
   const result = mainInternal(msg);
   wasmx.finish(result);
 }

@@ -152,7 +152,8 @@ export function level0CrossChainCallRequest(msg: string): wasmxt.MsgCrossChainCa
     const to = roles.ROLE_MULTICHAIN_REGISTRY_LOCAL
     // TODO be able to send a request to the last version of a chain, by its base name
     // without knowing the current chain id
-    const req = new wasmxt.MsgCrossChainCallRequest(to, utils.stringToBase64(msg), [], [], level0.Level0ChainId.full, CROSS_CHAIN_TIMEOUT_MS)
+    const req = new wasmxt.MsgCrossChainCallRequest(to, utils.stringToBase64(msg), [], [], level0.Level0ChainId.full)
+    req.timeout_ms = CROSS_CHAIN_TIMEOUT_MS
     // req.from = from
     req.from = roles.ROLE_MULTICHAIN_REGISTRY_LOCAL
     req.from_chain_id = wasmxw.getChainId()

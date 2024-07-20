@@ -73,8 +73,8 @@ export function totalSupplyCrossChainInternal(req: MsgTotalSupplyCrossChain, det
         [],
         [],
         "",
-        CROSS_CHAIN_TIMEOUT_MS,
     )
+    qreq.timeout_ms = CROSS_CHAIN_TIMEOUT_MS;
 
     for (let i = 0; i < subchains.length; i++) {
         const subchainId = subchains[i]
@@ -121,8 +121,8 @@ export function balanceCrossChainInternal(req: MsgBalanceOfCrossChain, determini
         [],
         [],
         "",
-        CROSS_CHAIN_TIMEOUT_MS,
     )
+    qreq.timeout_ms = CROSS_CHAIN_TIMEOUT_MS;
 
     for (let i = 0; i < subchains.length; i++) {
         const subchainId = subchains[i]
