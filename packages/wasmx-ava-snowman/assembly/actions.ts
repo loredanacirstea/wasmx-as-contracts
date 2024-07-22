@@ -34,7 +34,6 @@ import { LogEntry, LogEntryAggregate, AppendEntry, NodeUpdate, UpdateNodeRespons
 import {
     CURRENT_NODE_ID,
     NODE_IPS,
-    BlockProtocol,
     PROPOSED_HASH_KEY,
     BETA_THRESHOLD_KEY,
     MaxBlockSizeBytes,
@@ -559,7 +558,7 @@ function startBlockProposal(txs: string[], cummulatedGas: i64, maxDataBytes: i64
     // TODO load app version from storage or Info()?
 
     const header = new typestnd.Header(
-        new typestnd.VersionConsensus(BlockProtocol, currentState.version.consensus.app),
+        new typestnd.VersionConsensus(typestnd.BlockProtocol, currentState.version.consensus.app),
         currentState.chain_id,
         prepareReq.height,
         prepareReq.time,
@@ -615,6 +614,7 @@ function appendLogInternalVerified2(processReq: typestnd.RequestProcessProposal,
         commitBase64,
         stringToBase64(`{"evidence":[]}`),
         "",
+        "",
     )
     const blockEntryBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(JSON.stringify<wblocks.BlockEntry>(blockEntry))))
 
@@ -644,6 +644,7 @@ function appendLogInternalVerified(processReq: typestnd.RequestProcessProposal, 
         validator.operator_address,
         commitBase64,
         stringToBase64(`{"evidence":[]}`),
+        "",
         "",
     )
     const entry = new LogEntryAggregate(processReq.height, 0, leaderId, blockEntry);

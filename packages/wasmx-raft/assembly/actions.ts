@@ -977,7 +977,7 @@ function startBlockProposal(txs: string[], cummulatedGas: i64, maxDataBytes: i64
     // TODO load app version from storage or Info()?
 
     const header = new typestnd.Header(
-        new typestnd.VersionConsensus(cfg.BlockProtocol, currentState.version.consensus.app),
+        new typestnd.VersionConsensus(typestnd.BlockProtocol, currentState.version.consensus.app),
         currentState.chain_id,
         prepareReq.height,
         prepareReq.time,
@@ -1357,6 +1357,7 @@ function appendLogInternalVerified(processReq: typestnd.RequestProcessProposal, 
         "", // TODO operator_address,
         commitBase64,
         stringToBase64(`{"evidence":[]}`),
+        "",
         "",
     )
     const entry = new LogEntryAggregate(processReq.height, termId, leaderId, blockEntry);

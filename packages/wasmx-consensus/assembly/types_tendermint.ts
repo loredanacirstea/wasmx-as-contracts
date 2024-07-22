@@ -4,6 +4,16 @@ import {HexString, Base64String, Bech32String, Event, PublicKey, MsgCrossChainCa
 import { AnyWrap } from "wasmx-env/assembly/wasmx_types";
 import { NodePorts } from "./types_multichain";
 
+// ABCISemVer is the semantic version of the ABCI protocol
+export const ABCISemVer  = "2.0.0"
+export const ABCIVersion = ABCISemVer
+// P2PProtocol versions all p2p behavior and msgs.
+// This includes proposer selection.
+export const P2PProtocol: u64 = 8
+// BlockProtocol versions all block data structures and processing.
+// This includes validity of blocks and state updates.
+export const BlockProtocol: u64 = 11;
+
 export const TypeUrl_ExtensionOptionEthereumTx         = "/mythos.wasmx.v1.ExtensionOptionEthereumTx"
 export const TypeUrl_ExtensionOptionAtomicMultiChainTx = "/mythos.network.v1.ExtensionOptionAtomicMultiChainTx"
 export const TypeUrl_ExtensionOptionMultiChainTx       = "/mythos.network.v1.ExtensionOptionMultiChainTx"
@@ -145,11 +155,11 @@ export class ExtendedVoteInfo {
 @serializable
 export class ExtendedCommitInfo {
     // The round at which the block proposer decided in the previous height.
-	round: i32;
+	round: i64;
 	// List of validators' addresses in the last validator set with their voting
 	// information, including vote extensions.
 	votes: ExtendedVoteInfo[];
-    constructor(round: i32, votes: ExtendedVoteInfo[]) {
+    constructor(round: i64, votes: ExtendedVoteInfo[]) {
         this.round = round;
         this.votes = votes;
     }
@@ -277,9 +287,9 @@ export class VoteInfo {
 // @ts-ignore
 @serializable
 export class CommitInfo {
-	round: i32
+	round: i64
 	votes: VoteInfo[]
-    constructor(round: i32, votes: VoteInfo[]) {
+    constructor(round: i64, votes: VoteInfo[]) {
         this.round = round
         this.votes = votes
     }
@@ -465,6 +475,31 @@ export class ValidatorInfo {
         this.proposer_priority = proposer_priority;
     }
 }
+
+// @ts-ignore
+@serializable
+export class TendermintValidator {
+    address: HexString
+    pub_key: PublicKey | null = null
+    voting_power: i64
+    proposer_priority: i64
+    constructor(address: HexString, pub_key: PublicKey | null, voting_power: i64, proposer_priority: i64) {
+        this.address = address;
+        this.pub_key = pub_key;
+        this.voting_power = voting_power;
+        this.proposer_priority = proposer_priority;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class TendermintValidators {
+    validators: TendermintValidator[] = []
+    constructor(validators: TendermintValidator[]) {
+        this.validators = validators;
+    }
+}
+
 
 // @ts-ignore
 @serializable

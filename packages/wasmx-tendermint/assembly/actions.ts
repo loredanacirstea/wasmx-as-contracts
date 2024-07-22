@@ -30,7 +30,7 @@ import { LogEntry, LogEntryAggregate, AppendEntry, AppendEntryResponse, Transact
 import * as cfg from "./config";
 import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
-import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
+import { extractIndexedTopics, getActiveValidatorInfo, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
 import { getLeaderChain } from "wasmx-consensus/assembly/multichain_utils";
 import { appendLogEntry, decodeTx, getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLogIndex, getLogEntryObj, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, removeLogEntry, setCurrentState, setLastLogIndex, setLogEntryAggregate, setLogEntryObj, setNextIndexArray, setNodeIPs, setTermId } from "./action_utils";
 import { NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft";
@@ -1024,7 +1024,9 @@ export function buildBlockProposal(txs: string[], optimisticExecution: boolean, 
 
     const currentState = getCurrentState();
     const validators = getAllValidators();
-    const lastCommit = new typestnd.CommitInfo(0, []); // TODO for the last block
+
+    const lastCommit = new typestnd.CommitInfo(lastBlockCommit.round, []); // TODO for the last block
+    const localLastCommit = new typestnd.ExtendedCommitInfo(lastBlockCommit.round, []);
     for (let i = 0; i < lastBlockCommit.signatures.length; i++) {
         const commitSig = lastBlockCommit.signatures[i]
         const val = validators[i]
@@ -1037,15 +1039,16 @@ export function buildBlockProposal(txs: string[], optimisticExecution: boolean, 
         // const vaddress = encodeBase64(hexToUint8Array(commitSig.validator_address))
         const vaddress = encodeBase64(Uint8Array.wrap(wasmxw.addr_canonicalize(val.operator_address)))
 
-        const voteInfo = new typestnd.VoteInfo(new typestnd.Validator(vaddress, power), commitSig.block_id_flag)
+        const validator = new typestnd.Validator(vaddress, power)
+        const voteInfo = new typestnd.VoteInfo(validator, commitSig.block_id_flag)
         lastCommit.votes.push(voteInfo)
+
+        const extendedVoteInfo = new typestnd.ExtendedVoteInfo(validator, "", "", commitSig.block_id_flag)
+        localLastCommit.votes.push(extendedVoteInfo)
     }
     const evidence = new typestnd.Evidence(); // TODO
 
-    // TODO correct votes?
-    // lastExtCommit *types.ExtendedCommit
-    // lastExtCommit = cs.LastCommit.MakeExtendedCommit(cs.state.ConsensusParams.ABCI)
-    const localLastCommit = new typestnd.ExtendedCommitInfo(0, new Array<typestnd.ExtendedVoteInfo>(0));
+
     // TODO next validators hash?
     const nextValidatorsHash = getValidatorsHash(validators);
     const misbehavior: typestnd.Misbehavior[] = []; // block.Evidence.Evidence.ToABCI()
@@ -1068,7 +1071,7 @@ export function buildBlockProposal(txs: string[], optimisticExecution: boolean, 
     // TODO load app version from storage or Info()?
 
     const header = new typestnd.Header(
-        new typestnd.VersionConsensus(cfg.BlockProtocol, currentState.version.consensus.app),
+        new typestnd.VersionConsensus(typestnd.BlockProtocol, currentState.version.consensus.app),
         currentState.chain_id,
         prepareReq.height,
         prepareReq.time,
@@ -1107,7 +1110,7 @@ export function buildBlockProposal(txs: string[], optimisticExecution: boolean, 
         metainfo = oeresp.metainfo;
     }
     // We have a valid proposal to propagate to other nodes
-    const entry = buildLogEntryAggregate(processReq, header, lastBlockCommit, optimisticExecution, metainfo);
+    const entry = buildLogEntryAggregate(processReq, header, lastBlockCommit, optimisticExecution, metainfo, validators);
     return new BuildProposal(entry, processReq);
 }
 
@@ -1132,7 +1135,7 @@ export function doOptimisticExecution(processReq: typestnd.RequestProcessProposa
     return consensuswrap.OptimisticExecution(processReq, processResp);
 }
 
-export function buildLogEntryAggregate(processReq: typestnd.RequestProcessProposal, header: typestnd.Header, blockCommit: typestnd.BlockCommit, optimisticExecution: boolean, meta: Map<string,Base64String>): LogEntryAggregate {
+export function buildLogEntryAggregate(processReq: typestnd.RequestProcessProposal, header: typestnd.Header, blockCommit: typestnd.BlockCommit, optimisticExecution: boolean, meta: Map<string,Base64String>, validators: staking.Validator[]): LogEntryAggregate {
     const blockData = JSON.stringify<typestnd.RequestProcessProposalWithMetaInfo>(new typestnd.RequestProcessProposalWithMetaInfo(processReq, optimisticExecution, meta));
     const blockDataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(blockData)))
     const blockHeader = JSON.stringify<typestnd.Header>(header);
@@ -1144,6 +1147,9 @@ export function buildLogEntryAggregate(processReq: typestnd.RequestProcessPropos
     const validator = getValidatorByHexAddr(processReq.proposer_address);
     const contractAddress = encodeBase64(Uint8Array.wrap(wasmx.getAddress()));
 
+    // TODO get only active validators???
+    const validatorInfos = getActiveValidatorInfo(validators)
+    const validatorSet = new typestnd.TendermintValidators(validatorInfos)
     const blockEntry = new wblocks.BlockEntry(
         processReq.height,
         contractAddress,
@@ -1154,6 +1160,7 @@ export function buildLogEntryAggregate(processReq: typestnd.RequestProcessPropos
         commitBase64,
         stringToBase64(`{"evidence":[]}`),
         "",
+        stringToBase64(JSON.stringify<typestnd.TendermintValidators>(validatorSet))
     )
     const entry = new LogEntryAggregate(processReq.height, termId, leaderId, blockEntry);
     return entry;

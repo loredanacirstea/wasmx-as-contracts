@@ -9,18 +9,6 @@ export const ERROR_INVALID_TX = "transaction is invalid";
 // commitBlocks -> startBlockFinalization -> finalize block -> commit -> save to logs + index transactions
 // commitBlocks ->
 
-
-// ABCISemVer is the semantic version of the ABCI protocol
-export const ABCISemVer  = "2.0.0"
-export const ABCIVersion = ABCISemVer
-// P2PProtocol versions all p2p behavior and msgs.
-// This includes proposer selection.
-export const P2PProtocol: u64 = 8
-// BlockProtocol versions all block data structures and processing.
-// This includes validity of blocks and state updates.
-export const BlockProtocol: u64 = 12;
-
-
 //// blockchain constants
 // MaxBlockSizeBytes is the maximum permitted size of the blocks.
 export const MaxBlockSizeBytes = 104857600 // 100MB

@@ -28,7 +28,7 @@ import { CurrentState, GetProposerResponse, SignedMsgType, ValidatorCommitVote, 
 import { Base64String, Bech32String, CallRequest, CallResponse, HexString, SignedTransaction } from "wasmx-env/assembly/types";
 import { LOG_START } from "./config";
 import { base64ToHex, base64ToString, parseUint8ArrayToU32BigEndian, uint8ArrayToHex } from "wasmx-utils/assembly/utils";
-import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils";
+import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash } from "wasmx-consensus-utils/assembly/utils";
 import * as stakingutils from "wasmx-stake/assembly/msg_utils";
 
 export function wrapGuard(value: boolean): ArrayBuffer {

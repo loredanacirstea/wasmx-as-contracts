@@ -6,6 +6,7 @@ import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as staking from "wasmx-stake/assembly/types";
 import { hexToUint8Array32, uint8ArrayToHex, i64ToUint8ArrayBE, hex64ToBase64 } from "wasmx-utils/assembly/utils";
+import { BigInt } from "wasmx-env/assembly/bn";
 
 // cosmos-sdk store values
 // 128K - 1
@@ -22,6 +23,8 @@ export function getValidatorsHash(validators: staking.Validator[]): string {
         if (key != null) {
             pub_key = decodeBase64(key.getKey().key);
         }
+        // TODO we may only hash a part of these tokens - e.g. the power
+        // depends on tendermint light client verification
         const tokens = validators[i].tokens.toU8ArrayBe()
         const newdata = new Uint8Array(pub_key.length + tokens.length);
         newdata.set(pub_key, 0);
@@ -29,6 +32,23 @@ export function getValidatorsHash(validators: staking.Validator[]): string {
         data[i] = uint8ArrayToHex(newdata);
     }
     return wasmxw.MerkleHash(data);
+}
+
+export function getActiveValidatorInfo(validators: staking.Validator[]): typestnd.TendermintValidator[] {
+    let vinfo = new Array<typestnd.TendermintValidator>(validators.length);
+    for (let i = 0; i < validators.length; i++) {
+        const v = validators[i];
+        const consKey = v.consensus_pubkey;
+        if (consKey == null) {
+            wasmxw.revert(`validator missing consensus key ${v.operator_address}`)
+            return [];
+        }
+        const key = consKey.getKey().key
+        const addrhex = wasmxw.ed25519PubToHex(key)
+        const votingPow = v.tokens.div(BigInt.fromU32(1000000)).toU64()
+        vinfo[i] = new typestnd.TendermintValidator(addrhex, consKey, votingPow, 0);
+    }
+    return vinfo;
 }
 
 // Txs.Hash() -> [][]byte merkle.HashFromByteSlices
@@ -101,7 +121,8 @@ export function getValidatorsHash1(validators: typestnd.ValidatorInfo[]): string
     let data = new Array<string>(validators.length);
     for (let i = 0; i < validators.length; i++) {
         // hex
-        const pub_key = hexToUint8Array32(validators[i].pub_key);
+        const consKey = validators[i].pub_key;
+        const pub_key = hexToUint8Array32(consKey);
         const power = i64ToUint8ArrayBE(validators[i].voting_power);
         const newdata = new Uint8Array(pub_key.length + power.length);
         newdata.set(pub_key, 0);

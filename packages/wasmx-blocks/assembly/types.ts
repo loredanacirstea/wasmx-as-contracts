@@ -17,7 +17,8 @@ export class BlockEntry {
     last_commit: Base64String // base64-encoded BlockCommit
     evidence: Base64String // base64-encoded EvidenceData
     result: string // base64-encoded BlockFinalizeResult - same as ResponseFinalizeBlock
-    constructor(index: i64, readerContract: Bech32String, writerContract: Bech32String, data: Base64String, header: Base64String, proposer_address: Bech32String, last_commit: Base64String, evidence: Base64String, result: string) {
+    validator_info: Base64String // base64-encoded TendermintValidators - validator set for this block
+    constructor(index: i64, readerContract: Bech32String, writerContract: Bech32String, data: Base64String, header: Base64String, proposer_address: Bech32String, last_commit: Base64String, evidence: Base64String, result: string, validator_info: Base64String) {
         this.index = index;
         this.readerContract = readerContract;
         this.writerContract = writerContract;
@@ -27,6 +28,7 @@ export class BlockEntry {
         this.last_commit = last_commit;
         this.evidence = evidence;
         this.result = result;
+        this.validator_info = validator_info;
     }
 }
 
