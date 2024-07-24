@@ -32,10 +32,10 @@ import { callHookContract, setMempool, signMessage } from "wasmx-tendermint/asse
 import { Mempool } from "wasmx-tendermint/assembly/types_blockchain";
 import * as cfg from "./config";
 import { AppendEntry, AppendEntryResponse, LogEntryAggregate, UpdateNodeRequest } from "./types";
-import { getAllValidatorInfos, getConsensusParams, getCurrentProposer, getFinalBlock, getLastBlockCommit, getLastBlockIndex, getLogEntryAggregate, getNextProposer, getProtocolId, getProtocolIdInternal, getTopic, getTopicInternal, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
+import { getAllValidatorInfos, getTendermintVote, getConsensusParams, getCurrentProposer, getFinalBlock, getLastBlockCommit, getLastBlockIndex, getLogEntryAggregate, getNextProposer, getProtocolId, getProtocolIdInternal, getTopic, getTopicInternal, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
 import { extractUpdateNodeEntryAndVerify, removeNode } from "wasmx-raft/assembly/actions";
 import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembly/storage";
-import { getAllValidators, getNodeByAddress, getNodeIdByAddress, verifyMessage, verifyMessageByAddr } from "wasmx-raft/assembly/action_utils";
+import { getAllValidators, getConsensusKeyByAddr, getNodeByAddress, getNodeIdByAddress, verifyMessage, verifyMessageByAddr, verifyMessageBytesByAddr } from "wasmx-raft/assembly/action_utils";
 import { NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft"
 import { Commit, CurrentState, getEmptyPrecommitArray, getEmptyValidatorProposalVoteArray, SignedMsgType, ValidatorCommitVote, ValidatorProposalVote } from "./types_blockchain";
 import { callContract } from "wasmx-tendermint/assembly/actions";
@@ -43,7 +43,7 @@ import { InitSubChainDeterministicRequest, NodePorts } from "wasmx-consensus/ass
 import * as roles from "wasmx-env/assembly/roles";
 import * as mcwrap from 'wasmx-consensus/assembly/multichain_wrap';
 import { StartSubChainMsg } from "wasmx-consensus/assembly/types_multichain";
-import { decodeTx, getNodeIPs } from "wasmx-tendermint/assembly/action_utils";
+import { decodeTx, getBlockID, getNodeIPs } from "wasmx-tendermint/assembly/action_utils";
 import { getLeaderChain } from "wasmx-consensus/assembly/multichain_utils";
 import { getSubChainConfig } from "./multichain";
 
@@ -1210,7 +1210,9 @@ export function buildPrecommitMessage(): ValidatorProposalVote {
 
 export function preparePrecommitMessage(data: ValidatorProposalVote): string[] {
     const datastr = JSON.stringify<ValidatorProposalVote>(data);
-    const signature = signMessage(datastr);
+    const commit = getTendermintVote(data);
+    const bz = consensuswrap.BlockCommitVoteBytes(commit)
+    const signature = tnd.signMessageBytes(bz);
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
     const msgstr = `{"run":{"event":{"type":"receivePrecommit","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signature}"}]}}}`
     return [msgstr, signature]
@@ -1281,7 +1283,9 @@ export function receivePrecommit(
     if (state.nextHeight != data.index) return;
 
     // verify signature
-    const isSender = verifyMessageByAddr(data.validatorAddress, signature, datastr);
+    const commit = getTendermintVote(data);
+    const bz = consensuswrap.BlockCommitVoteBytes(commit)
+    const isSender = verifyMessageBytesByAddr(data.validatorAddress, signature, bz);
     if (!isSender) {
         LoggerError("signature verification failed for precommit", ["sender", data.validatorAddress]);
         return;

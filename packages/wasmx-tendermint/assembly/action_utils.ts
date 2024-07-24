@@ -5,12 +5,21 @@ import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
 import { CurrentState } from "./types_blockchain";
-import { parseInt32 } from "wasmx-utils/assembly/utils";
+import { base64ToHex, parseInt32 } from "wasmx-utils/assembly/utils";
 import { LogEntry, LogEntryAggregate } from "./types";
 import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
 import * as cfg from "./config";
 import { Base64String, SignedTransaction } from "wasmx-env/assembly/types";
 import { NodeInfo } from "wasmx-p2p/assembly/types";
+
+export function getBlockID(hash: Base64String): typestnd.BlockID {
+    const hexhash = base64ToHex(hash)
+    return new typestnd.BlockID(hexhash, new typestnd.PartSetHeader(1, hexhash))
+}
+
+export function getBlockIDProto(hash: Base64String): typestnd.BlockIDProto {
+    return new typestnd.BlockIDProto(hash, new typestnd.PartSetHeader(1, hash))
+}
 
 export function getCurrentState(): CurrentState {
     const value = fsm.getContextValue(cfg.STATE_KEY);

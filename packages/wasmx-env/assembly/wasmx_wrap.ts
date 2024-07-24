@@ -226,18 +226,26 @@ export function MerkleHash(slices: string[]): string {
 
 export function ed25519Sign(privKeyStr: string, msgstr: string): Base64String {
     const msgBase64 = Uint8Array.wrap(String.UTF8.encode(msgstr));
+    return ed25519SignBytes(privKeyStr, msgBase64.buffer)
+}
+
+export function ed25519SignBytes(privKeyStr: string, msg: ArrayBuffer): Base64String {
     const privKey = decodeBase64(privKeyStr);
-    const signature = wasmx.ed25519Sign(privKey.buffer, msgBase64.buffer);
+    const signature = wasmx.ed25519Sign(privKey.buffer, msg);
     const signatureBase64 = encodeBase64(Uint8Array.wrap(signature));
     LoggerDebugWrap("ed25519Sign", ["signature", signatureBase64])
     return signatureBase64
 }
 
 export function ed25519Verify(pubKeyStr: Base64String, signatureStr: Base64String, msg: string): boolean {
+    return ed25519VerifyBytes(pubKeyStr, signatureStr, String.UTF8.encode(msg));
+}
+
+export function ed25519VerifyBytes(pubKeyStr: Base64String, signatureStr: Base64String, msg: ArrayBuffer): boolean {
     const pubKey = decodeBase64(pubKeyStr);
     const signature = decodeBase64(signatureStr);
     LoggerDebugWrap("ed25519Verify", ["signature", signatureStr, "pubKey", pubKeyStr])
-    const resp = wasmx.ed25519Verify(pubKey.buffer, signature.buffer, String.UTF8.encode(msg));
+    const resp = wasmx.ed25519Verify(pubKey.buffer, signature.buffer, msg);
     if (resp == 1) return true;
     return false;
 }

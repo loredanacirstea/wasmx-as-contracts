@@ -30,6 +30,7 @@ import { LOG_START } from "./config";
 import { base64ToHex, base64ToString, parseUint8ArrayToU32BigEndian, uint8ArrayToHex } from "wasmx-utils/assembly/utils";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash } from "wasmx-consensus-utils/assembly/utils";
 import * as stakingutils from "wasmx-stake/assembly/msg_utils";
+import { getBlockID, getBlockIDProto } from "wasmx-tendermint/assembly/action_utils";
 
 export function wrapGuard(value: boolean): ArrayBuffer {
     if (value) return String.UTF8.encode("1");
@@ -71,6 +72,18 @@ export function getLogEntryAggregate(index: i64): LogEntryAggregate {
         blockData,
     )
     return entry;
+}
+
+export function getTendermintVote(data: ValidatorProposalVote): typestnd.VoteTendermint {
+    return new typestnd.VoteTendermint(
+        data.type,
+        data.index,
+        data.termId,
+        getBlockIDProto(data.hash),
+        data.timestamp,
+        encodeBase64(Uint8Array.wrap(wasmxw.addr_canonicalize(data.validatorAddress))),
+        data.validatorIndex,
+    )
 }
 
 export function initChain(req: typestnd.InitChainSetup): void {
@@ -302,10 +315,8 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     LoggerDebug("updating current state...", [])
     const state = getCurrentState();
     state.app_hash = finalizeResp.app_hash;
-    state.last_block_id = new typestnd.BlockID(
-        base64ToHex(finalizeReq.hash),
-        new typestnd.PartSetHeader(0, base64ToHex(finalizeReq.hash.slice(0, 8)))
-    );
+    state.last_block_id = getBlockID(finalizeReq.hash)
+
     state.last_commit_hash = last_commit_hash
     state.last_results_hash = last_results_hash
     state.nextHeight = finalizeReq.height + 1

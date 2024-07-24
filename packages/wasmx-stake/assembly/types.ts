@@ -301,7 +301,7 @@ export class Validator {
 	// consensus_pubkey is the consensus public key of the validator, as a Protobuf Any.
 	consensus_pubkey: PublicKey | null
 	// jailed defined whether the validator has been jailed from bonded status or not.
-	jailed: bool
+	jailed: boolean
 	// status is the validator status (bonded/unbonding/unbonded).
 	status: BondStatusString
 	// tokens define the delegated tokens (incl. self-delegation).
@@ -324,7 +324,7 @@ export class Validator {
 	unbonding_on_hold_ref_count: i64
 	// list of unbonding ids, each uniquely identifing an unbonding of this validator
 	unbonding_ids: u64[]
-    constructor(operator_address: string, consensus_pubkey: PublicKey | null, jailed: bool, status: BondStatusString, tokens: BigInt, delegator_shares: string, description: Description, unbonding_height: i64, unbonding_time: Date, commission: Commission, min_self_delegation: BigInt, unbonding_on_hold_ref_count: i64, unbonding_ids: u64[]) {
+    constructor(operator_address: string, consensus_pubkey: PublicKey | null, jailed: boolean, status: BondStatusString, tokens: BigInt, delegator_shares: string, description: Description, unbonding_height: i64, unbonding_time: Date, commission: Commission, min_self_delegation: BigInt, unbonding_on_hold_ref_count: i64, unbonding_ids: u64[]) {
         this.operator_address = operator_address
         this.consensus_pubkey = consensus_pubkey
         this.jailed = jailed
@@ -349,7 +349,7 @@ export class ValidatorSimple {
 	// consensus_pubkey is the consensus public key of the validator, as a Protobuf Any.
 	consensus_pubkey: PublicKey | null
 	// jailed defined whether the validator has been jailed from bonded status or not.
-	jailed: bool
+	jailed: boolean
 	// status is the validator status (bonded/unbonding/unbonded).
 	status: BondStatusString
 	// description defines the description terms for the validator.
@@ -367,7 +367,7 @@ export class ValidatorSimple {
 	unbonding_on_hold_ref_count: i64
 	// list of unbonding ids, each uniquely identifing an unbonding of this validator
 	unbonding_ids: u64[]
-    constructor(operator_address: string, consensus_pubkey: PublicKey | null, jailed: bool, status: BondStatusString, description: Description, unbonding_height: i64, unbonding_time: Date, commission: Commission, min_self_delegation: BigInt, unbonding_on_hold_ref_count: i64, unbonding_ids: u64[]) {
+    constructor(operator_address: string, consensus_pubkey: PublicKey | null, jailed: boolean, status: BondStatusString, description: Description, unbonding_height: i64, unbonding_time: Date, commission: Commission, min_self_delegation: BigInt, unbonding_on_hold_ref_count: i64, unbonding_ids: u64[]) {
         this.operator_address = operator_address
         this.consensus_pubkey = consensus_pubkey
         this.jailed = jailed

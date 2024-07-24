@@ -70,11 +70,22 @@ export class BlockID {
     // PartSet containing parts of a serialized block. is the form in which the block is gossipped to peers.
     // PartSetHeader:
     // 1. total number of parts
-    // 2. first 6 bytes of the hash
     parts: PartSetHeader
     constructor(hash: HexString, parts: PartSetHeader) {
         this.hash = hash;
         this.parts = parts;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class BlockIDProto {
+    // block hash
+    hash: Base64String
+    part_set_header: PartSetHeader
+    constructor(hash: Base64String, part_set_header: PartSetHeader) {
+        this.hash = hash;
+        this.part_set_header = part_set_header;
     }
 }
 
@@ -196,6 +207,61 @@ export class BlockCommit {
         this.round = round;
         this.block_id = block_id;
         this.signatures = signatures;
+    }
+}
+
+// @ts-ignore
+@serializable
+export class CanonicalVote {
+    type: i32 = 0 // SignedMsgType
+    height: i64 = 0
+    round: i64 = 0
+    block_id: BlockIDProto
+    timestamp: Date
+    chain_id: string = ""
+    constructor(
+        type: i32,
+        height: i64,
+        round: i64,
+        block_id: BlockIDProto,
+        timestamp: Date,
+        chain_id: string,
+    ) {
+        this.type = type
+        this.height = height
+        this.round = round
+        this.block_id = block_id
+        this.timestamp = timestamp
+        this.chain_id = chain_id
+    }
+}
+
+// @ts-ignore
+@serializable
+export class VoteTendermint {
+    type: i32 = 0 // SignedMsgType
+    height: i64 = 0
+    round: i64 = 0
+    block_id: BlockIDProto
+    timestamp: Date
+    validator_address: Base64String = ""
+    validator_index: i32 = 0
+    constructor(
+        type: i32,
+        height: i64,
+        round: i64,
+        block_id: BlockIDProto,
+        timestamp: Date,
+        validator_address: Base64String,
+        validator_index: i32,
+    ) {
+        this.type = type
+        this.height = height
+        this.round = round
+        this.block_id = block_id
+        this.timestamp = timestamp
+        this.validator_address = validator_address
+        this.validator_index = validator_index
     }
 }
 

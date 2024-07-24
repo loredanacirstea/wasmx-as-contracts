@@ -25,7 +25,7 @@ import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, AppendEn
 import { BigInt } from "wasmx-env/assembly/bn";
 import { appendLogEntry, getCommitIndex, getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getMatchIndexArray, getMempool, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, getVoteIndexArray, hasVotedFor, removeLogEntry, setCommitIndex, setCurrentNodeId, setCurrentState, setElectionTimeout, setLastApplied, setLastLogIndex, setMatchIndexArray, setMempool, setNextIndexArray, setNodeIPs, setTermId, setVoteIndexArray, setVotedFor } from "./storage";
 import * as cfg from "./config";
-import { callHookContract, checkValidatorsUpdate, getAllValidators,getConsensusParams, getCurrentValidator, getFinalBlock, getLastBlockIndex, getLastLog, getMajority, getRandomInRange, initChain, initializeIndexArrays, setFinalizedBlock, signMessage, updateConsensusParams, updateValidators, verifyMessage, verifyMessageByAddr } from "./action_utils";
+import { callHookContract, checkValidatorsUpdate, getAllValidators,getBlockID,getConsensusParams, getCurrentValidator, getFinalBlock, getLastBlockIndex, getLastLog, getMajority, getRandomInRange, initChain, initializeIndexArrays, setFinalizedBlock, signMessage, updateConsensusParams, updateValidators, verifyMessage, verifyMessageByAddr } from "./action_utils";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
 import { NetworkNode, NodeInfo } from "wasmx-p2p/assembly/types";
 
@@ -1090,10 +1090,8 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     LoggerDebug("updating current state...", [])
     const state = getCurrentState();
     state.app_hash = finalizeResp.app_hash;
-    state.last_block_id = new typestnd.BlockID(
-        base64ToHex(finalizeReq.hash),
-        new typestnd.PartSetHeader(0, base64ToHex(finalizeReq.hash.slice(0, 8)))
-    );
+    state.last_block_id = getBlockID(finalizeReq.hash)
+
     state.last_commit_hash = last_commit_hash
     state.last_results_hash = last_results_hash
     setCurrentState(state);

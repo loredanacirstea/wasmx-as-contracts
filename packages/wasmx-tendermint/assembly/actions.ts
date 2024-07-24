@@ -32,7 +32,7 @@ import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } fro
 import { BigInt } from "wasmx-env/assembly/bn";
 import { extractIndexedTopics, getActiveValidatorInfo, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
 import { getLeaderChain } from "wasmx-consensus/assembly/multichain_utils";
-import { appendLogEntry, decodeTx, getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLogIndex, getLogEntryObj, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, removeLogEntry, setCurrentState, setLastLogIndex, setLogEntryAggregate, setLogEntryObj, setNextIndexArray, setNodeIPs, setTermId } from "./action_utils";
+import { appendLogEntry, decodeTx, getBlockID, getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLogIndex, getLogEntryObj, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, removeLogEntry, setCurrentState, setLastLogIndex, setLogEntryAggregate, setLogEntryObj, setNextIndexArray, setNodeIPs, setTermId } from "./action_utils";
 import { NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft";
 import { verifyMessage } from "wasmx-raft/assembly/action_utils";
 import { NetworkNode, NodeInfo } from "wasmx-p2p/assembly/types";
@@ -1147,9 +1147,10 @@ export function buildLogEntryAggregate(processReq: typestnd.RequestProcessPropos
     const validator = getValidatorByHexAddr(processReq.proposer_address);
     const contractAddress = encodeBase64(Uint8Array.wrap(wasmx.getAddress()));
 
-    // TODO get only active validators???
+    // get only active validators
     const validatorInfos = getActiveValidatorInfo(validators)
     const validatorSet = new typestnd.TendermintValidators(validatorInfos)
+
     const blockEntry = new wblocks.BlockEntry(
         processReq.height,
         contractAddress,
@@ -1254,6 +1255,11 @@ function getRandomInRange(min: i64, max: i64): i64 {
 export function signMessage(msgstr: string): Base64String {
     const currentState = getCurrentState();
     return wasmxw.ed25519Sign(currentState.validator_privkey, msgstr);
+}
+
+export function signMessageBytes(msg: ArrayBuffer): Base64String {
+    const currentState = getCurrentState();
+    return wasmxw.ed25519SignBytes(currentState.validator_privkey, msg);
 }
 
 export function startBlockFinalizationLeader(index: i64): boolean {
@@ -1368,10 +1374,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     LoggerDebug("updating current state...", [])
     const state = getCurrentState();
     state.app_hash = finalizeResp.app_hash;
-    state.last_block_id = new typestnd.BlockID(
-        base64ToHex(finalizeReq.hash),
-        new typestnd.PartSetHeader(0, base64ToHex(finalizeReq.hash.slice(0, 8)))
-    );
+    state.last_block_id = getBlockID(finalizeReq.hash)
     state.last_commit_hash = last_commit_hash
     state.last_results_hash = last_results_hash
     setCurrentState(state);

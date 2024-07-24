@@ -20,6 +20,11 @@ import {
     ResponseBeginBlock,
     WrapRequestFinalizeBlock,
     ResponseOptimisticExecution,
+    Header,
+    TendermintValidators,
+    TendermintValidator,
+    CanonicalVote,
+    VoteTendermint,
 } from './types_tendermint';
 
 export function CheckTx(req: RequestCheckTx): ResponseCheckTx {
@@ -120,6 +125,23 @@ export function RollbackToVersion(height: i64): string {
     const errstr = String.UTF8.decode(respbz);
     LoggerDebug("RollbackToVersion", ["err", errstr]);
     return errstr;
+}
+
+export function HeaderHash(header: Header): string {
+    const databz = String.UTF8.encode(JSON.stringify<Header>(header));
+    const hash = consensus.HeaderHash(databz);
+    return encodeBase64(Uint8Array.wrap(hash))
+}
+
+export function ValidatorsHash(validators: TendermintValidator[]): string {
+    const databz = String.UTF8.encode(JSON.stringify<TendermintValidators>(new TendermintValidators(validators)));
+    const hash = consensus.ValidatorsHash(databz);
+    return encodeBase64(Uint8Array.wrap(hash))
+}
+
+export function BlockCommitVoteBytes(vote: VoteTendermint): ArrayBuffer {
+    const databz = String.UTF8.encode(JSON.stringify<VoteTendermint>(vote));
+    return consensus.BlockCommitVoteBytes(databz);
 }
 
 export function LoggerInfo(msg: string, parts: string[]): void {

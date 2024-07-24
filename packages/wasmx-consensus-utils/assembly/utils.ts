@@ -4,9 +4,11 @@ import * as wblockscalld from "wasmx-blocks/assembly/calldata";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
+import * as consw from "wasmx-consensus/assembly/consensus_wrap";
 import * as staking from "wasmx-stake/assembly/types";
 import { hexToUint8Array32, uint8ArrayToHex, i64ToUint8ArrayBE, hex64ToBase64 } from "wasmx-utils/assembly/utils";
 import { BigInt } from "wasmx-env/assembly/bn";
+import { Base64String } from "wasmx-env/assembly/types";
 
 // cosmos-sdk store values
 // 128K - 1
@@ -15,6 +17,11 @@ export const MaxKeyLength = 131071
 export const MaxValueLength = 2147483647
 
 export function getValidatorsHash(validators: staking.Validator[]): string {
+    const data = getActiveValidatorInfo(validators)
+    return consw.ValidatorsHash(data);
+}
+
+export function getValidatorsHash2(validators: staking.Validator[]): string {
     let data = new Array<string>(validators.length);
     for (let i = 0; i < validators.length; i++) {
         // hex
@@ -34,10 +41,17 @@ export function getValidatorsHash(validators: staking.Validator[]): string {
     return wasmxw.MerkleHash(data);
 }
 
+export function isValidatorInactive(valid: staking.Validator): boolean {
+    return valid.jailed || valid.status != staking.BondedS
+}
+
 export function getActiveValidatorInfo(validators: staking.Validator[]): typestnd.TendermintValidator[] {
-    let vinfo = new Array<typestnd.TendermintValidator>(validators.length);
+    let vinfo = new Array<typestnd.TendermintValidator>(0);
     for (let i = 0; i < validators.length; i++) {
         const v = validators[i];
+        if (isValidatorInactive(v)) {
+            continue;
+        }
         const consKey = v.consensus_pubkey;
         if (consKey == null) {
             wasmxw.revert(`validator missing consensus key ${v.operator_address}`)
@@ -46,7 +60,8 @@ export function getActiveValidatorInfo(validators: staking.Validator[]): typestn
         const key = consKey.getKey().key
         const addrhex = wasmxw.ed25519PubToHex(key)
         const votingPow = v.tokens.div(BigInt.fromU32(1000000)).toU64()
-        vinfo[i] = new typestnd.TendermintValidator(addrhex, consKey, votingPow, 0);
+        const val = new typestnd.TendermintValidator(addrhex, consKey, votingPow, 0);
+        vinfo.push(val);
     }
     return vinfo;
 }
@@ -93,7 +108,11 @@ export function getResultsHash(results: typestnd.ExecTxResult[]): string {
 // Returns nil if ValidatorHash is missing,
 // since a Header is not valid unless there is
 // a ValidatorsHash (corresponding to the validator set).
-export function getHeaderHash(header: typestnd.Header): string {
+export function getHeaderHash(header: typestnd.Header): Base64String {
+    return consw.HeaderHash(header);
+}
+
+export function getHeaderHash1(header: typestnd.Header): string {
     const versionbz = String.UTF8.encode(JSON.stringify<typestnd.VersionConsensus>(header.version));
     const blockidbz = String.UTF8.encode(JSON.stringify<typestnd.BlockID>(header.last_block_id));
     const data = [

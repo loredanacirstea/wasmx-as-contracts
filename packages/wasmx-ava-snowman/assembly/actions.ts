@@ -765,9 +765,10 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     LoggerDebug("updating current state...", [])
     const state = getCurrentState();
     state.app_hash = finalizeResp.app_hash;
+    const hexhash = base64ToHex(finalizeReq.hash)
     state.last_block_id = new typestnd.BlockID(
-        base64ToHex(finalizeReq.hash),
-        new typestnd.PartSetHeader(0, base64ToHex(finalizeReq.hash.slice(0, 8)))
+        hexhash,
+        new typestnd.PartSetHeader(1, hexhash)
     );
     state.last_commit_hash = last_commit_hash
     state.last_results_hash = last_results_hash

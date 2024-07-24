@@ -8,6 +8,7 @@ import {
   Bech32String,
   CallRequest,
   CallResponse,
+  PublicKey,
 } from 'wasmx-env/assembly/types';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as staking from "wasmx-stake/assembly/types";
@@ -17,6 +18,12 @@ import { BigInt } from "wasmx-env/assembly/bn";
 import { getCurrentState, getLastLogIndex, getLogEntryObj, getNodeIPs, setCurrentState, setMatchIndexArray, setNextIndexArray } from "./storage";
 import * as cfg from "./config";
 import { CurrentState } from "./types_blockchain";
+import { base64ToHex } from "wasmx-utils/assembly/utils";
+
+export function getBlockID(hash: Base64String): typestnd.BlockID {
+    const hexhash = base64ToHex(hash)
+    return new typestnd.BlockID(hexhash, new typestnd.PartSetHeader(1, hexhash))
+}
 
 export function getMajority(count: i32): i64 {
     return i64(f64.floor(f64(count) / 2) + 1)
@@ -94,6 +101,24 @@ export function verifyMessage(nodeIndex: i32, signatureStr: Base64String, msg: s
 }
 
 export function verifyMessageByAddr(addr: Bech32String, signatureStr: Base64String, msg: string): boolean {
+    const pubKey = getConsensusKeyByAddr(addr)
+    if (pubKey == null) {
+        LoggerDebug("could not verify mesage: empty consensus_pubkey", ["address", addr])
+        return false;
+    }
+    return wasmxw.ed25519Verify(pubKey.getKey().key, signatureStr, msg);
+}
+
+export function verifyMessageBytesByAddr(addr: Bech32String, signatureStr: Base64String, msg: ArrayBuffer): boolean {
+    const pubKey = getConsensusKeyByAddr(addr)
+    if (pubKey == null) {
+        LoggerDebug("could not verify mesage: empty consensus_pubkey", ["address", addr])
+        return false;
+    }
+    return wasmxw.ed25519VerifyBytes(pubKey.getKey().key, signatureStr, msg);
+}
+
+export function getConsensusKeyByAddr(addr: Bech32String): PublicKey | null {
     const validators = getAllValidators();
     let validator: staking.Validator | null = null;
     for (let i = 0; i < validators.length; i++) {
@@ -103,14 +128,9 @@ export function verifyMessageByAddr(addr: Bech32String, signatureStr: Base64Stri
     }
     if (validator == null) {
         LoggerDebug("could not verify mesage: validator not found", ["address", addr])
-        return false;
+        return null;
     }
-    const pubKey = validator.consensus_pubkey;
-    if (pubKey == null) {
-        LoggerDebug("could not verify mesage: empty consensus_pubkey", ["address", addr])
-        return false;
-    }
-    return wasmxw.ed25519Verify(pubKey.getKey().key, signatureStr, msg);
+    return validator.consensus_pubkey;
 }
 
 export function setFinalizedBlock(blockData: string, hash: string, txhashes: string[], indexedTopics: wblockscalld.IndexedTopic[]): void {
