@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64, decode } from "as-base64/assembly";
 import * as p2p from './p2p';
 import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
-import {WasmxResponse, StartNodeWithIdentityRequest, SendMessageRequest, ConnectPeerRequest, ConnectPeerResponse, SendMessageToPeersRequest, ConnectChatRoomRequest, SendMessageToChatRoomRequest, NetworkNode, DisconnectChatRoomRequest, DisconnectPeerRequest } from "./types";
+import {WasmxResponse, StartNodeWithIdentityRequest, SendMessageRequest, ConnectPeerRequest, ConnectPeerResponse, SendMessageToPeersRequest, ConnectChatRoomRequest, SendMessageToChatRoomRequest, NetworkNode, DisconnectChatRoomRequest, DisconnectPeerRequest, StartStateSyncRequest } from "./types";
 
 export function StartNodeWithIdentity(req: StartNodeWithIdentityRequest): WasmxResponse {
     const data = JSON.stringify<StartNodeWithIdentityRequest>(req);
@@ -80,4 +80,10 @@ export function DisconnectPeer(req: DisconnectPeerRequest): void {
     const data = JSON.stringify<DisconnectPeerRequest>(req);
     LoggerDebug("disconnect peer", ["data", data])
     p2p.DisconnectPeer(String.UTF8.encode(data));
+}
+
+export function StartStateSync(req: StartStateSyncRequest): void {
+    const data = JSON.stringify<StartStateSyncRequest>(req);
+    LoggerDebug("start state sync", ["data", data])
+    p2p.StartStateSync(String.UTF8.encode(data));
 }

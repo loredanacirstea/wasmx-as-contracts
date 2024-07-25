@@ -14,6 +14,8 @@ export const STATE_KEY = "state";
 // const
 
 export const LOG_START = 1;
+export const MAX_BLOCK_SYNC_DELTA = 1000
+export const TRUST_BLOCK_DELTA = 10;
 export const STATE_SYNC_BATCH = 200;
 export const ERROR_INVALID_TX = "transaction is invalid";
 

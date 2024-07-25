@@ -328,6 +328,7 @@ export function receiveUpdateNodeResponseInternal(
 
 // this is executed each time the node is started in Follower or Candidate state if needed
 // and is also called after node registration with the leader
+// TODO if out of sync > 1000 blocks -> state sync
 export function sendStateSyncRequest(protocolId: string, nodeId: i32): void {
     const nodes = getValidatorNodesInfo();
     // if we are alone, return
@@ -789,11 +790,16 @@ export function receiveStateSyncRequest(
     // we send statesync response with the first batch
     const termId = getTermId()
     const lastIndex = getLastBlockIndex()
+    const lastBlock = getLogEntryAggregate(lastIndex)
+    const processReqStr = String.UTF8.decode(decodeBase64(lastBlock.data.data).buffer);
+    const processReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(processReqStr);
+    const lastBlockHash = processReqWithMeta.request.hash
     const peers = [resp.peer_address]
 
     if (lastIndex < resp.start_index) {
+        LoggerInfo("received statesync request", ["sender", resp.peer_address, "startIndex", resp.start_index.toString(), "lastIndex", lastIndex.toString()])
         // we nontheless send an empty batch response, because it is used to trigger a node list update
-        sendStateSyncBatch(resp.start_index, lastIndex, lastIndex, termId, peers);
+        sendStateSyncBatch(resp.start_index, lastIndex, lastIndex, lastBlockHash, termId, peers);
         return;
     };
 
@@ -802,22 +808,28 @@ export function receiveStateSyncRequest(
 
     LoggerInfo("received statesync request", ["sender", resp.peer_address, "startIndex", resp.start_index.toString(), "lastIndex", lastIndex.toString()])
 
+    if (count > cfg.MAX_BLOCK_SYNC_DELTA) {
+        // the node will need to start state sync
+        sendStateSyncBatch(resp.start_index, resp.start_index, lastIndex, lastBlockHash, termId, peers);
+        return
+    }
+
     const batches = i32(Math.ceil(f64(count)/f64(cfg.STATE_SYNC_BATCH)))
     let startIndex = resp.start_index;
     let lastIndexToSend = startIndex;
     for (let i = 0; i < batches - 1; i++) {
         lastIndexToSend = startIndex + cfg.STATE_SYNC_BATCH - 1
-        sendStateSyncBatch(startIndex, lastIndexToSend, lastIndex, termId, peers);
+        sendStateSyncBatch(startIndex, lastIndexToSend, lastIndex, lastBlockHash, termId, peers);
         startIndex += cfg.STATE_SYNC_BATCH
     }
     if (lastIndexToSend <= lastIndex) {
         // last batch
-        sendStateSyncBatch(startIndex, lastIndex, lastIndex, termId, peers);
+        sendStateSyncBatch(startIndex, lastIndex, lastIndex, lastBlockHash, termId, peers);
     }
     LoggerInfo("statesync request processed", ["sender", resp.peer_address, "startIndex", resp.start_index.toString(), "lastIndex", lastIndex.toString(), "batches", batches.toString()])
 }
 
-function sendStateSyncBatch(start_index: i64, lastIndexToSend: i64, lastIndex: i64, termId: i32, peers: string[]): void {
+function sendStateSyncBatch(start_index: i64, lastIndexToSend: i64, lastIndex: i64, lastBlockHash: Base64String, termId: i32, peers: string[]): void {
     const entries: Array<LogEntryAggregate> = [];
     for (let i = start_index; i <= lastIndexToSend; i++) {
         const entry = getLogEntryAggregate(i);
@@ -826,11 +838,14 @@ function sendStateSyncBatch(start_index: i64, lastIndexToSend: i64, lastIndex: i
 
     // we do not sign this message, because the receiver may not have our publicKey
 
-    const response = new StateSyncResponse(start_index, lastIndexToSend, lastIndex, termId, entries);
-    const datastr = JSON.stringify<StateSyncResponse>(response);
-    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
     const nodes = getValidatorNodesInfo();
     const ourId = getCurrentNodeId();
+    const peerAddress = getP2PAddress(nodes[ourId])
+
+    const response = new StateSyncResponse(start_index, lastIndexToSend, lastIndex, lastBlockHash, termId, peerAddress, entries);
+    const datastr = JSON.stringify<StateSyncResponse>(response);
+    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
+
     const senderaddr = nodes[ourId].address;
     const msgstr = `{"run":{"event":{"type":"receiveStateSyncResponse","params":[{"key": "entry","value":"${dataBase64}"},{"key": "sender","value":"${senderaddr}"}]}}}`
     LoggerDebug("sending state sync chunk", ["count", response.entries.length.toString(), "from", start_index.toString(), "to", lastIndexToSend.toString(), "last_index", lastIndex.toString()])
@@ -864,6 +879,15 @@ export function receiveStateSyncResponse(
     const resp = JSON.parse<StateSyncResponse>(data)
 
     const lastIndex = getLastBlockIndex()
+    const protocolId = getProtocolId(getCurrentState())
+
+    const count = resp.last_log_index - resp.start_batch_index + 1
+    if (count > cfg.MAX_BLOCK_SYNC_DELTA) {
+        LoggerInfo("received statesync response, starting state sync", ["from", resp.start_batch_index.toString(), "to", resp.last_log_index.toString()])
+        p2pw.StartStateSync(new p2ptypes.StartStateSyncRequest(resp.last_log_index, resp.last_log_hash, resp.peer_address, protocolId))
+        return
+    }
+
     if (lastIndex >= resp.last_batch_index) return;
 
     let nextIndex = lastIndex+1
