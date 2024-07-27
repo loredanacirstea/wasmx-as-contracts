@@ -36,7 +36,7 @@ export function main(): void {
   } else if (calld.getIndexedTransactionByHash !== null) {
     result = getIndexedTransactionByHashWrap(calld.getIndexedTransactionByHash!.hash);
   } else if (calld.getConsensusParams !== null) {
-    result = getConsensusParamsWrap(calld.getConsensusParams);
+    result = getConsensusParamsWrap(calld.getConsensusParams!);
   } else if (calld.getIndexedData !== null) {
     result = getIndexedDataWrap(calld.getIndexedData!.key);
   } else if (calld.setBlock !== null) {
