@@ -25,6 +25,14 @@ import {
     TendermintValidator,
     CanonicalVote,
     VoteTendermint,
+    RequestApplySnapshotChunk,
+    ResponseApplySnapshotChunk,
+    RequestLoadSnapshotChunk,
+    ResponseLoadSnapshotChunk,
+    RequestOfferSnapshot,
+    ResponseOfferSnapshot,
+    RequestListSnapshots,
+    ResponseListSnapshots,
 } from './types_tendermint';
 
 export function CheckTx(req: RequestCheckTx): ResponseCheckTx {
@@ -142,6 +150,23 @@ export function ValidatorsHash(validators: TendermintValidator[]): string {
 export function BlockCommitVoteBytes(vote: VoteTendermint): ArrayBuffer {
     const databz = String.UTF8.encode(JSON.stringify<VoteTendermint>(vote));
     return consensus.BlockCommitVoteBytes(databz);
+}
+
+// TODO
+export function ApplySnapshotChunk(value: RequestApplySnapshotChunk): ResponseApplySnapshotChunk {
+    return new ResponseApplySnapshotChunk()
+}
+
+export function LoadSnapshotChunk(value: RequestLoadSnapshotChunk): ResponseLoadSnapshotChunk {
+    return new ResponseLoadSnapshotChunk()
+}
+
+export function OfferSnapshot(value: RequestOfferSnapshot): ResponseOfferSnapshot {
+    return new ResponseOfferSnapshot()
+}
+
+export function ListSnapshots(value: RequestListSnapshots): ResponseListSnapshots {
+    return new ResponseListSnapshots()
 }
 
 export function LoggerInfo(msg: string, parts: string[]): void {

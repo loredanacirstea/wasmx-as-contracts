@@ -196,17 +196,20 @@ export class P2PMessage {
 
 // @ts-ignore
 @serializable
-export class StartStateSyncRequest {
+export class StartStateSyncReqRequest {
+    start_height: i64
     trust_height: i64
     trust_hash: Base64String
     peer_address: string
     protocol_id: string
     constructor(
+        start_height: i64,
         trust_height: i64,
         trust_hash: Base64String,
         peer_address: string,
         protocolId: string
     ) {
+        this.start_height = start_height
         this.trust_height = trust_height
         this.trust_hash = trust_hash
         this.peer_address = peer_address
@@ -216,7 +219,30 @@ export class StartStateSyncRequest {
 
 // @ts-ignore
 @serializable
-export class StartStateSyncResponse {
+export class StartStateSyncReqResponse {
+    error: string = ""
+    constructor(error: string) {
+        this.error = error
+    }
+}
+
+// @ts-ignore
+@serializable
+export class StartStateSyncResRequest {
+    peer_address: string
+    protocol_id: string
+    constructor(
+        peer_address: string,
+        protocolId: string
+    ) {
+        this.peer_address = peer_address
+        this.protocol_id = protocolId
+    }
+}
+
+// @ts-ignore
+@serializable
+export class StartStateSyncResResponse {
     error: string = ""
     constructor(error: string) {
         this.error = error

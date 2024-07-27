@@ -790,27 +790,29 @@ export function receiveStateSyncRequest(
     // we send statesync response with the first batch
     const termId = getTermId()
     const lastIndex = getLastBlockIndex()
-    const lastBlock = getLogEntryAggregate(lastIndex)
-    const processReqStr = String.UTF8.decode(decodeBase64(lastBlock.data.data).buffer);
-    const processReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(processReqStr);
-    const lastBlockHash = processReqWithMeta.request.hash
+    const trustedIndex = lastIndex - cfg.TRUST_BLOCK_DELTA
+    const trustedBlock = getLogEntryAggregate(trustedIndex)
+    const trustedProcessReqStr = String.UTF8.decode(decodeBase64(trustedBlock.data.data).buffer);
+    const trustedProcessReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(trustedProcessReqStr);
+    const trustedBlockHash = trustedProcessReqWithMeta.request.hash
     const peers = [resp.peer_address]
 
+    LoggerInfo("received statesync request", ["sender", resp.peer_address, "startIndex", resp.start_index.toString(), "lastIndex", lastIndex.toString()])
+
     if (lastIndex < resp.start_index) {
-        LoggerInfo("received statesync request", ["sender", resp.peer_address, "startIndex", resp.start_index.toString(), "lastIndex", lastIndex.toString()])
         // we nontheless send an empty batch response, because it is used to trigger a node list update
-        sendStateSyncBatch(resp.start_index, lastIndex, lastIndex, lastBlockHash, termId, peers);
+        sendStateSyncBatch(resp.start_index, lastIndex, lastIndex, trustedIndex, trustedBlockHash, termId, peers);
         return;
     };
 
     // send successive messages with max STATE_SYNC_BATCH blocks at a time
     const count = lastIndex - resp.start_index + 1
 
-    LoggerInfo("received statesync request", ["sender", resp.peer_address, "startIndex", resp.start_index.toString(), "lastIndex", lastIndex.toString()])
-
     if (count > cfg.MAX_BLOCK_SYNC_DELTA) {
         // the node will need to start state sync
-        sendStateSyncBatch(resp.start_index, resp.start_index, lastIndex, lastBlockHash, termId, peers);
+        const protocolId = getProtocolId(getCurrentState())
+        p2pw.StartStateSyncResponse(new p2ptypes.StartStateSyncResRequest(resp.peer_address, protocolId))
+        sendStateSyncBatch(resp.start_index, resp.start_index, lastIndex, trustedIndex, trustedBlockHash, termId, peers);
         return
     }
 
@@ -819,17 +821,17 @@ export function receiveStateSyncRequest(
     let lastIndexToSend = startIndex;
     for (let i = 0; i < batches - 1; i++) {
         lastIndexToSend = startIndex + cfg.STATE_SYNC_BATCH - 1
-        sendStateSyncBatch(startIndex, lastIndexToSend, lastIndex, lastBlockHash, termId, peers);
+        sendStateSyncBatch(startIndex, lastIndexToSend, lastIndex, trustedIndex, trustedBlockHash, termId, peers);
         startIndex += cfg.STATE_SYNC_BATCH
     }
     if (lastIndexToSend <= lastIndex) {
         // last batch
-        sendStateSyncBatch(startIndex, lastIndex, lastIndex, lastBlockHash, termId, peers);
+        sendStateSyncBatch(startIndex, lastIndex, lastIndex, trustedIndex, trustedBlockHash, termId, peers);
     }
     LoggerInfo("statesync request processed", ["sender", resp.peer_address, "startIndex", resp.start_index.toString(), "lastIndex", lastIndex.toString(), "batches", batches.toString()])
 }
 
-function sendStateSyncBatch(start_index: i64, lastIndexToSend: i64, lastIndex: i64, lastBlockHash: Base64String, termId: i32, peers: string[]): void {
+function sendStateSyncBatch(start_index: i64, lastIndexToSend: i64, lastIndex: i64, trustedIndex: i64, trustedHash: Base64String, termId: i32, peers: string[]): void {
     const entries: Array<LogEntryAggregate> = [];
     for (let i = start_index; i <= lastIndexToSend; i++) {
         const entry = getLogEntryAggregate(i);
@@ -842,7 +844,7 @@ function sendStateSyncBatch(start_index: i64, lastIndexToSend: i64, lastIndex: i
     const ourId = getCurrentNodeId();
     const peerAddress = getP2PAddress(nodes[ourId])
 
-    const response = new StateSyncResponse(start_index, lastIndexToSend, lastIndex, lastBlockHash, termId, peerAddress, entries);
+    const response = new StateSyncResponse(start_index, lastIndexToSend, lastIndex, trustedIndex, trustedHash, termId, peerAddress, entries);
     const datastr = JSON.stringify<StateSyncResponse>(response);
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
 
@@ -884,7 +886,9 @@ export function receiveStateSyncResponse(
     const count = resp.last_log_index - resp.start_batch_index + 1
     if (count > cfg.MAX_BLOCK_SYNC_DELTA) {
         LoggerInfo("received statesync response, starting state sync", ["from", resp.start_batch_index.toString(), "to", resp.last_log_index.toString()])
-        p2pw.StartStateSync(new p2ptypes.StartStateSyncRequest(resp.last_log_index, resp.last_log_hash, resp.peer_address, protocolId))
+        // TODO all state sync options from tendermint
+        // that will be sent to consensus contract during StartNode
+        p2pw.StartStateSyncRequest(new p2ptypes.StartStateSyncReqRequest(lastIndex, resp.trusted_log_index, resp.trusted_log_hash, resp.peer_address, protocolId))
         return
     }
 

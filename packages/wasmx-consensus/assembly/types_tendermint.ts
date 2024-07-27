@@ -849,3 +849,35 @@ export class InitChainSetup {
         this.initial_ports = initial_ports
     }
 }
+
+// @ts-ignore
+@serializable
+export class RequestApplySnapshotChunk {}
+
+// @ts-ignore
+@serializable
+export class ResponseApplySnapshotChunk {}
+
+// @ts-ignore
+@serializable
+export class RequestLoadSnapshotChunk {}
+
+// @ts-ignore
+@serializable
+export class ResponseLoadSnapshotChunk {}
+
+// @ts-ignore
+@serializable
+export class RequestOfferSnapshot {}
+
+// @ts-ignore
+@serializable
+export class ResponseOfferSnapshot {}
+
+// @ts-ignore
+@serializable
+export class RequestListSnapshots {}
+
+// @ts-ignore
+@serializable
+export class ResponseListSnapshots {}

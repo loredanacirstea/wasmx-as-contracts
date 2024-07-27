@@ -417,7 +417,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     const commitResponse = consensuswrap.Commit();
     // TODO commitResponse.retainHeight
     // Tendermint removes all data for heights lower than `retain_height`
-    LoggerInfo("block finalized", ["height", entryobj.index.toString(), "termId", entryobj.termId.toString()])
+    LoggerInfo("block finalized", ["height", entryobj.index.toString(), "termId", entryobj.termId.toString(), "hash", base64ToHex(finalizeReq.hash).toUpperCase()])
 
     if (info.createdValidators.length > 0) {
         const ouraddr = getSelfNodeInfo().address

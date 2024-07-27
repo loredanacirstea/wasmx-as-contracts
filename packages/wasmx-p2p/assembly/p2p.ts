@@ -8,4 +8,5 @@ export declare function SendMessageToChatRoom(req: ArrayBuffer): ArrayBuffer
 export declare function CloseNode(): ArrayBuffer
 export declare function DisconnectChatRoom(req: ArrayBuffer): ArrayBuffer
 export declare function DisconnectPeer(req: ArrayBuffer): ArrayBuffer
-export declare function StartStateSync(req: ArrayBuffer): ArrayBuffer
+export declare function StartStateSyncRequest(req: ArrayBuffer): ArrayBuffer
+export declare function StartStateSyncResponse(req: ArrayBuffer): ArrayBuffer

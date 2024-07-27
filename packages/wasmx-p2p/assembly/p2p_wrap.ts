@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64, decode } from "as-base64/assembly";
 import * as p2p from './p2p';
 import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
-import {WasmxResponse, StartNodeWithIdentityRequest, SendMessageRequest, ConnectPeerRequest, ConnectPeerResponse, SendMessageToPeersRequest, ConnectChatRoomRequest, SendMessageToChatRoomRequest, NetworkNode, DisconnectChatRoomRequest, DisconnectPeerRequest, StartStateSyncRequest } from "./types";
+import {WasmxResponse, StartNodeWithIdentityRequest, SendMessageRequest, ConnectPeerRequest, ConnectPeerResponse, SendMessageToPeersRequest, ConnectChatRoomRequest, SendMessageToChatRoomRequest, NetworkNode, DisconnectChatRoomRequest, DisconnectPeerRequest, StartStateSyncReqRequest, StartStateSyncReqResponse, StartStateSyncResRequest, StartStateSyncResResponse } from "./types";
 
 export function StartNodeWithIdentity(req: StartNodeWithIdentityRequest): WasmxResponse {
     const data = JSON.stringify<StartNodeWithIdentityRequest>(req);
@@ -82,8 +82,16 @@ export function DisconnectPeer(req: DisconnectPeerRequest): void {
     p2p.DisconnectPeer(String.UTF8.encode(data));
 }
 
-export function StartStateSync(req: StartStateSyncRequest): void {
-    const data = JSON.stringify<StartStateSyncRequest>(req);
+export function StartStateSyncRequest(req: StartStateSyncReqRequest): StartStateSyncReqResponse {
+    const data = JSON.stringify<StartStateSyncReqRequest>(req);
     LoggerDebug("start state sync", ["data", data])
-    p2p.StartStateSync(String.UTF8.encode(data));
+    const resp = p2p.StartStateSyncRequest(String.UTF8.encode(data));
+    return JSON.parse<StartStateSyncReqResponse>(String.UTF8.decode(resp));
+}
+
+export function StartStateSyncResponse(req: StartStateSyncResRequest): StartStateSyncResResponse {
+    const data = JSON.stringify<StartStateSyncResRequest>(req);
+    LoggerDebug("start state sync", ["data", data])
+    const resp = p2p.StartStateSyncResponse(String.UTF8.encode(data));
+    return JSON.parse<StartStateSyncResResponse>(String.UTF8.decode(resp));
 }

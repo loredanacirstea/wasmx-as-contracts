@@ -872,7 +872,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     const commitResponse = consensuswrap.Commit();
     // TODO commitResponse.retainHeight
     // Tendermint removes all data for heights lower than `retain_height`
-    LoggerInfo("block finalized", ["height", entryobj.index.toString()])
+    LoggerInfo("block finalized", ["height", entryobj.index.toString(), "hash", base64ToHex(finalizeReq.hash).toUpperCase()])
 
     // TODO if we cannot start with the new contract, maybe we should remove its consensus role
 
@@ -981,7 +981,6 @@ export function setConsensusParams(value: typestnd.ConsensusParams): void {
         revert("could not set consensus params");
     }
 }
-
 
 function updateValidators(updates: typestnd.ValidatorUpdate[]): void {
     if (updates.length == 0) return;
