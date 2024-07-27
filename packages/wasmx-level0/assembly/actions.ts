@@ -64,9 +64,9 @@ export function ifPrecommitAcceptThreshold(
     return isPrecommitAcceptThreshold(state.nextHeight, state.nextHash);
 }
 
-export function setConsensusParams(value: typestnd.ConsensusParams): void {
+export function setConsensusParams(height: i64, value: typestnd.ConsensusParams): void {
     const valuestr = JSON.stringify<typestnd.ConsensusParams>(value)
-    const calldata = `{"setConsensusParams":{"params":"${base64.encode(Uint8Array.wrap(String.UTF8.encode(valuestr)))}"}}`
+    const calldata = `{"setConsensusParams":{"height":${height},"params":"${base64.encode(Uint8Array.wrap(String.UTF8.encode(valuestr)))}"}}`
     const resp = callStorage(calldata, false);
     if (resp.success > 0) {
         revert("could not set consensus params");

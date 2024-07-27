@@ -1,6 +1,7 @@
 import { JSON } from "json-as/assembly";
+import * as base64 from "as-base64/assembly";
 import { encode as encodeBase64, decode as decodeBase64, encode } from "as-base64/assembly";
-import { IndexedTransaction } from "./types";
+import { ConsensusParamsInfo, IndexedTransaction } from "./types";
 import { Base64String } from 'wasmx-env/assembly/types';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import {
@@ -109,7 +110,10 @@ export class CallDataGetIndexedTransactionByHash {
 // @ts-ignore
 @serializable
 export class CallDataGetConsensusParams {
-    constructor() {}
+    height: i64 = 0
+    constructor(height: i64) {
+        this.height = height
+    }
 }
 
 // @ts-ignore
@@ -141,8 +145,10 @@ export class CallDataSetBlock {
 // @ts-ignore
 @serializable
 export class CallDataSetConsensusParams {
-    params: Base64String
-    constructor(params: Base64String) {
+    height: i64 = 0
+    params: Base64String = ""
+    constructor(height: i64, params: Base64String) {
+        this.height = height
         this.params = params;
     }
 }
@@ -196,15 +202,21 @@ export function setBlockWrap(value: string, hash: string, txhashes: string[], in
     return new ArrayBuffer(0);
 }
 
-export function setConsensusParamsWrap(value: Base64String): ArrayBuffer {
-    const params = String.UTF8.decode(decodeBase64(value).buffer);
-    setConsensusParams(params);
+export function setConsensusParamsWrap(req: CallDataSetConsensusParams): ArrayBuffer {
+    setConsensusParams(req.height, req.params);
     return new ArrayBuffer(0);
 }
 
-export function getConsensusParamsWrap(): ArrayBuffer {
-    const value = getConsensusParams();
-    return String.UTF8.encode(value);
+export function getConsensusParamsWrap(req: CallDataGetConsensusParams): ArrayBuffer {
+    // get the latest height
+    if (req.height == 0) {
+        req.height = getLastBlockIndex()
+    }
+    let info = getConsensusParams(req.height);
+    if (info.params == "") {
+        info = getConsensusParams(info.last_height_changed)
+    }
+    return base64.decode(info.params).buffer
 }
 
 export function getIndexedTransactionByHashWrap(hash: string): ArrayBuffer {

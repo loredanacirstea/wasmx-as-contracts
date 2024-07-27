@@ -134,7 +134,7 @@ export function proposeBlockInternalAndStore(lastBlockCommit: typestnd.BlockComm
     }
 
     const mempool = getMempool();
-    const cparams = getConsensusParams();
+    const cparams = getConsensusParams(0);
     let maxbytes = cparams.block.max_bytes;
     if (maxbytes == -1) {
         maxbytes = cfg.MaxBlockSizeBytes;
@@ -531,7 +531,7 @@ export function addTransactionToMempool(
         txGas = fee.gas_limit
     }
 
-    const cparams = getConsensusParams();
+    const cparams = getConsensusParams(0);
     const maxgas = cparams.block.max_gas;
     if (maxgas > -1 && u64(maxgas) < txGas) {
         revert(`out of gas: ${txGas}; max ${maxgas}`);
@@ -877,7 +877,7 @@ export function initChain(req: typestnd.InitChainSetup): void {
     const valuestr = JSON.stringify<CurrentState>(currentState);
     LoggerDebug("set current state", ["state", valuestr])
     setCurrentState(currentState);
-    setConsensusParams(req.consensus_params);
+    setConsensusParams(cfg.LOG_START, req.consensus_params);
     LoggerDebug("current state set", [])
 }
 
@@ -1080,7 +1080,7 @@ export function buildBlockProposal(txs: string[], optimisticExecution: boolean, 
         base64ToHex(getTxsHash(prepareResp.txs)),
         base64ToHex(nextValidatorsHash),
         base64ToHex(nextValidatorsHash),
-        base64ToHex(getConsensusParamsHash(getConsensusParams())),
+        base64ToHex(getConsensusParamsHash(getConsensusParams(prepareReq.height))),
         base64ToHex(currentState.app_hash),
         base64ToHex(currentState.last_results_hash),
         base64ToHex(getEvidenceHash(evidence)),
@@ -1196,8 +1196,8 @@ export function updateValidators(updates: typestnd.ValidatorUpdate[]): void {
     }
 }
 
-export function updateConsensusParams(updates: typestnd.ConsensusParams): void {
-    const params = getConsensusParams();
+export function updateConsensusParams(height: i64, updates: typestnd.ConsensusParams): void {
+    const params = getConsensusParams(height);
     if (updates.abci) {
         if (updates.abci.vote_extensions_enable_height) {
             params.abci.vote_extensions_enable_height = updates.abci.vote_extensions_enable_height;
@@ -1218,20 +1218,21 @@ export function updateConsensusParams(updates: typestnd.ConsensusParams): void {
     if (updates.version) {
         if (updates.version.app) params.version.app = updates.version.app;
     }
-    setConsensusParams(params);
+    // we store them for the next block
+    setConsensusParams(height + 1, params);
 }
 
-function setConsensusParams(value: typestnd.ConsensusParams): void {
+function setConsensusParams(height: i64, value: typestnd.ConsensusParams): void {
     const valuestr = JSON.stringify<typestnd.ConsensusParams>(value)
-    const calldata = `{"setConsensusParams":{"params":"${encodeBase64(Uint8Array.wrap(String.UTF8.encode(valuestr)))}"}}`
+    const calldata = `{"setConsensusParams":{"height":${height},"params":"${encodeBase64(Uint8Array.wrap(String.UTF8.encode(valuestr)))}"}}`
     const resp = callStorage(calldata, false);
     if (resp.success > 0) {
         revert("could not set consensus params");
     }
 }
 
-function getConsensusParams(): typestnd.ConsensusParams {
-    const calldata = `{"getConsensusParams":{}}`
+function getConsensusParams(height: i64): typestnd.ConsensusParams {
+    const calldata = `{"getConsensusParams":{"height":${height}}}`
     const resp = callStorage(calldata, true);
     if (resp.success > 0) {
         revert("could not get consensus params");
@@ -1382,7 +1383,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     LoggerDebug("updating consensus parameters...", [])
     const consensusUpd = finalizeResp.consensus_param_updates
     if (consensusUpd != null) {
-        updateConsensusParams(consensusUpd);
+        updateConsensusParams(processReq.height, consensusUpd);
     }
     // update validator info
     LoggerDebug("updating validator info...", [])

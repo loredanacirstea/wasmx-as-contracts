@@ -36,13 +36,13 @@ export function main(): void {
   } else if (calld.getIndexedTransactionByHash !== null) {
     result = getIndexedTransactionByHashWrap(calld.getIndexedTransactionByHash!.hash);
   } else if (calld.getConsensusParams !== null) {
-    result = getConsensusParamsWrap();
+    result = getConsensusParamsWrap(calld.getConsensusParams);
   } else if (calld.getIndexedData !== null) {
     result = getIndexedDataWrap(calld.getIndexedData!.key);
   } else if (calld.setBlock !== null) {
     result = setBlockWrap(calld.setBlock!.value, calld.setBlock!.hash, calld.setBlock!.txhashes, calld.setBlock!.indexed_topics);
   } else if (calld.setConsensusParams !== null) {
-    result = setConsensusParamsWrap(calld.setConsensusParams!.params);
+    result = setConsensusParamsWrap(calld.setConsensusParams!);
   } else if (calld.setIndexedTransactionByHash !== null) {
     result = setIndexedTransactionByHashWrap(calld.setIndexedTransactionByHash!.hash, calld.setIndexedTransactionByHash!.data);
   } else if (calld.setIndexedData !== null) {

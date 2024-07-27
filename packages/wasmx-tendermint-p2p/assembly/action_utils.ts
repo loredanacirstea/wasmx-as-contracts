@@ -111,21 +111,21 @@ export function initChain(req: typestnd.InitChainSetup): void {
     const valuestr = JSON.stringify<CurrentState>(currentState);
     LoggerDebug("set current state", ["state", valuestr])
     setCurrentState(currentState);
-    setConsensusParams(req.consensus_params);
+    setConsensusParams(LOG_START, req.consensus_params);
     LoggerDebug("current state set", [])
 }
 
-export function setConsensusParams(value: typestnd.ConsensusParams): void {
+export function setConsensusParams(height: i64, value: typestnd.ConsensusParams): void {
     const valuestr = JSON.stringify<typestnd.ConsensusParams>(value)
-    const calldata = `{"setConsensusParams":{"params":"${encodeBase64(Uint8Array.wrap(String.UTF8.encode(valuestr)))}"}}`
+    const calldata = `{"setConsensusParams":{"height":${height},"params":"${encodeBase64(Uint8Array.wrap(String.UTF8.encode(valuestr)))}"}}`
     const resp = callStorage(calldata, false);
     if (resp.success > 0) {
         revert("could not set consensus params");
     }
 }
 
-export function getConsensusParams(): typestnd.ConsensusParams {
-    const calldata = `{"getConsensusParams":{}}`
+export function getConsensusParams(height: i64): typestnd.ConsensusParams {
+    const calldata = `{"getConsensusParams":{"height":${height}}}`
     const resp = callStorage(calldata, true);
     if (resp.success > 0) {
         revert("could not get consensus params");
@@ -315,8 +315,8 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     LoggerDebug("updating current state...", [])
     const state = getCurrentState();
     state.app_hash = finalizeResp.app_hash;
+    // set temporary data that will be included in the next block
     state.last_block_id = getBlockID(finalizeReq.hash)
-
     state.last_commit_hash = last_commit_hash
     state.last_results_hash = last_results_hash
     state.nextHeight = finalizeReq.height + 1
@@ -328,7 +328,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     LoggerDebug("updating consensus parameters...", [])
     const consensusUpd = finalizeResp.consensus_param_updates
     if (consensusUpd != null) {
-        updateConsensusParams(consensusUpd);
+        updateConsensusParams(processReq.height, consensusUpd);
     }
     // update validator info
     LoggerDebug("updating validator info...", [])
@@ -575,8 +575,8 @@ export function getNextProposer(validators: staking.Validator[], queue: Validato
     return new GetProposerResponse(newqueue, proposerIndex);
 }
 
-export function getLastBlockCommit(height: i64, state: CurrentState): typestnd.BlockCommit {
-    const bcommit = new typestnd.BlockCommit(height, state.last_round, state.last_block_id, state.last_block_signatures)
+export function getLastBlockCommit(state: CurrentState): typestnd.BlockCommit {
+    const bcommit = new typestnd.BlockCommit(state.nextHeight - 1, state.last_round, state.last_block_id, state.last_block_signatures)
     return bcommit
 }
 

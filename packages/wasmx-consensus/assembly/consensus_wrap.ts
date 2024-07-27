@@ -33,6 +33,7 @@ import {
     ResponseOfferSnapshot,
     RequestListSnapshots,
     ResponseListSnapshots,
+    ConsensusParams,
 } from './types_tendermint';
 
 export function CheckTx(req: RequestCheckTx): ResponseCheckTx {
@@ -144,6 +145,12 @@ export function HeaderHash(header: Header): string {
 export function ValidatorsHash(validators: TendermintValidator[]): string {
     const databz = String.UTF8.encode(JSON.stringify<TendermintValidators>(new TendermintValidators(validators)));
     const hash = consensus.ValidatorsHash(databz);
+    return encodeBase64(Uint8Array.wrap(hash))
+}
+
+export function ConsensusParamsHash(params: ConsensusParams): string {
+    const databz = String.UTF8.encode(JSON.stringify<ConsensusParams>(params));
+    const hash = consensus.ConsensusParamsHash(databz);
     return encodeBase64(Uint8Array.wrap(hash))
 }
 

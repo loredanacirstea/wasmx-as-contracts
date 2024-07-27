@@ -881,7 +881,7 @@ export function proposeBlock(
     }
 
     const mempool = getMempool();
-    const cparams = getConsensusParams();
+    const cparams = getConsensusParams(0);
     let maxbytes = cparams.block.max_bytes;
     if (maxbytes == -1) {
         maxbytes = cfg.MaxBlockSizeBytes;
@@ -933,7 +933,7 @@ export function addTransactionToMempool(
     // TODO actually decode tx
     // const parsedTx = decodeTx(transaction);
     const parsedTx =  new typestnd.Transaction(15000000);
-    const cparams = getConsensusParams();
+    const cparams = getConsensusParams(0);
     const maxgas = cparams.block.max_gas;
     if (maxgas > -1 && maxgas < parsedTx.gas) {
         return revert(`out of gas: ${parsedTx.gas}; max ${maxgas}`);
@@ -986,7 +986,7 @@ function startBlockProposal(txs: string[], cummulatedGas: i64, maxDataBytes: i64
         base64ToHex(getTxsHash(prepareResp.txs)),
         base64ToHex(nextValidatorsHash),
         base64ToHex(nextValidatorsHash),
-        base64ToHex(getConsensusParamsHash(getConsensusParams())),
+        base64ToHex(getConsensusParamsHash(getConsensusParams(prepareReq.height))),
         base64ToHex(currentState.app_hash),
         base64ToHex(currentState.last_results_hash),
         base64ToHex(getEvidenceHash(evidence)),
@@ -1099,7 +1099,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     LoggerDebug("updating consensus parameters...", [])
     const consensusUpd = finalizeResp.consensus_param_updates
     if (consensusUpd != null) {
-        updateConsensusParams(consensusUpd);
+        updateConsensusParams(finalizeReq.height, consensusUpd);
     }
     // update validator info
     LoggerDebug("updating validator info...", [])

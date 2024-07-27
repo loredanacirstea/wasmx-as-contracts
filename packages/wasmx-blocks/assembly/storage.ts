@@ -1,9 +1,9 @@
 import { JSON } from "json-as/assembly";
-import * as types from './types';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
 import {Base64String } from 'wasmx-env/assembly/types';
-import { parseInt64 } from "wasmx-utils/assembly/utils";
+import { base64ToString, parseInt64 } from "wasmx-utils/assembly/utils";
+import * as types from './types';
 import { LoggerInfo, LoggerDebug, revert } from './utils';
 import { IndexedTopic } from "./calldata";
 
@@ -11,7 +11,7 @@ const BLOCK_LAST_INDEX = "block_last_index";
 const BLOCK_INDEX_KEY = "block_";
 const BLOCK_HASH_KEY = "block_by_hash_";
 const TX_INDEXER = "tx_";
-const PARAMS_KEY = "consensus_params";
+const PARAMS_KEY = "consensus_params.";
 const DATA_INDEXER = "data_";
 
 export const LOG_START = 1;
@@ -30,6 +30,10 @@ function keyIndexedTransaction(hash: string): string {
 
 function keyIndexedData(key: string): string {
     return DATA_INDEXER + key;
+}
+
+export function getConsensusParamsKey(height: i64): string {
+    return PARAMS_KEY + height.toString();
 }
 
 export function setTopic(indexedTopic: IndexedTopic): void {
@@ -114,13 +118,27 @@ export function getIndexedTransactionByHash(hash: Base64String): string {
     return wasmxwrap.sload(keyIndexedTransaction(hash));
 }
 
-export function getConsensusParams(): string {
-    return wasmxwrap.sload(PARAMS_KEY);
+export function getConsensusParams(height: i64): types.ConsensusParamsInfo {
+    const resp = wasmxwrap.sload(getConsensusParamsKey(height));
+    return JSON.parse<types.ConsensusParamsInfo>(resp);
 }
 
-export function setConsensusParams(value: string): void {
-    LoggerDebug("setting consensus parameters", ["params", value])
-    wasmxwrap.sstore(PARAMS_KEY, value);
+export function setConsensusParams(height: i64, params: Base64String): void {
+    LoggerDebug("setting consensus parameters", ["params", params, "height", height.toString()])
+    const lastHeight = getLastBlockIndex()
+    const info = getConsensusParams(lastHeight);
+    let oldparams = info.params
+    if (oldparams == "") {
+        const paramsInfo = getConsensusParams(info.last_height_changed)
+        oldparams = paramsInfo.params;
+    }
+    const newinfo = new types.ConsensusParamsInfo(height, info.last_height_changed, "")
+    if (params != oldparams) {
+        newinfo.last_height_changed = height
+        newinfo.params = params
+    }
+    const value = JSON.stringify<types.ConsensusParamsInfo>(newinfo)
+    wasmxwrap.sstore(getConsensusParamsKey(height), value);
 }
 
 export function getContextValue(key: string): ArrayBuffer {

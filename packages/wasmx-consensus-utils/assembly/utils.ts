@@ -77,7 +77,11 @@ export function getTxsHash(txs: string[]): string {
 // This allows the ConsensusParams to evolve more without breaking the block
 // protocol. No need for a Merkle tree here, just a small struct to hash.
 // cometbft: cmtproto.HashedParams
-export function getConsensusParamsHash(params: typestnd.ConsensusParams): string {
+export function getConsensusParamsHash(params: typestnd.ConsensusParams): Base64String {
+    return consw.ConsensusParamsHash(params);
+}
+
+export function getConsensusParamsHash2(params: typestnd.ConsensusParams): string {
     const value = JSON.stringify<typestnd.BlockParams>(params.block);
     const hash = wasmx.sha256(String.UTF8.encode(value));
     return encodeBase64(Uint8Array.wrap(hash));

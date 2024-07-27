@@ -9,6 +9,7 @@ export declare function Commit(): ArrayBuffer
 export declare function RollbackToVersion(height: i64): ArrayBuffer
 export declare function HeaderHash(value: ArrayBuffer): ArrayBuffer
 export declare function ValidatorsHash(value: ArrayBuffer): ArrayBuffer
+export declare function ConsensusParamsHash(value: ArrayBuffer): ArrayBuffer
 export declare function BlockCommitVoteBytes(value: ArrayBuffer): ArrayBuffer
 
 export declare function ApplySnapshotChunk(value: ArrayBuffer): ArrayBuffer

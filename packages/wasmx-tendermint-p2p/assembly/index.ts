@@ -145,6 +145,10 @@ export function main(): void {
     actionsmc.buildGenTx(calld.params, calld.event);
     wasmx.finish(wasmx.getFinishData());
     return;
+  } else if (calld.method === "getLastBlockCommit") {
+    actions.getLastBlockCommitExternal();
+    wasmx.finish(wasmx.getFinishData());
+    return;
   } else if (calld.method === "signMessage") {
     actions.signMessageExternal(calld.params, calld.event);
     return;

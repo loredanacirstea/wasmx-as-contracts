@@ -636,7 +636,7 @@ export function addTransactionToMempool(
         txGas = fee.gas_limit
     }
 
-    const cparams = getConsensusParams();
+    const cparams = getConsensusParams(0);
     const maxgas = cparams.block.max_gas;
     if (maxgas > -1 && u64(maxgas) < txGas) {
         revert(`out of gas: ${txGas}; max ${maxgas}`);
@@ -733,7 +733,6 @@ export function proposeBlock(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    const height = getLastLogIndex();
     let state = getCurrentState()
     if (state.validValue > 0) {
         // we already have this proposal stored
@@ -742,13 +741,22 @@ export function proposeBlock(
     }
     // we propose a new block or overwrite any other past proposal
     // we take the last block signed precommits from the current state
-    const lastBlockCommit = getLastBlockCommit(height, state);
+    const lastBlockCommit = getLastBlockCommit(state);
     const result = tnd.proposeBlockInternalAndStore(lastBlockCommit)
     if (result == null) return;
 
     state = getCurrentState()
     state.nextHash = result.proposal.hash;
     setCurrentState(state);
+}
+
+export function getLastBlockCommitExternal(): void {
+    let state = getCurrentState()
+    // we propose a new block or overwrite any other past proposal
+    // we take the last block signed precommits from the current state
+    const lastBlockCommit = getLastBlockCommit(state);
+    const resp = String.UTF8.encode(JSON.stringify<typestnd.BlockCommit>(lastBlockCommit))
+    wasmx.setFinishData(resp)
 }
 
 export function sendBlockProposal(
@@ -1386,6 +1394,7 @@ export function commitBlock(
     const lastFinalizedIndex = getLastBlockIndex();
     if (state.nextHeight > lastFinalizedIndex) {
         const state = getCurrentState();
+        // for inclusion in BlockCommit in next block
         state.last_round = getTermId();
         setCurrentState(state);
         startBlockFinalizationFollower(state.nextHeight);

@@ -24,14 +24,15 @@ export class CurrentState {
     chain_id: string
     version: Version
 	app_hash: string // updated after Finalized Block
+
     // prev block info
     last_block_id: BlockID // updated after Finalized Block
     // commit from validators from the last block
     last_commit_hash: string // base64
     // tx results hash
     last_results_hash: string // base64
-    last_round: i64
     last_block_signatures: CommitSig[]
+    last_round: i64
 
     validator_address: HexString
     validator_privkey: Base64String

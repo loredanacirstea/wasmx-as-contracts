@@ -42,3 +42,16 @@ export class IndexedTransaction {
         this.index = index;
     }
 }
+
+// @ts-ignore
+@serializable
+export class ConsensusParamsInfo {
+    height: i64
+    last_height_changed: i64
+    params: Base64String // base64 encoded JSON stringified consensus params
+    constructor(height: i64, last_height_changed: i64, params: Base64String) {
+        this.height = height
+        this.last_height_changed = last_height_changed
+        this.params = params;
+    }
+}
