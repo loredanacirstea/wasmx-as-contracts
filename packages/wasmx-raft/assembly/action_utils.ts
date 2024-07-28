@@ -29,7 +29,12 @@ export function getMajority(count: i32): i64 {
     return i64(f64.floor(f64(count) / 2) + 1)
 }
 
-export function updateConsensusParams(height: i64, updates: typestnd.ConsensusParams): void {
+export function updateConsensusParams(height: i64, updates: typestnd.ConsensusParams | null): void {
+    if (updates == null) {
+        // we store them for the next block
+        setConsensusParams(height + 1, updates);
+        return
+    }
     const params = getConsensusParams(height);
     if (updates.abci) {
         if (updates.abci.vote_extensions_enable_height) {
@@ -163,9 +168,13 @@ export function getFinalBlock(index: i64): string {
     return resp.data;
 }
 
-export function setConsensusParams(height: i64, value: typestnd.ConsensusParams): void {
-    const valuestr = JSON.stringify<typestnd.ConsensusParams>(value)
-    const calldata = `{"setConsensusParams":{"height":${height},"params":"${encodeBase64(Uint8Array.wrap(String.UTF8.encode(valuestr)))}"}}`
+export function setConsensusParams(height: i64, value: typestnd.ConsensusParams | null): void {
+    let params = ""
+    if (value != null) {
+        const valuestr = JSON.stringify<typestnd.ConsensusParams>(value)
+        params = encodeBase64(Uint8Array.wrap(String.UTF8.encode(valuestr)))
+    }
+    const calldata = `{"setConsensusParams":{"height":${height},"params":"${params}"}}`
     const resp = callStorage(calldata, false);
     if (resp.success > 0) {
         revert("could not set consensus params");
@@ -296,7 +305,7 @@ export function initChain(req: typestnd.InitChainSetup): void {
     const valuestr = JSON.stringify<CurrentState>(currentState);
     LoggerDebug("set current state", ["state", valuestr])
     setCurrentState(currentState);
-    setConsensusParams(cfg.LOG_START, req.consensus_params);
+    setConsensusParams(cfg.LOG_START + 1, req.consensus_params);
     LoggerDebug("current state set", [])
 }
 

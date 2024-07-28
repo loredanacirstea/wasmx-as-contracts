@@ -1098,9 +1098,8 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     // update consensus params
     LoggerDebug("updating consensus parameters...", [])
     const consensusUpd = finalizeResp.consensus_param_updates
-    if (consensusUpd != null) {
-        updateConsensusParams(finalizeReq.height, consensusUpd);
-    }
+    updateConsensusParams(finalizeReq.height, consensusUpd);
+
     // update validator info
     LoggerDebug("updating validator info...", [])
     updateValidators(finalizeResp.validator_updates);

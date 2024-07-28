@@ -12,6 +12,7 @@ const BLOCK_INDEX_KEY = "block_";
 const BLOCK_HASH_KEY = "block_by_hash_";
 const TX_INDEXER = "tx_";
 const PARAMS_KEY = "consensus_params.";
+const PARAMS_LAST_INDEX = "consensus_params_last_index"
 const DATA_INDEXER = "data_";
 
 export const LOG_START = 1;
@@ -118,27 +119,50 @@ export function getIndexedTransactionByHash(hash: Base64String): string {
     return wasmxwrap.sload(keyIndexedTransaction(hash));
 }
 
-export function getConsensusParams(height: i64): types.ConsensusParamsInfo {
+export function getConsensusParams(height: i64): types.ConsensusParamsInfo | null {
     const resp = wasmxwrap.sload(getConsensusParamsKey(height));
+    if (resp == "") return null;
     return JSON.parse<types.ConsensusParamsInfo>(resp);
 }
 
 export function setConsensusParams(height: i64, params: Base64String): void {
     LoggerDebug("setting consensus parameters", ["params", params, "height", height.toString()])
-    const lastHeight = getLastBlockIndex()
+    const newinfo = new types.ConsensusParamsInfo(height, height, params)
+    const lastHeight = getConsensusParamsLastIndex()
     const info = getConsensusParams(lastHeight);
-    let oldparams = info.params
-    if (oldparams == "") {
-        const paramsInfo = getConsensusParams(info.last_height_changed)
-        oldparams = paramsInfo.params;
-    }
-    const newinfo = new types.ConsensusParamsInfo(height, info.last_height_changed, "")
-    if (params != oldparams) {
-        newinfo.last_height_changed = height
-        newinfo.params = params
+    if (info != null) {
+        // if we already know params have not changed, we just copy last height changed
+        if (params == "") {
+            newinfo.last_height_changed = info.last_height_changed
+        } else {
+            let oldparams = info.params
+            if (oldparams == "") {
+                const paramsInfo = getConsensusParams(info.last_height_changed)
+                if (paramsInfo == null) {
+                    revert(`empty consensus params at last height changed`)
+                    return;
+                }
+                oldparams = paramsInfo.params;
+            }
+            if (params == oldparams) {
+                newinfo.last_height_changed = info.last_height_changed
+                newinfo.params = ""
+            }
+        }
     }
     const value = JSON.stringify<types.ConsensusParamsInfo>(newinfo)
     wasmxwrap.sstore(getConsensusParamsKey(height), value);
+    setConsensusParamsLastIndex(height)
+}
+
+export function getConsensusParamsLastIndex(): i64 {
+    const index = wasmxwrap.sload(PARAMS_LAST_INDEX)
+    if (index == "") return LOG_START;
+    return parseInt64(index)
+}
+
+export function setConsensusParamsLastIndex(height: i64): void {
+    wasmxwrap.sstore(PARAMS_LAST_INDEX, height.toString())
 }
 
 export function getContextValue(key: string): ArrayBuffer {

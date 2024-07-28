@@ -111,13 +111,17 @@ export function initChain(req: typestnd.InitChainSetup): void {
     const valuestr = JSON.stringify<CurrentState>(currentState);
     LoggerDebug("set current state", ["state", valuestr])
     setCurrentState(currentState);
-    setConsensusParams(LOG_START, req.consensus_params);
+    setConsensusParams(LOG_START + 1, req.consensus_params);
     LoggerDebug("current state set", [])
 }
 
-export function setConsensusParams(height: i64, value: typestnd.ConsensusParams): void {
-    const valuestr = JSON.stringify<typestnd.ConsensusParams>(value)
-    const calldata = `{"setConsensusParams":{"height":${height},"params":"${encodeBase64(Uint8Array.wrap(String.UTF8.encode(valuestr)))}"}}`
+export function setConsensusParams(height: i64, value: typestnd.ConsensusParams | null): void {
+    let params = ""
+    if (value != null) {
+        const valuestr = JSON.stringify<typestnd.ConsensusParams>(value)
+        params = encodeBase64(Uint8Array.wrap(String.UTF8.encode(valuestr)))
+    }
+    const calldata = `{"setConsensusParams":{"height":${height},"params":"${params}"}}`
     const resp = callStorage(calldata, false);
     if (resp.success > 0) {
         revert("could not set consensus params");
@@ -327,16 +331,15 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     // update consensus params
     LoggerDebug("updating consensus parameters...", [])
     const consensusUpd = finalizeResp.consensus_param_updates
-    if (consensusUpd != null) {
-        updateConsensusParams(processReq.height, consensusUpd);
-    }
+    updateConsensusParams(processReq.height, consensusUpd);
+
     // update validator info
     LoggerDebug("updating validator info...", [])
     updateValidators(finalizeResp.validator_updates);
 
     // ! make all state changes before the commit
 
-     // save final block
+    // save final block
     // and remove tx from mempool
     const mempool = getMempool()
     const txhashes: string[] = [];
@@ -367,6 +370,11 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     if (resend.error.length > 0) {
         revert(`${resend.error}`);
     }
+
+    // we need to store the latest AppHash after EndBlock!
+    // this is the true end of block finalization
+    state.app_hash = resend.data!.app_hash;
+    setCurrentState(state)
 
     if (info.createdValidators.length > 0) {
         for (let i = 0; i < info.createdValidators.length; i++) {

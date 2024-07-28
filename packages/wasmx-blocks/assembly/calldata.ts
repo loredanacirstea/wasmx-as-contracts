@@ -16,7 +16,9 @@ import {
     getIndexedTransactionByHash,
     getConsensusParams,
     setTopic,
+    getConsensusParamsLastIndex,
   } from './storage';
+import { revert } from "./utils";
 
 // @ts-ignore
 @serializable
@@ -210,11 +212,20 @@ export function setConsensusParamsWrap(req: CallDataSetConsensusParams): ArrayBu
 export function getConsensusParamsWrap(req: CallDataGetConsensusParams): ArrayBuffer {
     // get the latest height
     if (req.height == 0) {
-        req.height = getLastBlockIndex()
+        req.height = getConsensusParamsLastIndex()
     }
     let info = getConsensusParams(req.height);
+    if (info == null) {
+        revert(`consensus params not found for height ${req.height}`)
+        return new ArrayBuffer(0)
+    }
+    const lastHeightChanged = info.last_height_changed;
     if (info.params == "") {
-        info = getConsensusParams(info.last_height_changed)
+        info = getConsensusParams(lastHeightChanged)
+    }
+    if (info == null) {
+        revert(`consensus params not found for height ${req.height}, tried last height changed ${lastHeightChanged}`)
+        return new ArrayBuffer(0)
     }
     return base64.decode(info.params).buffer
 }
