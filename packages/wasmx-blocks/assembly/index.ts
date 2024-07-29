@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { CallDataInstantiate, getCallDataWrap } from './calldata';
+import { bootstrapAfterStateSync, CallDataInstantiate, getCallDataWrap } from './calldata';
 import {
   getLastBlockIndexWrap,
   getBlockByIndexWrap,
@@ -49,6 +49,8 @@ export function main(): void {
     result = setIndexedDataWrap(calld.setIndexedData!.key, calld.setIndexedData!.value);
   } else if (calld.getContextValue !== null) {
     result = getContextValue(calld.getContextValue!.key);
+  } else if (calld.bootstrapAfterStateSync !== null) {
+    result = bootstrapAfterStateSync(calld.bootstrapAfterStateSync!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)

@@ -141,7 +141,12 @@ export class ConnectChatRoomRequest {
 
 // @ts-ignore
 @serializable
-export class ConnectChatRoomResponse {}
+export class ConnectChatRoomResponse {
+    error: string
+    constructor(error: string) {
+        this.error = error
+    }
+}
 
 // @ts-ignore
 @serializable
@@ -177,7 +182,12 @@ export class SendMessageToChatRoomRequest {
 
 // @ts-ignore
 @serializable
-export class SendMessageToChatRoomResponse {}
+export class SendMessageToChatRoomResponse {
+    error: string
+    constructor(error: string) {
+        this.error = error
+    }
+}
 
 // @ts-ignore
 @serializable

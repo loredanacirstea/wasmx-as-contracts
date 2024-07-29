@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64, decode } from "as-base64/assembly";
 import * as p2p from './p2p';
 import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
-import {WasmxResponse, StartNodeWithIdentityRequest, SendMessageRequest, ConnectPeerRequest, ConnectPeerResponse, SendMessageToPeersRequest, ConnectChatRoomRequest, SendMessageToChatRoomRequest, NetworkNode, DisconnectChatRoomRequest, DisconnectPeerRequest, StartStateSyncReqRequest, StartStateSyncReqResponse, StartStateSyncResRequest, StartStateSyncResResponse } from "./types";
+import {WasmxResponse, StartNodeWithIdentityRequest, SendMessageRequest, ConnectPeerRequest, ConnectPeerResponse, SendMessageToPeersRequest, ConnectChatRoomRequest, SendMessageToChatRoomRequest, NetworkNode, DisconnectChatRoomRequest, DisconnectPeerRequest, StartStateSyncReqRequest, StartStateSyncReqResponse, StartStateSyncResRequest, StartStateSyncResResponse, ConnectChatRoomResponse, SendMessageToChatRoomResponse } from "./types";
 
 export function StartNodeWithIdentity(req: StartNodeWithIdentityRequest): WasmxResponse {
     const data = JSON.stringify<StartNodeWithIdentityRequest>(req);
@@ -37,16 +37,18 @@ export function SendMessageToPeers(req: SendMessageToPeersRequest): void {
     p2p.SendMessageToPeers(String.UTF8.encode(data));
 }
 
-export function ConnectChatRoom(req: ConnectChatRoomRequest): void {
+export function ConnectChatRoom(req: ConnectChatRoomRequest): ConnectChatRoomResponse {
     LoggerDebug("connect p2p rooms", ["protocolId", req.protocolId, "topic", req.topic])
     const data = JSON.stringify<ConnectChatRoomRequest>(req);
-    p2p.ConnectChatRoom(String.UTF8.encode(data));
+    const resp = p2p.ConnectChatRoom(String.UTF8.encode(data));
+    return JSON.parse<ConnectChatRoomResponse>(String.UTF8.decode(resp));
 }
 
-export function SendMessageToChatRoom(req: SendMessageToChatRoomRequest): void {
+export function SendMessageToChatRoom(req: SendMessageToChatRoomRequest): SendMessageToChatRoomResponse {
     req.msg = encodeBase64(Uint8Array.wrap(String.UTF8.encode(req.msg)))
     const data = JSON.stringify<SendMessageToChatRoomRequest>(req);
-    p2p.SendMessageToChatRoom(String.UTF8.encode(data));
+    const resp = p2p.SendMessageToChatRoom(String.UTF8.encode(data));
+    return JSON.parse<SendMessageToChatRoomResponse>(String.UTF8.decode(resp));
 }
 
 export function LoggerInfo(msg: string, parts: string[]): void {

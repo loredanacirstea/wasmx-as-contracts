@@ -115,6 +115,16 @@ export function initChain(req: typestnd.InitChainSetup): void {
     LoggerDebug("current state set", [])
 }
 
+export function storageBootstrapAfterStateSync(height: i64, lastHeightChanged: i64, value: typestnd.ConsensusParams): void {
+    const valuestr = JSON.stringify<typestnd.ConsensusParams>(value)
+    const params = encodeBase64(Uint8Array.wrap(String.UTF8.encode(valuestr)))
+    const calldata = `{"bootstrapAfterStateSync":{"last_block_height":${height},"last_height_changed":${lastHeightChanged},"params":"${params}"}}`
+    const resp = callStorage(calldata, false);
+    if (resp.success > 0) {
+        revert("could not bootstrap storage");
+    }
+}
+
 export function setConsensusParams(height: i64, value: typestnd.ConsensusParams | null): void {
     let params = ""
     if (value != null) {

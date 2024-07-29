@@ -119,6 +119,14 @@ export function main(): void {
     tnd2mc.buildGenTx(calld.params, calld.event);
     wasmx.finish(wasmx.getFinishData());
     return;
+  } else if (calld.method === "bootstrapAfterStateSync") {
+    tnd2.bootstrapAfterStateSync(calld.params, calld.event);
+    wasmx.finish(wasmx.getFinishData());
+    return;
+  } else if (calld.method === "commitAfterStateSync") {
+    tnd2.commitAfterStateSync(calld.params, calld.event);
+    wasmx.finish(wasmx.getFinishData());
+    return;
   } else if (calld.method === "signMessage") {
     tnd2.signMessageExternal(calld.params, calld.event);
     return;

@@ -7,7 +7,7 @@ import * as wasmx from 'wasmx-env/assembly/wasmx';
 import {
     setBlock,
     setIndexedData,
-    setConsensusParams,
+    saveConsensusParams,
     setIndexedTransactionByHash,
     getIndexedData,
     getLastBlockIndex,
@@ -17,6 +17,8 @@ import {
     getConsensusParams,
     setTopic,
     getConsensusParamsLastIndex,
+    setConsensusParams,
+    setLastBlockIndex,
   } from './storage';
 import { revert } from "./utils";
 
@@ -27,6 +29,7 @@ export class CallData {
     setBlock: CallDataSetBlock | null = null;
     setConsensusParams: CallDataSetConsensusParams | null = null;
     setIndexedTransactionByHash: CallDataSetIndexedTransactionByHash | null = null;
+    bootstrapAfterStateSync: CallDataBootstrap | null = null;
 
     getIndexedData: CallDataGetIndexedData | null = null;
     getLastBlockIndex: CallDataGetLastBlockIndex | null = null;
@@ -175,6 +178,19 @@ export class LastBlockIndexResult {
     }
 }
 
+// @ts-ignore
+@serializable
+export class CallDataBootstrap {
+    last_block_height: i64
+    last_height_changed: i64
+    params: Base64String // base64 encoded JSON stringified consensus params
+    constructor(last_block_height: i64, last_height_changed: i64, params: Base64String) {
+        this.last_block_height = last_block_height
+        this.last_height_changed = last_height_changed
+        this.params = params;
+    }
+}
+
 export function getCallDataWrap(): CallData {
     const calldraw = wasmx.getCallData();
     return JSON.parse<CallData>(String.UTF8.decode(calldraw));
@@ -205,7 +221,7 @@ export function setBlockWrap(value: string, hash: string, txhashes: string[], in
 }
 
 export function setConsensusParamsWrap(req: CallDataSetConsensusParams): ArrayBuffer {
-    setConsensusParams(req.height, req.params);
+    saveConsensusParams(req.height, req.params);
     return new ArrayBuffer(0);
 }
 
@@ -247,5 +263,12 @@ export function getIndexedDataWrap(key: string): ArrayBuffer {
 
 export function setIndexedTransactionByHashWrap(hash: string, data: IndexedTransaction): ArrayBuffer {
     setIndexedTransactionByHash(hash, data);
+    return new ArrayBuffer(0);
+}
+
+export function bootstrapAfterStateSync(req: CallDataBootstrap): ArrayBuffer {
+    const info = new ConsensusParamsInfo(req.last_block_height, req.last_height_changed, req.params)
+    setConsensusParams(info);
+    setLastBlockIndex(req.last_block_height);
     return new ArrayBuffer(0);
 }

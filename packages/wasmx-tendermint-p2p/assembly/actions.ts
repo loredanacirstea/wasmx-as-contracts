@@ -32,7 +32,7 @@ import { callHookContract, setMempool, signMessage } from "wasmx-tendermint/asse
 import { Mempool } from "wasmx-tendermint/assembly/types_blockchain";
 import * as cfg from "./config";
 import { AppendEntry, AppendEntryResponse, LogEntryAggregate, UpdateNodeRequest } from "./types";
-import { getAllValidatorInfos, getTendermintVote, getConsensusParams, getCurrentProposer, getFinalBlock, getLastBlockCommit, getLastBlockIndex, getLogEntryAggregate, getNextProposer, getProtocolId, getProtocolIdInternal, getTopic, getTopicInternal, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal } from "./action_utils";
+import { getAllValidatorInfos, getTendermintVote, getConsensusParams, getCurrentProposer, getFinalBlock, getLastBlockCommit, getLastBlockIndex, getLogEntryAggregate, getNextProposer, getProtocolId, getProtocolIdInternal, getTopic, getTopicInternal, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal, setConsensusParams, storageBootstrapAfterStateSync } from "./action_utils";
 import { extractUpdateNodeEntryAndVerify, removeNode } from "wasmx-raft/assembly/actions";
 import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembly/storage";
 import { getAllValidators, getConsensusKeyByAddr, getNodeByAddress, getNodeIdByAddress, verifyMessage, verifyMessageByAddr, verifyMessageBytesByAddr } from "wasmx-raft/assembly/action_utils";
@@ -484,6 +484,56 @@ export function setup(
     const lastIndex = getLastBlockIndex();
     LoggerInfo("setting up last log index", ["index", lastIndex.toString()])
     setLastLogIndex(lastIndex);
+}
+
+export function bootstrapAfterStateSync(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("state")) {
+        revert("no state found");
+    }
+    const statestr = base64ToString(ctx.get("state"))
+    const state = JSON.parse<typestnd.State>(statestr);
+    // update CurrentState
+    const currentState = getCurrentState();
+    currentState.chain_id = state.ChainID
+    currentState.version = state.Version
+    currentState.app_hash = state.AppHash
+    currentState.last_block_id = state.LastBlockID
+    // TODO
+    // currentState.last_commit_hash
+    currentState.last_results_hash = state.LastResultsHash
+    // currentState.last_round
+    // currentState.last_block_signatures
+    currentState.nextHeight = state.LastBlockHeight + 1
+    currentState.nextHash = state.LastBlockID.hash
+    // currentState.proposerQueue
+    // currentState.proposerQueueTermId
+    // currentState.proposerIndex
+
+    // update storage contract
+    // update last block height
+    storageBootstrapAfterStateSync(state.LastBlockHeight, state.LastHeightConsensusParamsChanged, state.ConsensusParams);
+
+    // update our last log here
+    setLastLogIndex(state.LastBlockHeight)
+}
+
+export function commitAfterStateSync(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("commit")) {
+        revert("no state found");
+    }
+    const commitstr = ctx.get("commit") // stringified message
+    const commit = JSON.parse<typestnd.BlockCommit>(commitstr);
+    // TODO update prevote / precommit array
 }
 
 // we just add the validator node to our list

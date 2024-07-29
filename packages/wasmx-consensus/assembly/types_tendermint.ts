@@ -881,3 +881,79 @@ export class RequestListSnapshots {}
 // @ts-ignore
 @serializable
 export class ResponseListSnapshots {}
+
+// @ts-ignore
+@serializable
+export class ValidatorSet {
+    validators: TendermintValidator[]
+    proposer: TendermintValidator
+    constructor(validators: TendermintValidator[], proposer: TendermintValidator) {
+        this.validators = validators
+        this.proposer = proposer
+    }
+}
+
+// @ts-ignore
+@serializable
+export class State {
+    Version: Version
+    ChainID: string
+    InitialHeight: i64 // should be 1, not 0, when starting from height 1
+    // LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
+    LastBlockHeight: i64
+    LastBlockID: BlockID
+    LastBlockTime: Date
+
+    // LastValidators is used to validate block.LastCommit.
+    // Validators are persisted to the database separately every time they change,
+    // so we can query for historical validator sets.
+    // Note that if s.LastBlockHeight causes a valset change,
+    // we set s.LastHeightValidatorsChanged = s.LastBlockHeight + 1 + 1
+    // Extra +1 due to nextValSet delay.
+    NextValidators: Base64String // base64 encoded ValidatorSet
+    Validators: Base64String // base64 encoded ValidatorSet
+    LastValidators: Base64String // base64 encoded ValidatorSet
+    LastHeightValidatorsChanged: i64
+
+    // Consensus parameters used for validating blocks.
+    // Changes returned by FinalizeBlock and updated after Commit.
+    ConsensusParams: ConsensusParams
+    LastHeightConsensusParamsChanged: i64
+
+    // Merkle root of the results from executing prev block
+    LastResultsHash: Base64String
+
+    // the latest AppHash we've received from calling abci.Commit()
+    AppHash: Base64String
+    constructor(
+        Version: Version,
+        ChainID: string,
+        InitialHeight: i64,
+        LastBlockHeight: i64,
+        LastBlockID: BlockID,
+        LastBlockTime:  Date,
+        NextValidators: Base64String,
+        Validators: Base64String,
+        LastValidators: Base64String,
+        LastHeightValidatorsChanged: i64,
+        ConsensusParams: ConsensusParams,
+        LastHeightConsensusParamsChanged: i64,
+        LastResultsHash: Base64String,
+        AppHash: Base64String,
+    ) {
+        this.Version = Version
+        this.ChainID = ChainID
+        this.InitialHeight = InitialHeight
+        this.LastBlockHeight = LastBlockHeight
+        this.LastBlockID = LastBlockID
+        this.LastBlockTime = LastBlockTime
+        this.NextValidators = NextValidators
+        this.Validators = Validators
+        this.LastValidators = LastValidators
+        this.LastHeightValidatorsChanged = LastHeightValidatorsChanged
+        this.ConsensusParams = ConsensusParams
+        this.LastHeightConsensusParamsChanged = LastHeightConsensusParamsChanged
+        this.LastResultsHash = LastResultsHash
+        this.AppHash = AppHash
+    }
+}
