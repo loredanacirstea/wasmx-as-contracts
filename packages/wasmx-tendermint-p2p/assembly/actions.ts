@@ -1612,10 +1612,6 @@ export function sendCommit(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    // if we are alone, return
-    if (getValidatorNodesInfo().length < 2) {
-        return;
-    }
     // get the current proposal & vote on the block hash
     const data = buildCommitMessage();
     const datastr = JSON.stringify<Commit>(data);
