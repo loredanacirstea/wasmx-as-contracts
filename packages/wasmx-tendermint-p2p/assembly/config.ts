@@ -56,3 +56,5 @@ export const CHAT_ROOM_PREVOTE = CHAT_ROOM_PROTOCOL
 export const CHAT_ROOM_PRECOMMIT = CHAT_ROOM_PROTOCOL
 export const CHAT_ROOM_NODEINFO = CHAT_ROOM_PROTOCOL
 export const CHAT_ROOM_CROSSCHAIN_MEMPOOL = "chat_room_crosschain_mempool"
+export const CHAT_ROOM_STATESYNC = "statesync"
+export const PROTOCOL_STATESYNC = "statesync"

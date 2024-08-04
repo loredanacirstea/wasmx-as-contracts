@@ -69,6 +69,13 @@ export function connectRooms(
     // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, cfg.CHAT_ROOM_PREVOTE))
 }
 
+function disconnectRooms(): void {
+    const state = getCurrentState()
+    const protocolId = getProtocolId(state)
+    p2pw.DisconnectChatRoom(new p2ptypes.DisconnectChatRoomRequest(protocolId, getTopic(state, cfg.CHAT_ROOM_PROTOCOL)))
+    p2pw.DisconnectChatRoom(new p2ptypes.DisconnectChatRoomRequest(protocolId, getTopic(state, cfg.CHAT_ROOM_CROSSCHAIN_MEMPOOL)))
+}
+
 export function connectPeers(
     params: ActionParam[],
     event: EventObject,
@@ -868,8 +875,12 @@ export function receiveStateSyncRequest(
 
     if (count > cfg.MAX_BLOCK_SYNC_DELTA) {
         // the node will need to start state sync
-        const protocolId = getProtocolId(getCurrentState())
-        p2pw.StartStateSyncResponse(new p2ptypes.StartStateSyncResRequest(resp.peer_address, protocolId))
+        const state = getCurrentState()
+        const protocolId = getProtocolId(state)
+        const response = p2pw.StartStateSyncResponse(new p2ptypes.StartStateSyncResRequest(resp.peer_address, protocolId))
+        if (response.error.length > 0) {
+            LoggerError("failed to start state sync as provider", ["error", response.error]);
+        }
         sendStateSyncBatch(resp.start_index, resp.start_index, lastIndex, trustedIndex, trustedBlockHash, termId, peers);
         return
     }
@@ -939,14 +950,21 @@ export function receiveStateSyncResponse(
     const resp = JSON.parse<StateSyncResponse>(data)
 
     const lastIndex = getLastBlockIndex()
-    const protocolId = getProtocolId(getCurrentState())
 
     const count = resp.last_log_index - resp.start_batch_index + 1
     if (count > cfg.MAX_BLOCK_SYNC_DELTA) {
         LoggerInfo("received statesync response, starting state sync", ["from", resp.start_batch_index.toString(), "to", resp.last_log_index.toString()])
+        const protocolId = getProtocolId(getCurrentState())
+
+        // disconnect from other chat rooms, so we do not receive additional messages
+        disconnectRooms();
+
         // TODO all state sync options from tendermint
         // that will be sent to consensus contract during StartNode
-        p2pw.StartStateSyncRequest(new p2ptypes.StartStateSyncReqRequest(lastIndex, resp.trusted_log_index, resp.trusted_log_hash, resp.peer_address, protocolId))
+        const response = p2pw.StartStateSyncRequest(new p2ptypes.StartStateSyncReqRequest(lastIndex, resp.trusted_log_index, resp.trusted_log_hash, resp.peer_address, protocolId))
+        if (response.error.length > 0) {
+            LoggerError("failed to start state sync as receiver", ["error", response.error]);
+        }
         return
     }
 
