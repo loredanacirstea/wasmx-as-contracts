@@ -5,11 +5,12 @@ import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as wasmxt from "wasmx-env/assembly/types";
 import * as wasmx from "wasmx-env/assembly/wasmx";
 import * as mcwrap from 'wasmx-consensus/assembly/multichain_wrap';
+import * as mctypes from "wasmx-consensus/assembly/types_multichain";
 import * as level0 from "wasmx-consensus/assembly/level0"
 import * as crossw from "wasmx-env/assembly/crosschain_wrap";
 import * as utils from "wasmx-utils/assembly/utils"
 import { ChainConfig, ChainId, InitSubChainDeterministicRequest, InitSubChainMsg, NewSubChainDeterministicData, NodePorts, StartSubChainMsg } from "wasmx-consensus/assembly/types_multichain"
-import { CROSS_CHAIN_TIMEOUT_MS, MODULE_NAME, MsgAddSubChainId, MsgSetInitialPorts, QueryNodePortsPerChainId, QueryNodePortsPerChainIdResponse, QuerySubChainIds, QuerySubChainIdsResponse, QuerySubChainIdsWithPorts, QuerySubChainIdsWithPortsResponse } from "./types";
+import { CROSS_CHAIN_TIMEOUT_MS, MODULE_NAME, MsgAddSubChainId, MsgSetInitialPorts, MsgStartStateSync, QueryNodePortsPerChainId, QueryNodePortsPerChainIdResponse, QuerySubChainIds, QuerySubChainIdsResponse, QuerySubChainIdsWithPorts, QuerySubChainIdsWithPortsResponse } from "./types";
 import { addChainId, CHAIN_IDS, getChainIds, getLastNodePorts, getNodePorts, setLastNodePorts, setNodePorts } from "./storage";
 import { LoggerError, LoggerInfo, revert } from "./utils";
 import { callContract } from "wasmx-env/assembly/utils";
@@ -158,4 +159,33 @@ export function level0CrossChainCallRequest(msg: string): wasmxt.MsgCrossChainCa
     req.from = roles.ROLE_MULTICHAIN_REGISTRY_LOCAL
     req.from_chain_id = wasmxw.getChainId()
     return req
+}
+
+export function StartStateSync(req: MsgStartStateSync): ArrayBuffer {
+    // const response = wasmxw.grpcRequest(req.rpc, Uint8Array.wrap(contract), msgBase64);
+    // if (response.error.length > 0 || response.data.length == 0) {
+    //     return
+    // }
+    // const resp = JSON.parse<UpdateNodeResponse>(response.data);
+
+    // const chainConf =
+    stateSyncChain(req.chain_id, req.chain_config, req.peer_address)
+    return new ArrayBuffer(0)
+}
+
+var StateSyncProtocolId = "statesync"
+
+export function GetStateSyncProtocolId(chainId: string): string {
+	return StateSyncProtocolId + "_" + chainId
+}
+
+export function stateSyncChain(chainId: string, chainConf: ChainConfig, peeraddr: string): void {
+    const ports = addSubChainIdInternal(chainId)
+    // we just give empty ports, because level0 controls the ports, not upper levels
+    const initialPorts = NodePorts.empty()
+
+    const response = mcwrap.StartStateSync(new mctypes.StartStateSyncRequest(GetStateSyncProtocolId(chainId), peeraddr, chainId, chainConf, ports, initialPorts))
+    if (response.error.length > 0) {
+        LoggerError("failed to start state sync as receiver", ["error", response.error]);
+    }
 }

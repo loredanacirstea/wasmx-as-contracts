@@ -1,5 +1,5 @@
 import { JSON } from "json-as/assembly";
-import { NodePorts } from "wasmx-consensus/assembly/types_multichain"
+import { ChainConfig, NodePorts } from "wasmx-consensus/assembly/types_multichain"
 
 export const MODULE_NAME = "multichain_registry_local"
 
@@ -77,5 +77,20 @@ export class QuerySubChainIdsWithPortsResponse {
     constructor(ids: string[], ports: NodePorts[]) {
         this.ids = ids
         this.ports = ports
+    }
+}
+
+// @ts-ignore
+@serializable
+export class MsgStartStateSync {
+    chain_id: string
+    peer_address: string
+    rpc: string
+    chain_config: ChainConfig
+    constructor(chain_id: string, peer_address: string, rpc: string, chain_config: ChainConfig) {
+        this.chain_id = chain_id
+        this.peer_address = peer_address
+        this.rpc = rpc
+        this.chain_config = chain_config
     }
 }

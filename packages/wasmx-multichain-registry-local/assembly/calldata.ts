@@ -1,13 +1,14 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { HookCalld } from 'wasmx-env/assembly/hooks';
-import { MsgAddSubChainId, MsgInitialize, MsgSetInitialPorts, QueryNodePortsPerChainId, QuerySubChainIds, QuerySubChainIdsWithPorts } from "./types";
+import { MsgAddSubChainId, MsgInitialize, MsgSetInitialPorts, MsgStartStateSync, QueryNodePortsPerChainId, QuerySubChainIds, QuerySubChainIdsWithPorts } from "./types";
 
 // @ts-ignore
 @serializable
 export class CallData {
     AddSubChainId: MsgAddSubChainId | null = null;
     SetInitialPorts: MsgSetInitialPorts | null = null;
+    StartStateSync: MsgStartStateSync | null = null;
 
     // query
     GetSubChainIds: QuerySubChainIds | null = null;

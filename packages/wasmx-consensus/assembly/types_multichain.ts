@@ -264,3 +264,31 @@ export class NodePorts {
         return node;
     }
 }
+
+// @ts-ignore
+@serializable
+export class StartStateSyncRequest {
+    protocol_id: string
+    peer_address: string
+    chain_id: string
+    chain_config: ChainConfig
+    node_ports: NodePorts
+    initial_node_ports: NodePorts
+    constructor(protocol_id: string, peer_address: string, chain_id: string, chain_config: ChainConfig, node_ports: NodePorts, initial_node_ports: NodePorts) {
+        this.protocol_id = protocol_id
+        this.peer_address = peer_address
+        this.chain_id = chain_id
+        this.chain_config = chain_config
+        this.node_ports = node_ports
+        this.initial_node_ports = initial_node_ports
+    }
+}
+
+// @ts-ignore
+@serializable
+export class StartStateSyncResponse {
+    error: string
+    constructor(error: string) {
+        this.error = error
+    }
+}

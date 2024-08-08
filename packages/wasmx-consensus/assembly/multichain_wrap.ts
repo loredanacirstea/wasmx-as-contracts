@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as base64 from "as-base64/assembly";
 import * as constypes from "./types_tendermint"
 import * as mc from "./multichain";
-import { InitSubChainMsg, StartSubChainMsg, StartSubChainResponse } from "./types_multichain";
+import { InitSubChainMsg, StartStateSyncRequest, StartStateSyncResponse, StartSubChainMsg, StartSubChainResponse } from "./types_multichain";
 import { LoggerDebug } from "./consensus_wrap";
 
 export function InitSubChain(req: InitSubChainMsg): constypes.ResponseInitChain {
@@ -28,4 +28,13 @@ export function GetSubChainIds(): string[] {
     const respdata = String.UTF8.decode(resp)
     LoggerDebug("GetSubChainIds", ["response", respdata]);
     return JSON.parse<string[]>(respdata);
+}
+
+export function StartStateSync(req: StartStateSyncRequest): StartStateSyncResponse {
+    const data = JSON.stringify<StartStateSyncRequest>(req)
+    LoggerDebug("StartStateSync", ["request", data]);
+    const resp = mc.StartStateSync(String.UTF8.encode(data));
+    const respdata = String.UTF8.decode(resp)
+    LoggerDebug("StartSubChain", ["response", respdata]);
+    return JSON.parse<StartStateSyncResponse>(respdata);
 }

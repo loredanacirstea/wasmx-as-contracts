@@ -36,6 +36,8 @@ export function main(): void {
   } else if (calld.NewSubChain !== null) {
     actions.NewSubChain(calld.NewSubChain!)
     result = new ArrayBuffer(0);
+  } else if (calld.StartStateSync !== null) {
+    actions.StartStateSync(calld.StartStateSync!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)
