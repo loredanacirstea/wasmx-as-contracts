@@ -855,11 +855,19 @@ export function receiveStateSyncRequest(
     // we send statesync response with the first batch
     const termId = getTermId()
     const lastIndex = getLastBlockIndex()
-    const trustedIndex = lastIndex - cfg.TRUST_BLOCK_DELTA
-    const trustedBlock = getLogEntryAggregate(trustedIndex)
-    const trustedProcessReqStr = String.UTF8.decode(decodeBase64(trustedBlock.data.data).buffer);
-    const trustedProcessReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(trustedProcessReqStr);
-    const trustedBlockHash = trustedProcessReqWithMeta.request.hash
+
+    // if chain not started yet, we do not respond.
+    if (lastIndex <= cfg.LOG_START) return;
+
+    let trustedBlockHash = ""
+    let trustedIndex: i64 = cfg.LOG_START
+    if (lastIndex > cfg.TRUST_BLOCK_DELTA) {
+        trustedIndex = lastIndex - cfg.TRUST_BLOCK_DELTA
+        const trustedBlock = getLogEntryAggregate(trustedIndex)
+        const trustedProcessReqStr = String.UTF8.decode(decodeBase64(trustedBlock.data.data).buffer);
+        const trustedProcessReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(trustedProcessReqStr);
+        trustedBlockHash = trustedProcessReqWithMeta.request.hash
+    }
     const peers = [resp.peer_address]
 
     LoggerInfo("received statesync request", ["sender", resp.peer_address, "startIndex", resp.start_index.toString(), "lastIndex", lastIndex.toString()])
