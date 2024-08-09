@@ -267,6 +267,43 @@ export class NodePorts {
 
 // @ts-ignore
 @serializable
+export class StateSyncConfig {
+    enable: bool = true
+    // Temporary directory for state sync snapshot chunks, defaults to the OS tempdir (typically /tmp).
+    //  Will create a new, randomly named directory within, and remove it when done.
+	temp_dir: string = ""
+    // RPC servers (comma-separated) for light client verification of the synced state machine and
+	rpc_servers: string[] = []
+    // For Cosmos SDK-based chains, trust_period should usually be about 2/3 of the unbonding time (~2
+    // weeks) during which they can be financially punished (slashed) for misbehavior.
+	trust_period: i64 = 604800000 // time.Duration // "168h0m0s"
+	trust_height: i64 = 0
+	trust_hash: string = ""
+    // Time to spend discovering snapshots before initiating a restore.
+	discovery_time: i64 = 15000 // time.Duration // "15s"
+    // The timeout duration before re-requesting a chunk, possibly from a different peer (default: 1 minute).
+	chunk_request_timeout: i64 = 10000 // time.Duration // "10s"
+    // The number of concurrent chunk fetchers to run (default: 1).
+	chunk_fetchers: i32 = 4
+    constructor(
+        rpc_servers: string[],
+        trust_height: i64,
+        trust_hash: string,
+    ) {
+        this.enable = true
+        this.temp_dir = ""
+        this.rpc_servers = rpc_servers
+        this.trust_period = 604800000
+        this.trust_height = trust_height
+        this.trust_hash = trust_hash
+        this.discovery_time = 15000
+        this.chunk_request_timeout = 10000
+        this.chunk_fetchers = 4
+    }
+}
+
+// @ts-ignore
+@serializable
 export class StartStateSyncRequest {
     protocol_id: string
     peer_address: string
@@ -274,13 +311,15 @@ export class StartStateSyncRequest {
     chain_config: ChainConfig
     node_ports: NodePorts
     initial_node_ports: NodePorts
-    constructor(protocol_id: string, peer_address: string, chain_id: string, chain_config: ChainConfig, node_ports: NodePorts, initial_node_ports: NodePorts) {
+    statesync_config: StateSyncConfig
+    constructor(protocol_id: string, peer_address: string, chain_id: string, chain_config: ChainConfig, node_ports: NodePorts, initial_node_ports: NodePorts, statesync_config: StateSyncConfig) {
         this.protocol_id = protocol_id
         this.peer_address = peer_address
         this.chain_id = chain_id
         this.chain_config = chain_config
         this.node_ports = node_ports
         this.initial_node_ports = initial_node_ports
+        this.statesync_config = statesync_config
     }
 }
 

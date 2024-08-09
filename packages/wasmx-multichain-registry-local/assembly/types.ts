@@ -1,5 +1,5 @@
 import { JSON } from "json-as/assembly";
-import { ChainConfig, NodePorts } from "wasmx-consensus/assembly/types_multichain"
+import { ChainConfig, NodePorts, StateSyncConfig } from "wasmx-consensus/assembly/types_multichain"
 
 export const MODULE_NAME = "multichain_registry_local"
 
@@ -87,10 +87,12 @@ export class MsgStartStateSync {
     peer_address: string
     rpc: string
     chain_config: ChainConfig
-    constructor(chain_id: string, peer_address: string, rpc: string, chain_config: ChainConfig) {
+    statesync_config: StateSyncConfig
+    constructor(chain_id: string, peer_address: string, rpc: string, chain_config: ChainConfig, statesync_config: StateSyncConfig) {
         this.chain_id = chain_id
         this.peer_address = peer_address
         this.rpc = rpc
         this.chain_config = chain_config
+        this.statesync_config = statesync_config
     }
 }

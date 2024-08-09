@@ -169,7 +169,7 @@ export function StartStateSync(req: MsgStartStateSync): ArrayBuffer {
     // const resp = JSON.parse<UpdateNodeResponse>(response.data);
 
     // const chainConf =
-    stateSyncChain(req.chain_id, req.chain_config, req.peer_address)
+    stateSyncChain(req.chain_id, req.chain_config, req.peer_address, req.statesync_config)
     return new ArrayBuffer(0)
 }
 
@@ -179,12 +179,12 @@ export function GetStateSyncProtocolId(chainId: string): string {
 	return StateSyncProtocolId + "_" + chainId
 }
 
-export function stateSyncChain(chainId: string, chainConf: ChainConfig, peeraddr: string): void {
+export function stateSyncChain(chainId: string, chainConf: ChainConfig, peeraddr: string, statesyncConfig: mctypes.StateSyncConfig): void {
     const ports = addSubChainIdInternal(chainId)
     // we just give empty ports, because level0 controls the ports, not upper levels
     const initialPorts = NodePorts.empty()
 
-    const response = mcwrap.StartStateSync(new mctypes.StartStateSyncRequest(GetStateSyncProtocolId(chainId), peeraddr, chainId, chainConf, ports, initialPorts))
+    const response = mcwrap.StartStateSync(new mctypes.StartStateSyncRequest(GetStateSyncProtocolId(chainId), peeraddr, chainId, chainConf, ports, initialPorts, statesyncConfig))
     if (response.error.length > 0) {
         LoggerError("failed to start state sync as receiver", ["error", response.error]);
     }
