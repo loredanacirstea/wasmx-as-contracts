@@ -314,7 +314,7 @@ export function getEmptyPrecommitArray(len: i32, nextIndex: i64, termId: i64, ty
     const emptyCommits = new Array<ValidatorCommitVote>(len);
     for (let i = 0; i < len; i++) {
         const vote = new ValidatorProposalVote(type, termId, "", i, nextIndex, "", new Date(Date.now()), "");
-        emptyCommits[i] = new ValidatorCommitVote(vote, typestnd.BlockIDFlag.Unknown, "");
+        emptyCommits[i] = new ValidatorCommitVote(vote, typestnd.BlockIDFlag.Absent, "");
     }
     return emptyCommits
 }

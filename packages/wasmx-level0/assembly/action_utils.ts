@@ -8,28 +8,26 @@ export function isPrecommitAcceptThreshold(blockHeight: i64, hash: string): bool
     for (let i = 0; i < precommitArr.length; i++) {
         votes[i] = precommitArr[i].vote;
     }
-    return calculateVote(votes, hash)
+    return calculateVote(votes, hash, false)
 }
 
-export function isPrecommitAnyThreshold(blockHeight: i64): boolean {
+export function isPrecommitAnyThreshold(blockHeight: i64, hash: string): boolean {
     const precommitArr = getPrecommitArray(blockHeight);
     const votes = new Array<ValidatorProposalVote>(precommitArr.length);
     for (let i = 0; i < precommitArr.length; i++) {
         votes[i] = precommitArr[i].vote;
     }
-    return calculateVote(votes, "")
+    return calculateVote(votes, hash, true)
 }
 
-export function calculateVote(votePerNode: Array<ValidatorProposalVote>, hash: string): boolean {
+export function calculateVote(votePerNode: Array<ValidatorProposalVote>, hash: string, countNil: boolean): boolean {
     const max = votePerNode.length
     const threshold = u32(Math.ceil(f32(max) * 80 / 100));
     let count: u32 = 0;
     for (let i = 0; i < votePerNode.length; i++) {
-        if (hash == "") { // any vote
-            if (votePerNode[i].hash != "") { // valid hash or "nil"
-                count += 1;
-            }
-        } else if (votePerNode[i].hash == hash) {
+        if (votePerNode[i].hash == hash) {
+            count += 1;
+        } else if (countNil && votePerNode[i].hash == "nil") {
             count += 1;
         }
     }

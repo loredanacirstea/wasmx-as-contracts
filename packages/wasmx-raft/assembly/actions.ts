@@ -803,7 +803,9 @@ export function prepareAppendEntry(
     const entries: Array<LogEntryAggregate> = [];
     for (let i = nextIndex; i <= lastIndex; i++) {
         const entry = getLogEntryAggregate(i);
-        entries.push(entry);
+        if (entry != null) {
+            entries.push(entry);
+        }
     }
     const previousEntry = getLogEntryObj(nextIndex-1);
     const lastCommitIndex = getCommitIndex();
@@ -898,7 +900,7 @@ export function proposeBlock(
     setMempool(mempool);
 }
 
-export function getLogEntryAggregate(index: i64): LogEntryAggregate {
+export function getLogEntryAggregate(index: i64): LogEntryAggregate | null {
     const value = getLogEntryObj(index);
     let data = value.data;
     if (data != "") {
@@ -1018,6 +1020,10 @@ function startBlockFinalizationLeader(index: i64): boolean {
     LoggerInfo("start block finalization", ["height", index.toString()])
     // get entry and apply it
     const entryobj = getLogEntryAggregate(index);
+    if (entryobj == null) {
+        LoggerInfo("cannot start block finalization", ["height", index.toString(), "reason", "block empty"])
+        return false;
+    }
     LoggerDebug("start block finalization", ["height", index.toString(), "leaderId", entryobj.leaderId.toString(), "termId", entryobj.termId.toString(), "data", JSON.stringify<wblocks.BlockEntry>(entryobj.data)])
 
     const currentTerm = getTermId();
@@ -1033,6 +1039,10 @@ function startBlockFinalizationFollower(index: i64): boolean {
     LoggerInfo("start block finalization", ["height", index.toString()])
     // get entry and apply it
     const entryobj = getLogEntryAggregate(index);
+    if (entryobj == null) {
+        LoggerInfo("cannot start block finalization", ["height", index.toString(), "reason", "block empty"])
+        return false;
+    }
     LoggerDebug("start block finalization", ["height", index.toString(), "leaderId", entryobj.leaderId.toString(), "termId", entryobj.termId.toString(), "data", JSON.stringify<wblocks.BlockEntry>(entryobj.data)])
     return startBlockFinalizationInternal(entryobj, false);
 }

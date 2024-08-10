@@ -119,6 +119,10 @@ export function main(): void {
     tnd2mc.buildGenTx(calld.params, calld.event);
     wasmx.finish(wasmx.getFinishData());
     return;
+  } else if (calld.method === "getLastBlockCommit") {
+    tnd2.getLastBlockCommitExternal();
+    wasmx.finish(wasmx.getFinishData());
+    return;
   } else if (calld.method === "bootstrapAfterStateSync") {
     tnd2.bootstrapAfterStateSync(calld.params, calld.event);
     wasmx.finish(wasmx.getFinishData());

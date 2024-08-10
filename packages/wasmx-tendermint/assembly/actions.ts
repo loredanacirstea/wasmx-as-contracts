@@ -30,7 +30,7 @@ import { LogEntry, LogEntryAggregate, AppendEntry, AppendEntryResponse, Transact
 import * as cfg from "./config";
 import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
-import { extractIndexedTopics, getActiveValidatorInfo, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getSortedBlockCommits, getTxsHash, getValidatorsHash, sortTendermintValidators } from "wasmx-consensus-utils/assembly/utils"
+import { cleanAbsentCommits, extractIndexedTopics, getActiveValidatorInfo, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getSortedBlockCommits, getTxsHash, getValidatorsHash, sortTendermintValidators } from "wasmx-consensus-utils/assembly/utils"
 import { getLeaderChain } from "wasmx-consensus/assembly/multichain_utils";
 import { appendLogEntry, decodeTx, getBlockID, getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLogIndex, getLogEntryObj, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, removeLogEntry, setCurrentState, setLastLogIndex, setLogEntryAggregate, setLogEntryObj, setNextIndexArray, setNodeIPs, setTermId } from "./action_utils";
 import { NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft";
@@ -130,6 +130,7 @@ export function proposeBlockInternalAndStore(lastBlockCommit: typestnd.BlockComm
         setLogEntryObj(entry);
 
         LoggerInfo("reuse previous term block proposal", ["height", height.toString(), "lastCommitIndex", lastCommitIndex.toString(), "termId", getTermId().toString()])
+        // after we get a null return, we must reset the block commit signatures
         return null;
     }
 
@@ -449,7 +450,9 @@ export function prepareAppendEntry(
     const entries: Array<LogEntryAggregate> = [];
     for (let i = nextIndex; i <= lastIndex; i++) {
         const entry = getLogEntryAggregate(i);
-        entries.push(entry);
+        if (entry != null) {
+            entries.push(entry);
+        }
     }
     const data = new AppendEntry(
         getTermId(),
@@ -1053,6 +1056,7 @@ export function buildBlockProposal(txs: string[], optimisticExecution: boolean, 
         // sort active validators by power & address
         const activeSortedVals = sortTendermintValidators(getActiveValidatorInfo(validators))
         sortedBlockCommits = getSortedBlockCommits(lastBlockCommit, activeSortedVals)
+        sortedBlockCommits = cleanAbsentCommits(sortedBlockCommits)
     }
 
     const evidence = new typestnd.Evidence(); // TODO
@@ -1283,6 +1287,10 @@ export function signMessageBytes(msg: ArrayBuffer): Base64String {
 export function startBlockFinalizationLeader(index: i64): boolean {
     // get entry and apply it
     const entryobj = getLogEntryAggregate(index);
+    if (entryobj == null) {
+        LoggerInfo("cannot start block finalization", ["height", index.toString(), "reason", "block empty"])
+        return false;
+    }
     LoggerInfo("start block finalization", ["height", index.toString(), "termId",  entryobj.termId.toString(), "proposerId", entryobj.leaderId.toString()])
     LoggerDebug("start block finalization", ["height", index.toString(), "data", JSON.stringify<wblocks.BlockEntry>(entryobj.data)])
 
@@ -1298,6 +1306,10 @@ export function startBlockFinalizationLeader(index: i64): boolean {
 export function startBlockFinalizationFollower(index: i64): boolean {
     // get entry and apply it
     const entryobj = getLogEntryAggregate(index);
+    if (entryobj == null) {
+        LoggerInfo("cannot start block finalization", ["height", index.toString(), "reason", "block empty"])
+        return false;
+    }
     return startBlockFinalizationFollowerInternal(entryobj)
 }
 
@@ -1307,7 +1319,7 @@ export function startBlockFinalizationFollowerInternal(entryobj: LogEntryAggrega
     return startBlockFinalizationInternal(entryobj, false);
 }
 
-export function getLogEntryAggregate(index: i64): LogEntryAggregate {
+export function getLogEntryAggregate(index: i64): LogEntryAggregate | null {
     const value = getLogEntryObj(index);
     let data = value.data;
     if (data != "") {

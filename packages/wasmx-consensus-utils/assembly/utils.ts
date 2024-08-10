@@ -89,6 +89,20 @@ export function getSortedBlockCommits(lastBlockCommit: typestnd.BlockCommit, act
     )
 }
 
+// clean after sort, so we don't trigger the revert
+export function cleanAbsentCommits(lastBlockCommit: typestnd.BlockCommit): typestnd.BlockCommit {
+    for (let i = 0; i < lastBlockCommit.signatures.length; i++) {
+        const sig =  lastBlockCommit.signatures[i]
+        if (sig.block_id_flag == typestnd.BlockIDFlag.Absent) {
+            // cometbft expects a null timestamp -> timestamp.IsZero(), which means:
+            // time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC)
+            // 0001-01-01 00:00:00 +0000 UTC
+            lastBlockCommit.signatures[i] = new typestnd.CommitSig(typestnd.BlockIDFlag.Absent, "", null, "");
+        }
+    }
+    return lastBlockCommit;
+}
+
 export function sortTendermintValidators(validators: typestnd.TendermintValidator[]): typestnd.TendermintValidator[] {
     return validators.sort((a: typestnd.TendermintValidator, b: typestnd.TendermintValidator): i32 => {
         if (a.voting_power != b.voting_power) {

@@ -250,6 +250,20 @@ export function addToPrecommitArray(nodeId: i32, data: ValidatorCommitVote): voi
     setPrecommitArrayMap(value);
 }
 
+export function resetPrecommitArray(blockHeight: i64, newtermId: i64): void {
+    const value = getPrecommitArrayMap()
+    if (value.map.has(blockHeight)) {
+        const arr = value.map.get(blockHeight)
+        for (let i = 0 ; i < arr.length; i++) {
+            arr[i].signature = ""
+            arr[i].block_id_flag = typestnd.BlockIDFlag.Absent
+            arr[i].vote.termId = newtermId
+            arr[i].vote.hash = "" // empty
+        }
+        setPrecommitArray(blockHeight, arr)
+    }
+}
+
 export function getPrecommitArray(blockHeight: i64): Array<ValidatorCommitVote> {
     const value = getPrecommitArrayMap()
     if (value.map.has(blockHeight)) {

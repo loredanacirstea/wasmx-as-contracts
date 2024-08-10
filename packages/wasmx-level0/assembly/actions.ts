@@ -50,7 +50,11 @@ export function ifPrecommitAnyThreshold(
     params: ActionParam[],
     event: EventObject,
 ): boolean {
-    return isPrecommitAnyThreshold(getCurrentState().nextHeight);
+    const state = getCurrentState()
+    if (state.nextHash == "") {
+        return false;
+    }
+    return isPrecommitAnyThreshold(state.nextHeight, state.nextHash);
 }
 
 export function ifPrecommitAcceptThreshold(

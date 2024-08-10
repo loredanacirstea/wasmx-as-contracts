@@ -618,7 +618,9 @@ function sendStateSyncBatch(start_index: i64, lastIndexToSend: i64, lastIndex: i
     const entries: Array<LogEntryAggregate> = [];
     for (let i = start_index; i <= lastIndexToSend; i++) {
         const entry = getLogEntryAggregate(i);
-        entries.push(entry);
+        if (entry != null) {
+            entries.push(entry);
+        }
     }
 
     // we do not sign this message, because the receiver does not have our publicKey

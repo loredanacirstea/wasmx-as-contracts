@@ -181,9 +181,9 @@ export class ExtendedCommitInfo {
 export class CommitSig {
     block_id_flag: BlockIDFlag
     validator_address: HexString
-    timestamp: Date
+    timestamp: Date | null // absent votes must make this null
     signature: Base64String
-    constructor(block_id_flag: BlockIDFlag, validator_address: HexString, timestamp: Date, signature: Base64String) {
+    constructor(block_id_flag: BlockIDFlag, validator_address: HexString, timestamp: Date | null, signature: Base64String) {
         this.block_id_flag = block_id_flag;
         this.validator_address = validator_address;
         this.timestamp = timestamp;

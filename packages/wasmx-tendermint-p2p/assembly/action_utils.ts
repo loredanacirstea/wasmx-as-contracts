@@ -56,7 +56,7 @@ export function extractAppendEntry(
     return entry
 }
 
-export function getLogEntryAggregate(index: i64): LogEntryAggregate {
+export function getLogEntryAggregate(index: i64): LogEntryAggregate | null {
     const value = getLogEntryObj(index);
     let data = value.data;
     if (data != "") {
@@ -64,6 +64,7 @@ export function getLogEntryAggregate(index: i64): LogEntryAggregate {
     } else {
         data = getFinalBlock(index);
     }
+    if (data == "") return null;
     const blockData = JSON.parse<wblocks.BlockEntry>(data);
     const entry = new LogEntryAggregate(
         value.index,
@@ -172,12 +173,15 @@ export function isNodeActive(node: NodeInfo): bool {
 }
 
 export function prepareAppendEntry(index: i64): AppendEntry {
-    const entry = getLogEntryAggregate(index);
     const data = new AppendEntry(
         getTermId(),
         getCurrentNodeId(),
-        [entry],
+        [],
     )
+    const entry = getLogEntryAggregate(index);
+    if (entry != null) {
+        data.entries.push(entry);
+    }
     return data;
 }
 
@@ -192,23 +196,23 @@ export function prepareAppendEntryMessage(
     return msgstr
 }
 
-export function isPrevoteAnyThreshold(blockHeight: i64): boolean {
+export function isPrevoteAnyThreshold(blockHeight: i64, hash: string): boolean {
     const prevoteArr = getPrevoteArray(blockHeight);
-    return calculateVote(prevoteArr, "")
+    return calculateVote(prevoteArr, hash, true)
 }
 
 export function isPrevoteAcceptThreshold(blockHeight: i64, hash: string): boolean {
     const prevoteArr = getPrevoteArray(blockHeight);
-    return calculateVote(prevoteArr, hash)
+    return calculateVote(prevoteArr, hash, false)
 }
 
-export function isPrecommitAnyThreshold(blockHeight: i64): boolean {
+export function isPrecommitAnyThreshold(blockHeight: i64, hash: string): boolean {
     const precommitArr = getPrecommitArray(blockHeight);
     const votes = new Array<ValidatorProposalVote>(precommitArr.length);
     for (let i = 0; i < precommitArr.length; i++) {
         votes[i] = precommitArr[i].vote;
     }
-    return calculateVote(votes, "")
+    return calculateVote(votes, hash, true)
 }
 
 export function isPrecommitAcceptThreshold(blockHeight: i64, hash: string): boolean {
@@ -217,10 +221,10 @@ export function isPrecommitAcceptThreshold(blockHeight: i64, hash: string): bool
     for (let i = 0; i < precommitArr.length; i++) {
         votes[i] = precommitArr[i].vote;
     }
-    return calculateVote(votes, hash)
+    return calculateVote(votes, hash, false)
 }
 
-export function calculateVote(votePerNode: Array<ValidatorProposalVote>, hash: string): boolean {
+export function calculateVote(votePerNode: Array<ValidatorProposalVote>, hash: string, countNil: boolean): boolean {
     // hash is "" ony for threshold any votes
     // we recalculate token balance for each validator, each time we get the validator infos
     const validators = getAllValidators();
@@ -234,12 +238,10 @@ export function calculateVote(votePerNode: Array<ValidatorProposalVote>, hash: s
         if (validators[i].jailed || validators[i].status != staking.BondedS) {
             continue;
         }
-        if (hash == "") { // any vote
-            if (votePerNode[i].hash != "") { // it can be a valid hash or "nil"
-                // @ts-ignore
-                count += validators[i].tokens;
-            }
-        } else if (votePerNode[i].hash == hash) {
+        if (votePerNode[i].hash == hash) {
+            // @ts-ignore
+            count += validators[i].tokens;
+        } else if (countNil && votePerNode[i].hash == "nil") {
             // @ts-ignore
             count += validators[i].tokens;
         }
@@ -257,6 +259,7 @@ function getBFTThreshold(totalState: BigInt): BigInt {
 export function startBlockFinalizationFollower(index: i64): boolean {
     // get entry and apply it
     const entryobj = getLogEntryAggregate(index);
+    if (entryobj == null) return false;
     return startBlockFinalizationFollowerInternal(entryobj)
 }
 

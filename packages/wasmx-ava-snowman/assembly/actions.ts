@@ -692,7 +692,7 @@ export function verifyMessage(nodeIndex: i32, signatureStr: Base64String, msg: s
     return wasmxw.ed25519Verify(pubKey.getKey().key, signatureStr, msg);
 }
 
-export function getLogEntryAggregate(index: i64): LogEntryAggregate {
+export function getLogEntryAggregate(index: i64): LogEntryAggregate | null {
     const value = getLogEntryObj(index);
     let data = value.data;
     if (data != "") {

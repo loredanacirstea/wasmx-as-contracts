@@ -23,10 +23,10 @@ import {
     EventObject,
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
-import { parseInt32, stringToBase64, base64ToString } from "wasmx-utils/assembly/utils";
+import { parseInt32, stringToBase64, base64ToString, base64ToHex } from "wasmx-utils/assembly/utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { StateSyncRequest, StateSyncResponse } from "./sync_types";
-import { getCurrentNodeId, getCurrentState, getPrevoteArray, setPrevoteArray, getPrecommitArray, setPrecommitArray, getValidatorNodesInfo, setValidatorNodesInfo, setTermId, appendLogEntry, setLogEntryAggregate, setCurrentState, setLastLogIndex, getValidatorNodeCount, getLogEntryObj, addToPrevoteArray, addToPrecommitArray, setPrevoteArrayMap, getPrevoteArrayMap, getPrecommitArrayMap, setPrecommitArrayMap } from "./storage";
+import { getCurrentNodeId, getCurrentState, getPrevoteArray, setPrevoteArray, getPrecommitArray, setPrecommitArray, getValidatorNodesInfo, setValidatorNodesInfo, setTermId, appendLogEntry, setLogEntryAggregate, setCurrentState, setLastLogIndex, getValidatorNodeCount, getLogEntryObj, addToPrevoteArray, addToPrecommitArray, setPrevoteArrayMap, getPrevoteArrayMap, getPrecommitArrayMap, setPrecommitArrayMap, resetPrecommitArray } from "./storage";
 import { getP2PAddress } from "wasmx-raft-p2p/assembly/actions"
 import { callHookContract, setMempool, signMessage } from "wasmx-tendermint/assembly/actions"
 import { Mempool } from "wasmx-tendermint/assembly/types_blockchain";
@@ -800,7 +800,15 @@ export function proposeBlock(
     // we take the last block signed precommits from the current state
     const lastBlockCommit = getLastBlockCommit(state);
     const result = tnd.proposeBlockInternalAndStore(lastBlockCommit)
-    if (result == null) return;
+    if (result == null) {
+        // we can reuse prevotes signed with the previous round
+        // but we must reset the block precommit signatures
+        const height = getLastLogIndex()
+        const termId = getTermId()
+        LoggerDebug(`resetting block commit signatures`, ["height", height.toString(), "termId", termId.toString()])
+        resetPrecommitArray(height, termId)
+        return;
+    }
 
     state = getCurrentState()
     state.nextHash = result.proposal.hash;
@@ -864,9 +872,11 @@ export function receiveStateSyncRequest(
     if (lastIndex > cfg.TRUST_BLOCK_DELTA) {
         trustedIndex = lastIndex - cfg.TRUST_BLOCK_DELTA
         const trustedBlock = getLogEntryAggregate(trustedIndex)
-        const trustedProcessReqStr = String.UTF8.decode(decodeBase64(trustedBlock.data.data).buffer);
-        const trustedProcessReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(trustedProcessReqStr);
-        trustedBlockHash = trustedProcessReqWithMeta.request.hash
+        if (trustedBlock != null) {
+            const trustedProcessReqStr = String.UTF8.decode(decodeBase64(trustedBlock.data.data).buffer);
+            const trustedProcessReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(trustedProcessReqStr);
+            trustedBlockHash = trustedProcessReqWithMeta.request.hash
+        }
     }
     const peers = [resp.peer_address]
 
@@ -912,7 +922,9 @@ function sendStateSyncBatch(start_index: i64, lastIndexToSend: i64, lastIndex: i
     const entries: Array<LogEntryAggregate> = [];
     for (let i = start_index; i <= lastIndexToSend; i++) {
         const entry = getLogEntryAggregate(i);
-        entries.push(entry);
+        if (entry != null) {
+            entries.push(entry);
+        }
     }
 
     // we do not sign this message, because the receiver may not have our publicKey
@@ -1424,7 +1436,13 @@ export function ifPrevoteAnyThreshold(
     params: ActionParam[],
     event: EventObject,
 ): boolean {
-    return isPrevoteAnyThreshold(getCurrentState().nextHeight);
+    const state = getCurrentState()
+    // if a block was never proposed (proposer offline or out of sync)
+    // we do not proceed to precommit
+    if (state.nextHash == "") {
+        return false;
+    }
+    return isPrevoteAnyThreshold(state.nextHeight, state.nextHash);
 }
 
 export function ifPrevoteAcceptThreshold(
@@ -1437,14 +1455,20 @@ export function ifPrevoteAcceptThreshold(
     if (state.nextHash == "") {
         return false;
     }
-    return isPrevoteAcceptThreshold(getCurrentState().nextHeight, state.nextHash);
+    return isPrevoteAcceptThreshold(state.nextHeight, state.nextHash);
 }
 
 export function ifPrecommitAnyThreshold(
     params: ActionParam[],
     event: EventObject,
 ): boolean {
-    return isPrecommitAnyThreshold(getCurrentState().nextHeight);
+    const state = getCurrentState()
+    // if a block was never proposed (proposer offline or out of sync)
+    // we do not proceed to precommit
+    if (state.nextHash == "") {
+        return false;
+    }
+    return isPrecommitAnyThreshold(state.nextHeight, state.nextHash);
 }
 
 export function ifPrecommitAcceptThreshold(
@@ -1458,7 +1482,7 @@ export function ifPrecommitAcceptThreshold(
     if (state.nextHash == "") {
         return false;
     }
-    return isPrecommitAcceptThreshold(getCurrentState().nextHeight, state.nextHash);
+    return isPrecommitAcceptThreshold(state.nextHeight, state.nextHash);
 }
 
 // this actually commits one block at a time
@@ -1615,7 +1639,7 @@ export function resetValidRound(
     setCurrentState(state)
 }
 
-export function buildCommitMessage(): Commit {
+export function buildCommitMessage(): Commit | null {
     const state = getCurrentState();
     const termId = getTermId();
 
@@ -1624,6 +1648,9 @@ export function buildCommitMessage(): Commit {
     // before resetValidValue!
     const hash = state.nextHash
     const entry = getLogEntryAggregate(index)
+    if (entry == null) {
+        return null
+    }
     const entryStr = JSON.stringify<LogEntryAggregate>(entry)
     const entryBase64 = stringToBase64(entryStr)
 
@@ -1640,6 +1667,7 @@ export function sendCommit(
 ): void {
     // get the current proposal & vote on the block hash
     const data = buildCommitMessage();
+    if (data == null) return;
     const datastr = JSON.stringify<Commit>(data);
     const dataBase64 = stringToBase64(datastr);
     const msgstr = `{"run":{"event":{"type":"receiveCommit","params":[{"key": "entry","value":"${dataBase64}"}]}}}`
