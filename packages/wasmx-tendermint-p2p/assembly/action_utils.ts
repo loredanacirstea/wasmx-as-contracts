@@ -75,11 +75,16 @@ export function getLogEntryAggregate(index: i64): LogEntryAggregate {
 }
 
 export function getTendermintVote(data: ValidatorProposalVote): typestnd.VoteTendermint {
+    let hash = data.hash
+    // cometbft expects hash: []byte => nil is []byte{}
+    if (hash == "nil") {
+        hash = ""
+    }
     return new typestnd.VoteTendermint(
         data.type,
         data.index,
         data.termId,
-        getBlockIDProto(data.hash),
+        getBlockIDProto(hash),
         data.timestamp,
         encodeBase64(Uint8Array.wrap(wasmxw.addr_canonicalize(data.validatorAddress))),
         data.validatorIndex,
@@ -261,7 +266,6 @@ export function startBlockFinalizationFollowerInternal(entryobj: LogEntryAggrega
     return startBlockFinalizationInternal(entryobj, false);
 }
 
-// TODO CommitInfo saved in block! from voting process
 function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: boolean): boolean {
     const processReqStr = String.UTF8.decode(decodeBase64(entryobj.data.data).buffer);
     const processReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(processReqStr);
@@ -598,6 +602,8 @@ export function getLastBlockCommit(state: CurrentState): typestnd.BlockCommit {
     return bcommit
 }
 
+// the precommit array contains all existent validators, regardless of
+// status or if they voted or not
 export function getCommitSigsFromPrecommitArray(blockHeight: i64): typestnd.CommitSig[] {
     const precommitArr = getPrecommitArray(blockHeight);
     const sigs = new Array<typestnd.CommitSig>(precommitArr.length)

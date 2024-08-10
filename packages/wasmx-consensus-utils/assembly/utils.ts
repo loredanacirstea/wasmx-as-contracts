@@ -6,7 +6,7 @@ import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as consw from "wasmx-consensus/assembly/consensus_wrap";
 import * as staking from "wasmx-stake/assembly/types";
-import { hexToUint8Array32, uint8ArrayToHex, i64ToUint8ArrayBE, hex64ToBase64 } from "wasmx-utils/assembly/utils";
+import { hexToUint8Array32, uint8ArrayToHex, i64ToUint8ArrayBE, hex64ToBase64, hexToU8, base64ToHex } from "wasmx-utils/assembly/utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { Base64String } from "wasmx-env/assembly/types";
 
@@ -16,6 +16,7 @@ export const MaxKeyLength = 131071
 // 2G - 1
 export const MaxValueLength = 2147483647
 
+// we sort validators by power and secondary, by address (lexicographically)
 export function getValidatorsHash(validators: staking.Validator[]): string {
     const data = getActiveValidatorInfo(validators)
     return consw.ValidatorsHash(data);
@@ -66,6 +67,49 @@ export function getActiveValidatorInfo(validators: staking.Validator[]): typestn
     return vinfo;
 }
 
+export function getSortedBlockCommits(lastBlockCommit: typestnd.BlockCommit, activeSortedVals: typestnd.TendermintValidator[]): typestnd.BlockCommit {
+    const sigs = new Array<typestnd.CommitSig>(activeSortedVals.length)
+    const sigsmap = new Map<string,typestnd.CommitSig>();
+    for (let i = 0; i < lastBlockCommit.signatures.length; i++) {
+        const s = lastBlockCommit.signatures[i];
+        sigsmap.set(s.validator_address, s)
+    }
+    for (let i = 0; i < activeSortedVals.length; i++) {
+        const v = activeSortedVals[i];
+        if (!sigsmap.has(v.address)) {
+            wasmxw.revert(`sorted validator address not found in array of CommitSig: ${v.address}`)
+        }
+        sigs[i] = sigsmap.get(v.address)
+    }
+    return new typestnd.BlockCommit(
+        lastBlockCommit.height,
+        lastBlockCommit.round,
+        lastBlockCommit.block_id,
+        sigs,
+    )
+}
+
+export function sortTendermintValidators(validators: typestnd.TendermintValidator[]): typestnd.TendermintValidator[] {
+    return validators.sort((a: typestnd.TendermintValidator, b: typestnd.TendermintValidator): i32 => {
+        if (a.voting_power != b.voting_power) {
+            return a.voting_power < b.voting_power ? -1 : a.voting_power > b.voting_power ? 1 : 0;
+        }
+        return sortHexAddr(a.address, b.address);
+    });
+}
+
+export function sortHexAddr(hex1: string, hex2: string): i32 {
+    const a = hexToU8(hex1)
+    const b = hexToU8(hex2)
+    if (a.length < b.length) return -1;
+    if (a.length > b.length) return 1;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] < b[i]) return -1;
+        if (a[i] > b[i]) return 1;
+    }
+    return 0;
+}
+
 // Txs.Hash() -> [][]byte merkle.HashFromByteSlices
 // base64
 export function getTxsHash(txs: string[]): string {
@@ -94,8 +138,11 @@ export function getEvidenceHash(params: typestnd.Evidence): string {
 }
 
 export function getCommitHash(lastCommit: typestnd.BlockCommit): string {
-    // TODO MerkleHash(lastCommit.signatures)
-    return wasmxw.MerkleHash([]);
+    const values = new Array<Base64String>(lastCommit.signatures.length);
+    for (let i = 0; i < lastCommit.signatures.length; i++) {
+        values[i] = lastCommit.signatures[i].signature
+    }
+    return wasmxw.MerkleHash(values);
 }
 
 export function getResultsHash(results: typestnd.ExecTxResult[]): string {
