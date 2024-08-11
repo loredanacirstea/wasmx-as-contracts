@@ -212,18 +212,24 @@ export class StartStateSyncReqRequest {
     trust_hash: Base64String
     peer_address: string
     protocol_id: string
+    peers: string[]
+    current_node_id: i32
     constructor(
         start_height: i64,
         trust_height: i64,
         trust_hash: Base64String,
         peer_address: string,
-        protocolId: string
+        protocolId: string,
+        peers: string[],
+        current_node_id: i32,
     ) {
         this.start_height = start_height
         this.trust_height = trust_height
         this.trust_hash = trust_hash
         this.peer_address = peer_address
         this.protocol_id = protocolId
+        this.peers = peers
+        this.current_node_id = current_node_id
     }
 }
 

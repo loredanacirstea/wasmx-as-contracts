@@ -34,6 +34,7 @@ import { Params, RegisterDefaultSubChainRequest, SubChainData } from "wasmx-mult
 import { QueryBuildGenTxRequest } from "wasmx-tendermint-p2p/assembly/types";
 import { base64ToString } from "wasmx-utils/assembly/utils";
 import * as roles from "wasmx-env/assembly/roles";
+import { parseNodeAddress } from "wasmx-tendermint-p2p/assembly/actions";
 
 export function wrapGuard(value: boolean): ArrayBuffer {
     if (value) return String.UTF8.encode("1");
@@ -140,20 +141,7 @@ export function setupNode(
 
     const peers = new Array<NodeInfo>(data.peers.length);
     for (let i = 0; i < data.peers.length; i++) {
-        const parts1 = data.peers[i].split("@");
-        if (parts1.length != 2) {
-            revert(`invalid node format; found: ${data.peers[i]}`)
-        }
-        // <address>@/ip4/127.0.0.1/tcp/5001/p2p/12D3KooWMWpac4Qp74N2SNkcYfbZf2AWHz7cjv69EM5kejbXwBZF
-        const addr = parts1[0]
-        const parts2 = parts1[1].split("/")
-        if (parts2.length != 7) {
-            revert(`invalid node format; found: ${data.peers[i]}`)
-        }
-        const host = parts2[2]
-        const port = parts2[4]
-        const p2pid = parts2[6]
-        peers[i] = new NodeInfo(addr, new p2ptypes.NetworkNode(p2pid, host, port, parts1[1]), false);
+        peers[i] = parseNodeAddress(data.peers[i])
     }
     setChainSetupData(new CurrentChainSetup(data, peers[data.node_index]))
 }

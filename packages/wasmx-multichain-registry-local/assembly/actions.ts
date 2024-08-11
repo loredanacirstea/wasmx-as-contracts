@@ -184,8 +184,69 @@ export function stateSyncChain(chainId: string, chainConf: ChainConfig, peeraddr
     // we just give empty ports, because level0 controls the ports, not upper levels
     const initialPorts = NodePorts.empty()
 
-    const response = mcwrap.StartStateSync(new mctypes.StartStateSyncRequest(GetStateSyncProtocolId(chainId), peeraddr, chainId, chainConf, ports, initialPorts, statesyncConfig))
+    const parts = peeraddr.split("@")
+    if (parts.length != 2) {
+        revert(`invalid node format; found: ${peeraddr}`)
+    }
+
+    const nodeInfo = getNodeInfo()
+    const ournewaddr = convertAddress(nodeInfo.address, chainConf.Bech32PrefixAccAddr)
+    const ouraddr = `${ournewaddr}@${getP2PAddress(nodeInfo)}`
+
+    // if a node statesyncs, it starts with currentNodeId 0
+    const currentNodeId = 0
+    const peers: string[] = [ouraddr, peeraddr]
+
+    const response = mcwrap.StartStateSync(new mctypes.StartStateSyncRequest(GetStateSyncProtocolId(chainId), parts[1], chainId, chainConf, ports, initialPorts, statesyncConfig, peers, currentNodeId))
     if (response.error.length > 0) {
         LoggerError("failed to start state sync as receiver", ["error", response.error]);
+    }
+}
+
+export function getNodeInfo(): NodeInfo {
+    const calldatastr = `{"execute":{"action": {"type": "getNodeInfo", "params": [],"event":null}}}`;
+    const resp = callContract(roles.ROLE_CONSENSUS, calldatastr, true, MODULE_NAME);
+    if (resp.success > 0) {
+        // we do not fail, we want the chain to continue
+        revert(`call failed: could not get node info: ${resp.data}`)
+    }
+    return JSON.parse<NodeInfo>(resp.data);
+}
+
+export function getP2PAddress(nodeInfo: NodeInfo): string {
+    return `/ip4/${nodeInfo.node.host}/tcp/${nodeInfo.node.port}/ipfs/${nodeInfo.node.id}`
+}
+
+export function convertAddress(sourceAddr: wasmxt.Bech32String, prefix: string): string {
+    const addr = wasmxw.addr_canonicalize_mc(sourceAddr)
+    return wasmxw.addr_humanize_mc(base64.decode(addr.bz).buffer, prefix);
+}
+
+// @ts-ignore
+@serializable
+export class NetworkNode {
+  id: wasmxt.Base64String // p2p id
+  host: string
+  port: string
+  ip: string // can be empty if host & port are used
+  constructor(id: wasmxt.Base64String, host: string, port: string, ip: string) {
+    this.id = id
+    this.host = host
+    this.port = port
+    this.ip = ip
+  }
+}
+
+// @ts-ignore
+@serializable
+export class NodeInfo {
+    // validator operator address taken from node identifier (memo)
+    address: wasmxt.Bech32String
+    node: NetworkNode
+    outofsync: bool
+    constructor(address: wasmxt.Bech32String, node: NetworkNode, outofsync: bool) {
+        this.address = address
+        this.node = node
+        this.outofsync = outofsync
     }
 }

@@ -131,6 +131,10 @@ export function main(): void {
     tnd2.commitAfterStateSync(calld.params, calld.event);
     wasmx.finish(wasmx.getFinishData());
     return;
+  } else if (calld.method === "getNodeInfo") {
+    tnd2.getNodeInfo(calld.params, calld.event);
+    wasmx.finish(wasmx.getFinishData());
+    return;
   } else if (calld.method === "signMessage") {
     tnd2.signMessageExternal(calld.params, calld.event);
     return;

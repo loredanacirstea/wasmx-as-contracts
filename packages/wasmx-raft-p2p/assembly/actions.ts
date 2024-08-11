@@ -86,24 +86,29 @@ export function setupNode(
 
     const peers = new Array<NodeInfo>(data.peers.length);
     for (let i = 0; i < data.peers.length; i++) {
-        const parts1 = data.peers[i].split("@");
-        if (parts1.length != 2) {
-            revert(`invalid node format; found: ${data.peers[i]}`)
-        }
-        // <address>@/ip4/127.0.0.1/tcp/5001/p2p/12D3KooWMWpac4Qp74N2SNkcYfbZf2AWHz7cjv69EM5kejbXwBZF
-        const addr = parts1[0]
-        const parts2 = parts1[1].split("/")
-        if (parts2.length != 7) {
-            revert(`invalid node format; found: ${data.peers[i]}`)
-        }
-        const host = parts2[2]
-        const port = parts2[4]
-        const p2pid = parts2[6]
-        peers[i] = new NodeInfo(addr, new p2ptypes.NetworkNode(p2pid, host, port, parts1[1]), false);
+        peers[i] = parseNodeAddress(data.peers[i])
     }
     setNodeIPs(peers);
     initChain(data);
     initializeIndexArrays(peers.length);
+}
+
+// <address>@/ip4/127.0.0.1/tcp/5001/p2p/12D3KooWMWpac4Qp74N2SNkcYfbZf2AWHz7cjv69EM5kejbXwBZF
+export function parseNodeAddress(peeraddr: string): NodeInfo {
+    const parts1 = peeraddr.split("@");
+    if (parts1.length != 2) {
+        revert(`invalid node format; found: ${peeraddr}`)
+    }
+    // <address>@/ip4/127.0.0.1/tcp/5001/p2p/12D3KooWMWpac4Qp74N2SNkcYfbZf2AWHz7cjv69EM5kejbXwBZF
+    const addr = parts1[0]
+    const parts2 = parts1[1].split("/")
+    if (parts2.length != 7) {
+        revert(`invalid node format; found: ${peeraddr}`)
+    }
+    const host = parts2[2]
+    const port = parts2[4]
+    const p2pid = parts2[6]
+    return new NodeInfo(addr, new p2ptypes.NetworkNode(p2pid, host, port, parts1[1]), false);
 }
 
 // Leader node receives a node update from a node and sends

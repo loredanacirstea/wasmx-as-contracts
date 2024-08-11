@@ -312,7 +312,19 @@ export class StartStateSyncRequest {
     node_ports: NodePorts
     initial_node_ports: NodePorts
     statesync_config: StateSyncConfig
-    constructor(protocol_id: string, peer_address: string, chain_id: string, chain_config: ChainConfig, node_ports: NodePorts, initial_node_ports: NodePorts, statesync_config: StateSyncConfig) {
+    peers: string[]
+    current_node_id: i32
+    constructor(
+        protocol_id: string,
+        peer_address: string,
+        chain_id: string,
+        chain_config: ChainConfig,
+        node_ports: NodePorts,
+        initial_node_ports: NodePorts,
+        statesync_config: StateSyncConfig,
+        peers: string[],
+        current_node_id: i32,
+    ) {
         this.protocol_id = protocol_id
         this.peer_address = peer_address
         this.chain_id = chain_id
@@ -320,6 +332,8 @@ export class StartStateSyncRequest {
         this.node_ports = node_ports
         this.initial_node_ports = initial_node_ports
         this.statesync_config = statesync_config
+        this.peers = peers
+        this.current_node_id = current_node_id
     }
 }
 

@@ -243,6 +243,7 @@ export function prepareCrossChainCallRequest(req: wasmxt.MsgCrossChainCallReques
         return null;
     }
     req.from_chain_id = wasmxw.getChainId()
+    // we give the bech32 address as bytes
     req.from = wasmxw.addr_humanize_mc(String.UTF8.encode(callerBech32), toChainConfig.Bech32PrefixAccAddr)
 
     // if address does not have the correct prefix, we convert it
@@ -254,7 +255,7 @@ export function prepareCrossChainCallRequest(req: wasmxt.MsgCrossChainCallReques
     return req
 }
 
-export function convertAddress(sourceAddr: string, prefix: string): string {
+export function convertAddress(sourceAddr: Bech32String, prefix: string): string {
     const addr = wasmxw.addr_canonicalize_mc(sourceAddr)
     return wasmxw.addr_humanize_mc(base64.decode(addr.bz).buffer, prefix);
 }

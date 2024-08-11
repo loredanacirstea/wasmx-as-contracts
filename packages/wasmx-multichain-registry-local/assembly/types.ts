@@ -84,7 +84,7 @@ export class QuerySubChainIdsWithPortsResponse {
 @serializable
 export class MsgStartStateSync {
     chain_id: string
-    peer_address: string
+    peer_address: string // addr@p2p_addr
     rpc: string
     chain_config: ChainConfig
     statesync_config: StateSyncConfig

@@ -157,6 +157,10 @@ export function main(): void {
     actions.commitAfterStateSync(calld.params, calld.event);
     wasmx.finish(wasmx.getFinishData());
     return;
+  } else if (calld.method === "getNodeInfo") {
+    actions.getNodeInfo(calld.params, calld.event);
+    wasmx.finish(wasmx.getFinishData());
+    return;
   } else if (calld.method === "signMessage") {
     actions.signMessageExternal(calld.params, calld.event);
     return;

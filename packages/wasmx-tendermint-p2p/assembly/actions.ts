@@ -27,7 +27,7 @@ import { parseInt32, stringToBase64, base64ToString, base64ToHex } from "wasmx-u
 import { BigInt } from "wasmx-env/assembly/bn";
 import { StateSyncRequest, StateSyncResponse } from "./sync_types";
 import { getCurrentNodeId, getCurrentState, getPrevoteArray, setPrevoteArray, getPrecommitArray, setPrecommitArray, getValidatorNodesInfo, setValidatorNodesInfo, setTermId, appendLogEntry, setLogEntryAggregate, setCurrentState, setLastLogIndex, getValidatorNodeCount, getLogEntryObj, addToPrevoteArray, addToPrecommitArray, setPrevoteArrayMap, getPrevoteArrayMap, getPrecommitArrayMap, setPrecommitArrayMap, resetPrecommitArray } from "./storage";
-import { getP2PAddress } from "wasmx-raft-p2p/assembly/actions"
+import * as raftp2pactions from "wasmx-raft-p2p/assembly/actions";
 import { callHookContract, setMempool, signMessage } from "wasmx-tendermint/assembly/actions"
 import { Mempool } from "wasmx-tendermint/assembly/types_blockchain";
 import * as cfg from "./config";
@@ -101,7 +101,7 @@ export function connectPeersInternal(protocolId: string): void {
             // don't connect with ourselves
             continue;
         }
-        const p2paddr = getP2PAddress(nodeInfos[i])
+        const p2paddr = raftp2pactions.getP2PAddress(nodeInfos[i])
         const req = new p2ptypes.ConnectPeerRequest(protocolId, p2paddr)
         LoggerDebug(`trying to connect to peer`, ["p2paddress", p2paddr, "address", nodeInfos[i].address]);
         p2pw.ConnectPeer(req);
@@ -157,7 +157,7 @@ export function sendNodeSyncRequest(protocolId: string): void {
     for (let i = 0; i < ips.length; i++) {
         // don't send to ourselves or to removed nodes
         if (i == nodeId || ips[i].node.ip == "") continue;
-        peers.push(getP2PAddress(ips[i]))
+        peers.push(raftp2pactions.getP2PAddress(ips[i]))
     }
 
     LoggerInfo("sending node sync request", ["data", msgstr, "peers", peers.join(",")])
@@ -199,7 +199,7 @@ export function announceValidatorNodeWithNetwork(protocolId: string, topic: stri
 export function nodeSyncRequestMessage(ips: NodeInfo[], ourNodeId: i32): string {
     const nodeinfo = ips[ourNodeId];
     // TODO signature on protobuf encoding, not JSON
-    const req = new UpdateNodeRequest(getP2PAddress(nodeinfo));
+    const req = new UpdateNodeRequest(raftp2pactions.getP2PAddress(nodeinfo));
     const reqStr = JSON.stringify<UpdateNodeRequest>(req);
     const signature = signMessage(reqStr);
 
@@ -346,7 +346,7 @@ export function sendStateSyncRequest(protocolId: string, nodeId: i32): void {
     const ourNodeId = getCurrentNodeId()
 
     const receiverNode = nodes[nodeId]
-    const peerAddress = getP2PAddress(nodes[ourNodeId])
+    const peerAddress = raftp2pactions.getP2PAddress(nodes[ourNodeId])
     const request = new StateSyncRequest(lastIndex + 1, peerAddress);
     const datastr = JSON.stringify<StateSyncRequest>(request);
     const signature = signMessage(datastr);
@@ -356,7 +356,7 @@ export function sendStateSyncRequest(protocolId: string, nodeId: i32): void {
 
     LoggerInfo("sending statesync request", ["nodeId", nodeId.toString(), "address", receiverNode.address, "data", datastr])
 
-    const peers = [getP2PAddress(receiverNode)]
+    const peers = [raftp2pactions.getP2PAddress(receiverNode)]
     const contract = wasmxw.getAddress();
     p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, contract, msgstr, protocolId, peers))
 }
@@ -383,20 +383,7 @@ export function setupNode(
 
     const peers = new Array<NodeInfo>(data.peers.length);
     for (let i = 0; i < data.peers.length; i++) {
-        const parts1 = data.peers[i].split("@");
-        if (parts1.length != 2) {
-            revert(`invalid node format; found: ${data.peers[i]}`)
-        }
-        // <address>@/ip4/127.0.0.1/tcp/5001/p2p/12D3KooWMWpac4Qp74N2SNkcYfbZf2AWHz7cjv69EM5kejbXwBZF
-        const addr = parts1[0]
-        const parts2 = parts1[1].split("/")
-        if (parts2.length != 7) {
-            revert(`invalid node format; found: ${data.peers[i]}`)
-        }
-        const host = parts2[2]
-        const port = parts2[4]
-        const p2pid = parts2[6]
-        peers[i] = new NodeInfo(addr, new p2ptypes.NetworkNode(p2pid, host, port, parts1[1]), false);
+        peers[i] = parseNodeAddress(data.peers[i]);
     }
     setValidatorNodesInfo(peers);
     initChain(data);
@@ -412,6 +399,10 @@ export function setupNode(
         // we do not fail, we want the chain to continue
         LoggerError(`call failed: could not set initial ports`, ["contract", roles.ROLE_MULTICHAIN_REGISTRY_LOCAL, "error", resp.data])
     }
+}
+
+export function parseNodeAddress(peeraddr: string): NodeInfo {
+    return raftp2pactions.parseNodeAddress(peeraddr)
 }
 
 export function setup(
@@ -527,6 +518,16 @@ export function bootstrapAfterStateSync(
 
     // update our last log here
     setLastLogIndex(state.LastBlockHeight)
+}
+
+export function getNodeInfo(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const nodes = getValidatorNodesInfo();
+    const currentId = getCurrentNodeId();
+    const resp = String.UTF8.encode(JSON.stringify<NodeInfo>(nodes[currentId]))
+    wasmx.setFinishData(resp)
 }
 
 export function commitAfterStateSync(
@@ -931,7 +932,7 @@ function sendStateSyncBatch(start_index: i64, lastIndexToSend: i64, lastIndex: i
 
     const nodes = getValidatorNodesInfo();
     const ourId = getCurrentNodeId();
-    const peerAddress = getP2PAddress(nodes[ourId])
+    const peerAddress = raftp2pactions.getP2PAddress(nodes[ourId])
 
     const response = new StateSyncResponse(start_index, lastIndexToSend, lastIndex, trustedIndex, trustedHash, termId, peerAddress, entries);
     const datastr = JSON.stringify<StateSyncResponse>(response);
@@ -981,7 +982,14 @@ export function receiveStateSyncResponse(
 
         // TODO all state sync options from tendermint
         // that will be sent to consensus contract during StartNode
-        const response = p2pw.StartStateSyncRequest(new p2ptypes.StartStateSyncReqRequest(lastIndex, resp.trusted_log_index, resp.trusted_log_hash, resp.peer_address, protocolId))
+        const currentNodeid = getCurrentNodeId();
+        const nodeIps = getValidatorNodesInfo();
+        const peers: string[] = [];
+        for (let i = 0; i < nodeIps.length; i++) {
+            peers.push(nodeIps[i].node.ip)
+        }
+
+        const response = p2pw.StartStateSyncRequest(new p2ptypes.StartStateSyncReqRequest(lastIndex, resp.trusted_log_index, resp.trusted_log_hash, resp.peer_address, protocolId, peers, currentNodeid))
         if (response.error.length > 0) {
             LoggerError("failed to start state sync as receiver", ["error", response.error]);
         }
@@ -1010,7 +1018,7 @@ export function sendAppendEntryResponseMessage(response: AppendEntryResponse, le
     const signatureResp = signMessage(datastr);
     const nodeIps = getValidatorNodesInfo();
     const ourId = getCurrentNodeId();
-    const peers = [getP2PAddress(nodeIps[leaderId])]
+    const peers = [raftp2pactions.getP2PAddress(nodeIps[leaderId])]
 
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
     const senderaddr = nodeIps[ourId].address;
