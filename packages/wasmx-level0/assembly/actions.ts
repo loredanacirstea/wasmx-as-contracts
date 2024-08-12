@@ -6,6 +6,7 @@ import * as p2ptypes from "wasmx-p2p/assembly/types";
 import { base64ToHex } from "wasmx-utils/assembly/utils";
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as staking from "wasmx-stake/assembly/types";
+import * as level0 from "wasmx-consensus/assembly/level0"
 import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
 import * as mcwrap from 'wasmx-consensus/assembly/multichain_wrap';
 import { StartSubChainMsg } from "wasmx-consensus/assembly/types_multichain";
@@ -14,6 +15,7 @@ import {
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
 import { getParamsOrEventParams, actionParamsToMap } from 'xstate-fsm-as/assembly/utils';
+import * as tnd2 from "wasmx-tendermint-p2p/assembly/actions";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
 import { LOG_START } from "./config";
 import { callStorage, getCurrentProposer, isValidatorSimpleActive } from "wasmx-tendermint-p2p/assembly/action_utils";
@@ -27,6 +29,36 @@ import { CurrentState } from "wasmx-tendermint-p2p/assembly/types_blockchain";
 export function wrapGuard(value: boolean): ArrayBuffer {
     if (value) return String.UTF8.encode("1");
     return String.UTF8.encode("0");
+}
+
+export function setupNode(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    tnd2.setupNode(params, event);
+    const state = getCurrentState();
+    // we do this to avoid overlapping chat rooms for level0 chains
+    // TODO this should be solved by having unique ids for level0
+    // and also add a private setting, to not gossip messages to a chat
+    if (state.chain_id == level0.Level0ChainIdFull) {
+        state.unique_p2p_id = state.validator_address
+    }
+    setCurrentState(state);
+}
+
+export function setup(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    tnd2.setup(params, event);
+    const state = getCurrentState();
+    // we do this to avoid overlapping chat rooms for level0 chains
+    // TODO this should be solved by having unique ids for level0
+    // and also add a private setting, to not gossip messages to a chat
+    if (state.chain_id == level0.Level0ChainIdFull) {
+        state.unique_p2p_id = state.validator_address
+    }
+    setCurrentState(state);
 }
 
 export function isNextProposer(

@@ -61,12 +61,6 @@ export function connectRooms(
     p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, topic))
 
     p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, getTopic(state, cfg.CHAT_ROOM_CROSSCHAIN_MEMPOOL)))
-
-    // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, cfg.CHAT_ROOM_BLOCK_PROPOSAL))
-    // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, cfg.CHAT_ROOM_MEMPOOL))
-    // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, cfg.CHAT_ROOM_NODEINFO))
-    // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, cfg.CHAT_ROOM_PRECOMMIT))
-    // p2pw.ConnectChatRoom(new p2ptypes.ConnectChatRoomRequest(protocolId, cfg.CHAT_ROOM_PREVOTE))
 }
 
 function disconnectRooms(): void {

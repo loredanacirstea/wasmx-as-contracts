@@ -33,6 +33,7 @@ export class GetProposerResponse {
 @serializable
 export class CurrentState {
     chain_id: string
+    unique_p2p_id: string = "" // temporary fix for level0 unique chat rooms; TODO unique chain ids for level0
     version: Version
 	app_hash: string // updated after Finalized Block
     // prev block info
@@ -90,6 +91,7 @@ export class CurrentState {
         this.proposerQueue = proposerQueue
         this.proposerQueueTermId = proposerQueueTermId
         this.proposerIndex = proposerIndex
+        this.unique_p2p_id = ""
     }
 }
 

@@ -68,7 +68,7 @@ export function main(): void {
   } else if (calld.method === "sendPrecommitNil") {
     tnd2.sendPrecommitNil(calld.params, calld.event);
   } else if (calld.method === "setupNode") {
-    tnd2.setupNode(calld.params, calld.event);
+    actions.setupNode(calld.params, calld.event);
   } else if (calld.method === "addToMempool") {
     tnd.addToMempool(calld.params, calld.event);
   } else if (calld.method === "commitBlock") {
@@ -86,7 +86,7 @@ export function main(): void {
   } else if (calld.method === "sendCommit") {
     tnd2.sendCommit(calld.params, calld.event);
   } else if (calld.method === "setup") {
-    tnd2.setup(calld.params, calld.event);
+    actions.setup(calld.params, calld.event);
   } else if (calld.method === "forwardMsgToChat") {
     tnd2.forwardMsgToChat(calld.params, calld.event);
   } else if (calld.method === "connectPeers") {

@@ -725,7 +725,8 @@ export function getProtocolId(state: CurrentState): string {
 }
 
 export function getTopic(state: CurrentState, topic: string): string {
-    return getTopicInternal(state.chain_id, topic)
+    const base = state.chain_id + "_" + state.unique_p2p_id
+    return getTopicInternal(base, topic)
 }
 
 export function getProtocolIdInternal(chainId: string): string {
