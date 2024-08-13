@@ -16,7 +16,6 @@ import {
 import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as staking from "wasmx-stake/assembly/types";
-import { getPower } from "wasmx-stake/assembly/actions";
 import { CurrentState, Mempool, MempoolTx } from "./types_blockchain";
 import * as fsm from 'xstate-fsm-as/assembly/storage';
 import { getParamsOrEventParams, actionParamsToMap } from 'xstate-fsm-as/assembly/utils';
@@ -149,7 +148,12 @@ export function proposeBlockInternalAndStore(lastBlockCommit: typestnd.BlockComm
 
     // start proposal protocol
     const result = buildBlockProposal(batch.txs, batch.isAtomicTx, batch.cummulatedGas, maxDataBytes, lastBlockCommit);
-    if (result == null) return null;
+    if (result == null) {
+        const state = getCurrentState()
+        state.nextHash = "";
+        setCurrentState(state);
+        return null;
+    }
 
     // we just save this as a temporary block
     const lastIndex = getLastLogIndex();
@@ -1027,22 +1031,44 @@ export function buildBlockProposal(txs: string[], optimisticExecution: boolean, 
 
     const currentState = getCurrentState();
     const validators = getAllValidators();
+    // get only active validators & sort by power and address
+    const validatorInfos = sortTendermintValidators(getActiveValidatorInfo(validators))
+    const validatorSet = new typestnd.TendermintValidators(validatorInfos)
+
+    // we get the previous block validators for the last block commit signatures
+    const previousBlock = getLogEntryAggregate(height - 1);
+    let previousValidatorSet: typestnd.TendermintValidators;
+    if (previousBlock != null) {
+        previousValidatorSet = JSON.parse<typestnd.TendermintValidators>(base64ToString(previousBlock.data.validator_info))
+    } else {
+        previousValidatorSet = validatorSet;
+    }
+
+    // we skip if the validator does not have the commit signatures for the previous block (unless this is the first block under consensus)
+    if (lastBlockCommit.signatures.length == 0 && height > (cfg.LOG_START+1)) {
+        LoggerDebug("no commit signatures found for previous block ... skipping block proposal", ["height", height.toString()])
+        return null;
+    }
+
+    if (lastBlockCommit.signatures.length > previousValidatorSet.validators.length) {
+        revert(`last block validator set smaller than signature list: expected ${lastBlockCommit.signatures.length}, got ${previousValidatorSet.validators.length}`)
+    }
 
     const lastCommit = new typestnd.CommitInfo(lastBlockCommit.round, []); // TODO for the last block
     const localLastCommit = new typestnd.ExtendedCommitInfo(lastBlockCommit.round, []);
     for (let i = 0; i < lastBlockCommit.signatures.length; i++) {
         const commitSig = lastBlockCommit.signatures[i]
-        const val = validators[i]
-        const power = getPower(val.tokens)
+        const val = previousValidatorSet.validators[i]
 
         // TODO VoteInfo should be hex
         // but then we need a mapping hex => pubkey or hex => operator_address
 
         // hex format -> bytes -> base64
-        // const vaddress = encodeBase64(hexToUint8Array(commitSig.validator_address))
+
+        // commitSig.validator_address
         const vaddress = encodeBase64(Uint8Array.wrap(wasmxw.addr_canonicalize(val.operator_address)))
 
-        const validator = new typestnd.Validator(vaddress, power)
+        const validator = new typestnd.Validator(vaddress, val.voting_power)
         const voteInfo = new typestnd.VoteInfo(validator, commitSig.block_id_flag)
         lastCommit.votes.push(voteInfo)
 
@@ -1054,14 +1080,14 @@ export function buildBlockProposal(txs: string[], optimisticExecution: boolean, 
     // for height = 2, we have no signatures
     if (height > (cfg.LOG_START + 1)) {
         // sort active validators by power & address
-        const activeSortedVals = sortTendermintValidators(getActiveValidatorInfo(validators))
-        sortedBlockCommits = getSortedBlockCommits(lastBlockCommit, activeSortedVals)
+        sortedBlockCommits = getSortedBlockCommits(lastBlockCommit, previousValidatorSet.validators)
         sortedBlockCommits = cleanAbsentCommits(sortedBlockCommits)
     }
 
     const evidence = new typestnd.Evidence(); // TODO
 
     // TODO next validators hash?
+    // TODO use only active validators?
     const nextValidatorsHash = getValidatorsHash(validators);
     const misbehavior: typestnd.Misbehavior[] = []; // block.Evidence.Evidence.ToABCI()
     const time = new Date(Date.now())
@@ -1122,7 +1148,7 @@ export function buildBlockProposal(txs: string[], optimisticExecution: boolean, 
         metainfo = oeresp.metainfo;
     }
     // We have a valid proposal to propagate to other nodes
-    const entry = buildLogEntryAggregate(processReq, header, sortedBlockCommits, optimisticExecution, metainfo, validators);
+    const entry = buildLogEntryAggregate(processReq, header, sortedBlockCommits, optimisticExecution, metainfo, validatorSet);
     return new BuildProposal(entry, processReq);
 }
 
@@ -1147,7 +1173,7 @@ export function doOptimisticExecution(processReq: typestnd.RequestProcessProposa
     return consensuswrap.OptimisticExecution(processReq, processResp);
 }
 
-export function buildLogEntryAggregate(processReq: typestnd.RequestProcessProposal, header: typestnd.Header, blockCommit: typestnd.BlockCommit, optimisticExecution: boolean, meta: Map<string,Base64String>, validators: staking.Validator[]): LogEntryAggregate {
+export function buildLogEntryAggregate(processReq: typestnd.RequestProcessProposal, header: typestnd.Header, blockCommit: typestnd.BlockCommit, optimisticExecution: boolean, meta: Map<string,Base64String>, validatorSet: typestnd.TendermintValidators): LogEntryAggregate {
     const blockData = JSON.stringify<typestnd.RequestProcessProposalWithMetaInfo>(new typestnd.RequestProcessProposalWithMetaInfo(processReq, optimisticExecution, meta));
     const blockDataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(blockData)))
     const blockHeader = JSON.stringify<typestnd.Header>(header);
@@ -1158,10 +1184,6 @@ export function buildLogEntryAggregate(processReq: typestnd.RequestProcessPropos
     const leaderId = getCurrentNodeId();
     const validator = getValidatorByHexAddr(processReq.proposer_address);
     const contractAddress = encodeBase64(Uint8Array.wrap(wasmx.getAddress()));
-
-    // get only active validators & sort by power and address
-    const validatorInfos = sortTendermintValidators(getActiveValidatorInfo(validators))
-    const validatorSet = new typestnd.TendermintValidators(validatorInfos)
 
     const blockEntry = new wblocks.BlockEntry(
         processReq.height,
@@ -1327,6 +1349,7 @@ export function getLogEntryAggregate(index: i64): LogEntryAggregate | null {
     } else {
         data = getFinalBlock(index);
     }
+    if (data == "") return null;
     const blockData = JSON.parse<wblocks.BlockEntry>(data);
     const entry = new LogEntryAggregate(
         value.index,

@@ -126,7 +126,6 @@ export function getConsensusParams(height: i64): types.ConsensusParamsInfo | nul
 }
 
 export function saveConsensusParams(height: i64, params: Base64String): void {
-    LoggerDebug("setting consensus parameters", ["params", params, "height", height.toString()])
     const newinfo = new types.ConsensusParamsInfo(height, height, params)
     const lastHeight = getConsensusParamsLastIndex()
     const info = getConsensusParams(lastHeight);
@@ -150,6 +149,7 @@ export function saveConsensusParams(height: i64, params: Base64String): void {
             }
         }
     }
+    LoggerDebug("setting consensus parameters", ["params", params, "height", height.toString(), "entry", JSON.stringify<types.ConsensusParamsInfo>(newinfo)])
     setConsensusParams(newinfo)
 }
 

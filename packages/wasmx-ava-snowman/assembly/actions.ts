@@ -700,6 +700,7 @@ export function getLogEntryAggregate(index: i64): LogEntryAggregate | null {
     } else {
         data = getFinalBlock(index);
     }
+    if (data == "") return null;
     const blockData = JSON.parse<wblocks.BlockEntry>(data);
     const entry = new LogEntryAggregate(
         value.index,

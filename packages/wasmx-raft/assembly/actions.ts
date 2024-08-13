@@ -25,7 +25,7 @@ import { LogEntry, LogEntryAggregate, TransactionResponse, AppendEntry, AppendEn
 import { BigInt } from "wasmx-env/assembly/bn";
 import { appendLogEntry, getCommitIndex, getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getMatchIndexArray, getMempool, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, getVoteIndexArray, hasVotedFor, removeLogEntry, setCommitIndex, setCurrentNodeId, setCurrentState, setElectionTimeout, setLastApplied, setLastLogIndex, setMatchIndexArray, setMempool, setNextIndexArray, setNodeIPs, setTermId, setVoteIndexArray, setVotedFor } from "./storage";
 import * as cfg from "./config";
-import { callHookContract, checkValidatorsUpdate, getAllValidators,getBlockID,getConsensusParams, getCurrentValidator, getFinalBlock, getLastBlockIndex, getLastLog, getMajority, getRandomInRange, initChain, initializeIndexArrays, setFinalizedBlock, signMessage, updateConsensusParams, updateValidators, verifyMessage, verifyMessageByAddr } from "./action_utils";
+import { callHookContract, checkValidatorsUpdate, getAllValidators,getBlockID, getConsensusParams, getCurrentValidator, getFinalBlock, getLastBlockIndex, getLastLog, getMajority, getRandomInRange, initChain, initializeIndexArrays, setFinalizedBlock, signMessage, updateConsensusParams, updateValidators, verifyMessage, verifyMessageByAddr } from "./action_utils";
 import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getTxsHash, getValidatorsHash } from "wasmx-consensus-utils/assembly/utils"
 import { NetworkNode, NodeInfo } from "wasmx-p2p/assembly/types";
 
@@ -181,7 +181,7 @@ export function extractUpdateNodeEntryAndVerify(
     // verify signature
     const isSender = verifyMessageByAddr(entry.node.address, signature, entryStr);
     if (!isSender) {
-        revert(`signature verification failed: address ${entry.node.address}`);
+        revert(`signature verification failed: address ${entry.node.address} ; signature ${signature} ; msg ${entryStr}`);
     }
     return entry;
 }
@@ -908,6 +908,7 @@ export function getLogEntryAggregate(index: i64): LogEntryAggregate | null {
     } else {
         data = getFinalBlock(index);
     }
+    if (data == "") return null;
     const blockData = JSON.parse<wblocks.BlockEntry>(data);
     const entry = new LogEntryAggregate(
         value.index,

@@ -11,9 +11,7 @@ import { NodeInfo } from "wasmx-p2p/assembly/types";
 import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
 import {
   Base64String,
-  Bech32String,
   CallRequest,
-  CallResponse,
 } from 'wasmx-env/assembly/types';
 import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
@@ -23,30 +21,27 @@ import {
     EventObject,
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
-import { parseInt32, stringToBase64, base64ToString, base64ToHex } from "wasmx-utils/assembly/utils";
+import { parseInt32, stringToBase64, base64ToString } from "wasmx-utils/assembly/utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { StateSyncRequest, StateSyncResponse } from "./sync_types";
-import { getCurrentNodeId, getCurrentState, getPrevoteArray, setPrevoteArray, getPrecommitArray, setPrecommitArray, getValidatorNodesInfo, setValidatorNodesInfo, setTermId, appendLogEntry, setLogEntryAggregate, setCurrentState, setLastLogIndex, getValidatorNodeCount, getLogEntryObj, addToPrevoteArray, addToPrecommitArray, setPrevoteArrayMap, getPrevoteArrayMap, getPrecommitArrayMap, setPrecommitArrayMap, resetPrecommitArray } from "./storage";
+import { getCurrentNodeId, getCurrentState, getValidatorNodesInfo, setValidatorNodesInfo, setTermId, appendLogEntry, setLogEntryAggregate, setCurrentState, setLastLogIndex, getLogEntryObj, addToPrevoteArray, addToPrecommitArray, setPrevoteArrayMap, getPrevoteArrayMap, getPrecommitArrayMap, setPrecommitArrayMap, resetPrecommitArray } from "./storage";
 import * as raftp2pactions from "wasmx-raft-p2p/assembly/actions";
-import { callHookContract, setMempool, signMessage } from "wasmx-tendermint/assembly/actions"
+import { setMempool, signMessage } from "wasmx-tendermint/assembly/actions"
 import { Mempool } from "wasmx-tendermint/assembly/types_blockchain";
 import * as cfg from "./config";
 import { AppendEntry, AppendEntryResponse, LogEntryAggregate, UpdateNodeRequest } from "./types";
-import { getAllValidatorInfos, getTendermintVote, getConsensusParams, getCurrentProposer, getFinalBlock, getLastBlockCommit, getLastBlockIndex, getLogEntryAggregate, getNextProposer, getProtocolId, getProtocolIdInternal, getTopic, getTopicInternal, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal, setConsensusParams, storageBootstrapAfterStateSync } from "./action_utils";
+import { getAllValidatorInfos, getTendermintVote, getCurrentProposer, getLastBlockCommit, getLastBlockIndex, getLogEntryAggregate, getNextProposer, getProtocolId, getProtocolIdInternal, getTopic, getTopicInternal, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal, storageBootstrapAfterStateSync, getConsensusParams } from "./action_utils";
 import { extractUpdateNodeEntryAndVerify, removeNode } from "wasmx-raft/assembly/actions";
 import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembly/storage";
-import { getAllValidators, getConsensusKeyByAddr, getNodeByAddress, getNodeIdByAddress, verifyMessage, verifyMessageByAddr, verifyMessageBytesByAddr } from "wasmx-raft/assembly/action_utils";
+import { getAllValidators, getNodeIdByAddress, verifyMessageByAddr, verifyMessageBytesByAddr } from "wasmx-raft/assembly/action_utils";
 import { NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft"
 import { Commit, CurrentState, getEmptyPrecommitArray, getEmptyValidatorProposalVoteArray, SignedMsgType, ValidatorCommitVote, ValidatorProposalVote } from "./types_blockchain";
 import { callContract } from "wasmx-tendermint/assembly/actions";
-import { InitSubChainDeterministicRequest, NodePorts } from "wasmx-consensus/assembly/types_multichain";
+import { NodePorts } from "wasmx-consensus/assembly/types_multichain";
 import * as roles from "wasmx-env/assembly/roles";
 import * as mcwrap from 'wasmx-consensus/assembly/multichain_wrap';
-import { StartSubChainMsg } from "wasmx-consensus/assembly/types_multichain";
-import { decodeTx, getBlockID, getNodeIPs } from "wasmx-tendermint/assembly/action_utils";
+import { decodeTx } from "wasmx-tendermint/assembly/action_utils";
 import { getLeaderChain } from "wasmx-consensus/assembly/multichain_utils";
-import { getSubChainConfig } from "./multichain";
-
 
 // TODO add delta to timeouts each failed round
 // and reset after a successful round
@@ -512,6 +507,14 @@ export function bootstrapAfterStateSync(
 
     // update our last log here
     setLastLogIndex(state.LastBlockHeight)
+
+    // TODO we now do not sync the last seen commit signatures for previous block, in case this validator is the next proposer
+    // so we will just skip the proposal creation for now
+
+    // TODO set next validators
+    // validators come with operator_address empty
+    // we dont set this now, as they are recalculated when building the block proposal
+    // but this may not be correct in some edge cases that I dont want to tackle now
 }
 
 export function getNodeInfo(
@@ -829,6 +832,8 @@ export function sendBlockProposal(
     }
     const state = getCurrentState();
     const data = prepareAppendEntry(state.nextHeight);
+    if (data == null) return;
+
     const msgstr = prepareAppendEntryMessage(data);
     LoggerDebug("sending block proposal", ["height", state.nextHeight.toString()])
 
@@ -1193,6 +1198,10 @@ export function sendPrevote(
     params: ActionParam[],
     event: EventObject,
 ): void {
+    let state = getCurrentState();
+    if (state.nextHash == "") {
+        return
+    }
     // get the current proposal & vote on the block hash
     const data = buildPrevoteMessage();
 
@@ -1207,7 +1216,7 @@ export function sendPrevote(
     LoggerDebug("sending prevote", ["index", data.index.toString(), "hash", data.hash, "term_id", data.termId.toString()])
 
     const contract = wasmxw.getAddress();
-    const state = getCurrentState()
+    state = getCurrentState()
     const protocolId = getProtocolId(state)
     const topic = getTopic(state, cfg.CHAT_ROOM_PREVOTE)
     p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, contract, msgstr, protocolId, topic))

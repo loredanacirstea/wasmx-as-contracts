@@ -19,6 +19,7 @@ import { getCurrentState, getLastLogIndex, getLogEntryObj, getNodeIPs, setCurren
 import * as cfg from "./config";
 import { CurrentState } from "./types_blockchain";
 import { base64ToHex } from "wasmx-utils/assembly/utils";
+import { callContract } from "wasmx-env/assembly/utils";
 
 export function getBlockID(hash: Base64String): typestnd.BlockID {
     const hexhash = base64ToHex(hash)
@@ -237,19 +238,11 @@ export function callStaking(calldata: string, isQuery: boolean): CallResponse {
 export function callHookContract(hookName: string, data: string): void {
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(data)))
     const calldatastr = `{"RunHook":{"hook":"${hookName}","data":"${dataBase64}"}}`;
-    const resp = callContract("hooks", calldatastr, false)
+    const resp = callContract("hooks", calldatastr, false, MODULE_NAME)
     if (resp.success > 0) {
         // we do not fail, we want the chain to continue
         LoggerError(`hooks failed`, ["error", resp.data])
     }
-}
-
-export function callContract(addr: Bech32String, calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest(addr, calldata, BigInt.zero(), 100000000, isQuery);
-    const resp = wasmxw.call(req, MODULE_NAME);
-    // result or error
-    resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
-    return resp;
 }
 
 export function getCurrentValidator(): typestnd.ValidatorInfo {

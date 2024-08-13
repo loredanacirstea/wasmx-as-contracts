@@ -60,11 +60,19 @@ export function getActiveValidatorInfo(validators: staking.Validator[]): typestn
         }
         const key = consKey.getKey().key
         const addrhex = wasmxw.ed25519PubToHex(key)
-        const votingPow = v.tokens.div(BigInt.fromU32(1000000)).toU64()
-        const val = new typestnd.TendermintValidator(addrhex, consKey, votingPow, 0);
+        const votingPow = getPower(v.tokens)
+        const val = new typestnd.TendermintValidator(v.operator_address, addrhex, consKey, votingPow, 0);
         vinfo.push(val);
     }
     return vinfo;
+}
+
+// TODO must be same as getPower in staking module
+export const POWER_REDUCTION: u32 = 1000000
+export function getPower(tokens: BigInt): u64 {
+    // @ts-ignore
+    const v: BigInt = tokens / BigInt.fromU32(POWER_REDUCTION);
+    return v.toU64()
 }
 
 export function getSortedBlockCommits(lastBlockCommit: typestnd.BlockCommit, activeSortedVals: typestnd.TendermintValidator[]): typestnd.BlockCommit {
@@ -76,10 +84,12 @@ export function getSortedBlockCommits(lastBlockCommit: typestnd.BlockCommit, act
     }
     for (let i = 0; i < activeSortedVals.length; i++) {
         const v = activeSortedVals[i];
-        if (!sigsmap.has(v.address)) {
-            wasmxw.revert(`sorted validator address not found in array of CommitSig: ${v.address}`)
+        if (!sigsmap.has(v.hex_address)) {
+            // this can happen in the first block after a new validator has been added
+            // we have a new validator, but signatures
+            wasmxw.revert(`sorted validator address not found in array of CommitSig: ${v.hex_address} - ${v.operator_address}`)
         }
-        sigs[i] = sigsmap.get(v.address)
+        sigs[i] = sigsmap.get(v.hex_address)
     }
     return new typestnd.BlockCommit(
         lastBlockCommit.height,
@@ -108,7 +118,7 @@ export function sortTendermintValidators(validators: typestnd.TendermintValidato
         if (a.voting_power != b.voting_power) {
             return a.voting_power < b.voting_power ? -1 : a.voting_power > b.voting_power ? 1 : 0;
         }
-        return sortHexAddr(a.address, b.address);
+        return sortHexAddr(a.hex_address, b.hex_address);
     });
 }
 

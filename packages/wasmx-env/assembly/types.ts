@@ -514,8 +514,8 @@ export class BlockInfo {
     gasLimit: BigInt;
     hash: Base64String;
     difficulty: BigInt = BigInt.empty();
-    proposer: BigInt;
-    constructor(height: BigInt, timestamp: BigInt, gasLimit: BigInt, hash: Base64String, proposer: BigInt) {
+    proposer: Bech32String;
+    constructor(height: BigInt, timestamp: BigInt, gasLimit: BigInt, hash: Base64String, proposer: Bech32String) {
         this.height = height;
         this.timestamp = timestamp;
         this.gasLimit = gasLimit;

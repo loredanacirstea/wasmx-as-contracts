@@ -172,16 +172,17 @@ export function isNodeActive(node: NodeInfo): bool {
     return !node.outofsync && (node.node.ip != "" || node.node.host != "")
 }
 
-export function prepareAppendEntry(index: i64): AppendEntry {
+export function prepareAppendEntry(index: i64): AppendEntry | null {
     const data = new AppendEntry(
         getTermId(),
         getCurrentNodeId(),
         [],
     )
     const entry = getLogEntryAggregate(index);
-    if (entry != null) {
-        data.entries.push(entry);
+    if (entry == null) {
+        return null
     }
+    data.entries.push(entry);
     return data;
 }
 
@@ -397,7 +398,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         for (let i = 0; i < info.createdValidators.length; i++) {
             // move node info to validator info if it exists
             LoggerInfo("new validator", ["height", entryobj.index.toString(), "address", info.createdValidators[i]])
-            callHookContract("CreatedValidator", info.createdValidators[i]);
+            callHookContract(hooks.HOOK_CREATE_VALIDATOR, info.createdValidators[i]);
         }
     }
 

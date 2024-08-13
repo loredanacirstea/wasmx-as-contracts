@@ -545,12 +545,14 @@ export class ValidatorInfo {
 // @ts-ignore
 @serializable
 export class TendermintValidator {
-    address: HexString
+    operator_address: Bech32String
+    hex_address: HexString // // hex-format address derived from consensus public key
     pub_key: PublicKey | null = null
     voting_power: i64
     proposer_priority: i64
-    constructor(address: HexString, pub_key: PublicKey | null, voting_power: i64, proposer_priority: i64) {
-        this.address = address;
+    constructor(operator_address: Bech32String, hex_address: HexString, pub_key: PublicKey | null, voting_power: i64, proposer_priority: i64) {
+        this.operator_address = operator_address
+        this.hex_address = hex_address;
         this.pub_key = pub_key;
         this.voting_power = voting_power;
         this.proposer_priority = proposer_priority;
