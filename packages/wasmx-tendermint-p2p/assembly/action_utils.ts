@@ -21,7 +21,7 @@ import * as cfg from "./config";
 import { AppendEntry, CosmosmodGenesisState, IsNodeValidator, LogEntryAggregate } from "./types";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
-import { appendLogEntry, getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getPrecommitArray, getPrevoteArray, getTermId, getValidatorNodeCount, getValidatorNodesInfo, removeLogEntry, setCurrentState, setLogEntryAggregate, setPrecommitArray, setPrevoteArray } from "./storage";
+import { appendLogEntry, getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getPrecommitArray, getPrevoteArray, getTermId, getValidatorNodeCount, getValidatorNodesInfo, removeLogEntry, setCurrentState, setLogEntryAggregate, setPrecommitArray, setPrevoteArray, setTermId } from "./storage";
 import { getAllValidators, signMessage } from "wasmx-raft/assembly/action_utils";
 import { NodeInfo } from "wasmx-p2p/assembly/types";
 import { CurrentState, GetProposerResponse, SignedMsgType, ValidatorCommitVote, ValidatorProposalVote, ValidatorQueueEntry } from "./types_blockchain";
@@ -444,6 +444,9 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     // TODO commitResponse.retainHeight
     // Tendermint removes all data for heights lower than `retain_height`
     LoggerInfo("block finalized", ["height", entryobj.index.toString(), "termId", entryobj.termId.toString(), "hash", base64ToHex(finalizeReq.hash).toUpperCase()])
+
+    // make sure termId is synced
+    setTermId(entryobj.termId)
 
     if (info.createdValidators.length > 0) {
         const ouraddr = getSelfNodeInfo().address

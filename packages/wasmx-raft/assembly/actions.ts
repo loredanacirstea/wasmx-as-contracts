@@ -1206,6 +1206,9 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     // Tendermint removes all data for heights lower than `retain_height`
     LoggerInfo("block finalized", ["height", entryobj.index.toString(), "hash", base64ToHex(finalizeReq.hash).toUpperCase()])
 
+    // make sure termId is synced
+    setTermId(entryobj.termId)
+
     // TODO if we cannot start with the new contract, maybe we should remove its consensus role
 
     // if consensus changed, start the new contract
