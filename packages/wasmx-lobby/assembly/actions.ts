@@ -34,7 +34,6 @@ import { Params, RegisterDefaultSubChainRequest, SubChainData } from "wasmx-mult
 import { QueryBuildGenTxRequest } from "wasmx-tendermint-p2p/assembly/types";
 import { base64ToString } from "wasmx-utils/assembly/utils";
 import * as roles from "wasmx-env/assembly/roles";
-import { parseNodeAddress } from "wasmx-tendermint-p2p/assembly/actions";
 
 export function wrapGuard(value: boolean): ArrayBuffer {
     if (value) return String.UTF8.encode("1");
@@ -141,7 +140,7 @@ export function setupNode(
 
     const peers = new Array<NodeInfo>(data.peers.length);
     for (let i = 0; i < data.peers.length; i++) {
-        peers[i] = parseNodeAddress(data.peers[i])
+        peers[i] = tnd2utils.parseNodeAddress(data.peers[i])
     }
     setChainSetupData(new CurrentChainSetup(data, peers[data.node_index]))
 }
