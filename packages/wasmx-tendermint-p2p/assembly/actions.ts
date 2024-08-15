@@ -27,15 +27,15 @@ import { StateSyncRequest, StateSyncResponse } from "./sync_types";
 import { getCurrentNodeId, getCurrentState, getValidatorNodesInfo, setValidatorNodesInfo, setTermId, appendLogEntry, setLogEntryAggregate, setCurrentState, setLastLogIndex, getLogEntryObj, addToPrevoteArray, addToPrecommitArray, setPrevoteArrayMap, getPrevoteArrayMap, getPrecommitArrayMap, setPrecommitArrayMap, resetPrecommitArray } from "./storage";
 import * as raftp2pactions from "wasmx-raft-p2p/assembly/actions";
 import { setMempool, signMessage } from "wasmx-tendermint/assembly/actions"
-import { Mempool } from "wasmx-tendermint/assembly/types_blockchain";
+import { CurrentState, Mempool } from "wasmx-tendermint/assembly/types_blockchain";
 import * as cfg from "./config";
-import { AppendEntry, AppendEntryResponse, LogEntryAggregate, UpdateNodeRequest } from "./types";
-import { getAllValidatorInfos, getTendermintVote, getCurrentProposer, getLastBlockCommit, getLastBlockIndex, getLogEntryAggregate, getNextProposer, getProtocolId, getProtocolIdInternal, getTopic, getTopicInternal, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal, storageBootstrapAfterStateSync, getConsensusParams } from "./action_utils";
+import { AppendEntry, LogEntryAggregate, NodeInfoRequest, UpdateNodeRequest, UpdateNodeResponse } from "./types";
+import { getAllValidatorInfos, getTendermintVote, getCurrentProposer, getLastBlockCommit, getLastBlockIndex, getLogEntryAggregate, getNextProposer, getProtocolId, getProtocolIdInternal, getTopic, getTopicInternal, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal, storageBootstrapAfterStateSync, getConsensusParams, weAreNotAlone, weAreNotAloneInternal, parseNodeAddress, updateNodeEntry, nodeInfoComplete, nodeInfoCompleteInternal } from "./action_utils";
 import { extractUpdateNodeEntryAndVerify, removeNode } from "wasmx-raft/assembly/actions";
 import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembly/storage";
 import { getAllValidators, getNodeIdByAddress, verifyMessageByAddr, verifyMessageBytesByAddr } from "wasmx-raft/assembly/action_utils";
-import { NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft"
-import { Commit, CurrentState, getEmptyPrecommitArray, getEmptyValidatorProposalVoteArray, SignedMsgType, ValidatorCommitVote, ValidatorProposalVote } from "./types_blockchain";
+import { NodeUpdate } from "wasmx-raft/assembly/types_raft"
+import { Commit, getEmptyPrecommitArray, getEmptyValidatorProposalVoteArray, SignedMsgType, ValidatorCommitVote, ValidatorProposalVote } from "./types_blockchain";
 import { callContract } from "wasmx-tendermint/assembly/actions";
 import { NodePorts } from "wasmx-consensus/assembly/types_multichain";
 import * as roles from "wasmx-env/assembly/roles";
@@ -50,6 +50,10 @@ export function connectRooms(
     params: ActionParam[],
     event: EventObject,
 ): void {
+    connectRoomsInternal()
+}
+
+export function connectRoomsInternal(): void {
     const state = getCurrentState()
     const protocolId = getProtocolId(state)
     const topic = getTopic(state, cfg.CHAT_ROOM_PROTOCOL)
@@ -134,8 +138,7 @@ export function requestValidatorNodeInfoIfSynced(
 
 export function sendNodeSyncRequest(protocolId: string): void {
     const ips = getValidatorNodesInfo();
-    // if we are alone, return
-    if (ips.length == 1) {
+    if (!weAreNotAloneInternal(ips)) {
         return;
     }
     const nodeId = getCurrentNodeId();
@@ -171,8 +174,7 @@ export function registerValidatorWithNetwork(
 
 export function announceValidatorNodeWithNetwork(protocolId: string, topic: string): void {
     const ips = getValidatorNodesInfo();
-    // if we are alone, return
-    if (ips.length == 1) {
+    if (!weAreNotAloneInternal(ips)) {
         return;
     }
     const nodeId = getCurrentNodeId();
@@ -220,12 +222,13 @@ export function receiveUpdateNodeRequest(
     const req = JSON.parse<UpdateNodeRequest>(data)
     LoggerInfo("nodes request update", ["data", data])
 
+    // we dont verify the signature, we allow anyone to get the nodes list, so nodes can sync before becoming a validator
     // verify signature
-    const isSender = verifyMessageByAddr(sender, signature, data);
-    if (!isSender) {
-        LoggerError("signature verification failed for UpdateNodeRequest", ["sender", sender]);
-        return;
-    }
+    // const isSender = verifyMessageByAddr(sender, signature, data);
+    // if (!isSender) {
+    //     LoggerError("signature verification failed for UpdateNodeRequest", ["sender", sender]);
+    //     return;
+    // }
     sendNodeSyncResponse(req.peer_address)
 }
 
@@ -288,6 +291,13 @@ export function receiveUpdateNodeResponseInternal(
     const nodeId = getCurrentNodeId();
     const nodeInfo = nodeIps[nodeId];
 
+    // update proposer queue
+    const state = getCurrentState()
+    state.proposerIndex = resp.proposerIndex;
+    state.proposerQueue = resp.proposerQueue;
+    state.proposerQueueTermId = resp.proposerQueueTermId;
+    setCurrentState(state);
+
     // we find our id
     let ourId = -1;
     for (let j = 0; j < resp.nodes.length; j++) {
@@ -296,8 +306,17 @@ export function receiveUpdateNodeResponseInternal(
             break;
         }
     }
+    // if we do not find it, we add ourselves
+    // we should only receive this type of message after bootstrap, when we have id 0
     if (ourId == -1) {
-        LoggerError("node list does not contain our node", [])
+        if (nodeId == 0) {
+            LoggerInfo("node list does not contain our node, adding it", [])
+            resp.nodes.push(nodeInfo)
+            setValidatorNodesInfo(resp.nodes)
+            setCurrentNodeId(resp.nodes.length - 1);
+        } else {
+            LoggerError("node list does not contain our node", [])
+        }
         return;
     }
     const node = resp.nodes[ourId];
@@ -318,6 +337,7 @@ export function receiveUpdateNodeResponseInternal(
         LoggerError("node list contains wrong port data", ["address", nodeInfo.address, "id", ourId.toString(), "actual", node.node.port, "expected", nodeInfo.node.port])
         return;
     }
+
     setValidatorNodesInfo(resp.nodes);
     setCurrentNodeId(ourId);
 }
@@ -327,8 +347,7 @@ export function receiveUpdateNodeResponseInternal(
 // TODO if out of sync > 1000 blocks -> state sync
 export function sendStateSyncRequest(protocolId: string, nodeId: i32): void {
     const nodes = getValidatorNodesInfo();
-    // if we are alone, return
-    if (nodes.length < 2) {
+    if (!weAreNotAloneInternal(nodes)) {
         return;
     }
     const lastIndex = getLastBlockIndex();
@@ -388,10 +407,6 @@ export function setupNode(
         // we do not fail, we want the chain to continue
         LoggerError(`call failed: could not set initial ports`, ["contract", roles.ROLE_MULTICHAIN_REGISTRY_LOCAL, "error", resp.data])
     }
-}
-
-export function parseNodeAddress(peeraddr: string): NodeInfo {
-    return raftp2pactions.parseNodeAddress(peeraddr)
 }
 
 export function setup(
@@ -497,9 +512,12 @@ export function bootstrapAfterStateSync(
     // currentState.last_block_signatures
     currentState.nextHeight = state.LastBlockHeight + 1
     currentState.nextHash = state.LastBlockID.hash
+    // these are updated when we update our node list
     // currentState.proposerQueue
     // currentState.proposerQueueTermId
     // currentState.proposerIndex
+
+    setCurrentState(currentState)
 
     // update storage contract
     // update last block height
@@ -507,6 +525,13 @@ export function bootstrapAfterStateSync(
 
     // update our last log here
     setLastLogIndex(state.LastBlockHeight)
+
+    // we need an updated node list before we can create our validator
+    // so we request this from our peer
+    connectRoomsInternal()
+    const protocolId = getProtocolId(getCurrentState())
+    sendNodeSyncRequest(protocolId)
+
 
     // TODO we now do not sync the last seen commit signatures for previous block, in case this validator is the next proposer
     // so we will just skip the proposal creation for now
@@ -550,48 +575,12 @@ export function updateNodeAndReturn(
     updateNodeEntry(entry);
 }
 
-export function updateNodeEntry(entry: NodeUpdate): void {
-    let ips = getValidatorNodesInfo();
-
-    // new node or node comming back online
-    if (entry.type == cfg.NODE_UPDATE_ADD) {
-        if (entry.node.node.ip == "" && entry.node.node.host == "") {
-            revert(`validator info missing from node update: address ${entry.node.address}`)
-        }
-        // make it idempotent & don't add same node address multiple times
-        let ndx = -1
-        for (let i = 0; i < ips.length; i++) {
-            if (ips[i].address == entry.node.address) {
-                ndx = i;
-                break;
-            }
-        }
-        if (ndx > -1) {
-            // we just update the node
-            ips[ndx].node = entry.node.node
-        } else {
-            // TODO mark as outofsync for raft too?
-            ips.push(entry.node);
-            // TODO adding a new node must be under the same index as in the validators array
-        }
-    }
-    else if (entry.type == cfg.NODE_UPDATE_UPDATE) {
-        // just update the node
-        ips[entry.index].node = entry.node.node;
-    }
-    else if (entry.type == cfg.NODE_UPDATE_REMOVE) {
-        // idempotent
-        ips = removeNode(ips, entry.index)
-    }
-
-    LoggerInfo("node updates", ["ips", JSON.stringify<NodeInfo[]>(ips)])
-    setValidatorNodesInfo(ips);
-}
 
 export function sendNodeSyncResponse(peeraddr: string): void {
     const nodes = getValidatorNodesInfo()
     const ourId = getCurrentNodeId();
-    const response = new UpdateNodeResponse(nodes, getCurrentNodeId(), getLastLogIndex());
+    const state = getCurrentState();
+    const response = new UpdateNodeResponse(nodes, getCurrentNodeId(), getLastLogIndex(), state.proposerQueue, state.proposerQueueTermId, state.proposerIndex);
     const updateMsgStr = JSON.stringify<UpdateNodeResponse>(response);
     const signature = signMessage(updateMsgStr);
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(updateMsgStr)));
@@ -612,8 +601,7 @@ export function forwardMsgToChat(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    // if we are alone, return
-    if (getValidatorNodesInfo().length < 2) {
+    if (!weAreNotAlone()) {
         return;
     }
     const p = getParamsOrEventParams(params, event);
@@ -635,8 +623,7 @@ export function forwardMsgToChat(
 
 // TODO
 export function forwardMsgToOtherChains(transaction: Base64String, chainIds: string[]): void {
-    // if we are alone, return
-    if (getValidatorNodesInfo().length < 2) {
+    if (!weAreNotAlone()) {
         return;
     }
     const msgstr = `{"run":{"event":{"type":"newTransaction","params":[{"key":"transaction", "value":"${transaction}"}]}}}`
@@ -794,6 +781,12 @@ export function proposeBlock(
         // so we can return
         return
     }
+    if (!nodeInfoComplete()) {
+        // reset block proposal
+        state.nextHash = "";
+        setCurrentState(state);
+        return;
+    }
     // we propose a new block or overwrite any other past proposal
     // we take the last block signed precommits from the current state
     const lastBlockCommit = getLastBlockCommit(state);
@@ -826,8 +819,7 @@ export function sendBlockProposal(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    // if we are alone, return
-    if (getValidatorNodesInfo().length < 2) {
+    if (!weAreNotAlone()) {
         return;
     }
     const state = getCurrentState();
@@ -1012,24 +1004,6 @@ export function receiveStateSyncResponse(
     setTermId(resp.termId);
 }
 
-export function sendAppendEntryResponseMessage(response: AppendEntryResponse, leaderId: i32): void {
-    const datastr = JSON.stringify<AppendEntryResponse>(response);
-    const signatureResp = signMessage(datastr);
-    const nodeIps = getValidatorNodesInfo();
-    const ourId = getCurrentNodeId();
-    const peers = [raftp2pactions.getP2PAddress(nodeIps[leaderId])]
-
-    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(datastr)));
-    const senderaddr = nodeIps[ourId].address;
-    const msgstr = `{"run":{"event":{"type":"receiveAppendEntryResponse","params":[{"key": "entry","value":"${dataBase64}"},{"key": "signature","value":"${signatureResp}"},{"key": "sender","value":"${senderaddr}"}]}}}`
-
-    LoggerDebug("sending new entries response to proposer", ["proposerId", leaderId.toString(), "lastIndex", response.lastIndex.toString()])
-
-    const contract = wasmxw.getAddress();
-    const protocolId = getProtocolId(getCurrentState())
-    p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, contract, msgstr, protocolId, peers))
-}
-
 // validator receiving block proposal
 export function receiveBlockProposal(
     params: ActionParam[],
@@ -1080,9 +1054,23 @@ export function receiveBlockProposal(
         // no new blocks were produced, so the same stake will be used
     }
 
+    const lastStoredIndex = getLastLogIndex()
+    const state = getCurrentState()
+
     // now we check the new block
     for (let i = 0; i < entry.entries.length; i++) {
         const block = entry.entries[i];
+        // don't receive block proposals for already finalized blocks
+        if (block.index <= lastStoredIndex) {
+            LoggerInfo("already stored block ... skipping block proposal", ["height", block.index.toString()])
+            continue;
+        }
+        if (block.index > (lastStoredIndex + 1)) {
+            // we store the block temporarily;
+            LoggerInfo("block stored out of order", ["height", block.index.toString(), "expected", (lastStoredIndex + 1).toString(), "nextHeight", state.nextHeight.toString()])
+            storeNewBlockOutOfOrder(block.termId, block, state.nextHeight)
+            continue;
+        }
         // we only receive block proposals if we are synced
         // if we are not synced, we use Commit messages
         processAppendEntry(block);
@@ -1099,6 +1087,7 @@ export function processAppendEntry(entry: LogEntryAggregate): void {
         "height", processReq.height.toString(),
         "proposerId", entry.leaderId.toString(),
         "termId", entry.termId.toString(),
+        "hash", processReq.hash,
     ]);
 
     // TODO check all the validator signatures on the previous block, for correctness
@@ -1129,14 +1118,25 @@ export function setRoundProposer(
 
     // >= ?? (sometimes we update termId from other nodes)
     if (currentState.proposerQueueTermId == termId) return;
+    if (currentState.proposerQueueTermId > termId) {
+        setTermId(currentState.proposerQueueTermId)
+        LoggerDebug("new proposer set from proposer queue", ["validator_index", currentState.proposerIndex.toString(), "termId", currentState.proposerQueueTermId.toString()])
+        return;
+    }
 
+    // we hope validator composition has not changed
     const validators = getAllValidators();
-    const resp = getNextProposer(validators, currentState.proposerQueue);
-    currentState.proposerIndex = resp.proposerIndex;
-    currentState.proposerQueueTermId = termId;
-    currentState.proposerQueue = resp.proposerQueue;
+    const rounds = termId - currentState.proposerQueueTermId;
+
+    for (let i = 0; i < rounds; i++) {
+        const resp = getNextProposer(validators, currentState.proposerQueue);
+        currentState.proposerIndex = resp.proposerIndex;
+        currentState.proposerQueueTermId = termId;
+        currentState.proposerQueue = resp.proposerQueue;
+    }
+
     setCurrentState(currentState);
-    LoggerDebug("new proposer set", ["validator_index", resp.proposerIndex.toString(), "termId", termId.toString()])
+    LoggerDebug("new proposer set", ["validator_index", currentState.proposerIndex.toString(), "termId", currentState.proposerQueueTermId.toString()])
 }
 
 export function isNextProposer(
@@ -1202,13 +1202,17 @@ export function sendPrevote(
     if (state.nextHash == "") {
         return
     }
+    const nodeIps = getValidatorNodesInfo();
+    if (!nodeInfoCompleteInternal(nodeIps)) {
+        return;
+    }
+
     // get the current proposal & vote on the block hash
     const data = buildPrevoteMessage();
 
     addToPrevoteArray(getCurrentNodeId(), data);
 
-    // if we are alone, return
-    if (getValidatorNodesInfo().length < 2) {
+    if (!weAreNotAloneInternal(nodeIps)) {
         return;
     }
 
@@ -1226,10 +1230,14 @@ export function sendPrevoteNil(
     params: ActionParam[],
     event: EventObject,
 ): void {
+    const nodeIps = getValidatorNodesInfo();
+    if (!nodeInfoCompleteInternal(nodeIps)) {
+        return;
+    }
+
     const termId = getTermId()
     const state = getCurrentState()
     const nextIndex = state.nextHeight;
-    const nodeIps = getValidatorNodesInfo();
     const ourId = getCurrentNodeId();
     const getOurInfo = nodeIps[ourId];
 
@@ -1239,13 +1247,12 @@ export function sendPrevoteNil(
 
     addToPrevoteArray(getCurrentNodeId(), data);
 
-    // if we are alone, return
-    if (getValidatorNodesInfo().length < 2) {
+    if (!weAreNotAloneInternal(nodeIps)) {
         return;
     }
 
     const msgstr = preparePrevoteMessage(data);
-    LoggerDebug("sending prevote nil", ["index", data.index.toString(), "term_id", data.termId.toString()])
+    LoggerDebug("sending prevote", ["index", data.index.toString(), "term_id", data.termId.toString(), "hash", "nil"])
 
     const contract = wasmxw.getAddress();
     const protocolId = getProtocolId(state)
@@ -1276,6 +1283,13 @@ export function sendPrecommit(
     params: ActionParam[],
     event: EventObject,
 ): void {
+    if (getCurrentState().nextHash == "") {
+        return
+    }
+    if (!nodeInfoComplete()) {
+        return;
+    }
+
     // get the current proposal & vote on the block hash
     const data = buildPrecommitMessage();
     const resp = preparePrecommitMessage(data);
@@ -1286,8 +1300,7 @@ export function sendPrecommit(
     const precommit = new ValidatorCommitVote(data, typestnd.BlockIDFlag.Commit, signature)
     addToPrecommitArray(getCurrentNodeId(), precommit)
 
-    // if we are alone, return
-    if (getValidatorNodesInfo().length < 2) {
+    if (!weAreNotAlone()) {
         return;
     }
 
@@ -1302,10 +1315,14 @@ export function sendPrecommitNil(
     params: ActionParam[],
     event: EventObject,
 ): void {
+    const nodeIps = getValidatorNodesInfo();
+    if (!nodeInfoCompleteInternal(nodeIps)) {
+        return;
+    }
+
     const termId = getTermId()
     const state = getCurrentState()
     const nextIndex = state.nextHeight;
-    const nodeIps = getValidatorNodesInfo();
     const ourId = getCurrentNodeId();
     const getOurInfo = nodeIps[ourId];
     const vaddr = wasmxw.addr_humanize(decodeBase64(state.validator_pubkey).buffer)
@@ -1316,13 +1333,12 @@ export function sendPrecommitNil(
     const resp = preparePrecommitMessage(data);
     const msgstr = resp[0]
     const signature = resp[1]
-    LoggerDebug("sending precommit nil", ["index", data.index.toString(), "term_id", data.termId.toString()])
+    LoggerDebug("sending precommit", ["index", data.index.toString(), "term_id", data.termId.toString(), "hash", "nil"])
 
     const precommit = new ValidatorCommitVote(data, typestnd.BlockIDFlag.Nil, signature)
     addToPrecommitArray(getCurrentNodeId(), precommit)
 
-    // if we are alone, return
-    if (getValidatorNodesInfo().length < 2) {
+    if (!weAreNotAlone()) {
         return;
     }
 
@@ -1732,8 +1748,6 @@ export function receiveCommit(
         }
         startBlockFinalizationFollower(i);
     }
-    // update term id
-    setTermId(data.termId)
 }
 
 // currentState.nextHeight

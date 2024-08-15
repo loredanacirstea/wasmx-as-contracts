@@ -16,7 +16,7 @@ export const machine = createMachine({
     timeoutPropose: 3000,
     timeoutPrecommit: 3000,
   },
-  id: "Levels-P2P-2",
+  id: "Levels-P2P-3",
   initial: "uninitialized",
   states: {
     uninitialized: {
@@ -145,6 +145,11 @@ export const machine = createMachine({
                     type: "receiveCommit",
                   },
                 },
+                receiveUpdateNodeResponse: {
+                  actions: {
+                    type: "receiveUpdateNodeResponse",
+                  },
+                },
               },
               always: {
                 target: "Validator",
@@ -168,7 +173,7 @@ export const machine = createMachine({
                   },
                 },
                 stop: {
-                  target: "#Levels-P2P-2.stopped",
+                  target: "#Levels-P2P-3.stopped",
                 },
                 receiveUpdateNodeResponse: {
                   actions: {
@@ -249,7 +254,7 @@ export const machine = createMachine({
                     },
                   },
                   always: {
-                    target: "#Levels-P2P-2.initialized.started.Proposer",
+                    target: "#Levels-P2P-3.initialized.started.Proposer",
                     guard: {
                       type: "isNextProposer",
                     },
@@ -344,7 +349,7 @@ export const machine = createMachine({
                   ],
                 },
                 stop: {
-                  target: "#Levels-P2P-2.stopped",
+                  target: "#Levels-P2P-3.stopped",
                 },
                 receiveUpdateNodeRequest: {
                   actions: {
@@ -356,7 +361,7 @@ export const machine = createMachine({
                 active: {
                   always: {
                     target:
-                      "#Levels-P2P-2.initialized.started.Validator.precommit",
+                      "#Levels-P2P-3.initialized.started.Validator.precommit",
                   },
                   entry: [
                     {
@@ -379,7 +384,7 @@ export const machine = createMachine({
     stopped: {
       on: {
         restart: {
-          target: "#Levels-P2P-2.initialized.unstarted",
+          target: "#Levels-P2P-3.initialized.unstarted",
         },
       },
     },

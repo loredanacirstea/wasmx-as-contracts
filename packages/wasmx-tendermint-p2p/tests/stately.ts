@@ -17,7 +17,7 @@ export const machine = createMachine({
     timeoutPropose: 3000,
     timeoutPrecommit: 3000,
   },
-  id: "Tendermint-P2P-6",
+  id: "Tendermint-P2P-7",
   initial: "uninitialized",
   states: {
     uninitialized: {
@@ -146,6 +146,11 @@ export const machine = createMachine({
                     type: "receiveCommit",
                   },
                 },
+                receiveUpdateNodeResponse: {
+                  actions: {
+                    type: "receiveUpdateNodeResponse",
+                  },
+                },
               },
               always: {
                 target: "Validator",
@@ -169,7 +174,7 @@ export const machine = createMachine({
                   },
                 },
                 stop: {
-                  target: "#Tendermint-P2P-6.stopped",
+                  target: "#Tendermint-P2P-7.stopped",
                 },
                 receiveUpdateNodeResponse: {
                   actions: {
@@ -221,11 +226,6 @@ export const machine = createMachine({
                     },
                   ],
                 },
-                receivePrecommit: {
-                  actions: {
-                    type: "receivePrecommit",
-                  },
-                },
               },
               states: {
                 active: {
@@ -260,7 +260,7 @@ export const machine = createMachine({
                     },
                   },
                   always: {
-                    target: "#Tendermint-P2P-6.initialized.started.Proposer",
+                    target: "#Tendermint-P2P-7.initialized.started.Proposer",
                     guard: {
                       type: "isNextProposer",
                     },
@@ -347,9 +347,6 @@ export const machine = createMachine({
                   after: {
                     timeoutPrecommit: {
                       target: "active",
-                      guard: {
-                        type: "ifPrecommitAnyThreshold",
-                      },
                     },
                   },
                   always: {
@@ -425,7 +422,7 @@ export const machine = createMachine({
                   ],
                 },
                 stop: {
-                  target: "#Tendermint-P2P-6.stopped",
+                  target: "#Tendermint-P2P-7.stopped",
                 },
                 receiveUpdateNodeRequest: {
                   actions: {
@@ -437,7 +434,7 @@ export const machine = createMachine({
                 active: {
                   always: {
                     target:
-                      "#Tendermint-P2P-6.initialized.started.Validator.prevote",
+                      "#Tendermint-P2P-7.initialized.started.Validator.prevote",
                   },
                   entry: [
                     {
@@ -460,7 +457,7 @@ export const machine = createMachine({
     stopped: {
       on: {
         restart: {
-          target: "#Tendermint-P2P-6.initialized.unstarted",
+          target: "#Tendermint-P2P-7.initialized.unstarted",
         },
       },
     },
@@ -658,10 +655,6 @@ export const machine = createMachine({
       return true;
     },
     ifPrevoteAnyThreshold: function (context, event) {
-      // Add your guard condition here
-      return true;
-    },
-    ifPrecommitAnyThreshold: function (context, event) {
       // Add your guard condition here
       return true;
     },

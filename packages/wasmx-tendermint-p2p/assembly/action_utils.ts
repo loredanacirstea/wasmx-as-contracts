@@ -10,27 +10,29 @@ import * as consutil from "wasmx-consensus/assembly/utils";
 import * as staking from "wasmx-stake/assembly/types";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import * as roles from "wasmx-env/assembly/roles";
 import * as modnames from "wasmx-env/assembly/modules";
 import * as mctypes from "wasmx-consensus/assembly/types_multichain";
-import * as mcwrap from 'wasmx-consensus/assembly/multichain_wrap';
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
 import * as tnd from "wasmx-tendermint/assembly/actions";
-import { buildLogEntryAggregate, callContract, callHookContract, callHookNonCContract, getMempool, getTotalStaked, setMempool, updateConsensusParams, updateValidators } from "wasmx-tendermint/assembly/actions";
+import { callContract, callHookContract, callHookNonCContract, getMempool, setMempool, updateConsensusParams, updateValidators } from "wasmx-tendermint/assembly/actions";
 import * as cfg from "./config";
 import { AppendEntry, CosmosmodGenesisState, IsNodeValidator, LogEntryAggregate } from "./types";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
-import { appendLogEntry, getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getPrecommitArray, getPrevoteArray, getTermId, getValidatorNodeCount, getValidatorNodesInfo, removeLogEntry, setCurrentState, setLogEntryAggregate, setPrecommitArray, setPrevoteArray, setTermId } from "./storage";
+import { getCurrentNodeId, getCurrentState, getLogEntryObj, getPrecommitArray, getPrevoteArray, getTermId, getValidatorNodesInfo, removeLogEntry, setCurrentState, setTermId, setValidatorNodesInfo } from "./storage";
 import { getAllValidators, signMessage } from "wasmx-raft/assembly/action_utils";
 import { NodeInfo } from "wasmx-p2p/assembly/types";
-import { CurrentState, GetProposerResponse, SignedMsgType, ValidatorCommitVote, ValidatorProposalVote, ValidatorQueueEntry } from "./types_blockchain";
+import { GetProposerResponse, ValidatorProposalVote } from "./types_blockchain";
 import { Base64String, Bech32String, CallRequest, CallResponse, HexString, SignedTransaction } from "wasmx-env/assembly/types";
 import { LOG_START } from "./config";
-import { base64ToHex, base64ToString, parseUint8ArrayToU32BigEndian, uint8ArrayToHex } from "wasmx-utils/assembly/utils";
-import { extractIndexedTopics, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash } from "wasmx-consensus-utils/assembly/utils";
+import { base64ToHex, base64ToString } from "wasmx-utils/assembly/utils";
+import { extractIndexedTopics, getCommitHash, getResultsHash } from "wasmx-consensus-utils/assembly/utils";
 import * as stakingutils from "wasmx-stake/assembly/msg_utils";
-import { getBlockID, getBlockIDProto } from "wasmx-tendermint/assembly/action_utils";
+import { decodeTx, getBlockID, getBlockIDProto } from "wasmx-tendermint/assembly/action_utils";
+import * as raftp2pactions from "wasmx-raft-p2p/assembly/actions";
+import { NodeUpdate } from "wasmx-raft/assembly/types_raft";
+import { removeNode } from "wasmx-raft/assembly/actions";
+import { CurrentState, ValidatorQueueEntry } from "wasmx-tendermint/assembly/types_blockchain";
 
 export function wrapGuard(value: boolean): ArrayBuffer {
     if (value) return String.UTF8.encode("1");
@@ -378,11 +380,8 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     removeLogEntry(entryobj.index);
 
     // before commiting, we check if consensus contract was changed
-    let evs = finalizeResp.events
-    for (let i = 0; i < finalizeResp.tx_results.length; i++) {
-        evs = evs.concat(finalizeResp.tx_results[i].events)
-    }
-    const info = consutil.defaultFinalizeResponseEventsParse(evs)
+    // or if a new validator was added
+    const info = consutil.defaultFinalizeResponseEventsParse(finalizeResp.tx_results)
 
     const resend = consensuswrap.EndBlock(blockData);
     if (resend.error.length > 0) {
@@ -396,9 +395,19 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
 
     if (info.createdValidators.length > 0) {
         for (let i = 0; i < info.createdValidators.length; i++) {
+            const v = info.createdValidators[i]
+            const decodedTx = decodeTx(finalizeReq.txs[v.txindex])
+            const operator = v.operator_address
+            LoggerInfo("new validator", ["height", entryobj.index.toString(), "address", operator, "p2p_address", decodedTx.body.memo])
+            const nodeInfo = parseNodeAddress(decodedTx.body.memo)
+            if (operator != nodeInfo.address) {
+                LoggerError("validator operator address mismatch, using operator_address", ["operator_address", operator, "memo", decodedTx.body.memo])
+                nodeInfo.address = operator
+            }
+            // add new node info to our validator info list
+            updateNodeEntry(new NodeUpdate(nodeInfo, 0, cfg.NODE_UPDATE_ADD))
             // move node info to validator info if it exists
-            LoggerInfo("new validator", ["height", entryobj.index.toString(), "address", info.createdValidators[i]])
-            callHookContract(hooks.HOOK_CREATE_VALIDATOR, info.createdValidators[i]);
+            callHookContract(hooks.HOOK_CREATE_VALIDATOR, JSON.stringify<NodeInfo>(nodeInfo));
         }
     }
 
@@ -443,7 +452,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     const commitResponse = consensuswrap.Commit();
     // TODO commitResponse.retainHeight
     // Tendermint removes all data for heights lower than `retain_height`
-    LoggerInfo("block finalized", ["height", entryobj.index.toString(), "termId", entryobj.termId.toString(), "hash", base64ToHex(finalizeReq.hash).toUpperCase()])
+    LoggerInfo("block finalized", ["height", entryobj.index.toString(), "termId", entryobj.termId.toString(), "hash", base64ToHex(finalizeReq.hash).toUpperCase(), "proposer", finalizeReq.proposer_address])
 
     // make sure termId is synced
     setTermId(entryobj.termId)
@@ -451,7 +460,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     if (info.createdValidators.length > 0) {
         const ouraddr = getSelfNodeInfo().address
         for (let i = 0; i < info.createdValidators.length; i++) {
-            if (info.createdValidators[i] == ouraddr) {
+            if (info.createdValidators[i].operator_address == ouraddr) {
                 LoggerInfo("node is validator", ["height", entryobj.index.toString(), "address", ouraddr])
 
                 // call consensus contract with "becomeValidator" transition
@@ -751,4 +760,63 @@ export function getAllValidatorInfos(): staking.ValidatorSimple[] {
     LoggerDebug("GetAllValidatorInfos", ["data", resp.data])
     const result = JSON.parse<staking.QueryValidatorInfosResponse>(resp.data);
     return result.validators;
+}
+
+export function weAreNotAlone(): boolean {
+    return weAreNotAloneInternal(getValidatorNodesInfo())
+}
+
+export function weAreNotAloneInternal(nodes: Array<NodeInfo>): boolean {
+    if (nodes.length > 1) return true;
+    return false
+}
+
+export function nodeInfoComplete(): boolean {
+    return nodeInfoCompleteInternal(getValidatorNodesInfo())
+}
+
+export function nodeInfoCompleteInternal(nodes: Array<NodeInfo>): boolean {
+    return nodes.length == getAllValidatorInfos().length
+}
+
+export function parseNodeAddress(peeraddr: string): NodeInfo {
+    return raftp2pactions.parseNodeAddress(peeraddr)
+}
+
+export function updateNodeEntry(entry: NodeUpdate): void {
+    let ips = getValidatorNodesInfo();
+
+    // new node or node comming back online
+    if (entry.type == cfg.NODE_UPDATE_ADD) {
+        if (entry.node.node.ip == "" && entry.node.node.host == "") {
+            revert(`validator info missing from node update: address ${entry.node.address}`)
+        }
+        // make it idempotent & don't add same node address multiple times
+        let ndx = -1
+        for (let i = 0; i < ips.length; i++) {
+            if (ips[i].address == entry.node.address) {
+                ndx = i;
+                break;
+            }
+        }
+        if (ndx > -1) {
+            // we just update the node
+            ips[ndx].node = entry.node.node
+        } else {
+            // TODO mark as outofsync for raft too?
+            ips.push(entry.node);
+            // TODO adding a new node must be under the same index as in the validators array
+        }
+    }
+    else if (entry.type == cfg.NODE_UPDATE_UPDATE) {
+        // just update the node
+        ips[entry.index].node = entry.node.node;
+    }
+    else if (entry.type == cfg.NODE_UPDATE_REMOVE) {
+        // idempotent
+        ips = removeNode(ips, entry.index)
+    }
+
+    LoggerInfo("node updates", ["ips", JSON.stringify<NodeInfo[]>(ips)])
+    setValidatorNodesInfo(ips);
 }

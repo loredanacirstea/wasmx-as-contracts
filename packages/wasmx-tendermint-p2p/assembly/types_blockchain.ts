@@ -4,19 +4,7 @@ import {HexString, Base64String, Bech32String} from 'wasmx-env/assembly/types';
 import { Version, BlockID, CommitSig, BlockIDFlag } from 'wasmx-consensus/assembly/types_tendermint';
 import { BigInt } from "wasmx-env/assembly/bn";
 import * as staking from "wasmx-stake/assembly/types";
-
-// @ts-ignore
-@serializable
-export class ValidatorQueueEntry {
-    address: Bech32String // operator_address
-    index: i32
-    value: BigInt
-    constructor(address: Bech32String, index: i32, value: BigInt) {
-        this.address = address
-        this.index = index
-        this.value = value
-    }
-}
+import { ValidatorQueueEntry } from "wasmx-tendermint/assembly/types_blockchain";
 
 // @ts-ignore
 @serializable
@@ -26,72 +14,6 @@ export class GetProposerResponse {
     constructor(proposerQueue: ValidatorQueueEntry[], proposerIndex: i32) {
         this.proposerQueue = proposerQueue
         this.proposerIndex = proposerIndex
-    }
-}
-
-// @ts-ignore
-@serializable
-export class CurrentState {
-    chain_id: string
-    unique_p2p_id: string = "" // temporary fix for level0 unique chat rooms; TODO unique chain ids for level0
-    version: Version
-	app_hash: string // updated after Finalized Block
-    // prev block info
-    last_block_id: BlockID // updated after Finalized Block
-    // commit from validators from the last block
-    last_commit_hash: string // base64
-    // tx results hash
-    last_results_hash: string // base64
-    last_round: i64
-    last_block_signatures: CommitSig[]
-
-    validator_address: HexString
-    validator_privkey: Base64String
-    validator_pubkey: Base64String
-
-    nextHeight: i64
-    nextHash: Base64String
-
-    lockedValue: i64
-    lockedRound: i64
-    validValue: i64
-    validRound: i64
-    proposerQueue: ValidatorQueueEntry[]
-    proposerQueueTermId: i64
-    proposerIndex: i32
-
-    constructor(chain_id: string, version: Version, app_hash: string, last_block_id: BlockID, last_commit_hash: string, last_results_hash: string, last_round: i64, last_block_signatures: CommitSig[], validator_address: HexString, validator_privkey: Base64String, validator_pubkey: Base64String,
-    nextHeight: i64,
-    nextHash: Base64String,
-    lockedValue: i64,
-    lockedRound: i64,
-    validValue: i64,
-    validRound: i64,
-    proposerQueue: ValidatorQueueEntry[],
-    proposerQueueTermId: i64,
-    proposerIndex: i32,
-    ) {
-        this.chain_id = chain_id
-        this.version = version
-        this.app_hash = app_hash
-        this.last_block_id = last_block_id
-        this.last_commit_hash = last_commit_hash
-        this.last_round = last_round
-        this.last_block_signatures = last_block_signatures
-        this.last_results_hash = last_results_hash
-        this.validator_address = validator_address
-        this.validator_privkey = validator_privkey
-        this.validator_pubkey = validator_pubkey
-        this.nextHeight = nextHeight
-        this.nextHash = nextHash
-        this.lockedValue = lockedValue
-        this.lockedRound = lockedRound
-        this.validValue = validValue
-        this.validRound = validRound
-        this.proposerQueue = proposerQueue
-        this.proposerQueueTermId = proposerQueueTermId
-        this.proposerIndex = proposerIndex
-        this.unique_p2p_id = ""
     }
 }
 

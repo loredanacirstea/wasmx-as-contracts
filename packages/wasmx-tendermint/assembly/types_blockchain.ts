@@ -1,4 +1,5 @@
 import { JSON } from "json-as/assembly";
+import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as consw from "wasmx-env/assembly/crosschain_wrap";
 import {HexString, Base64String, Bech32String, MsgIsAtomicTxInExecutionRequest} from 'wasmx-env/assembly/types';
 import { Version, BlockID, CommitSig, BlockIDFlag } from 'wasmx-consensus/assembly/types_tendermint';
@@ -8,7 +9,7 @@ import { LoggerDebug } from "./utils";
 // @ts-ignore
 @serializable
 export class ValidatorQueueEntry {
-    address: Bech32String
+    address: Bech32String // operator_address
     index: i32
     value: BigInt
     constructor(address: Bech32String, index: i32, value: BigInt) {
@@ -21,33 +22,33 @@ export class ValidatorQueueEntry {
 // @ts-ignore
 @serializable
 export class CurrentState {
-    chain_id: string
-    version: Version
-	app_hash: string // updated after Finalized Block
-
+    chain_id: string = ""
+    unique_p2p_id: string = "" // temporary fix for level0 unique chat rooms; TODO unique chain ids for level0
+    version: Version = new Version(new typestnd.VersionConsensus(0, 0),"")
+	app_hash: string = "" // updated after Finalized Block
     // prev block info
-    last_block_id: BlockID // updated after Finalized Block
+    last_block_id: BlockID = new BlockID("", new typestnd.PartSetHeader(1, "")) // updated after Finalized Block
     // commit from validators from the last block
-    last_commit_hash: string // base64
+    last_commit_hash: string = "" // base64
     // tx results hash
-    last_results_hash: string // base64
-    last_block_signatures: CommitSig[]
-    last_round: i64
+    last_results_hash: string = "" // base64
+    last_round: i64 = 0
+    last_block_signatures: CommitSig[] = []
 
-    validator_address: HexString
-    validator_privkey: Base64String
-    validator_pubkey: Base64String
+    validator_address: HexString = ""
+    validator_privkey: Base64String = ""
+    validator_pubkey: Base64String = ""
 
-    nextHeight: i64
-    nextHash: Base64String
+    nextHeight: i64 = 0
+    nextHash: Base64String = ""
 
-    lockedValue: i64
-    lockedRound: i64
-    validValue: i64
-    validRound: i64
-    proposerQueue: ValidatorQueueEntry[]
-    proposerQueueTermId: i64
-    proposerIndex: i32
+    lockedValue: i64 = 0
+    lockedRound: i64 = 0
+    validValue: i64 = 0
+    validRound: i64 = 0
+    proposerQueue: ValidatorQueueEntry[] = []
+    proposerQueueTermId: i64 = 0
+    proposerIndex: i32 = 0
 
     constructor(chain_id: string, version: Version, app_hash: string, last_block_id: BlockID, last_commit_hash: string, last_results_hash: string, last_round: i64, last_block_signatures: CommitSig[], validator_address: HexString, validator_privkey: Base64String, validator_pubkey: Base64String,
     nextHeight: i64,
@@ -80,6 +81,7 @@ export class CurrentState {
         this.proposerQueue = proposerQueue
         this.proposerQueueTermId = proposerQueueTermId
         this.proposerIndex = proposerIndex
+        this.unique_p2p_id = ""
     }
 }
 

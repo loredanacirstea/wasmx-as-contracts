@@ -25,17 +25,16 @@ import {
 } from 'xstate-fsm-as/assembly/types';
 import { parseInt32, parseInt64, uint8ArrayToHex, parseUint8ArrayToU32BigEndian, base64ToHex, stringToBase64, base64ToString } from "wasmx-utils/assembly/utils";
 import { extractUpdateNodeEntryAndVerify, registeredCheckMessage, registeredCheckNeeded, removeNode } from "wasmx-raft/assembly/actions";
-import { LogEntry, LogEntryAggregate, AppendEntry, AppendEntryResponse, TransactionResponse, Precommit, MODULE_NAME, BuildProposal } from "./types";
+import { LogEntryAggregate, AppendEntry, AppendEntryResponse, Precommit, MODULE_NAME, BuildProposal } from "./types";
 import * as cfg from "./config";
 import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { cleanAbsentCommits, extractIndexedTopics, getActiveValidatorInfo, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getSortedBlockCommits, getTxsHash, getValidatorsHash, sortTendermintValidators } from "wasmx-consensus-utils/assembly/utils"
 import { getLeaderChain } from "wasmx-consensus/assembly/multichain_utils";
-import { appendLogEntry, decodeTx, getBlockID, getCurrentNodeId, getCurrentState, getCurrentValidator, getLastLogIndex, getLogEntryObj, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, removeLogEntry, setCurrentState, setLastLogIndex, setLogEntryAggregate, setLogEntryObj, setNextIndexArray, setNodeIPs, setTermId } from "./action_utils";
+import { appendLogEntry, decodeTx, getBlockID, getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, removeLogEntry, setCurrentState, setLastLogIndex, setLogEntryAggregate, setLogEntryObj, setNextIndexArray, setNodeIPs, setTermId } from "./action_utils";
 import { NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft";
 import { verifyMessage } from "wasmx-raft/assembly/action_utils";
 import { NetworkNode, NodeInfo } from "wasmx-p2p/assembly/types";
-import { hexToUint8Array } from "as-tally/assembly/tally";
 
 // guards
 
@@ -1533,7 +1532,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     const commitResponse = consensuswrap.Commit();
     // TODO commitResponse.retainHeight
     // Tendermint removes all data for heights lower than `retain_height`
-    LoggerInfo("block finalized", ["height", entryobj.index.toString(), "hash", base64ToHex(finalizeReq.hash).toUpperCase()])
+    LoggerInfo("block finalized", ["height", entryobj.index.toString(), "hash", base64ToHex(finalizeReq.hash).toUpperCase(), "proposer", finalizeReq.proposer_address])
 
     // make sure termId is synced
     setTermId(entryobj.termId)

@@ -2,6 +2,8 @@ import { JSON } from "json-as/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
 import * as stakingtypes from "wasmx-stake/assembly/types";
 import { Base64String, Bech32String, Coin } from "wasmx-env/assembly/types";
+import { NodeInfo } from "wasmx-p2p/assembly/types";
+import { ValidatorQueueEntry } from "wasmx-tendermint/assembly/types_blockchain";
 
 // @ts-ignore
 @serializable
@@ -109,6 +111,15 @@ export class UpdateNodeRequest {
 
 // @ts-ignore
 @serializable
+export class NodeInfoRequest {
+    peer_address: string
+    constructor(peer_address: string) {
+        this.peer_address = peer_address;
+    }
+}
+
+// @ts-ignore
+@serializable
 export class QueryBuildGenTxRequest {
     chainId: string
     msg: stakingtypes.MsgCreateValidator
@@ -135,5 +146,31 @@ export class CosmosmodGenesisState {
     staking: stakingtypes.GenesisState
     constructor(staking: stakingtypes.GenesisState) {
         this.staking = staking
+    }
+}
+
+// @ts-ignore
+@serializable
+export class UpdateNodeResponse {
+    nodes: NodeInfo[]
+    sync_node_id: i32
+    last_entry_index: i64
+    proposerQueue: ValidatorQueueEntry[] = []
+    proposerQueueTermId: i64 = 0
+    proposerIndex: i32 = 0
+    constructor(
+        nodes: NodeInfo[],
+        sync_node_id: i32,
+        last_entry_index: i64,
+        proposerQueue: ValidatorQueueEntry[],
+        proposerQueueTermId: i64,
+        proposerIndex: i32,
+    ) {
+        this.nodes = nodes
+        this.sync_node_id = sync_node_id
+        this.last_entry_index = last_entry_index
+        this.proposerQueue = proposerQueue
+        this.proposerQueueTermId = proposerQueueTermId
+        this.proposerIndex = proposerIndex
     }
 }
