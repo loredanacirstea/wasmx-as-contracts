@@ -27,6 +27,10 @@ export function main(): void {
     result = wrapGuard(actions.isNextProposer(calld.params, calld.event));
     wasmx.finish(result);
     return;
+  } else if (calld.method === "ifNextBlockProposal") {
+    result = wrapGuard(actions.ifNextBlockProposal(calld.params, calld.event));
+    wasmx.finish(result);
+    return;
   } else if (calld.method === "ifPrevoteAnyThreshold") {
     result = wrapGuard(actions.ifPrevoteAnyThreshold(calld.params, calld.event));
     wasmx.finish(result);

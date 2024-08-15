@@ -287,6 +287,23 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         processReq.proposer_address,
     )
 
+    // advance round proposer queue if this is a receivedCommit and we did not participate in the round
+    // we need to do this before finalizing the block because the validator composition might change
+    const currentState = getCurrentState();
+    const termId = getTermId();
+    if (currentState.proposerQueueTermId < termId) {
+        const validators = getAllValidators();
+        // the difference should always be 1
+        const rounds = termId - currentState.proposerQueueTermId;
+        for (let i = 0; i < rounds; i++) {
+            const resp = getNextProposer(validators, currentState.proposerQueue);
+            currentState.proposerIndex = resp.proposerIndex;
+            currentState.proposerQueueTermId = termId;
+            currentState.proposerQueue = resp.proposerQueue;
+        }
+        setCurrentState(currentState)
+    }
+
     // const blockDataBeginBlock = JSON.stringify<typestnd.RequestFinalizeBlock>(finalizeReq)
     // callHookContract("BeginBlock", blockDataBeginBlock);
 
@@ -337,7 +354,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
 
     // update current state
     LoggerDebug("updating current state...", [])
-    const state = getCurrentState();
+    let state = getCurrentState();
     state.app_hash = finalizeResp.app_hash;
     // set temporary data that will be included in the next block
     state.last_block_id = getBlockID(finalizeReq.hash)
@@ -388,8 +405,9 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         revert(`${resend.error}`);
     }
 
-    // we need to store the latest AppHash after EndBlock!
+    // we need to store the latest AppHash after EndBlock! and before Commit
     // this is the true end of block finalization
+    state = getCurrentState();
     state.app_hash = resend.data!.app_hash;
     setCurrentState(state)
 

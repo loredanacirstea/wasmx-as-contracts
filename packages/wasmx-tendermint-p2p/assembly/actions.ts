@@ -27,7 +27,7 @@ import { StateSyncRequest, StateSyncResponse } from "./sync_types";
 import { getCurrentNodeId, getCurrentState, getValidatorNodesInfo, setValidatorNodesInfo, setTermId, appendLogEntry, setLogEntryAggregate, setCurrentState, setLastLogIndex, getLogEntryObj, addToPrevoteArray, addToPrecommitArray, setPrevoteArrayMap, getPrevoteArrayMap, getPrecommitArrayMap, setPrecommitArrayMap, resetPrecommitArray } from "./storage";
 import * as raftp2pactions from "wasmx-raft-p2p/assembly/actions";
 import { setMempool, signMessage } from "wasmx-tendermint/assembly/actions"
-import { CurrentState, Mempool } from "wasmx-tendermint/assembly/types_blockchain";
+import { CurrentState, Mempool, ValidatorQueueEntry } from "wasmx-tendermint/assembly/types_blockchain";
 import * as cfg from "./config";
 import { AppendEntry, LogEntryAggregate, NodeInfoRequest, UpdateNodeRequest, UpdateNodeResponse } from "./types";
 import { getAllValidatorInfos, getTendermintVote, getCurrentProposer, getLastBlockCommit, getLastBlockIndex, getLogEntryAggregate, getNextProposer, getProtocolId, getProtocolIdInternal, getTopic, getTopicInternal, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal, storageBootstrapAfterStateSync, getConsensusParams, weAreNotAlone, weAreNotAloneInternal, parseNodeAddress, updateNodeEntry, nodeInfoComplete, nodeInfoCompleteInternal } from "./action_utils";
@@ -1054,20 +1054,19 @@ export function receiveBlockProposal(
         // no new blocks were produced, so the same stake will be used
     }
 
-    const lastStoredIndex = getLastLogIndex()
     const state = getCurrentState()
 
     // now we check the new block
     for (let i = 0; i < entry.entries.length; i++) {
         const block = entry.entries[i];
         // don't receive block proposals for already finalized blocks
-        if (block.index <= lastStoredIndex) {
+        if (block.index < state.nextHeight) {
             LoggerInfo("already stored block ... skipping block proposal", ["height", block.index.toString()])
             continue;
         }
-        if (block.index > (lastStoredIndex + 1)) {
+        if (block.index > state.nextHeight) {
             // we store the block temporarily;
-            LoggerInfo("block stored out of order", ["height", block.index.toString(), "expected", (lastStoredIndex + 1).toString(), "nextHeight", state.nextHeight.toString()])
+            LoggerInfo("block stored out of order", ["height", block.index.toString(), "expected", state.nextHeight.toString(), "nextHeight", state.nextHeight.toString()])
             storeNewBlockOutOfOrder(block.termId, block, state.nextHeight)
             continue;
         }
@@ -1136,7 +1135,7 @@ export function setRoundProposer(
     }
 
     setCurrentState(currentState);
-    LoggerDebug("new proposer set", ["validator_index", currentState.proposerIndex.toString(), "termId", currentState.proposerQueueTermId.toString()])
+    LoggerDebug("new proposer set", ["validator_index", currentState.proposerIndex.toString(), "termId", currentState.proposerQueueTermId.toString(), "queue", JSON.stringify<ValidatorQueueEntry[]>(currentState.proposerQueue)])
 }
 
 export function isNextProposer(
@@ -1154,6 +1153,41 @@ export function isNextProposer(
     const proposerIndex = getCurrentProposer();
     const currentNode = getCurrentNodeId();
     return proposerIndex == currentNode;
+}
+
+export function ifNextBlockProposal(
+    params: ActionParam[],
+    event: EventObject,
+): boolean {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("entry")) {
+        revert("no entry found");
+    }
+    const entryBase64 = ctx.get("entry");
+    const entryStr = String.UTF8.decode(decodeBase64(entryBase64).buffer);
+    let entry: AppendEntry = JSON.parse<AppendEntry>(entryStr);
+    const resp = isNextBlockProposal(entry)
+    return resp;
+}
+
+export function isNextBlockProposal(entry: AppendEntry): boolean {
+    if (entry.entries.length == 0) return false;
+    const block = entry.entries[0]
+
+    const state = getCurrentState()
+    if (state.nextHeight != block.index) {
+        LoggerDebug("received next block proposal, skipping", ["height", block.index.toString(), "expected_height", state.nextHeight.toString(), "proposerIndex", block.leaderId.toString()])
+        return false;
+    }
+
+    const validators = getAllValidators();
+    const resp = getNextProposer(validators, state.proposerQueue);
+    if (resp.proposerIndex == block.leaderId) {
+        LoggerInfo("received next block proposal, canceling delay", ["height", block.index.toString(), "proposerIndex", block.leaderId.toString()])
+        return true;
+    }
+    return false;
 }
 
 export function ifSenderIsProposer(

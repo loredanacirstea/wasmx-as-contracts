@@ -58,9 +58,6 @@ export const machine = createMachine({
                 {
                   type: "requestBlockSync",
                 },
-                {
-                  type: "StartNode",
-                },
               ],
             },
           },
@@ -135,9 +132,6 @@ export const machine = createMachine({
                     {
                       type: "requestBlockSync",
                     },
-                    {
-                      type: "StartNode",
-                    },
                   ],
                 },
                 receiveCommit: {
@@ -194,9 +188,6 @@ export const machine = createMachine({
                     },
                     {
                       type: "requestBlockSync",
-                    },
-                    {
-                      type: "StartNode",
                     },
                   ],
                 },
@@ -316,6 +307,35 @@ export const machine = createMachine({
                         type: "receivePrecommit",
                       },
                     },
+                    receiveBlockProposal: {
+                      target: "precommit",
+                      actions: [
+                        {
+                          type: "incrementCurrentTerm",
+                        },
+                        {
+                          type: "setRoundProposer",
+                        },
+                        {
+                          type: "resetPrecommits",
+                        },
+                        {
+                          type: "receiveBlockProposal",
+                        },
+                        {
+                          type: "sendPrecommit",
+                        },
+                        {
+                          type: "cancelActiveIntervals",
+                          params: {
+                            after: "roundTimeout",
+                          },
+                        },
+                      ],
+                      guard: {
+                        type: "ifNextBlockProposal",
+                      },
+                    },
                   },
                   after: {
                     roundTimeout: {
@@ -342,9 +362,6 @@ export const machine = createMachine({
                     },
                     {
                       type: "requestBlockSync",
-                    },
-                    {
-                      type: "StartNode",
                     },
                   ],
                 },
@@ -432,10 +449,6 @@ export const machine = createMachine({
       // ...
     },
     requestBlockSync: function (context, event) {
-      // Add your action code here
-      // ...
-    },
-    StartNode: function (context, event) {
       // Add your action code here
       // ...
     },
@@ -530,6 +543,10 @@ export const machine = createMachine({
       return true;
     },
     ifPrecommitAnyThreshold: function (context, event) {
+      // Add your guard condition here
+      return true;
+    },
+    ifNextBlockProposal: function (context, event) {
       // Add your guard condition here
       return true;
     },

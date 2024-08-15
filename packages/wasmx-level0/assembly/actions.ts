@@ -13,6 +13,9 @@ import { callStorage, getCurrentProposer, isValidatorSimpleActive } from "wasmx-
 import { callStaking } from "wasmx-tendermint/assembly/actions";
 import { getCurrentNodeId, getCurrentState, getTermId, getValidatorNodesInfo, setCurrentState } from "wasmx-tendermint-p2p/assembly/storage";
 import { isPrecommitAcceptThreshold, isPrecommitAnyThreshold } from "./action_utils";
+import { actionParamsToMap, getParamsOrEventParams } from "xstate-fsm-as/assembly/utils";
+import { AppendEntry } from "wasmx-tendermint-p2p/assembly/types";
+import { getAllValidators } from "../../wasmx-raft/assembly/action_utils";
 
 export function wrapGuard(value: boolean): ArrayBuffer {
     if (value) return String.UTF8.encode("1");
@@ -66,6 +69,31 @@ export function isNextProposer(
     return proposerIndex == currentNode;
 }
 
+export function ifNextBlockProposal(
+    params: ActionParam[],
+    event: EventObject,
+): boolean {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("entry")) {
+        revert("no entry found");
+    }
+    const entryBase64 = ctx.get("entry");
+    const entryStr = String.UTF8.decode(base64.decode(entryBase64).buffer);
+    let entry: AppendEntry = JSON.parse<AppendEntry>(entryStr);
+    if (entry.entries.length == 0) return false;
+    const block = entry.entries[0]
+
+    const state = getCurrentState()
+    if (state.nextHeight != block.index) return false;
+
+    const validators = getAllValidatorInfos();
+    const termId = getTermId();
+    const proposerIndex = getNextProposer(validators, termId + 1);
+    if (proposerIndex == block.leaderId) return true;
+    return false;
+}
+
 export function ifPrecommitAnyThreshold(
     params: ActionParam[],
     event: EventObject,
@@ -101,6 +129,16 @@ export function setConsensusParams(height: i64, value: typestnd.ConsensusParams 
     }
 }
 
+export function getNextProposer(validators: staking.ValidatorSimple[], termId: i64): i32 {
+    let validcount = 0;
+    for (let i = 0; i < validators.length; i++) {
+        if (isValidatorSimpleActive(validators[i])) {
+            validcount += 1;
+        }
+    }
+    return i32(termId % validcount);
+}
+
 export function setRoundProposer(
     params: ActionParam[],
     event: EventObject,
@@ -108,14 +146,9 @@ export function setRoundProposer(
     const termId = getTermId();
     const currentState = getCurrentState();
     const validators = getAllValidatorInfos()
-    let validcount = 0;
-    for (let i = 0; i < validators.length; i++) {
-        if (isValidatorSimpleActive(validators[i])) {
-            validcount += 1;
-        }
-    }
-    const proposerIndex = termId % validcount;
-    currentState.proposerIndex = i32(proposerIndex);
+    const proposerIndex = getNextProposer(validators, termId)
+    currentState.proposerIndex = proposerIndex;
+    currentState.proposerQueueTermId = termId;
     setCurrentState(currentState);
     LoggerDebug("new proposer set", ["validator_index", proposerIndex.toString(), "termId", termId.toString()])
 }
