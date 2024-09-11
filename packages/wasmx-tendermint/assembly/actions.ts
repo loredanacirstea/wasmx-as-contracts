@@ -753,10 +753,18 @@ export function processAppendEntry(entry: LogEntryAggregate): void {
     const data = decodeBase64(entry.data.data);
     const processReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(String.UTF8.decode(data.buffer));
     const processReq = processReqWithMeta.request
+
+    const errorStr = verifyBlockProposal(entry.data, processReq)
+    if (errorStr.length > 0) {
+        LoggerError("new block rejected", ["height", processReq.height.toString(), "error", errorStr, "header", entry.data.header])
+        return;
+    }
+
     LoggerInfo("received new block proposal", [
         "height", processReq.height.toString(),
         "proposerId", entry.leaderId.toString(),
         "termId", entry.termId.toString(),
+        "hash", processReq.hash,
     ]);
     const processResp = consensuswrap.ProcessProposal(processReq);
     if (processResp.status === typestnd.ProposalStatus.REJECT) {
@@ -766,6 +774,11 @@ export function processAppendEntry(entry: LogEntryAggregate): void {
         return;
     }
     appendLogEntry(entry);
+
+    // set hash for the proposal we have accepted
+    const state = getCurrentState()
+    state.nextHash = processReq.hash
+    setCurrentState(state);
 }
 
 export function setup(
@@ -873,6 +886,7 @@ export function initChain(req: typestnd.InitChainSetup): void {
         last_commit_hash,
         req.last_results_hash,
         0, [],
+        new Date(0).toISOString(),
         req.validator_address,
         req.validator_privkey,
         req.validator_pubkey,
@@ -1113,14 +1127,14 @@ export function buildBlockProposal(txs: string[], optimisticExecution: boolean, 
         prepareReq.height,
         prepareReq.time,
         currentState.last_block_id,
-        base64ToHex(getCommitHash(sortedBlockCommits)),
-        base64ToHex(getTxsHash(prepareResp.txs)),
-        base64ToHex(nextValidatorsHash),
-        base64ToHex(nextValidatorsHash),
-        base64ToHex(getConsensusParamsHash(getConsensusParams(prepareReq.height))),
+        base64ToHex(getCommitHash(sortedBlockCommits)), // last_commit_hash
+        base64ToHex(getTxsHash(prepareResp.txs)), // data_hash
+        base64ToHex(nextValidatorsHash), // validators_hash
+        base64ToHex(nextValidatorsHash), // next_validators_hash
+        base64ToHex(getConsensusParamsHash(getConsensusParams(prepareReq.height))), // consensus_hash
         base64ToHex(currentState.app_hash),
         base64ToHex(currentState.last_results_hash),
-        base64ToHex(getEvidenceHash(evidence)),
+        base64ToHex(getEvidenceHash(evidence)), // evidence_hash
         prepareReq.proposer_address,
     );
     const hash = getHeaderHash(header);
@@ -1149,6 +1163,52 @@ export function buildBlockProposal(txs: string[], optimisticExecution: boolean, 
     // We have a valid proposal to propagate to other nodes
     const entry = buildLogEntryAggregate(processReq, header, sortedBlockCommits, optimisticExecution, metainfo, validatorSet);
     return new BuildProposal(entry, processReq);
+}
+
+// https://github.com/cometbft/cometbft/blob/f4a803f14a2f5bc5c17d75fcd1131b9249bba133/state/validation.go
+export function verifyBlockProposal(data: wblocks.BlockEntry, processReq: typestnd.RequestProcessProposal): string {
+    // TODO? verify:
+    // processReq.next_validators_hash
+    // processReq.proposed_last_commit
+
+    const header = JSON.parse<typestnd.Header>(base64ToString(data.header));
+    const hash = getHeaderHash(header);
+    if (hash != processReq.hash) return `header hash mismatch: expected ${processReq.hash}, got ${hash}`
+
+    const currentState = getCurrentState();
+
+    const app_hash = base64ToHex(currentState.app_hash)
+    if (header.app_hash != app_hash) return `header app_hash mismatch: expected ${app_hash}, got ${header.app_hash}`
+    if (header.version.block != typestnd.BlockProtocol) return `header version.block mismatch: expected ${typestnd.BlockProtocol}, got ${header.version.block}`
+    if (header.version.app != currentState.version.consensus.app) return `header version.app mismatch: expected ${currentState.version.consensus.app}, got ${header.version.app}`
+    if (header.chain_id != currentState.chain_id) return `header chain_id mismatch: expected ${currentState.chain_id}, got ${header.chain_id}`
+    if (header.height != currentState.nextHeight) return `header height mismatch: expected ${currentState.nextHeight}, got ${header.height}`
+
+    const last_results_hash = base64ToHex(currentState.last_results_hash)
+    if (header.last_results_hash != last_results_hash) return `header last_results_hash mismatch: expected ${last_results_hash}, got ${header.last_results_hash}`
+
+    if (header.last_block_id.hash != currentState.last_block_id.hash) return `header last_block_id.hash mismatch: expected ${currentState.last_block_id.hash}, got ${header.last_block_id.hash}`
+    if (header.last_block_id.parts.hash != currentState.last_block_id.parts.hash) return `header last_block_id.parts.hash mismatch: expected ${currentState.last_block_id.parts.hash}, got ${header.last_block_id.parts.hash}`
+    if (header.last_block_id.parts.total != currentState.last_block_id.parts.total) return `header last_block_id.parts.total mismatch: expected ${currentState.last_block_id.parts.total}, got ${header.last_block_id.parts.total}`
+
+    const data_hash = base64ToHex(getTxsHash(processReq.txs))
+    if (header.data_hash != data_hash) return `header data_hash mismatch: expected ${data_hash}, got ${header.data_hash}`
+
+    const consensus_hash = base64ToHex(getConsensusParamsHash(getConsensusParams(0)))
+    if (header.consensus_hash != consensus_hash) return `header consensus_hash mismatch: expected ${consensus_hash}, got ${header.consensus_hash}`
+
+    // TODO see other time constraints that fit our protocol
+    if (Date.fromString(header.time).getTime() <= Date.fromString(currentState.last_time).getTime()) {
+        return `header time mismatch: expected higher than ${currentState.last_time}, got ${header.time}`
+    }
+    // TODO set an upper time bound
+
+    // TODO
+    // header.last_commit_hash
+    // header.next_validators_hash
+    // header.validators_hash
+    // header.evidence_hash
+    return "";
 }
 
 export function doOptimisticExecution(processReq: typestnd.RequestProcessProposal, processResp: typestnd.ResponseProcessProposal): typestnd.ResponseOptimisticExecution {
@@ -1363,6 +1423,14 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     const processReqStr = String.UTF8.decode(decodeBase64(entryobj.data.data).buffer);
     const processReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(processReqStr);
     const processReq = processReqWithMeta.request
+
+    // some blocks are stored out of order, so we run the block verification again
+    const errorStr = verifyBlockProposal(entryobj.data, processReq)
+    if (errorStr.length > 0) {
+        LoggerError("new block rejected", ["height", processReq.height.toString(), "error", errorStr, "header", entryobj.data.header])
+        return false;
+    }
+
     const finalizeReq = new typestnd.RequestFinalizeBlock(
         processReq.txs,
         processReq.proposed_last_commit,
@@ -1405,11 +1473,6 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         revert("FinalizeBlock response is null");
         return false;
     }
-    // TODO check app_hash with the one provided by proposer?
-    // if (finalizeResp.app_hash != processReq) {
-    //     revert(`AppHash verification failed: actual ${finalizeResp.app_hash} expected ${expected.app_hash}`);
-    //     return false;
-    // }
 
     const resultstr = JSON.stringify<typestnd.ResponseFinalizeBlock>(finalizeResp);
     const resultBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(resultstr)));
@@ -1429,6 +1492,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     state.last_block_id = getBlockID(finalizeReq.hash)
     state.last_commit_hash = last_commit_hash
     state.last_results_hash = last_results_hash
+    state.last_time = finalizeReq.time
     setCurrentState(state);
     // update consensus params
     LoggerDebug("updating consensus parameters...", [])

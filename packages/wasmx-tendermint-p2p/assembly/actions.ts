@@ -21,7 +21,7 @@ import {
     EventObject,
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
-import { parseInt32, stringToBase64, base64ToString } from "wasmx-utils/assembly/utils";
+import { parseInt32, stringToBase64, base64ToString, hex64ToBase64 } from "wasmx-utils/assembly/utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { StateSyncRequest, StateSyncResponse } from "./sync_types";
 import { getCurrentNodeId, getCurrentState, getValidatorNodesInfo, setValidatorNodesInfo, setTermId, appendLogEntry, setLogEntryAggregate, setCurrentState, setLastLogIndex, getLogEntryObj, addToPrevoteArray, addToPrecommitArray, setPrevoteArrayMap, getPrevoteArrayMap, getPrecommitArrayMap, setPrecommitArrayMap, resetPrecommitArray } from "./storage";
@@ -499,19 +499,26 @@ export function bootstrapAfterStateSync(
     }
     const statestr = base64ToString(ctx.get("state"))
     const state = JSON.parse<typestnd.State>(statestr);
+
+    const lastBlockId = new typestnd.BlockID(
+        state.LastBlockID.hash.toLowerCase(),
+        new typestnd.PartSetHeader(state.LastBlockID.parts.total, state.LastBlockID.parts.hash.toLowerCase()),
+    )
     // update CurrentState
     const currentState = getCurrentState();
     currentState.chain_id = state.ChainID
     currentState.version = state.Version
     currentState.app_hash = state.AppHash
-    currentState.last_block_id = state.LastBlockID
+    currentState.last_block_id = lastBlockId
+    currentState.last_results_hash = state.LastResultsHash
+    currentState.last_time = state.LastBlockTime.toISOString()
     // TODO
     // currentState.last_commit_hash
-    currentState.last_results_hash = state.LastResultsHash
     // currentState.last_round
     // currentState.last_block_signatures
     currentState.nextHeight = state.LastBlockHeight + 1
-    currentState.nextHash = state.LastBlockID.hash
+    currentState.nextHash = ""
+
     // these are updated when we update our node list
     // currentState.proposerQueue
     // currentState.proposerQueueTermId
@@ -997,8 +1004,10 @@ export function receiveStateSyncResponse(
     for (let i = 0; i < resp.entries.length; i++) {
         const block = resp.entries[i]
         // processAppendEntry(resp.entries[i]);
-        storeNewBlockOutOfOrder(block.termId, block, nextIndex)
-        startBlockFinalizationFollowerInternal(block);
+        const processed = storeNewBlockOutOfOrder(block.termId, block, nextIndex)
+        if (processed) {
+            startBlockFinalizationFollowerInternal(block);
+        }
         nextIndex += 1;
     }
     setTermId(resp.termId);
@@ -1077,11 +1086,18 @@ export function receiveBlockProposal(
     }
 }
 
-// receive new block
-export function processAppendEntry(entry: LogEntryAggregate): void {
+// this is where new blocks are processed in order
+export function processAppendEntry(entry: LogEntryAggregate): boolean {
     const data = decodeBase64(entry.data.data);
     const processReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(String.UTF8.decode(data.buffer));
     const processReq = processReqWithMeta.request
+
+    const errorStr = tnd.verifyBlockProposal(entry.data, processReq)
+    if (errorStr.length > 0) {
+        LoggerError("new block rejected", ["height", processReq.height.toString(), "error", errorStr, "header", entry.data.header])
+        return false;
+    }
+
     LoggerInfo("received new block proposal", [
         "height", processReq.height.toString(),
         "proposerId", entry.leaderId.toString(),
@@ -1098,7 +1114,7 @@ export function processAppendEntry(entry: LogEntryAggregate): void {
         // TODO - what to do here? returning just discards the block and does not return a response to the leader
         // but this node will not sync with the leader anymore
         LoggerError("new block rejected", ["height", processReq.height.toString(), "node type", "Follower"])
-        return;
+        return false;
     }
     appendLogEntry(entry);
 
@@ -1106,6 +1122,7 @@ export function processAppendEntry(entry: LogEntryAggregate): void {
     const state = getCurrentState()
     state.nextHash = processReq.hash
     setCurrentState(state);
+    return true;
 }
 
 export function setRoundProposer(
@@ -1785,7 +1802,7 @@ export function receiveCommit(
 }
 
 // currentState.nextHeight
-export function storeNewBlockOutOfOrder(blockTermId: i64, block: LogEntryAggregate, nextHeight: i64): void {
+export function storeNewBlockOutOfOrder(blockTermId: i64, block: LogEntryAggregate, nextHeight: i64): boolean {
     if (block.index > nextHeight) {
         // if we are not fully synced, just store the proposal with highest termId / round
         const lastIndex = getLastLogIndex();
@@ -1798,8 +1815,9 @@ export function storeNewBlockOutOfOrder(blockTermId: i64, block: LogEntryAggrega
             setLastLogIndex(block.index);
         }
     } else if (block.index == nextHeight) {
-        processAppendEntry(block);
+        return processAppendEntry(block);
     }
+    return false;
 }
 
 export function signMessageExternal(

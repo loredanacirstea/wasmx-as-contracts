@@ -25,15 +25,16 @@ export class CurrentState {
     chain_id: string = ""
     unique_p2p_id: string = "" // temporary fix for level0 unique chat rooms; TODO unique chain ids for level0
     version: Version = new Version(new typestnd.VersionConsensus(0, 0),"")
-	app_hash: string = "" // updated after Finalized Block
+	app_hash: Base64String = "" // updated after Finalized Block
     // prev block info
     last_block_id: BlockID = new BlockID("", new typestnd.PartSetHeader(1, "")) // updated after Finalized Block
     // commit from validators from the last block
-    last_commit_hash: string = "" // base64
+    last_commit_hash: Base64String = ""
     // tx results hash
-    last_results_hash: string = "" // base64
+    last_results_hash: Base64String = ""
     last_round: i64 = 0
     last_block_signatures: CommitSig[] = []
+    last_time: string = "" // last block time
 
     validator_address: HexString = ""
     validator_privkey: Base64String = ""
@@ -50,7 +51,7 @@ export class CurrentState {
     proposerQueueTermId: i64 = 0
     proposerIndex: i32 = 0
 
-    constructor(chain_id: string, version: Version, app_hash: string, last_block_id: BlockID, last_commit_hash: string, last_results_hash: string, last_round: i64, last_block_signatures: CommitSig[], validator_address: HexString, validator_privkey: Base64String, validator_pubkey: Base64String,
+    constructor(chain_id: string, version: Version, app_hash: Base64String, last_block_id: BlockID, last_commit_hash: Base64String, last_results_hash: Base64String, last_round: i64, last_block_signatures: CommitSig[], last_time: string, validator_address: HexString, validator_privkey: Base64String, validator_pubkey: Base64String,
     nextHeight: i64,
     nextHash: Base64String,
     lockedValue: i64,
@@ -69,6 +70,7 @@ export class CurrentState {
         this.last_round = last_round
         this.last_block_signatures = last_block_signatures
         this.last_results_hash = last_results_hash
+        this.last_time = last_time
         this.validator_address = validator_address
         this.validator_privkey = validator_privkey
         this.validator_pubkey = validator_pubkey

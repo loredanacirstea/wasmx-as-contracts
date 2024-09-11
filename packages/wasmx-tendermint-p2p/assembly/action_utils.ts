@@ -109,6 +109,7 @@ export function initChain(req: typestnd.InitChainSetup): void {
         last_commit_hash,
         req.last_results_hash,
         0, [],
+        new Date(0).toISOString(),
         req.validator_address,
         req.validator_privkey,
         req.validator_pubkey,
@@ -276,6 +277,14 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     const processReqStr = String.UTF8.decode(decodeBase64(entryobj.data.data).buffer);
     const processReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(processReqStr);
     const processReq = processReqWithMeta.request
+
+    // some blocks are stored out of order, so we run the block verification again
+    const errorStr = tnd.verifyBlockProposal(entryobj.data, processReq)
+    if (errorStr.length > 0) {
+        LoggerError("new block rejected", ["height", processReq.height.toString(), "error", errorStr, "header", entryobj.data.header])
+        return false;
+    }
+
     const finalizeReq = new typestnd.RequestFinalizeBlock(
         processReq.txs,
         processReq.proposed_last_commit, // TODO we retrieve the signatures
@@ -361,6 +370,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     state.last_commit_hash = last_commit_hash
     state.last_results_hash = last_results_hash
     state.nextHeight = finalizeReq.height + 1
+    state.last_time = finalizeReq.time
     // TODO get precommits for block finalizeReq.height - 1 ??!
     // we move precommit votes for this block to current state, so it is included in the next block proposal
     state.last_block_signatures = getCommitSigsFromPrecommitArray(finalizeReq.height);
@@ -400,15 +410,15 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     // or if a new validator was added
     const info = consutil.defaultFinalizeResponseEventsParse(finalizeResp.tx_results)
 
-    const resend = consensuswrap.EndBlock(blockData);
-    if (resend.error.length > 0) {
-        revert(`${resend.error}`);
+    const respend = consensuswrap.EndBlock(blockData);
+    if (respend.error.length > 0) {
+        revert(`${respend.error}`);
     }
 
     // we need to store the latest AppHash after EndBlock! and before Commit
     // this is the true end of block finalization
     state = getCurrentState();
-    state.app_hash = resend.data!.app_hash;
+    state.app_hash = respend.data!.app_hash;
     setCurrentState(state)
 
     if (info.createdValidators.length > 0) {
