@@ -16,7 +16,7 @@ export const machine = createMachine({
     timeoutPropose: 3000,
     timeoutPrecommit: 3000,
   },
-  id: "Levels-P2P-3",
+  id: "Levels-P2P-4",
   initial: "uninitialized",
   states: {
     uninitialized: {
@@ -167,7 +167,7 @@ export const machine = createMachine({
                   },
                 },
                 stop: {
-                  target: "#Levels-P2P-3.stopped",
+                  target: "#Levels-P2P-4.stopped",
                 },
                 receiveUpdateNodeResponse: {
                   actions: {
@@ -215,26 +215,54 @@ export const machine = createMachine({
               states: {
                 active: {
                   on: {
-                    receiveBlockProposal: {
-                      target: "precommit",
-                      actions: [
-                        {
-                          type: "receiveBlockProposal",
-                        },
-                        {
-                          type: "sendPrecommit",
-                        },
-                        {
-                          type: "cancelActiveIntervals",
-                          params: {
-                            after: "timeoutPropose",
+                    receiveBlockProposal: [
+                      {
+                        target: "precommit",
+                        actions: [
+                          {
+                            type: "receiveBlockProposal",
                           },
+                          {
+                            type: "sendPrecommit",
+                          },
+                          {
+                            type: "cancelActiveIntervals",
+                            params: {
+                              after: "timeoutPropose",
+                            },
+                          },
+                        ],
+                        guard: {
+                          type: "ifSenderIsProposer",
                         },
-                      ],
-                      guard: {
-                        type: "ifSenderIsProposer",
                       },
-                    },
+                      {
+                        target: "precommit",
+                        actions: [
+                          {
+                            type: "receiveBlockProposal",
+                          },
+                          {
+                            type: "resetPrecommits",
+                          },
+                          {
+                            type: "setRoundProposer",
+                          },
+                          {
+                            type: "sendPrecommit",
+                          },
+                          {
+                            type: "cancelActiveIntervals",
+                            params: {
+                              after: "timeoutPropose",
+                            },
+                          },
+                        ],
+                        guard: {
+                          type: "ifForceProposalReset",
+                        },
+                      },
+                    ],
                   },
                   after: {
                     timeoutPropose: {
@@ -245,7 +273,7 @@ export const machine = createMachine({
                     },
                   },
                   always: {
-                    target: "#Levels-P2P-3.initialized.started.Proposer",
+                    target: "#Levels-P2P-4.initialized.started.Proposer",
                     guard: {
                       type: "isNextProposer",
                     },
@@ -270,6 +298,42 @@ export const machine = createMachine({
                         type: "receivePrecommit",
                       },
                     },
+                    receiveBlockProposal: [
+                      {
+                        actions: {
+                          type: "receiveBlockProposal",
+                        },
+                        guard: {
+                          type: "ifSenderIsProposer",
+                        },
+                      },
+                      {
+                        target: "precommit",
+                        actions: [
+                          {
+                            type: "receiveBlockProposal",
+                          },
+                          {
+                            type: "resetPrecommits",
+                          },
+                          {
+                            type: "setRoundProposer",
+                          },
+                          {
+                            type: "sendPrecommit",
+                          },
+                          {
+                            type: "cancelActiveIntervals",
+                            params: {
+                              after: "timeoutPrecommit",
+                            },
+                          },
+                        ],
+                        guard: {
+                          type: "ifForceProposalReset",
+                        },
+                      },
+                    ],
                   },
                   after: {
                     timeoutPrecommit: {
@@ -366,7 +430,7 @@ export const machine = createMachine({
                   ],
                 },
                 stop: {
-                  target: "#Levels-P2P-3.stopped",
+                  target: "#Levels-P2P-4.stopped",
                 },
                 receiveUpdateNodeRequest: {
                   actions: {
@@ -378,7 +442,7 @@ export const machine = createMachine({
                 active: {
                   always: {
                     target:
-                      "#Levels-P2P-3.initialized.started.Validator.precommit",
+                      "#Levels-P2P-4.initialized.started.Validator.precommit",
                   },
                   entry: [
                     {
@@ -401,7 +465,7 @@ export const machine = createMachine({
     stopped: {
       on: {
         restart: {
-          target: "#Levels-P2P-3.initialized.unstarted",
+          target: "#Levels-P2P-4.initialized.unstarted",
         },
       },
     },
@@ -539,6 +603,10 @@ export const machine = createMachine({
       return true;
     },
     ifNodeIsValidator: function (context, event) {
+      // Add your guard condition here
+      return true;
+    },
+    ifForceProposalReset: function (context, event) {
       // Add your guard condition here
       return true;
     },

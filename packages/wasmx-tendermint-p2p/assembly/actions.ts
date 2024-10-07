@@ -514,7 +514,7 @@ export function bootstrapAfterStateSync(
     currentState.last_time = state.LastBlockTime.toISOString()
     // TODO
     // currentState.last_commit_hash
-    // currentState.last_round
+    currentState.last_round = 0
     // currentState.last_block_signatures
     currentState.nextHeight = state.LastBlockHeight + 1
     currentState.nextHash = ""
@@ -1048,21 +1048,6 @@ export function receiveBlockProposal(
         return;
     }
 
-    // const state = getCurrentState()
-
-    const termId = getTermId()
-    if (termId > entry.termId) return;
-
-    if (termId < entry.termId) {
-        // we are out of sync
-        // revert(`Round index mismatch; expected ${termId}, received ${entry.termId}`)
-        // TDODO fixme - how do we sync termId???
-        setTermId(entry.termId)
-
-        // TODO catch up nextProposer queue ?
-        // no new blocks were produced, so the same stake will be used
-    }
-
     const state = getCurrentState()
 
     // now we check the new block
@@ -1220,7 +1205,35 @@ export function ifSenderIsProposer(
     const entryStr = String.UTF8.decode(decodeBase64(entryBase64).buffer);
     let entry: AppendEntry = JSON.parse<AppendEntry>(entryStr);
     const proposerIndex = getCurrentProposer();
-    return entry.proposerId == proposerIndex;
+    const termId = getTermId();
+    return entry.proposerId == proposerIndex && termId == entry.termId;
+}
+
+export function ifForceProposalReset(
+    params: ActionParam[],
+    event: EventObject,
+): boolean {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("entry")) {
+        revert("no entry found");
+    }
+    const entryBase64 = ctx.get("entry");
+    const entryStr = String.UTF8.decode(decodeBase64(entryBase64).buffer);
+    let entry: AppendEntry = JSON.parse<AppendEntry>(entryStr);
+    const proposerIndex = getCurrentProposer();
+    const termId = getTermId();
+    if (termId > entry.termId) return false;
+    if (termId == entry.termId &&  entry.proposerId != proposerIndex) return false;
+
+    // termId < entry.termId
+    // check last termId with a successful block - we may be  out of sync
+    // we consider being out of sync if we have 2 unsuccessful rounds
+    const state = getCurrentState()
+    if (state.last_round - termId > 2) {
+        return true
+    }
+    return false
 }
 
 export function ifNodeIsValidator(

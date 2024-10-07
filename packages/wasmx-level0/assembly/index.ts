@@ -49,6 +49,10 @@ export function main(): void {
     result = wrapGuard(tnd2.ifSenderIsProposer(calld.params, calld.event));
     wasmx.finish(result);
     return;
+  } else if (calld.method === "ifForceProposalReset") {
+    result = wrapGuard(tnd2.ifForceProposalReset(calld.params, calld.event));
+    wasmx.finish(result);
+    return;
   } else if (calld.method === "ifNodeIsValidator") {
     result = wrapGuard(tnd2.ifNodeIsValidator(calld.params, calld.event));
     wasmx.finish(result);

@@ -17,7 +17,7 @@ export const machine = createMachine({
     timeoutPropose: 3000,
     timeoutPrecommit: 3000,
   },
-  id: "Tendermint-P2P-7",
+  id: "Tendermint-P2P-8",
   initial: "uninitialized",
   states: {
     uninitialized: {
@@ -168,7 +168,7 @@ export const machine = createMachine({
                   },
                 },
                 stop: {
-                  target: "#Tendermint-P2P-7.stopped",
+                  target: "#Tendermint-P2P-8.stopped",
                 },
                 receiveUpdateNodeResponse: {
                   actions: {
@@ -221,26 +221,54 @@ export const machine = createMachine({
               states: {
                 active: {
                   on: {
-                    receiveBlockProposal: {
-                      target: "prevote",
-                      actions: [
-                        {
-                          type: "receiveBlockProposal",
-                        },
-                        {
-                          type: "sendPrevote",
-                        },
-                        {
-                          type: "cancelActiveIntervals",
-                          params: {
-                            after: "timeoutPropose",
+                    receiveBlockProposal: [
+                      {
+                        target: "prevote",
+                        actions: [
+                          {
+                            type: "receiveBlockProposal",
                           },
+                          {
+                            type: "sendPrevote",
+                          },
+                          {
+                            type: "cancelActiveIntervals",
+                            params: {
+                              after: "timeoutPropose",
+                            },
+                          },
+                        ],
+                        guard: {
+                          type: "ifSenderIsProposer",
                         },
-                      ],
-                      guard: {
-                        type: "ifSenderIsProposer",
                       },
-                    },
+                      {
+                        target: "prevote",
+                        actions: [
+                          {
+                            type: "receiveBlockProposal",
+                          },
+                          {
+                            type: "resetPrevotes",
+                          },
+                          {
+                            type: "setRoundProposer",
+                          },
+                          {
+                            type: "sendPrevote",
+                          },
+                          {
+                            type: "cancelActiveIntervals",
+                            params: {
+                              after: "timeoutPropose",
+                            },
+                          },
+                        ],
+                        guard: {
+                          type: "ifForceProposalReset",
+                        },
+                      },
+                    ],
                   },
                   after: {
                     timeoutPropose: {
@@ -251,7 +279,7 @@ export const machine = createMachine({
                     },
                   },
                   always: {
-                    target: "#Tendermint-P2P-7.initialized.started.Proposer",
+                    target: "#Tendermint-P2P-8.initialized.started.Proposer",
                     guard: {
                       type: "isNextProposer",
                     },
@@ -279,6 +307,42 @@ export const machine = createMachine({
                         type: "receivePrevote",
                       },
                     },
+                    receiveBlockProposal: [
+                      {
+                        actions: {
+                          type: "receiveBlockProposal",
+                        },
+                        guard: {
+                          type: "ifSenderIsProposer",
+                        },
+                      },
+                      {
+                        target: "prevote",
+                        actions: [
+                          {
+                            type: "receiveBlockProposal",
+                          },
+                          {
+                            type: "resetPrevotes",
+                          },
+                          {
+                            type: "setRoundProposer",
+                          },
+                          {
+                            type: "sendPrevote",
+                          },
+                          {
+                            type: "cancelActiveIntervals",
+                            params: {
+                              after: "timeoutPrevote",
+                            },
+                          },
+                        ],
+                        guard: {
+                          type: "ifForceProposalReset",
+                        },
+                      },
+                    ],
                   },
                   after: {
                     timeoutPrevote: {
@@ -334,6 +398,42 @@ export const machine = createMachine({
                         type: "receivePrevote",
                       },
                     },
+                    receiveBlockProposal: [
+                      {
+                        actions: {
+                          type: "receiveBlockProposal",
+                        },
+                        guard: {
+                          type: "ifSenderIsProposer",
+                        },
+                      },
+                      {
+                        target: "precommit",
+                        actions: [
+                          {
+                            type: "receiveBlockProposal",
+                          },
+                          {
+                            type: "resetPrevotes",
+                          },
+                          {
+                            type: "setRoundProposer",
+                          },
+                          {
+                            type: "sendPrevote",
+                          },
+                          {
+                            type: "cancelActiveIntervals",
+                            params: {
+                              after: "timeoutPrecommit",
+                            },
+                          },
+                        ],
+                        guard: {
+                          type: "ifForceProposalReset",
+                        },
+                      },
+                    ],
                   },
                   after: {
                     timeoutPrecommit: {
@@ -442,7 +542,7 @@ export const machine = createMachine({
                   ],
                 },
                 stop: {
-                  target: "#Tendermint-P2P-7.stopped",
+                  target: "#Tendermint-P2P-8.stopped",
                 },
                 receiveUpdateNodeRequest: {
                   actions: {
@@ -454,7 +554,7 @@ export const machine = createMachine({
                 active: {
                   always: {
                     target:
-                      "#Tendermint-P2P-7.initialized.started.Validator.prevote",
+                      "#Tendermint-P2P-8.initialized.started.Validator.prevote",
                   },
                   entry: [
                     {
@@ -477,7 +577,7 @@ export const machine = createMachine({
     stopped: {
       on: {
         restart: {
-          target: "#Tendermint-P2P-7.initialized.unstarted",
+          target: "#Tendermint-P2P-8.initialized.unstarted",
         },
       },
     },
@@ -667,6 +767,10 @@ export const machine = createMachine({
       return true;
     },
     ifNodeIsValidator: function (context, event) {
+      // Add your guard condition here
+      return true;
+    },
+    ifForceProposalReset: function (context, event) {
       // Add your guard condition here
       return true;
     },

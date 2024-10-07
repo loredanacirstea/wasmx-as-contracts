@@ -51,6 +51,10 @@ export function main(): void {
     result = wrapGuard(actions.ifSenderIsProposer(calld.params, calld.event));
     wasmx.finish(result);
     return;
+  } else if (calld.method === "ifForceProposalReset") {
+    result = wrapGuard(actions.ifForceProposalReset(calld.params, calld.event));
+    wasmx.finish(result);
+    return;
   } else if (calld.method === "ifNodeIsValidator") {
     result = wrapGuard(actions.ifNodeIsValidator(calld.params, calld.event));
     wasmx.finish(result);
