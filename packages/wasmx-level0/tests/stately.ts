@@ -338,9 +338,6 @@ export const machine = createMachine({
                   after: {
                     timeoutPrecommit: {
                       target: "active",
-                      guard: {
-                        type: "ifPrecommitAnyThreshold",
-                      },
                     },
                   },
                   always: {
@@ -607,10 +604,6 @@ export const machine = createMachine({
       return true;
     },
     ifForceProposalReset: function (context, event) {
-      // Add your guard condition here
-      return true;
-    },
-    ifPrecommitAnyThreshold: function (context, event) {
       // Add your guard condition here
       return true;
     },

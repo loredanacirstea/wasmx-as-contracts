@@ -267,7 +267,8 @@ export function setIndexedTransactionByHashWrap(hash: string, data: IndexedTrans
 }
 
 export function bootstrapAfterStateSync(req: CallDataBootstrap): ArrayBuffer {
-    const info = new ConsensusParamsInfo(req.last_block_height, req.last_height_changed, req.params)
+    // cometbft just sets last_height_changed as last_block_height + 1
+    const info = new ConsensusParamsInfo(req.last_block_height, req.last_block_height, req.params)
     setConsensusParams(info);
     setLastBlockIndex(req.last_block_height);
     return new ArrayBuffer(0);
