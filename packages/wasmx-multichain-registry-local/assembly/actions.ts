@@ -9,13 +9,14 @@ import * as mctypes from "wasmx-consensus/assembly/types_multichain";
 import * as level0 from "wasmx-consensus/assembly/level0"
 import * as crossw from "wasmx-env/assembly/crosschain_wrap";
 import * as utils from "wasmx-utils/assembly/utils"
-import { ChainConfig, ChainId, InitSubChainDeterministicRequest, InitSubChainMsg, NewSubChainDeterministicData, NodePorts, StartSubChainMsg } from "wasmx-consensus/assembly/types_multichain"
+import { ChainConfig, InitSubChainMsg, NodePorts, StartSubChainMsg } from "wasmx-consensus/assembly/types_multichain"
 import { CROSS_CHAIN_TIMEOUT_MS, MODULE_NAME, MsgAddSubChainId, MsgSetInitialPorts, MsgStartStateSync, QueryNodePortsPerChainId, QueryNodePortsPerChainIdResponse, QuerySubChainIds, QuerySubChainIdsResponse, QuerySubChainIdsWithPorts, QuerySubChainIdsWithPortsResponse } from "./types";
 import { addChainId, CHAIN_IDS, getChainIds, getLastNodePorts, getNodePorts, setLastNodePorts, setNodePorts } from "./storage";
 import { LoggerError, LoggerInfo, revert } from "./utils";
 import { callContract } from "wasmx-env/assembly/utils";
 import { HookCalld } from "wasmx-env/assembly/hooks";
 import { CallData } from "./calldata";
+import { ChainConfigData } from "./types_metaregistry";
 
 const REGISTRY_ROLE = roles.ROLE_METAREGISTRY;
 
@@ -126,7 +127,7 @@ export function startNode(ids: string[]): void {
         return
     }
     const configs = JSON.parse<ChainConfig[]>(resp.data);
-    LoggerInfo("starting subchains", ["count", configs.length.toString()])
+    LoggerInfo("starting subchains", ["count", configs.length.toString(), "ids", ids.join(",")])
 
     if (configs.length != ids.length) {
         revert(`local registry port list length mismatch`)
@@ -197,9 +198,22 @@ export function stateSyncChain(chainId: string, chainConf: ChainConfig, peeraddr
     const currentNodeId = 0
     const peers: string[] = [ouraddr, peeraddr]
 
+    setChainConfig(chainId, chainConf)
+
     const response = mcwrap.StartStateSync(new mctypes.StartStateSyncRequest(GetStateSyncProtocolId(chainId), parts[1], chainId, chainConf, ports, initialPorts, statesyncConfig, peers, currentNodeId, verificationContract))
     if (response.error.length > 0) {
         LoggerError("failed to start state sync as receiver", ["error", response.error]);
+    }
+}
+
+export function setChainConfig(chainIdStr: string, config: ChainConfig): void {
+    const chainId = mctypes.ChainId.fromString(chainIdStr)
+    const data = new ChainConfigData(config, chainId)
+    const calldatastr = `{"SetChainData":{"data":${JSON.stringify<ChainConfigData>(data)}}}`;
+    const resp = callContract(REGISTRY_ROLE, calldatastr, false, MODULE_NAME);
+    if (resp.success > 0) {
+        LoggerError(`call failed: could not start subchains`, ["contract", REGISTRY_ROLE, "error", resp.data, "chain_id", chainIdStr])
+        revert(`could not store config for new statesynced chain: ${chainIdStr}`)
     }
 }
 
@@ -214,7 +228,7 @@ export function getNodeInfo(): NodeInfo {
 }
 
 export function getP2PAddress(nodeInfo: NodeInfo): string {
-    return `/ip4/${nodeInfo.node.host}/tcp/${nodeInfo.node.port}/ipfs/${nodeInfo.node.id}`
+    return `/ip4/${nodeInfo.node.host}/tcp/${nodeInfo.node.port}/p2p/${nodeInfo.node.id}`
 }
 
 export function convertAddress(sourceAddr: wasmxt.Bech32String, prefix: string): string {

@@ -744,8 +744,9 @@ export function sendHeartbeatResponseMessage(response: AppendEntryResponse, lead
     p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, contract, msgstr, protocolId, peers))
 }
 
+// "/ip4/127.0.0.1/tcp/5001/p2p/12D3KooWAWZ6M3FM34R3Fkx1za4WxUcRry2gmgxGoiVEE594oZXy"
 export function getP2PAddress(nodeInfo: NodeInfo): string {
-    return `/ip4/${nodeInfo.node.host}/tcp/${nodeInfo.node.port}/ipfs/${nodeInfo.node.id}`
+    return `/ip4/${nodeInfo.node.host}/tcp/${nodeInfo.node.port}/p2p/${nodeInfo.node.id}`
 }
 
 function getNodeId(addr: Bech32String): i32 {

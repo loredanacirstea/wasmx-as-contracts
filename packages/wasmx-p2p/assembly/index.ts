@@ -65,7 +65,7 @@ function start(req: MsgStart): void {
 
   const peers: string[] = []
   for (let i = 0; i < req.peers.length; i++) {
-    const peer = `/ip4/${req.peers[i].host}/tcp/${req.peers[i].port}/ipfs/${req.peers[i].id}`
+    const peer = `/ip4/${req.peers[i].host}/tcp/${req.peers[i].port}/p2p/${req.peers[i].id}`
     peers.push(peer)
     p2pw.ConnectPeer(new ConnectPeerRequest(req.protocolId, peer))
   }
@@ -73,7 +73,7 @@ function start(req: MsgStart): void {
   if (req.peers.length > 0) {
     p2pw.SendMessage(new SendMessageRequest("", "helloo", req.protocolId))
 
-    p2pw.SendMessageToPeers(new SendMessageToPeersRequest("", "helloo", req.protocolId, peers))
+    p2pw.SendMessageToPeers(new SendMessageToPeersRequest("", "", "helloo", req.protocolId, peers))
   }
 }
 
@@ -81,7 +81,7 @@ function chat(req: MsgChat): void {
   const resp = p2pw.StartNodeWithIdentity(new StartNodeWithIdentityRequest(req.node.port, req.protocolId, req.pk))
   p2pw.ConnectChatRoom(new ConnectChatRoomRequest(req.protocolId, req.roomId))
 
-  p2pw.SendMessageToChatRoom(new SendMessageToChatRoomRequest("", `hello to chat room from ${req.node.port} !`, req.protocolId, req.roomId));
+  p2pw.SendMessageToChatRoom(new SendMessageToChatRoomRequest("", "", `hello to chat room from ${req.node.port} !`, req.protocolId, req.roomId));
 }
 
 // @ts-ignore

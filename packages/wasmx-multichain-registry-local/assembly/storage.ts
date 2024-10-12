@@ -38,7 +38,7 @@ export function addChainId(data: string): void {
         return
     }
     ids.push(data)
-    return wasmxw.sstore(CHAIN_IDS, JSON.stringify<string[]>(ids));
+    return setChainIds(ids);
 }
 
 export function getChainIds(): string[] {
