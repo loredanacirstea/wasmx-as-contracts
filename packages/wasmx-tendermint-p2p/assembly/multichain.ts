@@ -40,7 +40,7 @@ export function buildGenTx(
         return;
     }
     const nodeInfo = getSelfNodeInfo()
-    const genTx = createGenTx(nodeInfo, chainConfig.Bech32PrefixAccAddr, chainConfig.BondBaseDenom, req.msg)
+    const genTx = createGenTx(nodeInfo, chainConfig.Bech32PrefixAccAddr, chainConfig.BaseDenom, req.msg)
     if (genTx == null) {
         revert(`genTx is null`)
         return;
@@ -52,7 +52,7 @@ export function buildGenTx(
 export function createGenTx(
     node: NodeInfo,
     accprefix: string,
-    bondBaseDenom: string,
+    gasBaseDenom: string,
     input: stakingtypes.MsgCreateValidator,
 ): wasmxt.SignedTransaction | null {
     const accresp = getAccountInfo(node.address)
@@ -77,7 +77,7 @@ export function createGenTx(
         input.min_self_delegation,
         validatorOperator,
         val.consensus_pubkey,
-        new wasmxt.Coin(bondBaseDenom, input.value.amount),
+        new wasmxt.Coin(gasBaseDenom, input.value.amount),
     )
     const valmsgstr = JSON.stringify<stakingtypes.MsgCreateValidator>(valmsg)
     const txmsg = new wasmxt.TxMessage(stakingtypes.TypeUrl_MsgCreateValidator, stringToBase64(valmsgstr))

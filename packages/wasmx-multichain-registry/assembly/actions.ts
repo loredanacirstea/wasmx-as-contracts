@@ -658,7 +658,7 @@ export function buildGenesisData(params: Params, denomUnit: string, baseDenomUni
     const stakingBaseDenom = bankGenesis.denom_info[1].metadata.base
     const rewardsBaseDenom = bankGenesis.denom_info[2].metadata.base
 
-    const stakingGenesis = stakingdefaults.getDefaultGenesis(stakingBaseDenom)
+    const stakingGenesis = stakingdefaults.getDefaultGenesis(gasBaseDenom, stakingBaseDenom)
     const govGenesis = govdefaults.getDefaultGenesis(gasBaseDenom, stakingBaseDenom, rewardsBaseDenom)
     const slashingGenesis = slashingdefaults.getDefaultGenesis()
     const distributionGenesis = distributiondefaults.getDefaultGenesis(gasBaseDenom, rewardsBaseDenom)

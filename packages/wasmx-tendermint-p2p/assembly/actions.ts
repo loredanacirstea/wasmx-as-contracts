@@ -1230,7 +1230,9 @@ export function ifForceProposalReset(
     // check last termId with a successful block - we may be  out of sync
     // we consider being out of sync if we have 2 unsuccessful rounds
     const state = getCurrentState()
-    if (state.last_round - termId > 2) {
+    const forceReset = (termId - state.last_round) > 2
+    LoggerInfo("try block proposal reset", ["termId", termId.toString(), "entry.termId", entry.termId.toString(), "last_round", state.last_round.toString(), "reset", forceReset.toString()])
+    if (forceReset) {
         return true
     }
     return false
@@ -1585,9 +1587,6 @@ export function commitBlock(
     const lastFinalizedIndex = getLastBlockIndex();
     if (state.nextHeight > lastFinalizedIndex) {
         const state = getCurrentState();
-        // for inclusion in BlockCommit in next block
-        state.last_round = getTermId();
-        setCurrentState(state);
         startBlockFinalizationFollower(state.nextHeight);
     }
 }

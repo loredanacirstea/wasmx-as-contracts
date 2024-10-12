@@ -19,7 +19,7 @@ export function getDefaultParams(bondDenom: string): Params {
     )
 }
 
-export function getDefaultGenesis(bondBaseDenom: string): GenesisState {
+export function getDefaultGenesis(baseDenom: string, bondBaseDenom: string): GenesisState {
     const params = getDefaultParams(bondBaseDenom)
     return new GenesisState(
         params,
@@ -29,6 +29,6 @@ export function getDefaultGenesis(bondBaseDenom: string): GenesisState {
         [],
         [],
         [],
-        bondBaseDenom,
+        baseDenom,
     )
 }

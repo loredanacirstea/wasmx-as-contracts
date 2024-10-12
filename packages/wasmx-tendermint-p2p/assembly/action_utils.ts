@@ -371,6 +371,9 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     state.last_results_hash = last_results_hash
     state.nextHeight = finalizeReq.height + 1
     state.last_time = finalizeReq.time
+    // for inclusion in BlockCommit in next block
+    state.last_round = entryobj.termId;
+
     // TODO get precommits for block finalizeReq.height - 1 ??!
     // we move precommit votes for this block to current state, so it is included in the next block proposal
     state.last_block_signatures = getCommitSigsFromPrecommitArray(finalizeReq.height);

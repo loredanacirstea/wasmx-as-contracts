@@ -1,6 +1,7 @@
 import { JSON } from "json-as/assembly";
 import { revert } from "wasmx-env/assembly/wasmx_wrap";
 import * as constypes from "./types_tendermint"
+import { Bech32String } from "wasmx-env/assembly/types";
 
 const START_EVM_ID = 1000;
 
@@ -314,6 +315,7 @@ export class StartStateSyncRequest {
     statesync_config: StateSyncConfig
     peers: string[]
     current_node_id: i32
+    verification_contract_address: Bech32String
     constructor(
         protocol_id: string,
         peer_address: string,
@@ -324,6 +326,7 @@ export class StartStateSyncRequest {
         statesync_config: StateSyncConfig,
         peers: string[],
         current_node_id: i32,
+        verification_contract_address: Bech32String,
     ) {
         this.protocol_id = protocol_id
         this.peer_address = peer_address
@@ -334,6 +337,7 @@ export class StartStateSyncRequest {
         this.statesync_config = statesync_config
         this.peers = peers
         this.current_node_id = current_node_id
+        this.verification_contract_address = verification_contract_address
     }
 }
 

@@ -863,7 +863,7 @@ export function buildGenTx(
     const genTx = tnd2mc.createGenTx(
         state.node,
         gendata.data.data.chain_config.Bech32PrefixAccAddr,
-        gendata.data.data.chain_config.BondBaseDenom,
+        gendata.data.data.chain_config.BaseDenom,
         req.msg,
     )
     if (genTx == null) {
