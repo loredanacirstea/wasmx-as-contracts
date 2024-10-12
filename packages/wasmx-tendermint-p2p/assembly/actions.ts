@@ -391,7 +391,13 @@ export function setupNode(
 
     const peers = new Array<NodeInfo>(data.peers.length);
     for (let i = 0; i < data.peers.length; i++) {
-        peers[i] = parseNodeAddress(data.peers[i]);
+        const resp = parseNodeAddress(data.peers[i]);
+        if (resp.error.length > 0 || resp.node_info == null) {
+            revert(resp.error);
+            return;
+        } else {
+            peers[i] = resp.node_info!;
+        }
     }
     setValidatorNodesInfo(peers);
     initChain(data);

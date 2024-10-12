@@ -140,7 +140,13 @@ export function setupNode(
 
     const peers = new Array<NodeInfo>(data.peers.length);
     for (let i = 0; i < data.peers.length; i++) {
-        peers[i] = tnd2utils.parseNodeAddress(data.peers[i])
+        const resp = tnd2utils.parseNodeAddress(data.peers[i])
+        if (resp.error.length > 0 || resp.node_info == null) {
+            revert(resp.error);
+            return;
+        } else {
+            peers[i] = resp.node_info!;
+        }
     }
     setChainSetupData(new CurrentChainSetup(data, peers[data.node_index]))
 }

@@ -21,7 +21,7 @@ import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { getCurrentNodeId, getCurrentState, getLogEntryObj, getPrecommitArray, getPrevoteArray, getTermId, getValidatorNodesInfo, removeLogEntry, setCurrentState, setTermId, setValidatorNodesInfo } from "./storage";
 import { getAllValidators, signMessage } from "wasmx-raft/assembly/action_utils";
-import { NodeInfo } from "wasmx-p2p/assembly/types";
+import { NodeInfo, NodeInfoResponse } from "wasmx-p2p/assembly/types";
 import { GetProposerResponse, ValidatorProposalVote } from "./types_blockchain";
 import { Base64String, Bech32String, CallRequest, CallResponse, HexString, SignedTransaction } from "wasmx-env/assembly/types";
 import { LOG_START } from "./config";
@@ -425,21 +425,29 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     setCurrentState(state)
 
     if (info.createdValidators.length > 0) {
+        const createdValidators = new Array<consutil.CreatedValidator>(0);
         for (let i = 0; i < info.createdValidators.length; i++) {
             const v = info.createdValidators[i]
             const decodedTx = decodeTx(finalizeReq.txs[v.txindex])
             const operator = v.operator_address
             LoggerInfo("new validator", ["height", entryobj.index.toString(), "address", operator, "p2p_address", decodedTx.body.memo])
-            const nodeInfo = parseNodeAddress(decodedTx.body.memo)
-            if (operator != nodeInfo.address) {
-                LoggerError("validator operator address mismatch, using operator_address", ["operator_address", operator, "memo", decodedTx.body.memo])
-                nodeInfo.address = operator
+            const resp = parseNodeAddress(decodedTx.body.memo)
+            if (resp.error.length == 0 && resp.node_info != null) {
+                const nodeInfo = resp.node_info!;
+                if (operator != nodeInfo.address) {
+                    LoggerError("validator operator address mismatch, using operator_address", ["operator_address", operator, "memo", decodedTx.body.memo])
+                    nodeInfo.address = operator
+                }
+                // add new node info to our validator info list
+                updateNodeEntry(new NodeUpdate(nodeInfo, 0, cfg.NODE_UPDATE_ADD))
+                // move node info to validator info if it exists
+                callHookContract(hooks.HOOK_CREATE_VALIDATOR, JSON.stringify<NodeInfo>(nodeInfo));
+                createdValidators.push(info.createdValidators[i])
+            } else {
+                LoggerError("validator node invalid address format", ["memo", decodedTx.body.memo])
             }
-            // add new node info to our validator info list
-            updateNodeEntry(new NodeUpdate(nodeInfo, 0, cfg.NODE_UPDATE_ADD))
-            // move node info to validator info if it exists
-            callHookContract(hooks.HOOK_CREATE_VALIDATOR, JSON.stringify<NodeInfo>(nodeInfo));
         }
+        info.createdValidators = createdValidators;
     }
 
     if (info.initChainRequests.length > 0) {
@@ -810,7 +818,7 @@ export function nodeInfoCompleteInternal(nodes: Array<NodeInfo>): boolean {
     return nodes.length == getAllValidatorInfos().length
 }
 
-export function parseNodeAddress(peeraddr: string): NodeInfo {
+export function parseNodeAddress(peeraddr: string): NodeInfoResponse {
     return raftp2pactions.parseNodeAddress(peeraddr)
 }
 

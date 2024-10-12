@@ -264,3 +264,10 @@ export class StartStateSyncResResponse {
         this.error = error
     }
 }
+
+// @ts-ignore
+@serializable
+export class NodeInfoResponse {
+    node_info: NodeInfo | null = null
+    error: string = ""
+}
