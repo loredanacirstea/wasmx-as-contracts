@@ -1,5 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as base64 from "as-base64/assembly";
+import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as staking from "wasmx-stake/assembly/types";
 import * as level0 from "wasmx-consensus/assembly/level0"
@@ -15,7 +16,8 @@ import { getCurrentNodeId, getCurrentState, getTermId, getValidatorNodesInfo, se
 import { isPrecommitAcceptThreshold, isPrecommitAnyThreshold } from "./action_utils";
 import { actionParamsToMap, getParamsOrEventParams } from "xstate-fsm-as/assembly/utils";
 import { AppendEntry } from "wasmx-tendermint-p2p/assembly/types";
-import { getAllValidators } from "../../wasmx-raft/assembly/action_utils";
+import { VerifyCommitLightRequest, VerifyCommitLightResponse } from "./types";
+import { stringToBase64 } from "../../wasmx-utils/assembly/utils";
 
 export function wrapGuard(value: boolean): ArrayBuffer {
     if (value) return String.UTF8.encode("1");
@@ -163,4 +165,23 @@ export function getAllValidatorInfos(): staking.ValidatorSimple[] {
     LoggerDebug("GetAllValidatorInfos", ["data", resp.data])
     const result = JSON.parse<staking.QueryValidatorInfosResponse>(resp.data);
     return result.validators;
+}
+
+export function VerifyCommitLight(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    if (!ctx.has("data")) {
+        revert("no data found");
+    }
+    const dataBase64 = ctx.get("data");
+    const dataStr = String.UTF8.decode(base64.decode(dataBase64).buffer);
+    let req: VerifyCommitLightRequest = JSON.parse<VerifyCommitLightRequest>(dataStr);
+
+    // TODO verify signatures & calculate voting threshold
+
+    const data = new VerifyCommitLightResponse(true, "");
+    wasmx.setFinishData(String.UTF8.encode(JSON.stringify<VerifyCommitLightResponse>(data)));
 }

@@ -146,6 +146,9 @@ export function main(): void {
   } else if (calld.method === "signMessage") {
     tnd2.signMessageExternal(calld.params, calld.event);
     return;
+  } else if (calld.method === "VerifyCommitLight") {
+    actions.VerifyCommitLight(calld.params, calld.event);
+    return;
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)
