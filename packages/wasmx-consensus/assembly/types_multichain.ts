@@ -315,6 +315,7 @@ export class StartStateSyncRequest {
     statesync_config: StateSyncConfig
     peers: string[]
     current_node_id: i32
+    verification_chain_id: string
     verification_contract_address: Bech32String
     constructor(
         protocol_id: string,
@@ -326,6 +327,7 @@ export class StartStateSyncRequest {
         statesync_config: StateSyncConfig,
         peers: string[],
         current_node_id: i32,
+        verification_chain_id: string,
         verification_contract_address: Bech32String,
     ) {
         this.protocol_id = protocol_id
@@ -337,6 +339,7 @@ export class StartStateSyncRequest {
         this.statesync_config = statesync_config
         this.peers = peers
         this.current_node_id = current_node_id
+        this.verification_chain_id = verification_chain_id
         this.verification_contract_address = verification_contract_address
     }
 }
