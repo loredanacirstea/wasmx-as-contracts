@@ -171,13 +171,24 @@ export class MerkleSlices {
 // @ts-ignore
 @serializable
 export class StartTimeoutRequest {
+    id: string
 	contract: string
 	delay: i64
 	args: Base64String
-    constructor(contract: string, delay: i64, args: Base64String) {
+    constructor(id: string, contract: string, delay: i64, args: Base64String) {
+        this.id = id
         this.contract = contract
         this.delay = delay
         this.args = args
+    }
+}
+
+// @ts-ignore
+@serializable
+export class CancelTimeoutRequest {
+    id: string
+    constructor(id: string) {
+        this.id = id
     }
 }
 

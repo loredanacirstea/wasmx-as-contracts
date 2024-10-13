@@ -1,3 +1,5 @@
+import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
+import { parseInt32, parseInt64 } from 'wasmx-utils/assembly/utils';
 import {INTERVAL_ID_KEY} from './config';
 import * as storage from './storage';
 import { LoggerDebug, revert } from "./utils";
@@ -6,7 +8,6 @@ import {
   State,
   ActionParam,
 } from './types';
-import { parseInt32, parseInt64 } from 'wasmx-utils/assembly/utils';
 
 // valid interval Id starts at 1
 
@@ -59,6 +60,8 @@ export function tryCancelIntervals(state: string, delay: string, intervalId: i64
   const active = isRegisteredIntervalActive(state, delay, intervalId);
   // remove the interval data
   removeInterval(state, delay, intervalId);
+  // cancel timeout with wasmx
+  wasmxw.cancelTimeout(intervalId.toString());
   if (active && intervalId > 0) {
     tryCancelIntervals(state, delay, intervalId - 1);
   }

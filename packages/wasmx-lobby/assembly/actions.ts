@@ -21,7 +21,7 @@ import * as metaregstore from "wasmx-metaregistry/assembly/storage";
 import * as metaregtypes from "wasmx-metaregistry/assembly/types";
 import * as staking from "wasmx-stake/assembly/types";
 import * as cfg from "./config";
-import { addNewChainRequests, getChainIdLast, getChainSetupData, getNextLevel, getNewChainRequests, getNewChainResponse, getParams, getSubChainData, getValidatorsCount, setChainIdLast, setChainSetupData, setNewChainRequests, setNewChainResponse, setSubChainData, getCurrentLevel } from "./storage";
+import { addNewChainRequests, getChainIdLast, getChainSetupData, getNextLevel, getNewChainRequests, getNewChainResponse, getParams, getSubChainData, getMinValidatorsCount, setChainIdLast, setChainSetupData, setNewChainRequests, setNewChainResponse, setSubChainData, getCurrentLevel } from "./storage";
 import { ChainConfigData, CurrentChainSetup, MODULE_NAME, MsgLastChainId, MsgNewChainAccepted, MsgNewChainGenesisData, MsgNewChainRequest, MsgNewChainResponse, PotentialValidator, PotentialValidatorWithSignature } from "./types";
 import { getProtocolId, getTopic, getTopicLevel, getTopicLobby, getTopicNewChain, mergeValidators, signMessage, sortValidators, sortValidatorsSimple, unwrapValidators, wrapValidators } from "./actions_utils";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
@@ -55,11 +55,13 @@ export function ifValidatorThreshold(
 ): boolean {
     const data = getNewChainResponse();
     if (data == null) return false;
-    if (data.signatures.length < getValidatorsCount()) return false;
+    const minvals = getMinValidatorsCount();
+    if (data.signatures.length < getMinValidatorsCount()) return false;
     if (data.signatures.length != data.msg.validators.length) return false;
     for (let i = 0; i < data.signatures.length; i++) {
         if (data.signatures[i] == "") return false;
     }
+    LoggerInfo("lobby validator threshold passed, initializing new subchain", ["min_validator_count", minvals.toString(), "sig_count", data.signatures.length.toString(), "val_count", data.msg.validators.length.toString()])
     return true;
 }
 
@@ -71,7 +73,7 @@ export function ifGenesisDataComplete(
     if (data == null) {
         return false;
     }
-    if (data.signatures.length < getValidatorsCount()) return false;
+    if (data.signatures.length < getMinValidatorsCount()) return false;
     const chaindata = getSubChainData()
     if (chaindata == null) {
         return false;
@@ -362,7 +364,7 @@ export function receiveNewChainRequest(
     }
 
     // if our set of validators is filled, don't respond
-    if (tempdata.msg.validators.length >= getValidatorsCount()) return;
+    if (tempdata.msg.validators.length >= getMinValidatorsCount()) return;
 
     // we add this validator to our set and add an empty signature for now.
     tempdata.msg.validators.push(data.validator);
@@ -394,7 +396,7 @@ export function createNewChainResponse(
     const chainBaseName = mcregistry.getChainBaseNameSubChainLevel(levelIndex)
     const chainId = new ChainId("", chainBaseName, levelIndex, lastChainId.evmid + 1, 1)
 
-    let vcount = getValidatorsCount()
+    let vcount = getMinValidatorsCount()
     let allreqs = getNewChainRequests()
     const reqs = allreqs.slice(0, vcount - 1)
     LoggerInfo("create new chain response", ["chain_id", chainId.full, "all_requests_count", allreqs.length.toString(), "selected_requests", JSON.stringify<MsgNewChainRequest[]>(reqs)])
@@ -504,7 +506,8 @@ export function receiveNewChainResponse(
 
     // we check our signature
     if (newdata.signatures.length == tempdata.signatures.length && newdata.signatures[ourindex] != tempdata.signatures[ourindex]) {
-        LoggerError("received unauthorized NewChainResponse", ["subchain_id", newdata.msg.chainId.full])
+        LoggerInfo("received unauthorized NewChainResponse", ["subchain_id", newdata.msg.chainId.full, "ourindex", ourindex.toString(), "signature", newdata.signatures[ourindex], "expected_signature", tempdata.signatures[ourindex]])
+        return;
     }
 
     // messages may contain additional signatures
@@ -525,7 +528,7 @@ export function receiveNewChainResponse(
         wrapValidators(tempdata.msg.validators, tempdata.signatures),
         wrapValidators(newdata.msg.validators, newdata.signatures),
     ))
-    allvalid = allvalid.slice(0, getValidatorsCount())
+    allvalid = allvalid.slice(0, getMinValidatorsCount())
 
     const newtempdata = unwrapValidators(tempdata, allvalid)
     setNewChainResponse(newtempdata);
@@ -728,7 +731,7 @@ export function initializeChain(
         return;
     }
 
-    const chaindata = mcregistry.initSubChainPrepareData(gendata.data, gendata.data.genTxs, getValidatorsCount())
+    const chaindata = mcregistry.initSubChainPrepareData(gendata.data, gendata.data.genTxs, getMinValidatorsCount())
 
     // send new chainid to the network
     const chainIdFull = gendata.data.data.init_chain_request.chain_id

@@ -30,6 +30,7 @@ import {
     WriteToBackgroundProcessResponse,
     ReadFromBackgroundProcessRequest,
     ReadFromBackgroundProcessResponse,
+    CancelTimeoutRequest,
 } from './types';
 import { u8ArrayToHex, uint8ArrayToHex } from "as-tally/assembly/tally";
 import { toUpperCase } from "./utils";
@@ -332,9 +333,14 @@ export function ed25519PubToHex(pubKey: Base64String): HexString {
     return toUpperCase(hexstr);
 }
 
-export function startTimeout(contract: string, delayms: i64, args: string): void {
-    const req = new StartTimeoutRequest(contract, delayms, encodeBase64(Uint8Array.wrap(String.UTF8.encode(args))));
+export function startTimeout(id: string, contract: string, delayms: i64, args: string): void {
+    const req = new StartTimeoutRequest(id, contract, delayms, encodeBase64(Uint8Array.wrap(String.UTF8.encode(args))));
     wasmx.startTimeout(String.UTF8.encode(JSON.stringify<StartTimeoutRequest>(req)));
+}
+
+export function cancelTimeout(id: string): void {
+    const req = new CancelTimeoutRequest(id);
+    wasmx.cancelTimeout(String.UTF8.encode(JSON.stringify<CancelTimeoutRequest>(req)));
 }
 
 export function startBackgroundProcess(contract: string, args: string): void {

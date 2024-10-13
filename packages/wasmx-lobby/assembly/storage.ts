@@ -77,7 +77,7 @@ export function setChainIdLast(data: ChainId): void {
     return wasmxw.sstore(LAST_CHAIN_ID, JSON.stringify<ChainId>(data));
 }
 
-export function getValidatorsCount(): i32 {
+export function getMinValidatorsCount(): i32 {
     return parseInt32(fsm.getContextValue(KEY_MIN_VALIDATORS_COUNT))
 }
 
@@ -91,7 +91,7 @@ export function getNextLevel(): i32 {
 
 export function getParams(): Params {
     const currentLevel = getCurrentLevel()
-    const minValidatorCount = getValidatorsCount()
+    const minValidatorCount = getMinValidatorsCount()
     const erc20CodeId = parseInt64(fsm.getContextValue(KEY_ERC20_CODE_ID))
     const derc20CodeId = parseInt64(fsm.getContextValue(KEY_DERC20_CODE_ID))
     const initialBalance = BigInt.fromString(fsm.getContextValue(KEY_INITIAL_BALANCE))

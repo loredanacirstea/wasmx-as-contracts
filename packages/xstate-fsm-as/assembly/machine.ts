@@ -221,7 +221,7 @@ function runAfterTransitions(statePath: string, delayKeys: string[]): void {
     const args = new TimerArgs(delayKeys[i], statePath, intervalId);
     const argsStr = JSON.stringify<TimerArgs>(args);
     LoggerDebug("starting timeout", ["intervalId", intervalId.toString(), "delay_key", delayKeys[i], "delay", delay.toString()]);
-    wasmxw.startTimeout(contractAddress, delay, argsStr);
+    wasmxw.startTimeout(intervalId.toString(), contractAddress, delay, argsStr);
   }
 }
 
