@@ -112,6 +112,7 @@ export function NewSubChain(req: HookCalld): void {
 
 export function StartNode(): void {
     const ids = getChainIds();
+    LoggerInfo("StartNode", ["ids", ids.join(",")])
     startNode(ids)
 }
 
