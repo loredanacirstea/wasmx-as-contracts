@@ -10,7 +10,7 @@ import * as level0 from "wasmx-consensus/assembly/level0"
 import * as crossw from "wasmx-env/assembly/crosschain_wrap";
 import * as utils from "wasmx-utils/assembly/utils"
 import { ChainConfig, InitSubChainMsg, NodePorts, StartSubChainMsg } from "wasmx-consensus/assembly/types_multichain"
-import { CROSS_CHAIN_TIMEOUT_MS, MODULE_NAME, MsgAddSubChainId, MsgSetInitialPorts, MsgStartStateSync, QueryNodePortsPerChainId, QueryNodePortsPerChainIdResponse, QuerySubChainIds, QuerySubChainIdsResponse, QuerySubChainIdsWithPorts, QuerySubChainIdsWithPortsResponse } from "./types";
+import { CROSS_CHAIN_TIMEOUT_MS, MODULE_NAME, MsgAddSubChainId, MsgRegisterNewChain, MsgSetInitialPorts, MsgStartStateSync, QueryNodePortsPerChainId, QueryNodePortsPerChainIdResponse, QuerySubChainIds, QuerySubChainIdsResponse, QuerySubChainIdsWithPorts, QuerySubChainIdsWithPortsResponse } from "./types";
 import { addChainId, CHAIN_IDS, getChainIds, getLastNodePorts, getNodePorts, setLastNodePorts, setNodePorts } from "./storage";
 import { LoggerError, LoggerInfo, revert } from "./utils";
 import { callContract } from "wasmx-env/assembly/utils";
@@ -170,7 +170,7 @@ export function StartStateSync(req: MsgStartStateSync): ArrayBuffer {
     // }
     // const resp = JSON.parse<UpdateNodeResponse>(response.data);
 
-    stateSyncChain(req.chain_id, req.chain_config, req.peer_address, req.statesync_config, req.verification_chain_id, req.verification_contract_address)
+    stateSyncChain(req.chain_id, req.peer_address, req.statesync_config, req.verification_chain_id, req.verification_contract_address)
     return new ArrayBuffer(0)
 }
 
@@ -180,8 +180,29 @@ export function GetStateSyncProtocolId(chainId: string): string {
 	return StateSyncProtocolId + "_" + chainId
 }
 
-export function stateSyncChain(chainId: string, chainConf: ChainConfig, peeraddr: string, statesyncConfig: mctypes.StateSyncConfig, verificationChainId: string, verificationContract: wasmxt.Bech32String): void {
+export function RegisterNewChain(req: MsgRegisterNewChain): ArrayBuffer {
+    registerNewChain(req.chain_id, req.chain_config);
+    return new ArrayBuffer(0)
+}
+
+export function registerNewChain(chainId: string, chainConf: ChainConfig): void {
     const ports = addSubChainIdInternal(chainId)
+    setChainConfig(chainId, chainConf);
+}
+
+export function stateSyncChain(chainId: string, peeraddr: string, statesyncConfig: mctypes.StateSyncConfig, verificationChainId: string, verificationContract: wasmxt.Bech32String): void {
+    const ports = getNodePorts(chainId)
+    if (ports == null) {
+        revert(`Register new chain first with RegisterNewChain`);
+        return;
+    }
+    const chainConf = getChainConfig(chainId)
+    if (chainConf == null) {
+        LoggerError(`call failed: could not get subchain config`, ["contract", REGISTRY_ROLE, "subchain_id", chainId])
+        return;
+    }
+    LoggerInfo("starting statesync", ["subchain_id", chainId, "config", JSON.stringify<ChainConfig>(chainConf)])
+
     // we just give empty ports, because level0 controls the ports, not upper levels
     const initialPorts = NodePorts.empty()
 
@@ -212,9 +233,21 @@ export function setChainConfig(chainIdStr: string, config: ChainConfig): void {
     const calldatastr = `{"SetChainData":{"data":${JSON.stringify<ChainConfigData>(data)}}}`;
     const resp = callContract(REGISTRY_ROLE, calldatastr, false, MODULE_NAME);
     if (resp.success > 0) {
-        LoggerError(`call failed: could not start subchains`, ["contract", REGISTRY_ROLE, "error", resp.data, "chain_id", chainIdStr])
+        LoggerError(`call failed: could not store config for new statesynced chain`, ["contract", REGISTRY_ROLE, "error", resp.data, "chain_id", chainIdStr])
         revert(`could not store config for new statesynced chain: ${chainIdStr}`)
     }
+}
+
+export function getChainConfig(chainId: string): ChainConfig | null {
+    const calldatastr = `{"GetSubChainConfigById":{"chainId":"${chainId}"}}}`;
+    const resp = callContract(REGISTRY_ROLE, calldatastr, true, MODULE_NAME);
+    if (resp.success > 0) {
+        return null
+    }
+    if (resp.data.length == 0) {
+        return null;
+    }
+    return JSON.parse<ChainConfig>(resp.data);
 }
 
 export function getNodeInfo(): NodeInfo {

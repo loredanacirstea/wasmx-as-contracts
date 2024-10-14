@@ -87,17 +87,26 @@ export class MsgStartStateSync {
     chain_id: string
     peer_address: string // addr@p2p_addr
     rpc: string
-    chain_config: ChainConfig
     statesync_config: StateSyncConfig
     verification_chain_id: string
     verification_contract_address: Bech32String
-    constructor(chain_id: string, peer_address: string, rpc: string, chain_config: ChainConfig, statesync_config: StateSyncConfig, verification_chain_id: string, verification_contract_address: Bech32String) {
+    constructor(chain_id: string, peer_address: string, rpc: string, statesync_config: StateSyncConfig, verification_chain_id: string, verification_contract_address: Bech32String) {
         this.chain_id = chain_id
         this.peer_address = peer_address
         this.rpc = rpc
-        this.chain_config = chain_config
         this.statesync_config = statesync_config
         this.verification_chain_id = verification_chain_id
         this.verification_contract_address = verification_contract_address
+    }
+}
+
+// @ts-ignore
+@serializable
+export class MsgRegisterNewChain {
+    chain_id: string
+    chain_config: ChainConfig
+    constructor(chain_id: string, chain_config: ChainConfig) {
+        this.chain_id = chain_id
+        this.chain_config = chain_config
     }
 }
