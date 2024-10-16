@@ -804,6 +804,7 @@ export function proposeBlock(
     // we take the last block signed precommits from the current state
     const lastBlockCommit = getLastBlockCommit(state);
     const result = tnd.proposeBlockInternalAndStore(lastBlockCommit)
+    let nextHash = "";
     if (result == null) {
         // we can reuse prevotes signed with the previous round
         // but we must reset the block precommit signatures
@@ -811,11 +812,19 @@ export function proposeBlock(
         const termId = getTermId()
         LoggerDebug(`resetting block commit signatures`, ["height", height.toString(), "termId", termId.toString()])
         resetPrecommitArray(height, termId)
-        return;
+        // we expect getLogEntryObj(height) has been set by tnd.proposeBlockInternalAndStore
+        const entry = getLogEntryAggregate(height);
+        if (entry != null) {
+            const data = decodeBase64(entry.data.data);
+            const processReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(String.UTF8.decode(data.buffer));
+            nextHash = processReqWithMeta.request.hash
+        }
+    } else {
+        nextHash = result.proposal.hash;
     }
 
     state = getCurrentState()
-    state.nextHash = result.proposal.hash;
+    state.nextHash = nextHash;
     setCurrentState(state);
 }
 

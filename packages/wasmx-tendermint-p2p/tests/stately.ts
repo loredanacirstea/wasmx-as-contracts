@@ -345,15 +345,20 @@ export const machine = createMachine({
                     ],
                   },
                   after: {
-                    timeoutPrevote: {
-                      target: "precommit",
-                      actions: {
-                        type: "sendPrecommitNil",
+                    timeoutPrevote: [
+                      {
+                        target: "precommit",
+                        actions: {
+                          type: "sendPrecommitNil",
+                        },
+                        guard: {
+                          type: "ifPrevoteAnyThreshold",
+                        },
                       },
-                      guard: {
-                        type: "ifPrevoteAnyThreshold",
+                      {
+                        target: "active",
                       },
-                    },
+                    ],
                   },
                   always: {
                     target: "precommit",

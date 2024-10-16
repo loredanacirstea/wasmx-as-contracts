@@ -138,6 +138,11 @@ async function instantiate(module, imports = {}) {
         args = __liftBuffer(args >>> 0);
         __module0.startTimeout(time, args);
       },
+      cancelTimeout(time, args) {
+        // assembly/wasmx/cancelTimeout(i64, ~lib/arraybuffer/ArrayBuffer) => void
+        args = __liftBuffer(args >>> 0);
+        __module0.cancelTimeout(time, args);
+      },
       getFinishData() {
         // assembly/wasmx/getFinishData() => ~lib/arraybuffer/ArrayBuffer
         return __lowerBuffer(__module0.getFinishData()) || __notnull();
