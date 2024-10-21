@@ -329,6 +329,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     if (respWrap.error.length > 0 && !retry) {
         // ERR invalid height: 3232; expected: 3233
         const mismatchErr = `expected: ${(finalizeReq.height + 1).toString()}`
+        LoggerError(`finalize block error`, ["error", respWrap.error])
         if (respWrap.error.includes("invalid height") && respWrap.error.includes(mismatchErr)) {
             const rollbackHeight = finalizeReq.height - 1;
             LoggerInfo(`trying to rollback`, ["height", rollbackHeight.toString()])

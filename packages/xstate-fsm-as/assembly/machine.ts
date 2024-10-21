@@ -452,17 +452,18 @@ export class Service implements StateMachine.Service {
   }
 
   send(event: EventObject): void {
-    console.debug("* send event: " + event.type);
-    console.debug("* status: " + this.status.toString());
+    LoggerDebug("new event", ["event", event.type, "status", this.status.toString()])
     if (this.status !== InterpreterStatus.Running) {
       return;
     }
     let state = storage.getCurrentState();
+    LoggerDebug("transition event", ["event", event.type, "status", this.status.toString(), "state", state.value])
     const newstate = this.machine.transition(state, event);
     if (newstate == null) {
       return;
     }
-    console.debug("* posttransition state: " + newstate.value);
+    LoggerDebug("posttransition state", ["event", event.type, "status", this.status.toString(), "state", state.value, "next_state", newstate.value])
+
     // Set new state before executing actions
     storage.setCurrentState(newstate);
     executeStateActions(this, newstate, event);
@@ -896,10 +897,15 @@ export function findStateInfoByPath(
     // console.log("--findStateInfoByPath--" + statePath.join("."));
     for (let k = 0; k < statePath.length; k++) {
         const currentStateName = statePath[k];
+        if (!currentStates.has(currentStateName)) {
+          revert(`findStateInfoByPath: cannot find state "${currentStateName}" from path "${statePath.join(".")}" in our current states ${currentStates.keys().join(".")}`);
+          return null;
+        }
         state = currentStates.get(currentStateName);
         if (k < (statePath.length - 1)) {
             if (!state.states || state.states.keys().length === 0) {
                 revert("findStateInfoByPath: state does not have childstates: " + statePath.join("."));
+                return null;
             }
             currentStates = state.states;
         }

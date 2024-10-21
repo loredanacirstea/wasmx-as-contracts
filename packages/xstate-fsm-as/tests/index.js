@@ -18,6 +18,7 @@ import {
   TendermintP2P,
   Level0,
   Lobby,
+  Level0OnDemand,
 } from './data.js';
 
 let currentState, value;
@@ -376,6 +377,11 @@ async function runTests() {
     // Lobby
     machineConfig = parseMachine(Lobby);
     console.log("==Lobby==");
+    console.log(JSON.stringify(machineConfig));
+
+    // Level0OnDemand
+    machineConfig = parseMachine(Level0OnDemand);
+    console.log("==Level0OnDemand==");
     console.log(JSON.stringify(machineConfig));
 }
 

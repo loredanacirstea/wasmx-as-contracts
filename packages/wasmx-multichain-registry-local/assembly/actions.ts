@@ -141,6 +141,7 @@ export function startNode(ids: string[]): void {
         const ports = portLists[i];
         const resp = mcwrap.StartSubChain(new StartSubChainMsg(id, config, ports))
         if (resp.error.length > 0) {
+            // don't revert here; this may be a chain added for state sync that was not synced
             LoggerError("could not start subchain", ["subchain_id", id])
         }
     }

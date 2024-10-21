@@ -9,7 +9,7 @@ import {
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
 import * as tnd2 from "wasmx-tendermint-p2p/assembly/actions";
-import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
+import { LoggerDebug, LoggerInfo, revert } from "./utils";
 import { callStorage, getCurrentProposer, isValidatorSimpleActive } from "wasmx-tendermint-p2p/assembly/action_utils";
 import { callStaking } from "wasmx-tendermint/assembly/actions";
 import { getCurrentNodeId, getCurrentState, getTermId, getValidatorNodesInfo, setCurrentState } from "wasmx-tendermint-p2p/assembly/storage";
@@ -17,7 +17,6 @@ import { isPrecommitAcceptThreshold, isPrecommitAnyThreshold } from "./action_ut
 import { actionParamsToMap, getParamsOrEventParams } from "xstate-fsm-as/assembly/utils";
 import { AppendEntry } from "wasmx-tendermint-p2p/assembly/types";
 import { VerifyCommitLightRequest, VerifyCommitLightResponse } from "./types";
-import { stringToBase64 } from "../../wasmx-utils/assembly/utils";
 
 export function wrapGuard(value: boolean): ArrayBuffer {
     if (value) return String.UTF8.encode("1");

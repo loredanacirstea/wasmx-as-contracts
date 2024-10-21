@@ -94,11 +94,13 @@ class MempoolBatch {
     cummulatedGas: i64;
     isAtomicTx: boolean
     isLeader: boolean
+    full: boolean = false
     constructor(txs: Base64String[] = [], cummulatedGas: i64 = 0, isAtomicTx: boolean = false, isLeader: boolean = false) {
         this.txs = txs;
         this.cummulatedGas = cummulatedGas;
         this.isAtomicTx = isAtomicTx;
         this.isLeader = isLeader;
+        this.full = false;
     }
 }
 
@@ -185,6 +187,29 @@ export class Mempool {
             if (atomicInExec) return batch;
         }
         return batch;
+    }
+
+    // quick check to see if we have enough tx in mempool
+    isBatchFull(maxGas: i64, maxBytes: i64): boolean {
+        if (maxGas == -1) return false;
+        let cummulatedGas: i64 = 0;
+        let cummulatedBytes: i64 = 0;
+        const txhashes = this.map.keys();
+        for (let i = 0; i < txhashes.length; i++) {
+            const tx = this.map.get(txhashes[i])
+            if (maxGas < (cummulatedGas + tx.gas)) {
+                return true;
+            }
+            const bytelen = base64Len(tx.tx);
+            if (maxBytes < (cummulatedBytes + bytelen)) {
+                return true;
+            }
+            cummulatedGas += tx.gas;
+            cummulatedBytes += bytelen;
+        }
+        if ((maxGas - cummulatedGas) < 50000) return true;
+        if ((maxBytes - cummulatedBytes) < 1000) return true;
+        return false;
     }
 }
 

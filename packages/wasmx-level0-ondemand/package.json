@@ -1,5 +1,5 @@
 {
-  "name": "wasmx-leveln",
+  "name": "wasmx-level0-ondemand",
   "version": "0.0.1",
   "description": "",
   "main": "index.js",
@@ -13,7 +13,7 @@
   "author": "Loredana Cirstea",
   "license": "UNLICENSED",
   "devDependencies": {
-    "assemblyscript": "^0.27.26"
+    "assemblyscript": "^0.27.30"
   },
   "type": "module",
   "exports": {
@@ -27,7 +27,14 @@
     "as-base64": "^0.2.0",
     "json-as": "file:../../../as-json",
     "visitor-as": "^0.11.4",
+    "wasmx-consensus": "file:../wasmx-consensus",
     "wasmx-env": "file:../wasmx-env",
-    "wasmx-utils": "file:../wasmx-utils"
+    "wasmx-level0": "file:../wasmx-level0",
+    "wasmx-stake": "file:../wasmx-stake",
+    "wasmx-utils": "file:../wasmx-utils",
+    "wasmx-tendermint": "file:../wasmx-tendermint",
+    "wasmx-tendermint-p2p": "file:../wasmx-tendermint-p2p",
+    "wasmx-time": "file:../wasmx-time",
+    "xstate-fsm-as": "file:../xstate-fsm-as"
   }
 }
