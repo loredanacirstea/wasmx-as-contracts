@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
 import {Base64String } from 'wasmx-env/assembly/types';
-import { base64ToString, parseInt64 } from "wasmx-utils/assembly/utils";
+import { base64ToHex, base64ToString, parseInt64 } from "wasmx-utils/assembly/utils";
 import * as types from './types';
 import { LoggerInfo, LoggerDebug, revert } from './utils';
 import { IndexedTopic } from "./calldata";
@@ -112,7 +112,7 @@ export function setBlock(value: string, hash: string, txhashes: string[]): void 
 export function setIndexedTransactionByHash(hash: Base64String, data: types.IndexedTransaction): void {
     const datastr = JSON.stringify<types.IndexedTransaction>(data);
     wasmxwrap.sstore(keyIndexedTransaction(hash), datastr);
-    LoggerInfo("indexing transaction", ["height", data.height.toString(), "index", data.index.toString(), "hash", hash])
+    LoggerInfo("indexing transaction", ["height", data.height.toString(), "index", data.index.toString(), "hash", hash, "hashhex", base64ToHex(hash)])
 }
 
 export function getIndexedTransactionByHash(hash: Base64String): string {

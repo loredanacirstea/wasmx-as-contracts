@@ -56,6 +56,9 @@ export const ADDR_LOBBY = "0x000000000000000000000000000000000000004d"
 export const ADDR_LOBBY_LIBRARY = "0x000000000000000000000000000000000000004e"
 export const ADDR_METAREGISTRY = "0x000000000000000000000000000000000000004f"
 
+var ADDR_LEVEL0_ONDEMAND = "0x0000000000000000000000000000000000000051"
+var ADDR_LEVEL0_ONDEMAND_LIBRARY = "0x0000000000000000000000000000000000000052"
+
 export const ADDR_SYS_PROXY = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 
 //// * contract labels
@@ -82,6 +85,7 @@ export const TENDERMINT_LIBRARY = "tendermint_library"
 export const TENDERMINTP2P_LIBRARY = "tendermintp2p_library"
 export const AVA_SNOWMAN_LIBRARY = "ava_snowman_library"
 export const LEVEL0_LIBRARY = "level0_library"
+export const LEVEL0_ONDEMAND_LIBRARY = "level0_ondemand_library"
 export const LOBBY_LIBRARY = "lobby_library"
 export const INTERPRETER_EVM_SHANGHAI = "interpreter_evm_shanghai"
 // https://github.com/RustPython/RustPython version
@@ -108,7 +112,7 @@ export const CHAT_v001 = "chat_0.0.1"
 export const CHAT_VERIFIER_v001 = "chat_verifier_0.0.1"
 export const TIME_v001 = "time_0.0.1"
 export const LEVEL0_v001 = "level0_0.0.1"
-export const LEVELN_v001 = "leveln_0.0.1"
+export const LEVEL0_ONDEMAND_v001 = "level0_ondemand_0.0.1"
 export const MULTICHAIN_REGISTRY_v001 = "multichain_registry_0.0.1"
 export const MULTICHAIN_REGISTRY_LOCAL_v001 = "multichain_registry_local_0.0.1"
 export const LOBBY_v001 = "lobby_json_0.0.1"
@@ -135,6 +139,7 @@ export const tendermintP2PInitMsg = wasmxExecMsg(`{"instantiate":{"context":[{"k
 export const avaInitMsg = wasmxExecMsg(`{"instantiate":{"context":[{"key":"sampleSize","value":"2"},{"key":"betaThreshold","value":2},{"key":"roundsCounter","value":"0"},{"key":"alphaThreshold","value":80}],"initialState":"uninitialized"}}`)
 export const timeInitMsg = wasmxExecMsg(`{"params":{"chain_id":"time_666-1","interval_ms":100}}`)
 export const level0InitMsg = wasmxExecMsg(`{"instantiate":{"context":[{"key":"log","value":""},{"key":"votedFor","value":"0"},{"key":"nextIndex","value":"[]"},{"key":"currentTerm","value":"0"},{"key":"blockTimeout","value":"roundTimeout"},{"key":"max_tx_bytes","value":"65536"},{"key":"roundTimeout","value":5000},{"key":"currentNodeId","value":"0"},{"key":"max_block_gas","value":"20000000"},{"key":"timeoutPropose","value":20000},{"key":"timeoutPrecommit","value":20000}],"initialState":"uninitialized"}}`)
+export const level0OnDemandInitMsg = wasmxExecMsg(`{"instantiate":{"context":[{"key":"log","value":""},{"key":"votedFor","value":"0"},{"key":"nextIndex","value":"[]"},{"key":"currentTerm","value":"0"},{"key":"blockTimeout","value":"roundTimeout"},{"key":"max_tx_bytes","value":"65536"},{"key":"roundTimeout","value":5000},{"key":"currentNodeId","value":"0"},{"key":"max_block_gas","value":"20000000"},{"key":"timeoutPropose","value":20000},{"key":"timeoutPrecommit","value":20000},{"key":"batchTimeout","value":1000}],"initialState":"uninitialized"}}`)
 export function mutichainLocalInitMsg(initialPorts: string): Base64String {
     return wasmxExecMsg(`{"ids":[],"initialPorts":${initialPorts}}`)
 }
@@ -689,6 +694,30 @@ export const sc_level0 = new SystemContract(
     CodeMetadata.Empty(),
 )
 
+export const sc_level0_ondemand_library = new SystemContract(
+    ADDR_LEVEL0_ONDEMAND_LIBRARY,
+    LEVEL0_ONDEMAND_LIBRARY,
+    StorageSingleConsensus,
+    EMPTY_INIT_MSG,
+    false,
+    false,
+    roles.ROLE_LIBRARY,
+    [],
+    CodeMetadata.Empty(),
+)
+
+export const sc_level0_ondemand = new SystemContract(
+    ADDR_LEVEL0_ONDEMAND,
+    LEVEL0_ONDEMAND_v001,
+    StorageSingleConsensus,
+    level0OnDemandInitMsg,
+    false,
+    false,
+    roles.ROLE_CONSENSUS,
+    [INTERPRETER_FSM, BuildDep(ADDR_LEVEL0_ONDEMAND_LIBRARY, roles.ROLE_LIBRARY)],
+    CodeMetadata.Empty(),
+)
+
 export function sc_multichain_registry(minValidatorCount: i32, enableEIDCheck: boolean): SystemContract {
     return new SystemContract(
         ADDR_MULTICHAIN_REGISTRY,
@@ -861,6 +890,9 @@ export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32
 
         sc_chat,
         sc_chat_verifier,
+
+        sc_level0_ondemand_library,
+        sc_level0_ondemand,
     ]
 }
 
