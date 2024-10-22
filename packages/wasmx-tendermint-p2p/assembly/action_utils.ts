@@ -252,12 +252,12 @@ export function calculateVote(votePerNode: Array<ValidatorProposalVote>, hash: s
     }
     // @ts-ignore
     const committing = count >= threshold;
-    LoggerDebug("calculate vote", ["threshold", threshold.toString(), "value", count.toString(), "passed", committing.toString(), "hash", hash])
+    LoggerDebug("calculate vote", ["total_stake", totalStake.toString(), "threshold", threshold.toString(), "value", count.toString(), "passed", committing.toString(), "hash", hash])
     return committing;
 }
 
 function getBFTThreshold(totalState: BigInt): BigInt {
-    return totalState.mul(BigInt.fromU32(2)).div(BigInt.fromU32(3)).add(BigInt.fromU32(1))
+    return totalState.mul(BigInt.fromU32(2)).div(BigInt.fromU32(3))
 }
 
 export function startBlockFinalizationFollower(index: i64): boolean {
@@ -341,6 +341,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
             // repeat FinalizeBlock
             return startBlockFinalizationInternal(entryobj, true);
         } else {
+            LoggerInfo("not rolling back", ["noterror_debug", mismatchErr])
             revert(respWrap.error)
             return false;
         }

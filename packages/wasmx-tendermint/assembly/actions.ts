@@ -1749,5 +1749,5 @@ export function getTotalStakedActive(validators: staking.Validator[]): BigInt {
 }
 
 function getBFTThreshold(totalState: BigInt): BigInt {
-    return totalState.mul(BigInt.fromU32(2)).div(BigInt.fromU32(3)).add(BigInt.fromU32(1))
+    return totalState.mul(BigInt.fromU32(2)).div(BigInt.fromU32(3))
 }
