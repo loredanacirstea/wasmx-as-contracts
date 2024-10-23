@@ -1244,7 +1244,7 @@ export function ifForceProposalReset(
     let forceReset = false;
     // we can allow receiving block proposals from nodes with a smaller term/round id if we determine we have not finalized blocks for more than 50 rounds.
     if (termId > entry.termId) {
-        forceReset = (termId - state.last_round) > 50
+        forceReset = (termId - state.last_round) > 50;
     } else {
         // termId < entry.termId
         // check last termId with a successful block - we may be  out of sync
@@ -1253,6 +1253,7 @@ export function ifForceProposalReset(
     }
     LoggerInfo("try block proposal reset", ["termId", termId.toString(), "entry.termId", entry.termId.toString(), "last_round", state.last_round.toString(), "reset", forceReset.toString()])
     if (forceReset) {
+        setTermId(entry.termId);
         return true
     }
     return false
