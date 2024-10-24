@@ -713,7 +713,7 @@ export const sc_level0_ondemand = new SystemContract(
     level0OnDemandInitMsg,
     false,
     false,
-    roles.ROLE_CONSENSUS,
+    EMPTY_ROLE, // roles.ROLE_CONSENSUS,
     [INTERPRETER_FSM, BuildDep(ADDR_LEVEL0_ONDEMAND_LIBRARY, roles.ROLE_LIBRARY)],
     CodeMetadata.Empty(),
 )
