@@ -16,7 +16,7 @@ import {
 import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as staking from "wasmx-stake/assembly/types";
-import { CurrentState, Mempool, MempoolTx } from "./types_blockchain";
+import { CurrentState, GetProposerResponse, Mempool, MempoolTx, ValidatorQueueEntry } from "./types_blockchain";
 import * as fsm from 'xstate-fsm-as/assembly/storage';
 import { getParamsOrEventParams, actionParamsToMap } from 'xstate-fsm-as/assembly/utils';
 import {
@@ -457,9 +457,12 @@ export function prepareAppendEntry(
             entries.push(entry);
         }
     }
+    const state = getCurrentState();
     const data = new AppendEntry(
         getTermId(),
         getCurrentNodeId(),
+        // we only use this in force proposal reset, for the current state, not historical state
+        new GetProposerResponse(state.proposerQueue, state.proposerIndex),
         entries,
         nodeIps,
     )

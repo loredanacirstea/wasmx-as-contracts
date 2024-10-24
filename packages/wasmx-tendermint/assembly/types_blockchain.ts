@@ -21,6 +21,17 @@ export class ValidatorQueueEntry {
 
 // @ts-ignore
 @serializable
+export class GetProposerResponse {
+    proposerQueue: ValidatorQueueEntry[]
+    proposerIndex: i32
+    constructor(proposerQueue: ValidatorQueueEntry[], proposerIndex: i32) {
+        this.proposerQueue = proposerQueue
+        this.proposerIndex = proposerIndex
+    }
+}
+
+// @ts-ignore
+@serializable
 export class CurrentState {
     chain_id: string = ""
     unique_p2p_id: string = "" // temporary fix for level0 unique chat rooms; TODO unique chain ids for level0

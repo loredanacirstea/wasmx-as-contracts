@@ -2,7 +2,6 @@ import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap } from 'wasmx-tendermint/assembly/calldata';
 import * as tnd from "wasmx-tendermint/assembly/actions";
-import * as raftp2p from "wasmx-raft-p2p/assembly/actions";
 import * as actions from "./actions";
 import * as actionsmc from "./multichain";
 import { wrapGuard } from "./action_utils";

@@ -176,9 +176,12 @@ export function isNodeActive(node: NodeInfo): bool {
 }
 
 export function prepareAppendEntry(index: i64): AppendEntry | null {
+    const state = getCurrentState();
     const data = new AppendEntry(
         getTermId(),
         getCurrentNodeId(),
+        // we only use this in force proposal reset, for the current state, not historical state
+        new GetProposerResponse(state.proposerQueue, state.proposerIndex),
         [],
     )
     const entry = getLogEntryAggregate(index);

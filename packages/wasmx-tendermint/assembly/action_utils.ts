@@ -4,7 +4,7 @@ import * as fsm from 'xstate-fsm-as/assembly/storage';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
-import { CurrentState } from "./types_blockchain";
+import { CurrentState, GetProposerResponse } from "./types_blockchain";
 import { base64ToHex, parseInt32 } from "wasmx-utils/assembly/utils";
 import { LogEntry, LogEntryAggregate } from "./types";
 import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";

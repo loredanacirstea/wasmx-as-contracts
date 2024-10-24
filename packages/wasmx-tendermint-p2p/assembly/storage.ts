@@ -3,7 +3,7 @@ import * as fsm from 'xstate-fsm-as/assembly/storage';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
-import { getEmptyPrecommitArray, getEmptyValidatorProposalVoteArray, SignedMsgType, ValidatorCommitVote, ValidatorCommitVoteMap, ValidatorProposalVote, ValidatorProposalVoteMap } from "./types_blockchain";
+import { getEmptyPrecommitArray, getEmptyValidatorProposalVoteArray, GetProposerResponse, SignedMsgType, ValidatorCommitVote, ValidatorCommitVoteMap, ValidatorProposalVote, ValidatorProposalVoteMap } from "./types_blockchain";
 import { parseInt32 } from "wasmx-utils/assembly/utils";
 import { NodeInfo } from "wasmx-p2p/assembly/types";
 import { LogEntry, LogEntryAggregate } from "./types";

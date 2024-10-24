@@ -1245,6 +1245,11 @@ export function ifForceProposalReset(
     // we can allow receiving block proposals from nodes with a smaller term/round id if we determine we have not finalized blocks for more than 50 rounds.
     if (termId > entry.termId) {
         forceReset = (termId - state.last_round) > 50;
+        // we neet to reset proposer queue
+        state.proposerQueueTermId = entry.termId;
+        state.proposerIndex =  entry.proposerQueue.proposerIndex;
+        state.proposerQueue = entry.proposerQueue.proposerQueue;
+        setCurrentState(state);
     } else {
         // termId < entry.termId
         // check last termId with a successful block - we may be  out of sync

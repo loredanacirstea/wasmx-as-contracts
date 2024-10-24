@@ -4,6 +4,7 @@ import * as stakingtypes from "wasmx-stake/assembly/types";
 import { Base64String, Bech32String, Coin } from "wasmx-env/assembly/types";
 import { NodeInfo } from "wasmx-p2p/assembly/types";
 import { ValidatorQueueEntry } from "wasmx-tendermint/assembly/types_blockchain";
+import { GetProposerResponse } from "./types_blockchain";
 
 // @ts-ignore
 @serializable
@@ -76,11 +77,14 @@ export class AppendEntry {
     termId: i64;
     // so follower can redirect clients
     proposerId: i32;
+    // we set this for the current state, to only be used in force proposal reset
+    proposerQueue: GetProposerResponse
     // block
     entries: LogEntryAggregate[]
-    constructor(termId: i64, proposerId: i32, entries: LogEntryAggregate[]) {
+    constructor(termId: i64, proposerId: i32, proposerQueue: GetProposerResponse, entries: LogEntryAggregate[]) {
         this.termId = termId;
         this.proposerId = proposerId;
+        this.proposerQueue = proposerQueue;
         this.entries = entries;
     }
 }

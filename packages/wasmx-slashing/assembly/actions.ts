@@ -105,8 +105,8 @@ export function BeginBlock(req: MsgRunHook): void {
         // continue if validator voted
         if (vote.block_id_flag == typestnd.BlockIDFlag.Commit || vote.block_id_flag == typestnd.BlockIDFlag.Nil) {
             if (info.missed_blocks_counter > 0) {
-            info.missed_blocks_counter = info.missed_blocks_counter - 1;
-            setValidatorSigningInfo(consaddr, info);
+                info.missed_blocks_counter = info.missed_blocks_counter - 1;
+                setValidatorSigningInfo(consaddr, info);
             }
             continue;
         }

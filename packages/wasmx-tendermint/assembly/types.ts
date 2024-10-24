@@ -3,6 +3,7 @@ import * as wblocks from "wasmx-blocks/assembly/types";
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import { Base64String, Bech32String, Coin } from "wasmx-env/assembly/types";
 import { NodeInfo } from "wasmx-p2p/assembly/types";
+import { GetProposerResponse } from "./types_blockchain";
 
 export const MODULE_NAME = "tendermint"
 
@@ -77,12 +78,15 @@ export class AppendEntry {
     termId: i32;
     // so follower can redirect clients
     proposerId: i32;
+    // we set this for the current state, to only be used in force proposal reset
+    proposerQueue: GetProposerResponse
     // block
     entries: LogEntryAggregate[]
     nodeIps: Array<NodeInfo>;
-    constructor(termId: i32, proposerId: i32, entries: LogEntryAggregate[], nodeIps: Array<NodeInfo>) {
+    constructor(termId: i32, proposerId: i32, proposerQueue: GetProposerResponse, entries: LogEntryAggregate[], nodeIps: Array<NodeInfo>) {
         this.termId = termId;
         this.proposerId = proposerId;
+        this.proposerQueue = proposerQueue;
         this.entries = entries;
         this.nodeIps = nodeIps;
     }
