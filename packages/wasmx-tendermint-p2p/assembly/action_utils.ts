@@ -666,14 +666,18 @@ export function getCommitSigsFromPrecommitArray(blockHeight: i64): typestnd.Comm
     const sigs = new Array<typestnd.CommitSig>(precommitArr.length)
     for (let i = 0; i < precommitArr.length; i++) {
         const comm = precommitArr[i]
-        const validator = getValidator(comm.vote.validatorAddress);
-        const consKey = validator.consensus_pubkey
-        if (consKey == null) {
-            revert(`getCommitSigsFromPrecommitArray: validator missing consensus_pubkey: ${validator.operator_address}`)
-            return sigs;
+        if (comm.block_id_flag == typestnd.BlockIDFlag.Absent) {
+            sigs[i] = new typestnd.CommitSig(comm.block_id_flag, "", null, "");
+        } else {
+            const validator = getValidator(comm.vote.validatorAddress);
+            const consKey = validator.consensus_pubkey
+            if (consKey == null) {
+                revert(`getCommitSigsFromPrecommitArray: validator missing consensus_pubkey: ${validator.operator_address}`)
+                return sigs;
+            }
+            const addrhex = wasmxw.ed25519PubToHex(consKey.getKey().key)
+            sigs[i] = new typestnd.CommitSig(comm.block_id_flag, addrhex, comm.vote.timestamp, comm.signature);
         }
-        const addrhex = wasmxw.ed25519PubToHex(consKey.getKey().key)
-        sigs[i] = new typestnd.CommitSig(comm.block_id_flag, addrhex, comm.vote.timestamp, comm.signature);
     }
     return sigs;
 }
