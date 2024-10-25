@@ -276,7 +276,7 @@ export function startBlockFinalizationFollowerInternal(entryobj: LogEntryAggrega
     return startBlockFinalizationInternal(entryobj, false);
 }
 
-function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: boolean): boolean {
+function startBlockFinalizationInternal(entryobj: LogEntryAggregate, isretry: boolean): boolean {
     const processReqStr = String.UTF8.decode(decodeBase64(entryobj.data.data).buffer);
     const processReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(processReqStr);
     const processReq = processReqWithMeta.request
@@ -323,16 +323,32 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     const oeran = processReqWithMeta.optimistic_execution && processReq.proposer_address == getSelfNodeInfo().address
     if (!oeran) {
         const resbegin = consensuswrap.BeginBlock(finalizeReq);
-        if (resbegin.error.length > 0) {
-            revert(`${resbegin.error}`);
+        if (resbegin.error.length > 0 && !isretry) {
+            // ERR invalid height: 3232; expected: 3233
+            const mismatchErr = `expected: ${(finalizeReq.height + 1).toString()}`
+            LoggerInfo(`begin block error`, ["error", resbegin.error])
+            if (resbegin.error.includes("invalid height") && resbegin.error.includes(mismatchErr)) {
+                const rollbackHeight = finalizeReq.height - 1;
+                LoggerInfo(`trying to rollback`, ["height", rollbackHeight.toString()])
+                const err = consensuswrap.RollbackToVersion(rollbackHeight);
+                if (err.length > 0) {
+                    revert(`consensus break: ${resbegin.error}; ${err}`);
+                    return false;
+                }
+                // repeat FinalizeBlock
+                return startBlockFinalizationInternal(entryobj, true);
+            } else {
+                revert(resbegin.error)
+                return false;
+            }
         }
     }
 
     let respWrap = consensuswrap.FinalizeBlock(new typestnd.WrapRequestFinalizeBlock(finalizeReq, processReqWithMeta.metainfo));
-    if (respWrap.error.length > 0 && !retry) {
+    if (respWrap.error.length > 0 && !isretry) {
         // ERR invalid height: 3232; expected: 3233
         const mismatchErr = `expected: ${(finalizeReq.height + 1).toString()}`
-        LoggerError(`finalize block error`, ["error", respWrap.error])
+        LoggerInfo(`finalize block error`, ["error", respWrap.error])
         if (respWrap.error.includes("invalid height") && respWrap.error.includes(mismatchErr)) {
             const rollbackHeight = finalizeReq.height - 1;
             LoggerInfo(`trying to rollback`, ["height", rollbackHeight.toString()])
@@ -344,7 +360,6 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
             // repeat FinalizeBlock
             return startBlockFinalizationInternal(entryobj, true);
         } else {
-            LoggerInfo("not rolling back", ["noterror_debug", mismatchErr])
             revert(respWrap.error)
             return false;
         }
