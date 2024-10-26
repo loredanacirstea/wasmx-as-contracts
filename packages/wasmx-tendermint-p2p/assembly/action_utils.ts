@@ -253,8 +253,10 @@ export function calculateVote(votePerNode: Array<ValidatorProposalVote>, hash: s
             count += validators[i].tokens;
         }
     }
+
+    // cometbft header verification has strict comparison
     // @ts-ignore
-    const committing = count >= threshold;
+    const committing = count > threshold;
     LoggerDebug("calculate vote", ["total_stake", totalStake.toString(), "threshold", threshold.toString(), "value", count.toString(), "passed", committing.toString(), "hash", hash])
     return committing;
 }

@@ -993,8 +993,10 @@ export function readyToCommit(): i64 {
             count += validators[i].tokens;
         }
     }
+
+    // cometbft header verification has strict comparison
     // @ts-ignore
-    const committing = count >= threshold;
+    const committing = count > threshold;
     LoggerDebug("trying to commit next block...", ["height", nextCommit.toString(), "nodes_count", len.toString(), "voting power", count.toString(), "threshold voting power", threshold.toString(), "committing", committing.toString()])
 
     if(committing) return nextCommit;
