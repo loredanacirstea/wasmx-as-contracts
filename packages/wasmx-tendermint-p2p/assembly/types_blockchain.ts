@@ -1,8 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
-import {HexString, Base64String, Bech32String} from 'wasmx-env/assembly/types';
-import { Version, BlockID, CommitSig, BlockIDFlag } from 'wasmx-consensus/assembly/types_tendermint';
-import { BigInt } from "wasmx-env/assembly/bn";
+import { Base64String, Bech32String} from 'wasmx-env/assembly/types';
+import { BlockIDFlag } from 'wasmx-consensus/assembly/types_tendermint';
 import * as staking from "wasmx-stake/assembly/types";
 import { ValidatorQueueEntry } from "wasmx-tendermint/assembly/types_blockchain";
 

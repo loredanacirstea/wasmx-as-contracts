@@ -42,6 +42,7 @@ import * as roles from "wasmx-env/assembly/roles";
 import * as mcwrap from 'wasmx-consensus/assembly/multichain_wrap';
 import { decodeTx } from "wasmx-tendermint/assembly/action_utils";
 import { getLeaderChain } from "wasmx-consensus/assembly/multichain_utils";
+import { cleanAbsentCommits, getActiveValidatorInfo, getSortedBlockCommits, sortTendermintValidators } from "wasmx-consensus-utils/assembly/utils";
 
 // TODO add delta to timeouts each failed round
 // and reset after a successful round
@@ -832,7 +833,16 @@ export function getLastBlockCommitExternal(): void {
     let state = getCurrentState()
     // we propose a new block or overwrite any other past proposal
     // we take the last block signed precommits from the current state
-    const lastBlockCommit = getLastBlockCommit(state);
+    let lastBlockCommit = getLastBlockCommit(state);
+    if (lastBlockCommit.signatures.length > 0) {
+        const validators = getAllValidators();
+        // get only active validators & sort by power and address
+        const validatorInfos = sortTendermintValidators(getActiveValidatorInfo(validators))
+        // sort active validators by power & address
+        lastBlockCommit = getSortedBlockCommits(lastBlockCommit, validatorInfos)
+        lastBlockCommit = cleanAbsentCommits(lastBlockCommit)
+    }
+
     const resp = String.UTF8.encode(JSON.stringify<typestnd.BlockCommit>(lastBlockCommit))
     wasmx.setFinishData(resp)
 }

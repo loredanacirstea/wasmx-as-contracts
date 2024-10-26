@@ -7,9 +7,8 @@ import { getEmptyPrecommitArray, getEmptyValidatorProposalVoteArray, GetProposer
 import { parseInt32 } from "wasmx-utils/assembly/utils";
 import { NodeInfo } from "wasmx-p2p/assembly/types";
 import { LogEntry, LogEntryAggregate } from "./types";
-import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
+import { LoggerDebug, LoggerInfo, revert, LoggerDebugExtended } from "./utils";
 import * as cfg from "./config";
-import { Bech32String } from "wasmx-env/assembly/types";
 import { CurrentState } from "wasmx-tendermint/assembly/types_blockchain";
 
 export function getCurrentState(): CurrentState {

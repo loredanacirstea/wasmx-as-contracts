@@ -16,7 +16,7 @@ export const MaxKeyLength = 131071
 // 2G - 1
 export const MaxValueLength = 2147483647
 
-// we sort validators by power and secondary, by address (lexicographically)
+// validators will be sorted by power (DESC) and secondary, by address (lexicographically ASC)
 export function getValidatorsHash(validators: staking.Validator[]): string {
     const data = getActiveValidatorInfo(validators)
     return consw.ValidatorsHash(data);
@@ -113,10 +113,11 @@ export function cleanAbsentCommits(lastBlockCommit: typestnd.BlockCommit): types
     return lastBlockCommit;
 }
 
+// sort validators after voting power (DESC) and lexicographically (ASC)
 export function sortTendermintValidators(validators: typestnd.TendermintValidator[]): typestnd.TendermintValidator[] {
     return validators.sort((a: typestnd.TendermintValidator, b: typestnd.TendermintValidator): i32 => {
         if (a.voting_power != b.voting_power) {
-            return a.voting_power < b.voting_power ? -1 : a.voting_power > b.voting_power ? 1 : 0;
+            return a.voting_power < b.voting_power ? 1 : -1;
         }
         return sortHexAddr(a.hex_address, b.hex_address);
     });

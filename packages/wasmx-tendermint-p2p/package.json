@@ -31,8 +31,6 @@
     "wasmx-env": "file:../wasmx-env",
     "wasmx-consensus": "file:../wasmx-consensus",
     "wasmx-consensus-utils": "file:../wasmx-consensus-utils",
-    "wasmx-multichain-registry": "file:../wasmx-multichain-registry",
-    "wasmx-multichain-registry-local": "file:../wasmx-multichain-registry-local",
     "wasmx-p2p": "file:../wasmx-p2p",
     "wasmx-utils": "file:../wasmx-utils",
     "wasmx-raft": "file:../wasmx-raft",
