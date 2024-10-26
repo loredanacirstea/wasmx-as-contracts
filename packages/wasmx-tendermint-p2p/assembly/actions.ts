@@ -1075,6 +1075,11 @@ export function receiveBlockProposal(
 
     const state = getCurrentState()
 
+    if (getTermId() > entry.termId) {
+        // we need to rollback proposer queue and termId
+        rollbackTermIdWithStateChange(entry.termId, entry.proposerQueue.proposerIndex, entry.proposerQueue.proposerQueue);
+    }
+
     // now we check the new block
     for (let i = 0; i < entry.entries.length; i++) {
         const block = entry.entries[i];
@@ -1107,12 +1112,13 @@ export function processAppendEntry(entry: LogEntryAggregate): boolean {
         LoggerError("new block rejected", ["height", processReq.height.toString(), "error", errorStr, "header", entry.data.header])
         return false;
     }
-
+    const termId = getTermId();
     LoggerInfo("received new block proposal", [
         "height", processReq.height.toString(),
         "proposerId", entry.leaderId.toString(),
         "termId", entry.termId.toString(),
         "hash", processReq.hash,
+        "our_termId", termId.toString(),
     ]);
 
     // TODO check all the validator signatures on the previous block, for correctness
@@ -1132,6 +1138,7 @@ export function processAppendEntry(entry: LogEntryAggregate): boolean {
     const state = getCurrentState()
     state.nextHash = processReq.hash
     setCurrentState(state);
+
     return true;
 }
 
@@ -1231,7 +1238,9 @@ export function ifSenderIsProposer(
     let entry: AppendEntry = JSON.parse<AppendEntry>(entryStr);
     const proposerIndex = getCurrentProposer();
     const termId = getTermId();
-    return entry.proposerId == proposerIndex && termId == entry.termId;
+    const accept = entry.proposerId == proposerIndex && termId == entry.termId;
+    LoggerInfo("try accept block proposal", ["termId", termId.toString(), "entry.termId", entry.termId.toString(), "entry.proposerId", entry.proposerId.toString(), "expected_proposer", proposerIndex.toString(), "accept", accept.toString()])
+    return accept
 }
 
 export function ifForceProposalReset(
@@ -1252,19 +1261,16 @@ export function ifForceProposalReset(
 
     const state = getCurrentState()
     let forceReset = false;
-    // we can allow receiving block proposals from nodes with a smaller term/round id if we determine we have not finalized blocks for more than 50 rounds.
+    // we can allow receiving block proposals from nodes with a smaller term/round id if we determine we have not finalized blocks for more than 5 rounds.
     if (termId > entry.termId) {
-        forceReset = (termId - state.last_round) > 50;
-        // we neet to reset proposer queue
-        state.proposerQueueTermId = entry.termId;
-        state.proposerIndex =  entry.proposerQueue.proposerIndex;
-        state.proposerQueue = entry.proposerQueue.proposerQueue;
-        setCurrentState(state);
+        forceReset = (termId - state.last_round) > 2 || state.last_round == 0;
+        rollbackTermIdWithStateChange(entry.termId, entry.proposerQueue.proposerIndex, entry.proposerQueue.proposerQueue)
     } else {
         // termId < entry.termId
         // check last termId with a successful block - we may be  out of sync
         // we consider being out of sync if we have 2 unsuccessful rounds
-        forceReset = (termId - state.last_round) > 2
+        // forceReset = (termId - state.last_round) > 2
+        forceReset = true // we don't wait, just accept
     }
     LoggerInfo("try block proposal reset", ["termId", termId.toString(), "entry.termId", entry.termId.toString(), "last_round", state.last_round.toString(), "reset", forceReset.toString()])
     if (forceReset) {
@@ -1272,6 +1278,17 @@ export function ifForceProposalReset(
         return true
     }
     return false
+}
+
+function rollbackTermIdWithStateChange(termId: i64, proposerIndex: i32, proposerQueue: ValidatorQueueEntry[]): void {
+    LoggerInfo("rolling back term_id", ["previous", getTermId().toString(), "new", termId.toString()])
+    const state = getCurrentState()
+    // we neet to rollback proposer queue
+    state.proposerQueueTermId = termId;
+    state.proposerIndex =  proposerIndex;
+    state.proposerQueue = proposerQueue;
+    setCurrentState(state);
+    setTermId(termId);
 }
 
 export function ifNodeIsValidator(
