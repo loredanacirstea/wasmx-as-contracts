@@ -1686,7 +1686,7 @@ function getAllValidators(): staking.Validator[] {
         revert("could not get validators");
     }
     if (resp.data === "") return [];
-    LoggerDebug("GetAllValidators", ["data", resp.data])
+    LoggerDebugExtended("GetAllValidators", ["data", resp.data])
     const result = JSON.parse<staking.QueryValidatorsResponse>(resp.data);
     return result.validators;
 }

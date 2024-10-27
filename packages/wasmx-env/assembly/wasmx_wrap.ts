@@ -178,7 +178,7 @@ export function grpcRequest(ip: string, contract: Uint8Array, data: string): Grp
 }
 
 export function call(req: CallRequest, moduleName: string = ""): CallResponse {
-    LoggerDebug(`${moduleName}:wasmx_env`, "call", ["to", req.to, "calldata", req.calldata])
+    LoggerDebugExtended(`${moduleName}:wasmx_env`, "call", ["to", req.to, "calldata", req.calldata])
     req.calldata = encodeBase64(Uint8Array.wrap(String.UTF8.encode(req.calldata)))
     const requestStr = JSON.stringify<CallRequest>(req);
     const responsebz = wasmx.call(String.UTF8.encode(requestStr));
@@ -186,7 +186,7 @@ export function call(req: CallRequest, moduleName: string = ""): CallResponse {
 }
 
 export function callEvm(req: CallRequest, moduleName: string = ""): CallResponse {
-    LoggerDebug(`${moduleName}:wasmx_env`, "call", ["to", req.to, "calldata", req.calldata])
+    LoggerDebugExtended(`${moduleName}:wasmx_env`, "call", ["to", req.to, "calldata", req.calldata])
     const requestStr = JSON.stringify<CallRequest>(req);
     const responsebz = wasmx.call(String.UTF8.encode(requestStr));
     return JSON.parse<CallResponse>(String.UTF8.decode(responsebz));
@@ -195,7 +195,7 @@ export function callEvm(req: CallRequest, moduleName: string = ""): CallResponse
 export function createAccount(req: CreateAccountRequest, moduleName: string = ""): Bech32String {
     req.msg = encodeBase64(Uint8Array.wrap(String.UTF8.encode(req.msg)))
     const requestStr = JSON.stringify<CreateAccountRequest>(req);
-    LoggerDebug(`${moduleName}:wasmx_env`, "createAccount", ["request", requestStr])
+    LoggerDebugExtended(`${moduleName}:wasmx_env`, "createAccount", ["request", requestStr])
     const responsebz = wasmx.createAccount(String.UTF8.encode(requestStr));
     const resp = JSON.parse<CreateAccountResponse>(String.UTF8.decode(responsebz));
     return resp.address
@@ -204,7 +204,7 @@ export function createAccount(req: CreateAccountRequest, moduleName: string = ""
 export function create2Account(req: Create2AccountRequest, moduleName: string = ""): Bech32String {
     req.msg = encodeBase64(Uint8Array.wrap(String.UTF8.encode(req.msg)))
     const requestStr = JSON.stringify<Create2AccountRequest>(req);
-    LoggerDebug(`${moduleName}:wasmx_env`, "create2Account", ["request", requestStr])
+    LoggerDebugExtended(`${moduleName}:wasmx_env`, "create2Account", ["request", requestStr])
     const responsebz = wasmx.create2Account(String.UTF8.encode(requestStr));
     const resp = JSON.parse<Create2AccountResponse>(String.UTF8.decode(responsebz));
     return resp.address
@@ -301,9 +301,9 @@ export function getRoleByAddress(value: Bech32String): string {
 }
 
 export function executeCosmosMsg(msg: string, moduleName: string = ""): CallResponse {
-    LoggerDebug(`${moduleName}:wasmx_env`, "executeCosmosMsg", ["msg", msg])
+    LoggerDebugExtended(`${moduleName}:wasmx_env`, "executeCosmosMsg", ["msg", msg])
     const responsebz = wasmx.executeCosmosMsg(String.UTF8.encode(msg));
-    LoggerDebug(`${moduleName}:wasmx_env`, "executeCosmosMsg", ["response", String.UTF8.decode(responsebz)])
+    LoggerDebugExtended(`${moduleName}:wasmx_env`, "executeCosmosMsg", ["response", String.UTF8.decode(responsebz)])
     return JSON.parse<CallResponse>(String.UTF8.decode(responsebz));
 }
 

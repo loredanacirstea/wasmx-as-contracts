@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
-import { LoggerDebug, LoggerError, revert } from "./utils";
+import { LoggerDebug, LoggerDebugExtended, LoggerError, revert } from "./utils";
 import {
   Base64String,
   Bech32String,
@@ -214,7 +214,7 @@ export function getAllValidators(): staking.Validator[] {
         revert("could not get validators");
     }
     if (resp.data === "") return [];
-    LoggerDebug("GetAllValidators", ["data", resp.data])
+    LoggerDebugExtended("GetAllValidators", ["data", resp.data])
     const result = JSON.parse<staking.QueryValidatorsResponse>(resp.data);
     return result.validators;
 }
