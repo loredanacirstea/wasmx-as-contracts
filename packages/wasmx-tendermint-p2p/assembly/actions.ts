@@ -21,7 +21,7 @@ import {
     EventObject,
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
-import { parseInt32, stringToBase64, base64ToString, hex64ToBase64 } from "wasmx-utils/assembly/utils";
+import { parseInt32, stringToBase64, base64ToString, hex64ToBase64, base64ToHex } from "wasmx-utils/assembly/utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { StateSyncRequest, StateSyncResponse } from "./sync_types";
 import { getCurrentNodeId, getCurrentState, getValidatorNodesInfo, setValidatorNodesInfo, setTermId, appendLogEntry, setLogEntryAggregate, setCurrentState, setLastLogIndex, getLogEntryObj, addToPrevoteArray, addToPrecommitArray, setPrevoteArrayMap, getPrevoteArrayMap, getPrecommitArrayMap, setPrecommitArrayMap, resetPrecommitArray } from "./storage";
@@ -1075,11 +1075,6 @@ export function receiveBlockProposal(
 
     const state = getCurrentState()
 
-    if (getTermId() > entry.termId) {
-        // we need to rollback proposer queue and termId
-        rollbackTermIdWithStateChange(entry.termId, entry.proposerQueue.proposerIndex, entry.proposerQueue.proposerQueue);
-    }
-
     // now we check the new block
     for (let i = 0; i < entry.entries.length; i++) {
         const block = entry.entries[i];
@@ -1094,6 +1089,12 @@ export function receiveBlockProposal(
             storeNewBlockOutOfOrder(block.termId, block, state.nextHeight)
             continue;
         }
+
+        if (getTermId() > block.termId) {
+            // we need to rollback proposer queue and termId
+            rollbackTermIdWithStateChange(block.termId, entry.proposerQueue.proposerIndex, entry.proposerQueue.proposerQueue);
+        }
+
         // we only receive block proposals if we are synced
         // if we are not synced, we use Commit messages
         processAppendEntry(block);
@@ -1117,7 +1118,7 @@ export function processAppendEntry(entry: LogEntryAggregate): boolean {
         "height", processReq.height.toString(),
         "proposerId", entry.leaderId.toString(),
         "termId", entry.termId.toString(),
-        "hash", processReq.hash,
+        "hash", base64ToHex(processReq.hash),
         "our_termId", termId.toString(),
     ]);
 
@@ -1238,9 +1239,7 @@ export function ifSenderIsProposer(
     let entry: AppendEntry = JSON.parse<AppendEntry>(entryStr);
     const proposerIndex = getCurrentProposer();
     const termId = getTermId();
-    const accept = entry.proposerId == proposerIndex && termId == entry.termId;
-    LoggerInfo("try accept block proposal", ["termId", termId.toString(), "entry.termId", entry.termId.toString(), "entry.proposerId", entry.proposerId.toString(), "expected_proposer", proposerIndex.toString(), "accept", accept.toString()])
-    return accept
+    return entry.proposerId == proposerIndex && termId == entry.termId;
 }
 
 export function ifForceProposalReset(
@@ -1261,6 +1260,17 @@ export function ifForceProposalReset(
 
     const state = getCurrentState()
     let forceReset = false;
+    // reject heights we do not expect (we have commit messages for this)
+    if (entry.entries.length == 0 || entry.entries[0].index != state.nextHeight) {
+        return false;
+    }
+    // if we have a valid block proposal, we reject this
+    // validValue is set after prevoteAcceptThreshold and reset at commit
+    // nextHash is set when we have a block proposal for this round
+    if (state.validValue > 0 && state.nextHash != "") {
+        LoggerInfo("block proposal rejected", ["validValue", state.validValue.toString(), "nextHash", state.nextHash, "nextHeight", state.nextHeight.toString(), "entry.termId", entry.termId.toString(), "entry.height", entry.entries[0].index.toString()])
+        return false;
+    }
     // we can allow receiving block proposals from nodes with a smaller term/round id if we determine we have not finalized blocks for more than 5 rounds.
     if (termId > entry.termId) {
         forceReset = (termId - state.last_round) > 2 || state.last_round == 0;
@@ -1272,10 +1282,12 @@ export function ifForceProposalReset(
         // forceReset = (termId - state.last_round) > 2
         forceReset = true // we don't wait, just accept
     }
-    LoggerInfo("try block proposal reset", ["termId", termId.toString(), "entry.termId", entry.termId.toString(), "last_round", state.last_round.toString(), "reset", forceReset.toString()])
     if (forceReset) {
+        LoggerInfo("block proposal reset", ["termId", termId.toString(), "entry.termId", entry.termId.toString(), "last_round", state.last_round.toString()])
         setTermId(entry.termId);
         return true
+    } else {
+        LoggerInfo("block proposal rejected", ["termId", termId.toString(), "entry.termId", entry.termId.toString(), "last_round", state.last_round.toString(), "reset", forceReset.toString()])
     }
     return false
 }

@@ -767,7 +767,7 @@ export function processAppendEntry(entry: LogEntryAggregate): void {
         "height", processReq.height.toString(),
         "proposerId", entry.leaderId.toString(),
         "termId", entry.termId.toString(),
-        "hash", processReq.hash,
+        "hash", base64ToHex(processReq.hash),
     ]);
     const processResp = consensuswrap.ProcessProposal(processReq);
     if (processResp.status === typestnd.ProposalStatus.REJECT) {
@@ -1143,7 +1143,7 @@ export function buildBlockProposal(txs: string[], optimisticExecution: boolean, 
         prepareReq.proposer_address,
     );
     const hash = getHeaderHash(header);
-    LoggerInfo("start block proposal", ["height", height.toString(), "hash", hash, "termId", termId.toString(), "optimistic_execution", optimisticExecution.toString()])
+    LoggerInfo("start block proposal", ["height", height.toString(), "hash", base64ToHex(hash), "termId", termId.toString(), "optimistic_execution", optimisticExecution.toString()])
     const processReq = new typestnd.RequestProcessProposal(
         prepareResp.txs,
         lastCommit,

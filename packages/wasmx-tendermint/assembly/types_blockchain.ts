@@ -52,7 +52,7 @@ export class CurrentState {
     validator_pubkey: Base64String = ""
 
     nextHeight: i64 = 0
-    nextHash: Base64String = ""
+    nextHash: Base64String = "" // "" or hash
 
     lockedValue: i64 = 0
     lockedRound: i64 = 0

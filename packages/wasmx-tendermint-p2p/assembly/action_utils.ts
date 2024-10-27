@@ -396,6 +396,13 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, isretry: bo
     // for inclusion in BlockCommit in next block
     state.last_round = entryobj.termId;
 
+    // sometimes we dont get to reset these states from the diagram
+    state.validValue = 0;
+    state.validRound = 0;
+    state.nextHash = "";
+    state.lockedValue = 0;
+    state.lockedRound = 0;
+
     // TODO get precommits for block finalizeReq.height - 1 ??!
     // we move precommit votes for this block to current state, so it is included in the next block proposal
     state.last_block_signatures = getCommitSigsFromPrecommitArray(finalizeReq.height);

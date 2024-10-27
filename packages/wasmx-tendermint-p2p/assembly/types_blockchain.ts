@@ -84,7 +84,7 @@ export class ValidatorProposalVote {
     validatorAddress: Bech32String
     validatorIndex: i32
     index: i64
-    hash: Base64String
+    hash: Base64String // can be hash or "nil"
     timestamp: Date
     chainId: string
     constructor(type: SignedMsgType, termId: i64, validatorAddress: Bech32String, validatorIndex: i32, index: i64, hash: Base64String, timestamp: Date, chainId: string) {
