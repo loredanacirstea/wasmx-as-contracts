@@ -8,6 +8,7 @@ export const machine = createMachine({
     votedFor: "0",
     nextIndex: "[]",
     currentTerm: "0",
+    batchTimeout: 1000,
     blockTimeout: "roundTimeout",
     max_tx_bytes: "65536",
     roundTimeout: 4000,
@@ -15,9 +16,8 @@ export const machine = createMachine({
     max_block_gas: "20000000",
     timeoutPropose: 3000,
     timeoutPrecommit: 3000,
-    batchTimeout: 1000,
   },
-  id: "OnDemand-Levels-4",
+  id: "OnDemand-Levels-5",
   initial: "uninitialized",
   states: {
     uninitialized: {
@@ -157,7 +157,7 @@ export const machine = createMachine({
               },
             },
             Validator: {
-              initial: "waiting",
+              initial: "active",
               on: {
                 receiveBlockProposal: {
                   actions: {
@@ -168,7 +168,7 @@ export const machine = createMachine({
                   },
                 },
                 stop: {
-                  target: "#OnDemand-Levels-4.stopped",
+                  target: "#OnDemand-Levels-5.stopped",
                 },
                 receiveUpdateNodeResponse: {
                   actions: {
@@ -219,87 +219,6 @@ export const machine = createMachine({
                 },
               },
               states: {
-                waiting: {
-                  on: {
-                    newTransaction: [
-                      {
-                        guard: {
-                          type: "ifOldTransaction",
-                        },
-                      },
-                      {
-                        target: "waiting",
-                        actions: [
-                          {
-                            type: "addToMempool",
-                          },
-                          {
-                            type: "sendNewTransactionResponse",
-                          },
-                          {
-                            type: "forwardMsgToChat",
-                            params: {
-                              protocolId: "mempool",
-                            },
-                          },
-                        ],
-                        guard: {
-                          type: "ifMempoolEmpty",
-                        },
-                      },
-                      {
-                        target: "active",
-                        actions: [
-                          {
-                            type: "addToMempool",
-                          },
-                          {
-                            type: "sendNewTransactionResponse",
-                          },
-                          {
-                            type: "forwardMsgToChat",
-                            params: {
-                              protocolId: "mempool",
-                            },
-                          },
-                          {
-                            type: "cancelActiveIntervals",
-                            params: {
-                              after: "batchTimeout",
-                            },
-                          },
-                        ],
-                        guard: {
-                          type: "ifMempoolFull",
-                        },
-                      },
-                      {
-                        actions: [
-                          {
-                            type: "addToMempool",
-                          },
-                          {
-                            type: "sendNewTransactionResponse",
-                          },
-                          {
-                            type: "forwardMsgToChat",
-                            params: {
-                              protocolId: "mempool",
-                            },
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                  after: {
-                    batchTimeout: {
-                      target: "active",
-                      guard: {
-                        type: "ifMempoolNotEmpty",
-                      },
-                    },
-                  },
-                },
                 active: {
                   on: {
                     receiveBlockProposal: [
@@ -360,7 +279,7 @@ export const machine = createMachine({
                     },
                   },
                   always: {
-                    target: "#OnDemand-Levels-4.initialized.started.Proposer",
+                    target: "#OnDemand-Levels-5.initialized.started.Proposer",
                     guard: {
                       type: "isNextProposer",
                     },
@@ -487,8 +406,108 @@ export const machine = createMachine({
                   },
                   after: {
                     roundTimeout: {
-                      target: "waiting",
+                      target: "#OnDemand-Levels-5.initialized.started.waiting",
                     },
+                  },
+                },
+              },
+            },
+            waiting: {
+              on: {
+                newTransaction: [
+                  {
+                    guard: {
+                      type: "ifOldTransaction",
+                    },
+                  },
+                  {
+                    target: "waiting",
+                    actions: [
+                      {
+                        type: "addToMempool",
+                      },
+                      {
+                        type: "sendNewTransactionResponse",
+                      },
+                      {
+                        type: "forwardMsgToChat",
+                        params: {
+                          protocolId: "mempool",
+                        },
+                      },
+                    ],
+                    guard: {
+                      type: "ifMempoolEmpty",
+                    },
+                  },
+                  {
+                    target:
+                      "#OnDemand-Levels-5.initialized.started.Validator.active",
+                    actions: [
+                      {
+                        type: "addToMempool",
+                      },
+                      {
+                        type: "sendNewTransactionResponse",
+                      },
+                      {
+                        type: "forwardMsgToChat",
+                        params: {
+                          protocolId: "mempool",
+                        },
+                      },
+                      {
+                        type: "cancelActiveIntervals",
+                        params: {
+                          after: "batchTimeout",
+                        },
+                      },
+                    ],
+                    guard: {
+                      type: "ifMempoolFull",
+                    },
+                  },
+                  {
+                    actions: [
+                      {
+                        type: "addToMempool",
+                      },
+                      {
+                        type: "sendNewTransactionResponse",
+                      },
+                      {
+                        type: "forwardMsgToChat",
+                        params: {
+                          protocolId: "mempool",
+                        },
+                      },
+                    ],
+                  },
+                ],
+                start: {
+                  target: "Validator",
+                  actions: [
+                    {
+                      type: "connectPeers",
+                    },
+                    {
+                      type: "connectRooms",
+                    },
+                    {
+                      type: "registerValidatorWithNetwork",
+                    },
+                    {
+                      type: "requestBlockSync",
+                    },
+                  ],
+                },
+              },
+              after: {
+                batchTimeout: {
+                  target:
+                    "#OnDemand-Levels-5.initialized.started.Validator.active",
+                  guard: {
+                    type: "ifMempoolNotEmpty",
                   },
                 },
               },
@@ -514,7 +533,7 @@ export const machine = createMachine({
                   ],
                 },
                 stop: {
-                  target: "#OnDemand-Levels-4.stopped",
+                  target: "#OnDemand-Levels-5.stopped",
                 },
                 receiveUpdateNodeRequest: {
                   actions: {
@@ -526,7 +545,7 @@ export const machine = createMachine({
                 active: {
                   always: {
                     target:
-                      "#OnDemand-Levels-4.initialized.started.Validator.precommit",
+                      "#OnDemand-Levels-5.initialized.started.Validator.precommit",
                   },
                   entry: [
                     {
@@ -549,7 +568,7 @@ export const machine = createMachine({
     stopped: {
       on: {
         restart: {
-          target: "#OnDemand-Levels-4.initialized.unstarted",
+          target: "#OnDemand-Levels-5.initialized.unstarted",
         },
       },
     },
