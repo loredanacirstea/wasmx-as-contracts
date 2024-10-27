@@ -1265,10 +1265,10 @@ export function ifForceProposalReset(
         return false;
     }
     // if we have a valid block proposal, we reject this
-    // validValue is set after prevoteAcceptThreshold and reset at commit
+    // lockedValue is set after prevoteAcceptThreshold and reset at commit/new round
     // nextHash is set when we have a block proposal for this round
-    if (state.validValue > 0 && state.nextHash != "") {
-        LoggerInfo("block proposal rejected", ["validValue", state.validValue.toString(), "nextHash", state.nextHash, "nextHeight", state.nextHeight.toString(), "entry.termId", entry.termId.toString(), "entry.height", entry.entries[0].index.toString()])
+    if (state.lockedValue > 0 && state.nextHash != "") {
+        LoggerInfo("block proposal rejected", ["lockedValue", state.lockedValue.toString(), "nextHash", base64ToHex(state.nextHash), "nextHeight", state.nextHeight.toString(), "entry.termId", entry.termId.toString(), "entry.height", entry.entries[0].index.toString()])
         return false;
     }
     // we can allow receiving block proposals from nodes with a smaller term/round id if we determine we have not finalized blocks for more than 5 rounds.
@@ -1662,7 +1662,8 @@ export function resetPrevotes(
 ): void {
     const validators = getAllValidatorInfos();
     const count = validators.length;
-    const nextIndex = getCurrentState().nextHeight;
+    const state = getCurrentState();
+    const nextIndex = state.nextHeight;
     const termId = getTermId()
 
     const map = getPrevoteArrayMap()
@@ -1683,6 +1684,12 @@ export function resetPrevotes(
         map.map.set(nextIndex, emptyarr)
     }
     setPrevoteArrayMap(map);
+
+    // TODO this should be in the state diagram...
+    // we reset locked value; locked means it is in voting process
+    state.lockedRound = 0;
+    state.lockedValue = 0;
+    setCurrentState(state);
 }
 
 export function resetPrecommits(

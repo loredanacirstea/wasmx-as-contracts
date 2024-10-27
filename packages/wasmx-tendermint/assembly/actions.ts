@@ -1213,6 +1213,7 @@ export function verifyBlockProposal(data: wblocks.BlockEntry, processReq: typest
     // header.next_validators_hash
     // header.validators_hash
     // header.evidence_hash
+    // TODO validate commit format
     return "";
 }
 
