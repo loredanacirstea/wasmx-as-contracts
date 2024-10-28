@@ -17,7 +17,7 @@ import * as tnd from "wasmx-tendermint/assembly/actions";
 import { callContract, callHookContract, callHookNonCContract, getMempool, setMempool, updateConsensusParams, updateValidators } from "wasmx-tendermint/assembly/actions";
 import * as cfg from "./config";
 import { AppendEntry, CosmosmodGenesisState, IsNodeValidator, LogEntryAggregate } from "./types";
-import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
+import { LoggerDebug, LoggerDebugExtended, LoggerError, LoggerInfo, revert } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { getCurrentNodeId, getCurrentState, getLogEntryObj, getPrecommitArray, getPrevoteArray, getTermId, getValidatorNodesInfo, removeLogEntry, setCurrentState, setTermId, setValidatorNodesInfo } from "./storage";
 import { getAllValidators, signMessage } from "wasmx-raft/assembly/action_utils";
@@ -274,7 +274,7 @@ export function startBlockFinalizationFollower(index: i64): boolean {
 
 export function startBlockFinalizationFollowerInternal(entryobj: LogEntryAggregate): boolean {
     LoggerInfo("start block finalization", ["height", entryobj.index.toString(), "termId", entryobj.termId.toString(), "proposerId", entryobj.leaderId.toString()])
-    LoggerDebug("start block finalization", ["height", entryobj.index.toString(),  "data", JSON.stringify<wblocks.BlockEntry>(entryobj.data)])
+    LoggerDebugExtended("start block finalization", ["height", entryobj.index.toString(),  "data", JSON.stringify<wblocks.BlockEntry>(entryobj.data)])
     return startBlockFinalizationInternal(entryobj, false);
 }
 
@@ -711,7 +711,7 @@ export function getValidator(addr: Bech32String): staking.Validator {
     if (resp.success > 0 || resp.data === "") {
         revert(`could not get validator: ${addr}`);
     }
-    LoggerDebug("GetValidator", ["address", addr, "data", resp.data])
+    LoggerDebugExtended("GetValidator", ["address", addr, "data", resp.data])
     const result = JSON.parse<staking.QueryValidatorResponse>(resp.data);
     return result.validator;
 }
@@ -825,7 +825,7 @@ export function getAllValidatorInfos(): staking.ValidatorSimple[] {
         revert("could not get validators");
     }
     if (resp.data === "") return [];
-    LoggerDebug("GetAllValidatorInfos", ["data", resp.data])
+    LoggerDebugExtended("GetAllValidatorInfos", ["data", resp.data])
     const result = JSON.parse<staking.QueryValidatorInfosResponse>(resp.data);
     return result.validators;
 }

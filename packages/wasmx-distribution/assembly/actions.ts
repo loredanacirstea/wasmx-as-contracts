@@ -14,7 +14,7 @@ import { Bech32String, CallRequest, CallResponse, Coin, DecCoin, PageRequest, Va
 import { BigInt } from "wasmx-env/assembly/bn";
 import { FEE_COLLECTOR_ROLE, MODULE_NAME, MsgCommunityPoolSpend, MsgCommunityPoolSpendResponse, MsgDepositValidatorRewardsPool, MsgDepositValidatorRewardsPoolResponse, MsgFundCommunityPool, MsgFundCommunityPoolResponse, GenesisState, MsgSetWithdrawAddress, MsgSetWithdrawAddressResponse, MsgUpdateParams, MsgUpdateParamsResponse, MsgWithdrawDelegatorReward, MsgWithdrawDelegatorRewardResponse, MsgWithdrawValidatorCommission, MsgWithdrawValidatorCommissionResponse, QueryCommunityPoolRequest, QueryCommunityPoolResponse, QueryDelegationRewardsRequest, QueryDelegationRewardsResponse, QueryDelegationTotalRewardsRequest, QueryDelegationTotalRewardsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryDelegatorWithdrawAddressRequest, QueryDelegatorWithdrawAddressResponse, QueryParamsRequest, QueryParamsResponse, QueryValidatorCommissionRequest, QueryValidatorCommissionResponse, QueryValidatorDistributionInfoRequest, QueryValidatorDistributionInfoResponse, QueryValidatorOutstandingRewardsRequest, QueryValidatorOutstandingRewardsResponse, QueryValidatorSlashesRequest, QueryValidatorSlashesResponse } from './types';
 import * as types from "./types";
-import { LoggerDebug, LoggerError, revert } from "./utils";
+import { LoggerDebug, LoggerDebugExtended, LoggerError, revert } from "./utils";
 import { getBaseDenom, getParams, getRewardsDenom, setBaseDenom, setParams, setRewardsDenom } from "./storage";
 
 export function InitGenesis(req: GenesisState): ArrayBuffer {
@@ -236,7 +236,7 @@ export function getValidator(addr: Bech32String): stakingtypes.Validator {
     if (resp.success > 0 || resp.data === "") {
         revert(`could not get validator: ${addr}`);
     }
-    LoggerDebug("GetValidator", ["address", addr, "data", resp.data])
+    LoggerDebugExtended("GetValidator", ["address", addr, "data", resp.data])
     const result = JSON.parse<stakingtypes.QueryValidatorResponse>(resp.data);
     return result.validator;
 }
@@ -248,7 +248,7 @@ export function getValidatorByConsAddr(addr: ValidatorAddressString): stakingtyp
     if (resp.success > 0 || resp.data === "") {
         revert(`could not get validator: ${addr}`);
     }
-    LoggerDebug("GetValidator", ["address", addr, "data", resp.data])
+    LoggerDebugExtended("GetValidator", ["address", addr, "data", resp.data])
     const result = JSON.parse<stakingtypes.QueryValidatorResponse>(resp.data);
     return result.validator;
 }

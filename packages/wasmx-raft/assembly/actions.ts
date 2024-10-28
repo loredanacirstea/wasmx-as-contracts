@@ -1025,7 +1025,8 @@ function startBlockFinalizationLeader(index: i64): boolean {
         LoggerInfo("cannot start block finalization", ["height", index.toString(), "reason", "block empty"])
         return false;
     }
-    LoggerDebug("start block finalization", ["height", index.toString(), "leaderId", entryobj.leaderId.toString(), "termId", entryobj.termId.toString(), "data", JSON.stringify<wblocks.BlockEntry>(entryobj.data)])
+    LoggerDebug("start block finalization", ["height", index.toString(), "leaderId", entryobj.leaderId.toString(), "termId", entryobj.termId.toString()])
+    LoggerDebugExtended("start block finalization", ["height", index.toString(), "leaderId", entryobj.leaderId.toString(), "termId", entryobj.termId.toString(), "data", JSON.stringify<wblocks.BlockEntry>(entryobj.data)])
 
     const currentTerm = getTermId();
     if (currentTerm == entryobj.termId) {
@@ -1044,7 +1045,8 @@ function startBlockFinalizationFollower(index: i64): boolean {
         LoggerInfo("cannot start block finalization", ["height", index.toString(), "reason", "block empty"])
         return false;
     }
-    LoggerDebug("start block finalization", ["height", index.toString(), "leaderId", entryobj.leaderId.toString(), "termId", entryobj.termId.toString(), "data", JSON.stringify<wblocks.BlockEntry>(entryobj.data)])
+    LoggerDebug("start block finalization", ["height", index.toString(), "leaderId", entryobj.leaderId.toString(), "termId", entryobj.termId.toString()])
+    LoggerDebugExtended("start block finalization", ["height", index.toString(), "leaderId", entryobj.leaderId.toString(), "termId", entryobj.termId.toString(), "data", JSON.stringify<wblocks.BlockEntry>(entryobj.data)])
     return startBlockFinalizationInternal(entryobj, false);
 }
 

@@ -36,7 +36,7 @@ import {
   isRegisteredIntervalActive,
   removeInterval,
 } from './timer';
-import { LoggerDebug, revert, ctxToActionParams, LoggerError, LoggerInfo } from "./utils";
+import { LoggerDebug, revert, ctxToActionParams, LoggerDebugExtended } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 
 export function instantiate(
@@ -111,7 +111,6 @@ function handleActions(
     // return true;
     nonAssignActions.push(action);
   }
-  // console.log("--handleActions--nextContext-" + nextContext.keys().join(","))
 
   // return {actions: nonAssignActions, ctx: nextContext, assigned};
   return new HandledActions(nonAssignActions, assigned);
@@ -123,8 +122,6 @@ function executeGuard(
     event: EventObject,
 ): boolean {
     if (guard == null) return true;
-    LoggerDebug("execute guard", ["guard", guard.type]);
-
     if (guard.type === "isAdmin") return isAdmin([]);
     if (guard.type === "ifIntervalActive") return ifIntervalActive([], event);
     if (guard.type === "hasEnoughBalance") return actionsErc20.hasEnoughBalance([], event);
@@ -146,7 +143,7 @@ function executeStateActions(
     state: State,
     event: EventObject,
 ): void {
-  console.debug("* executeStateActions: " + state.actions.length.toString())
+  LoggerDebugExtended("execute state actions", ["count", state.actions.length.toString()]);
   for (let i = 0; i < state.actions.length; i++) {
     const action = state.actions[i];
     executeStateAction(service, state, event, action);
@@ -156,7 +153,6 @@ function executeStateActions(
   if (!state.changed) {
     return;
   }
-  console.debug("* executeStateActions after actions for: " + state.value)
 
   // timed actions from the new target state
   const newstateconfig = findStateInfo(service.machine.states, state.value);
@@ -182,8 +178,7 @@ function executeStateActions(
 }
 
 function runAfterTransitions(statePath: string, delayKeys: string[]): void {
-  console.debug("* setting timed actions for " + statePath);
-  console.debug("* setting timed actions... " + delayKeys.join(","));
+  LoggerDebugExtended("setting timed actions", ["state", statePath, "delays", delayKeys.join(",")]);
 
   for (let i = 0; i < delayKeys.length; i++) {
     // delay is in milliseconds
@@ -256,11 +251,11 @@ function executeStateAction(
     action:  ActionObject,
 ): void {
     const actionType = action.type;
-    console.debug("* execute action: " + actionType);
+    LoggerDebug("execute action", ["action", actionType]);
 
     if (actionType === RaiseActionType) {
         const ev = action.event;
-        console.debug("* raise: " + ev!.type);
+        LoggerDebug("execute action: raise", ["event", ev!.type]);
         if (ev === null) {
             return revert("raise action is missing event");
         }
@@ -407,7 +402,7 @@ function log(
     const key = params[i].key;
     const message = params[i].value;
     const value = storage.getContextValue(key);
-    console.log(`${key}: ${value} - ${message}`);
+    LoggerDebug(message, ["key", key, "value", value]);
   }
 }
 
@@ -452,17 +447,17 @@ export class Service implements StateMachine.Service {
   }
 
   send(event: EventObject): void {
-    LoggerDebug("new event", ["event", event.type, "status", this.status.toString()])
+    LoggerDebugExtended("new event", ["event", event.type, "status", this.status.toString()])
     if (this.status !== InterpreterStatus.Running) {
       return;
     }
     let state = storage.getCurrentState();
-    LoggerDebug("transition event", ["event", event.type, "status", this.status.toString(), "state", state.value])
+    LoggerDebugExtended("transition event", ["event", event.type, "status", this.status.toString(), "state", state.value])
     const newstate = this.machine.transition(state, event);
     if (newstate == null) {
       return;
     }
-    LoggerDebug("posttransition state", ["event", event.type, "status", this.status.toString(), "state", state.value, "next_state", newstate.value])
+    LoggerDebug("transition event applied", ["event", event.type, "status", this.status.toString(), "state", state.value, "next_state", newstate.value])
 
     // Set new state before executing actions
     storage.setCurrentState(newstate);
@@ -573,7 +568,7 @@ export class Machine implements StateMachine.Machine {
             wasmx.revert(String.UTF8.encode(message));
             throw new Error(message);
           } else {
-            LoggerInfo("cannot apply event in current state", ["event", eventObject.type, "state", value]);
+            LoggerDebug("cannot apply event in current state", ["event", eventObject.type, "state", value]);
             return null;
           }
 
@@ -594,7 +589,7 @@ export class Machine implements StateMachine.Machine {
     transition: Transition,
     eventObject: EventObject,
   ): State | null {
-    LoggerDebug("applyTransition: ", ["from", state.value, "to", transition.target]);
+    LoggerDebug("apply transition: ", ["from", state.value, "to", transition.target, "event", eventObject.type]);
     const value = state.value;
     const stateConfig = findStateInfo(this.states, value);
     if (!stateConfig) {
@@ -632,7 +627,6 @@ export class Machine implements StateMachine.Machine {
         }
 
         const nextStateConfig = findStateInfo(this.states, nextStateValue);
-        // console.log("--findStateInfo--END=nextStateConfig-")
         if (!nextStateConfig) {
             const message = "state not found: " + nextStateValue;
             wasmx.revert(String.UTF8.encode(message));
@@ -683,13 +677,12 @@ export class Machine implements StateMachine.Machine {
 
          // child states! we choose the first one
         const stateConfigResolved = findStateInfo(this.states, resolvedTarget);
-        // console.log("--findStateInfo--END=");
         if (!stateConfigResolved) {
           const message = "state not found: " + resolvedTarget;
           wasmx.revert(String.UTF8.encode(message));
           throw new Error(message);
         }
-        // console.log("--findStateInfo--END1=");
+
         if (stateConfigResolved.states !== null && stateConfigResolved.states.keys().length > 0) {
           // state has children
           // initial key
@@ -710,11 +703,7 @@ export class Machine implements StateMachine.Machine {
           }
         }
 
-        console.debug("* transition next target: " + resolvedTarget);
-
-
-
-        console.debug(`allActions.length: ` + allActions.length.toString())
+        LoggerDebug("apply transition: ", ["from", state.value, "final_target", resolvedTarget, "actions_count", allActions.length.toString()]);
 
         const res = handleActions(
           // allActionObjects,
@@ -742,18 +731,15 @@ function processActions(actions: ActionObject[], event: EventObject): ActionObje
         // We are looking through parameters of the current event
         // and adding them in the raised event if the key values match
         // TODO - another way?
-        // console.log("--raise?0-" + act.type);
         if (act.event === null) {
             const message = "raise action is missing event";
             wasmx.revert(String.UTF8.encode(message));
             throw new Error(message);
         }
-        // console.log("--raise?1-" + act.event!.type);
-        // console.log("--raise?11-" + act.event!.params.length.toString());
+
         for (let k = 0; k < act.event!.params.length; k++) {
             const key = act.event!.params[k].key;
             const value = act.event!.params[k].value;
-            // console.log("--raise?2-param-" + key + "--" + value);
             let found = false;
             if (value.includes("()")) {
                 // TODO have a map with all provided functions and guards
@@ -776,7 +762,6 @@ function processActions(actions: ActionObject[], event: EventObject): ActionObje
             }
         }
     }
-    // console.log("--raise add action!-" + act.type);
     allActions.push(act);
   }
   return allActions;
@@ -875,9 +860,7 @@ export function findStateInfo(
     }
     // TODO here, we should only look in the current state, not the machine states
     const keys = states.keys();
-    // console.log("--findStateInfo--" + stateName + "---" + keys.join(","));
     for (let i = 0; i < keys.length; i++) {
-        // console.log("--findStateInfo--" + keys[i]);
         const stateinfo = states.get(keys[i]);
         if (keys[i] === stateName) return stateinfo;
         if (stateinfo.states && stateinfo.states.keys().length > 0) {
@@ -894,7 +877,6 @@ export function findStateInfoByPath(
 ): StateInfo | null {
     let currentStates = states;
     let state: StateInfo | null = null;
-    // console.log("--findStateInfoByPath--" + statePath.join("."));
     for (let k = 0; k < statePath.length; k++) {
         const currentStateName = statePath[k];
         if (!currentStates.has(currentStateName)) {
@@ -923,7 +905,7 @@ export function equalStateOrIncluded(state1: string, state2: string): boolean {
 
 export function eventual(config: MachineExternal, args: TimerArgs): void {
   const active = isRegisteredIntervalActive(args.state, args.delay, args.intervalId);
-  LoggerDebug("eventual", ["state", args.state, "delay", args.delay, "intervalId", args.intervalId.toString(), "active", active.toString()]);
+  LoggerDebugExtended("eventual", ["expected_state", args.state, "delay", args.delay, "intervalId", args.intervalId.toString(), "is_active", active.toString()]);
   if (!active) {
     return;
   }
@@ -933,7 +915,7 @@ export function eventual(config: MachineExternal, args: TimerArgs): void {
 
   const service = loadServiceFromConfig(config);
   const currentState = storage.getCurrentState();
-  LoggerDebug("eventual", ["current state", currentState.value]);
+  LoggerDebugExtended("eventual", ["current_state", currentState.value]);
 
   const newstateconfig = findStateInfo(service.machine.states, args.state);
   if (!newstateconfig) {
@@ -966,7 +948,7 @@ export function eventual(config: MachineExternal, args: TimerArgs): void {
     }
     if (validTransitions.length == 0) {
       // we are in the wrong state, so the interval must be stopped
-      LoggerDebug("eventual: we are in the wrong state", []);
+      LoggerDebug("eventual: we are in the wrong state", ["current_state", currentState.value, "expected_state", args.state, "delay", args.delay, "intervalId", args.intervalId.toString()]);
       return;
     }
   }
@@ -974,9 +956,7 @@ export function eventual(config: MachineExternal, args: TimerArgs): void {
     return;
   }
 
-  LoggerDebug("eventual: execute delayed action", ["delay", args.delay]);
-
-  LoggerInfo("eventual", ["state", args.state, "delay", args.delay, "intervalId", args.intervalId.toString(), "current_state", currentState.value]);
+  LoggerDebug("eventual", ["current_state", currentState.value, "expected_state", args.state, "delay", args.delay, "intervalId", args.intervalId.toString()]);
 
   // just a copied transition
   let state = storage.getCurrentState();
@@ -1046,7 +1026,7 @@ function ifIntervalActive(
   }
   const intervalId = parseInt64(intervalIdStr);
   const active = isRegisteredIntervalActive(state, delay, intervalId);
-  LoggerDebug("ifIntervalActive", ["intervalId", intervalIdStr, "active", active.toString()])
+  LoggerDebugExtended("ifIntervalActive", ["intervalId", intervalIdStr, "active", active.toString()])
 
   // remove the interval data
   removeInterval(state, delay, intervalId);

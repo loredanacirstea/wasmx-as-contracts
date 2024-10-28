@@ -9,7 +9,7 @@ import {
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
 import * as tnd2 from "wasmx-tendermint-p2p/assembly/actions";
-import { LoggerDebug, LoggerInfo, revert } from "./utils";
+import { LoggerDebug, LoggerDebugExtended, LoggerInfo, revert } from "./utils";
 import { callStorage, getCurrentProposer, isValidatorSimpleActive } from "wasmx-tendermint-p2p/assembly/action_utils";
 import { callStaking } from "wasmx-tendermint/assembly/actions";
 import { getCurrentNodeId, getCurrentState, getTermId, getValidatorNodesInfo, setCurrentState } from "wasmx-tendermint-p2p/assembly/storage";
@@ -161,7 +161,7 @@ export function getAllValidatorInfos(): staking.ValidatorSimple[] {
         revert("could not get validators");
     }
     if (resp.data === "") return [];
-    LoggerDebug("GetAllValidatorInfos", ["data", resp.data])
+    LoggerDebugExtended("GetAllValidatorInfos", ["data", resp.data])
     const result = JSON.parse<staking.QueryValidatorInfosResponse>(resp.data);
     return result.validators;
 }

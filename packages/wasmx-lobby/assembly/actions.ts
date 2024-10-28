@@ -24,7 +24,7 @@ import * as cfg from "./config";
 import { addNewChainRequests, getChainIdLast, getChainSetupData, getNextLevel, getNewChainRequests, getNewChainResponse, getParams, getSubChainData, getMinValidatorsCount, setChainIdLast, setChainSetupData, setNewChainRequests, setNewChainResponse, setSubChainData, getCurrentLevel } from "./storage";
 import { ChainConfigData, CurrentChainSetup, MODULE_NAME, MsgLastChainId, MsgNewChainAccepted, MsgNewChainGenesisData, MsgNewChainRequest, MsgNewChainResponse, PotentialValidator, PotentialValidatorWithSignature } from "./types";
 import { getProtocolId, getTopic, getTopicLevel, getTopicLobby, getTopicNewChain, mergeValidators, signMessage, sortValidators, sortValidatorsSimple, unwrapValidators, wrapValidators } from "./actions_utils";
-import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
+import { LoggerDebug, LoggerDebugExtended, LoggerError, LoggerInfo, revert } from "./utils";
 import { ChainConfig, ChainId, InitSubChainDeterministicRequest, NodePorts } from "wasmx-consensus/assembly/types_multichain";
 import * as mcregistry from "wasmx-multichain-registry/assembly/actions";
 import { BigInt } from "wasmx-env/assembly/bn";
@@ -952,7 +952,7 @@ export function getAllValidatorInfos(): staking.ValidatorSimple[] {
         revert("could not get validators");
     }
     if (resp.data === "") return [];
-    LoggerDebug("GetAllValidatorInfos", ["data", resp.data])
+    LoggerDebugExtended("GetAllValidatorInfos", ["data", resp.data])
     const result = JSON.parse<staking.QueryValidatorInfosResponse>(resp.data);
     return result.validators;
 }
