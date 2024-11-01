@@ -251,6 +251,11 @@ export function ed25519VerifyBytes(pubKeyStr: Base64String, signatureStr: Base64
     return false;
 }
 
+export function validate_bech32_address(value: Bech32String): boolean {
+    const resp = wasmx.validate_bech32_address(String.UTF8.encode(value));
+    return resp == 1;
+}
+
 export function addr_humanize(value: ArrayBuffer): string {
     const addr = wasmx.addr_humanize(value);
     return String.UTF8.decode(addr);

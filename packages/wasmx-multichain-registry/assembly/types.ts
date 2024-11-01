@@ -14,8 +14,8 @@ export const MODULE_NAME = "multichain_registry"
 
 export const DEFAULT_MIN_VALIDATORS_COUNT = 3;
 export const DEFAULT_EID_CHECK = false;
-export const DEFAULT_ERC20_CODE_ID = 27;
-export const DEFAULT_DERC20_CODE_ID = 28;
+export const DEFAULT_ERC20_CODE_ID = 28;
+export const DEFAULT_DERC20_CODE_ID = 29;
 export const DEFAULT_INITIAL_BALANCE = "10000000000000000000"
 
 export const CROSS_CHAIN_TIMEOUT_MS = 120000 // 2 min

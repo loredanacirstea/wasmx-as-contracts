@@ -59,6 +59,8 @@ export const ADDR_METAREGISTRY = "0x000000000000000000000000000000000000004f"
 var ADDR_LEVEL0_ONDEMAND = "0x0000000000000000000000000000000000000051"
 var ADDR_LEVEL0_ONDEMAND_LIBRARY = "0x0000000000000000000000000000000000000052"
 
+var ADDR_ROLES = "0x0000000000000000000000000000000000000060"
+
 export const ADDR_SYS_PROXY = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 
 //// * contract labels
@@ -106,6 +108,7 @@ export const HOOKS_v001 = "hooks_0.0.1"
 export const GOV_v001 = "gov_0.0.1"
 export const GOV_CONT_v001 = "gov_cont_0.0.1"
 export const AUTH_v001 = "auth_0.0.1"
+export const ROLES_v001 = "roles_0.0.1"
 export const SLASHING_v001 = "slashing_0.0.1"
 export const DISTRIBUTION_v001 = "distribution_0.0.1"
 export const CHAT_v001 = "chat_0.0.1"
@@ -170,6 +173,18 @@ export const sc_auth = new SystemContract(
     false,
     false,
     roles.ROLE_AUTH,
+    [],
+    CodeMetadata.Empty(),
+)
+
+export const sc_roles = new SystemContract(
+    ADDR_ROLES,
+    ROLES_v001,
+    StorageCoreConsensus,
+    EMPTY_INIT_MSG,
+    false,
+    false,
+    roles.ROLE_ROLES,
     [],
     CodeMetadata.Empty(),
 )
@@ -826,6 +841,7 @@ export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32
     return [
         // auth must be first
         sc_auth,
+        sc_roles,
 
         sc_ecrecover,
         sc_ecrecovereth,

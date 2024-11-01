@@ -37,6 +37,7 @@ export declare function ed25519Sign(privKey: ArrayBuffer, msgbz: ArrayBuffer): A
 export declare function ed25519Verify(pubKey: ArrayBuffer, signature: ArrayBuffer, msgbz: ArrayBuffer): i32
 export declare function ed25519PubToHex(pubKey: ArrayBuffer): ArrayBuffer
 
+export declare function validate_bech32_address(value: ArrayBuffer): i32
 export declare function addr_humanize(value: ArrayBuffer): ArrayBuffer
 export declare function addr_canonicalize(value: ArrayBuffer): ArrayBuffer
 export declare function addr_equivalent(addr1: ArrayBuffer, addr2: ArrayBuffer): i32

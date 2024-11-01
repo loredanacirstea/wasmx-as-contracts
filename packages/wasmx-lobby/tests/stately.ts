@@ -4,8 +4,8 @@ import { createMachine } from "xstate";
 
 export const machine = createMachine({
   context: {
-    erc20CodeId: 27,
-    derc20CodeId: 28,
+    erc20CodeId: 28,
+    derc20CodeId: 29,
     current_level: 1,
     newchainTimeout: 20000,
     enable_eid_check: false,
