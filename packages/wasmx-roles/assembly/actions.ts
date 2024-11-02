@@ -1,9 +1,10 @@
 import { JSON } from "json-as/assembly";
-import { Bech32String } from "wasmx-env/assembly/types";
+import { Bech32String, Event, EventAttribute } from "wasmx-env/assembly/types";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as st from "./storage";
 import { CallDataInstantiate, GetAddressOrRoleRequest, GetRoleByLabelRequest, GetRoleLabelByContractRequest, RegisterRoleRequest, Role } from "./types";
 import { LoggerInfo, revert } from "./utils";
+import { AttributeKeyContractAddress, AttributeKeyLabel, AttributeKeyRole, EventTypeRegisterRole } from "./events";
 
 export function initialize(roles: Role[]): ArrayBuffer {
     for (let i = 0; i < roles.length; i++) {
@@ -47,6 +48,16 @@ export function registerRole(role: string, label: string, addr: Bech32String): v
     st.setContractAddressByRole(role, addr);
     st.setRoleByLabel(roleObj);
     st.setRoleLabelByContract(addr, label);
+    wasmxw.emitCosmosEvents([
+        new Event(
+            EventTypeRegisterRole,
+            [
+                new EventAttribute(AttributeKeyRole, role, true),
+                new EventAttribute(AttributeKeyLabel, label, true),
+                new EventAttribute(AttributeKeyContractAddress, addr, true),
+            ],
+        )
+    ]);
 }
 
 export function deregisterRole(): void {
