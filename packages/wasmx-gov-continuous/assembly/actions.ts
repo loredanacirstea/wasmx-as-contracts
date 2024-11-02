@@ -12,6 +12,7 @@ import { bankSendCoinFromAccountToModule } from "wasmx-gov/assembly/actions";
 import { Coin, Event, EventAttribute } from "wasmx-env/assembly/types";
 import { AttributeKeyOption, AttributeKeyProposalID, AttributeKeyProposalMessages, AttributeKeyVoter, EventTypeProposalVote, EventTypeSubmitProposal } from "wasmx-gov/assembly/events";
 import { AttributeKeyOptionID, AttributeKeyOptionWeights, EventTypeAddProposalOption, EventTypeExecuteProposal, EventTypeProposalOutcome } from "./events";
+import { base64ToString } from "wasmx-utils/assembly/utils";
 
 // TODO this must be in initialization
 
@@ -397,7 +398,7 @@ function tryExecuteProposal(proposal: Proposal): void {
 
     const result = executeProposal(proposal);
     if (result != null) {
-        LoggerInfo("execute proposal", ["success", result.success.toString(), "proposal_id", proposal.id.toString(), "winner", proposal.winner.toString()])
+        LoggerInfo("execute proposal", ["success", result.success.toString(), "proposal_id", proposal.id.toString(), "winner", proposal.winner.toString(), "data", base64ToString(result.data)])
         if (!result.success) {
             proposal.failed_reason = result.data;
         } else {

@@ -1,11 +1,12 @@
 import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
-import { isAuthorized } from "wasmx-env/assembly/utils";
+import { callContract, isAuthorized } from "wasmx-env/assembly/utils";
 import { Bech32String } from "wasmx-utils/assembly/types";
 import { CallRequest, CallResponse, CreateAccountRequest, Coin } from 'wasmx-env/assembly/types';
 import * as erc20 from "wasmx-erc20/assembly/types";
 import * as authtypes from "wasmx-auth/assembly/types";
+import * as roles from "wasmx-env/assembly/roles";
 import {
     GenesisState, MsgSend, MsgMultiSend, MsgSetSendEnabled, MsgUpdateParams, MsgRegisterDenom, Metadata, Balance, CoinMap,
     PageResponse, QueryAllBalancesRequest, QueryAllBalancesResponse, QueryBalanceRequest, QueryBalanceResponse, QueryDenomMetadataByQueryStringRequest, QueryDenomMetadataRequest, QueryDenomOwnersRequest, QueryDenomsMetadataRequest, QueryParamsRequest, QuerySendEnabledRequest, QuerySpendableBalanceByDenomRequest, QuerySpendableBalancesRequest, QuerySupplyOfRequest, QueryTotalSupplyRequest, QueryTotalSupplyResponse,
@@ -260,6 +261,8 @@ export function deployDenom(codeId: u64, metadata: Metadata, admins: string[], m
     const msg = JSON.stringify<erc20.CallDataInstantiate>(new erc20.CallDataInstantiate(admins, minters, name, symbol, decimals, baseDenom))
     const label = "Bank_" + metadata.base
     const addr = wasmxw.createAccount(new CreateAccountRequest(codeId, msg, [], label), MODULE_NAME)
+    // asign the DENOM role to the denom contract
+    registerDenomRole(label, addr);
     return addr
 }
 
@@ -362,4 +365,13 @@ export function isFromDenomContract(caller: Bech32String): boolean {
     const denom = getDenomByAddress(caller)
     if (denom != "") return true
     return false
+}
+
+function registerDenomRole(label: string, addr: Bech32String): void {
+    const calldata = `{"RegisterRole":{"role":"${roles.ROLE_DENOM}","label":"${label}","contract_address":"${addr}"}}`
+    const resp = callContract(roles.ROLE_ROLES, calldata, false, MODULE_NAME)
+    if (resp.success > 0) {
+        // we do not fail, we want the chain to continue
+        revert(`call failed: could not register denom role for ${addr}`)
+    }
 }

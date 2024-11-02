@@ -3,6 +3,7 @@ import { Bech32String } from "wasmx-env/assembly/types";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as st from "./storage";
 import { CallDataInstantiate, GetAddressOrRoleRequest, GetRoleByLabelRequest, GetRoleLabelByContractRequest, RegisterRoleRequest, Role } from "./types";
+import { LoggerInfo, revert } from "./utils";
 
 export function initialize(roles: Role[]): ArrayBuffer {
     for (let i = 0; i < roles.length; i++) {
@@ -35,6 +36,13 @@ export function GetRoleByLabel(req: GetRoleByLabelRequest): ArrayBuffer {
 // TODO replace the previous role? if a role cannot hold 2 contracts?
 // e.g. consensus
 export function registerRole(role: string, label: string, addr: Bech32String): void {
+    if (role == "") {
+        revert(`cannot register empty role for ${addr}`)
+    }
+    if (label == "") {
+        revert(`cannot register role ${role} with empty label for ${addr}`)
+    }
+    LoggerInfo("register role", ["role", role, "label", label, "contract_address", addr])
     const roleObj = new Role(role, label, addr);
     st.setContractAddressByRole(role, addr);
     st.setRoleByLabel(roleObj);
