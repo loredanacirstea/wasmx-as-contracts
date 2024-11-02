@@ -1103,7 +1103,7 @@ export function receiveBlockProposal(
 }
 
 // this is where new blocks are processed in order
-export function processAppendEntry(entry: LogEntryAggregate): boolean {
+export function processAppendEntry(entry: LogEntryAggregate, force: boolean = false): boolean {
     const data = decodeBase64(entry.data.data);
     const processReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(String.UTF8.decode(data.buffer));
     const processReq = processReqWithMeta.request
@@ -1133,7 +1133,12 @@ export function processAppendEntry(entry: LogEntryAggregate): boolean {
         LoggerError("new block rejected", ["height", processReq.height.toString(), "node type", "Follower"])
         return false;
     }
-    appendLogEntry(entry);
+    if (!force) {
+        appendLogEntry(entry);
+    } else {
+        setLogEntryAggregate(entry)
+        setLastLogIndex(entry.index);
+    }
 
     // set hash for the proposal we have accepted
     const state = getCurrentState()
@@ -1870,8 +1875,14 @@ export function receiveCommit(
     const block = JSON.parse<LogEntryAggregate>(entryStr)
     const state = getCurrentState()
 
-    // we store the block temporarily;
-    storeNewBlockOutOfOrder(data.termId, block, state.nextHeight)
+    // we store the block - make sure to overwrite any existing block
+    // because this is a trusted commit
+    if (block.index == state.nextHeight) {
+        processAppendEntry(block, true);
+    } else {
+        setLogEntryAggregate(block)
+        setLastLogIndex(block.index);
+    }
 
     // TODO state sync better with verification of votes, etc.
     // but now we just try to finalize blocks until this height
