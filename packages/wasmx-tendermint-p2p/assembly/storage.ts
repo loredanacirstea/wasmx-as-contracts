@@ -10,6 +10,7 @@ import { LogEntry, LogEntryAggregate } from "./types";
 import { LoggerDebug, LoggerInfo, revert, LoggerDebugExtended } from "./utils";
 import * as cfg from "./config";
 import { CurrentState } from "wasmx-tendermint/assembly/types_blockchain";
+import { getLastBlockIndex } from "./action_utils";
 
 export function getCurrentState(): CurrentState {
     const value = fsm.getContextValue(cfg.STATE_KEY);
@@ -59,7 +60,7 @@ export function getNodeCountInternal(ips: NodeInfo[]): i32 {
 // temporarily store the entries
 export function appendLogEntry(
     entry: LogEntryAggregate,
-): void {
+): string {
     const index = getLastLogIndex() + 1;
     // TODO rollback entries in case of a network split (e.g. entries with higher termId than we have have priority); they must be uncommited
     // and just return if already saved
@@ -69,16 +70,23 @@ export function appendLogEntry(
         if (logentry.termId < entry.termId) {
             setLogEntryAggregate(entry);
             LoggerInfo("replace existing block proposal", ["height", entry.index.toString(), "termId", entry.termId.toString()])
-            return;
+            return "";
         }
-        LoggerDebug("already appended entry", ["height", entry.index.toString()])
-        return;
+        // we received an entry for a height that we already have
+        const lastFinalizedIndex = getLastBlockIndex();
+        if (lastFinalizedIndex >= entry.index) {
+            LoggerDebug("cannot append finalized block", ["height", entry.index.toString()])
+            return `cannot append finalized block: height=${entry.index.toString()}`
+        }
+        LoggerDebug("cannot replace next block proposal", ["height", entry.index.toString()])
+        return `cannot replace next block proposal: height=${entry.index.toString()}`
     }
     if (index !== entry.index) {
         revert(`mismatched index while appending log entry: expected ${index}, found ${entry.index}`);
     }
     setLastLogIndex(index);
     setLogEntryAggregate(entry);
+    return ""
 }
 
 export function setLogEntryAggregate(
