@@ -29,7 +29,7 @@ import * as raftp2pactions from "wasmx-raft-p2p/assembly/actions";
 import { setMempool, signMessage } from "wasmx-tendermint/assembly/actions"
 import { CurrentState, Mempool, ValidatorQueueEntry } from "wasmx-tendermint/assembly/types_blockchain";
 import * as cfg from "./config";
-import { AppendEntry, LogEntryAggregate, NodeInfoRequest, UpdateNodeRequest, UpdateNodeResponse } from "./types";
+import { AppendEntry, LogEntryAggregate, NodeInfoRequest, ProcessBlockResponse, UpdateNodeRequest, UpdateNodeResponse } from "./types";
 import { getAllValidatorInfos, getTendermintVote, getCurrentProposer, getLastBlockCommit, getLastBlockIndex, getLogEntryAggregate, getNextProposer, getProtocolId, getProtocolIdInternal, getTopic, getTopicInternal, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal, storageBootstrapAfterStateSync, getConsensusParams, weAreNotAlone, weAreNotAloneInternal, parseNodeAddress, updateNodeEntry, nodeInfoComplete, nodeInfoCompleteInternal } from "./action_utils";
 import { extractUpdateNodeEntryAndVerify, removeNode } from "wasmx-raft/assembly/actions";
 import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembly/storage";
@@ -1029,8 +1029,8 @@ export function receiveStateSyncResponse(
     for (let i = 0; i < resp.entries.length; i++) {
         const block = resp.entries[i]
         // processAppendEntry(resp.entries[i]);
-        const errmsg = storeNewBlockOutOfOrder(block.termId, block, nextIndex)
-        if (errmsg.length == 0) {
+        const processResp = storeNewBlockOutOfOrder(block.termId, block, nextIndex)
+        if (processResp.processed) {
             startBlockFinalizationFollowerInternal(block);
         }
         nextIndex += 1;
@@ -1085,9 +1085,9 @@ export function receiveBlockProposal(
         }
         if (block.index > state.nextHeight) {
             // we store the block temporarily;
-            const errmsg = storeNewBlockOutOfOrder(block.termId, block, state.nextHeight)
-            if (errmsg.length > 0) {
-                revert(errmsg)
+            const processResp = storeNewBlockOutOfOrder(block.termId, block, state.nextHeight)
+            if (processResp.error.length > 0) {
+                revert(processResp.error)
             }
             LoggerInfo("block stored out of order", ["height", block.index.toString(), "expected", state.nextHeight.toString(), "nextHeight", state.nextHeight.toString()])
             continue;
@@ -1095,9 +1095,9 @@ export function receiveBlockProposal(
 
         // we only receive block proposals if we are synced
         // if we are not synced, we use Commit messages
-        const errmsg = processAppendEntry(block);
-        if (errmsg.length > 0) {
-            revert(errmsg)
+        const processResp = processAppendEntry(block);
+        if (processResp.error.length > 0) {
+            revert(processResp.error)
         }
         // const errmsg = storeNewBlockOutOfOrder(entry.termId, block, state.nextHeight);
 
@@ -1109,7 +1109,7 @@ export function receiveBlockProposal(
 }
 
 // this is where new blocks are processed in order
-export function processAppendEntry(entry: LogEntryAggregate, force: boolean = false): string {
+export function processAppendEntry(entry: LogEntryAggregate, force: boolean = false): ProcessBlockResponse {
     const data = decodeBase64(entry.data.data);
     const processReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(String.UTF8.decode(data.buffer));
     const processReq = processReqWithMeta.request
@@ -1117,7 +1117,7 @@ export function processAppendEntry(entry: LogEntryAggregate, force: boolean = fa
     const errorStr = tnd.verifyBlockProposal(entry.data, processReq)
     if (errorStr.length > 0) {
         LoggerError("new block rejected", ["height", processReq.height.toString(), "error", errorStr, "header", entry.data.header, "hash", base64ToHex(processReq.hash)])
-        return `new block rejected: height=${processReq.height.toString()}; error=${errorStr}; hash=${base64ToHex(processReq.hash)}`;
+        return new ProcessBlockResponse(false, `new block rejected: height=${processReq.height.toString()}; error=${errorStr}; hash=${base64ToHex(processReq.hash)}`);
     }
     const termId = getTermId();
     LoggerInfo("received new block proposal", [
@@ -1137,11 +1137,11 @@ export function processAppendEntry(entry: LogEntryAggregate, force: boolean = fa
         // TODO - what to do here? returning just discards the block and does not return a response to the leader
         // but this node will not sync with the leader anymore
         LoggerError("new block rejected", ["height", processReq.height.toString(), "node type", "Follower"])
-        return `new block rejected: height=${processReq.height.toString()}; status=reject; hash=${base64ToHex(processReq.hash)}`;
+        return new ProcessBlockResponse(false, `new block rejected: height=${processReq.height.toString()}; status=reject; hash=${base64ToHex(processReq.hash)}`);
     }
     if (!force) {
         const errmsg = appendLogEntry(entry);
-        if (errmsg.length > 0) return errmsg;
+        if (errmsg.length > 0) return new ProcessBlockResponse(false, errmsg);
     } else {
         setLogEntryAggregate(entry)
         setLastLogIndex(entry.index);
@@ -1152,7 +1152,7 @@ export function processAppendEntry(entry: LogEntryAggregate, force: boolean = fa
     state.nextHash = processReq.hash
     setCurrentState(state);
 
-    return "";
+    return new ProcessBlockResponse(true, "");
 }
 
 export function setRoundProposer(
@@ -1885,9 +1885,9 @@ export function receiveCommit(
     // we store the block - make sure to overwrite any existing block
     // because this is a trusted commit
     if (block.index == state.nextHeight) {
-        const errmsg = processAppendEntry(block, true);
-        if (errmsg.length > 0) {
-            revert(errmsg)
+        const processResp = processAppendEntry(block, true);
+        if (processResp.error.length > 0) {
+            revert(processResp.error)
         }
     } else {
         setLogEntryAggregate(block)
@@ -1907,7 +1907,7 @@ export function receiveCommit(
 }
 
 // currentState.nextHeight
-export function storeNewBlockOutOfOrder(blockTermId: i64, block: LogEntryAggregate, nextHeight: i64): string {
+export function storeNewBlockOutOfOrder(blockTermId: i64, block: LogEntryAggregate, nextHeight: i64): ProcessBlockResponse {
     if (block.index > nextHeight) {
         // if we are not fully synced, just store the proposal with highest termId / round
         const lastIndex = getLastLogIndex();
@@ -1919,10 +1919,11 @@ export function storeNewBlockOutOfOrder(blockTermId: i64, block: LogEntryAggrega
         } else {
             setLastLogIndex(block.index);
         }
+        return new ProcessBlockResponse(false, "");
     } else if (block.index == nextHeight) {
         return processAppendEntry(block);
     }
-    return `new block height < next height: ${block.index} < ${nextHeight}`;
+    return new ProcessBlockResponse(false, `new block height < next height: ${block.index} < ${nextHeight}`);
 }
 
 export function signMessageExternal(

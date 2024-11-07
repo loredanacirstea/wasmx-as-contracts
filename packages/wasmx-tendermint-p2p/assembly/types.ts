@@ -178,3 +178,14 @@ export class UpdateNodeResponse {
         this.proposerIndex = proposerIndex
     }
 }
+
+// @ts-ignore
+@serializable
+export class ProcessBlockResponse {
+    processed: boolean
+    error: string
+    constructor(processed: boolean, error: string) {
+        this.processed = processed
+        this.error = error
+    }
+}
