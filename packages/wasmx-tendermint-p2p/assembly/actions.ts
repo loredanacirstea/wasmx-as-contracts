@@ -1041,6 +1041,7 @@ export function receiveStateSyncResponse(
         if (processResp.error.length > 0) {
             revert(processResp.error)
         }
+        startBlockFinalizationFollowerInternal(block);
 
         // const processResp = storeNewBlockOutOfOrder(block.termId, block, nextIndex)
         // if (processResp.processed) {
