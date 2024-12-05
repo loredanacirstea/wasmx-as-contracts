@@ -1023,17 +1023,30 @@ export function receiveStateSyncResponse(
 
     let nextIndex = lastIndex+1
 
-    LoggerInfo("received statesync response", ["count", resp.entries.length.toString(), "from", resp.start_batch_index.toString(), "to", resp.last_batch_index.toString(), "last_log_index", resp.last_log_index.toString()])
+    if (resp.entries.length > 0 && nextIndex != resp.start_batch_index) {
+        LoggerError("out of order statesync response", ["count", resp.entries.length.toString(), "from", resp.start_batch_index.toString(), "to", resp.last_batch_index.toString(), "last_log_index", resp.last_log_index.toString(), "expected_start_index", nextIndex.toString()])
+        return
+    }
+
+    LoggerInfo("received statesync response", ["count", resp.entries.length.toString(), "from", resp.start_batch_index.toString(), "to", resp.last_batch_index.toString(), "last_log_index", resp.last_log_index.toString(), "expected_start_index", nextIndex.toString()])
 
     // now we check the new block
     for (let i = 0; i < resp.entries.length; i++) {
         const block = resp.entries[i]
-        // processAppendEntry(resp.entries[i]);
-        const processResp = storeNewBlockOutOfOrder(block.termId, block, nextIndex)
-        if (processResp.processed) {
-            startBlockFinalizationFollowerInternal(block);
+
+        // we expect blocks to be in order
+        // we store the block - make sure to overwrite any existing block
+        // because this is a trusted commit
+        const processResp = processAppendEntry(block, true);
+        if (processResp.error.length > 0) {
+            revert(processResp.error)
         }
-        nextIndex += 1;
+
+        // const processResp = storeNewBlockOutOfOrder(block.termId, block, nextIndex)
+        // if (processResp.processed) {
+        //     startBlockFinalizationFollowerInternal(block);
+        // }
+        // nextIndex += 1;
     }
     setTermId(resp.termId);
 }
@@ -1268,12 +1281,13 @@ export function ifForceProposalReset(
     let entry: AppendEntry = JSON.parse<AppendEntry>(entryStr);
     const proposerIndex = getCurrentProposer();
     const termId = getTermId();
-    if (termId == entry.termId &&  entry.proposerId != proposerIndex) return false;
+    if (termId == entry.termId && entry.proposerId != proposerIndex) return false;
 
     const state = getCurrentState()
     let forceReset = false;
     // reject heights we do not expect (we have commit messages for this)
     if (entry.entries.length == 0 || entry.entries[0].index != state.nextHeight) {
+        LoggerInfo("block proposal rejected", ["termId", termId.toString(), "entry.termId", entry.termId.toString(), "nextHeight", state.nextHeight.toString(), "entry.height", (entry.entries.length == 0 ? 0 : entry.entries[0].index).toString()])
         return false;
     }
     // if we have a valid block proposal, we reject this
