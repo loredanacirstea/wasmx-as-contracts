@@ -735,7 +735,9 @@ export enum CodeType {
     EncodingError = 1,
     InvalidTxFormat = 2,
     Unauthorized = 3,
-    Executed = 4,
+    Unused = 4, // cosmos omits this
+    Executed = 5,
+    // OutOfGas = 11, // TODO
 }
 
 // CodeTypeOK              uint32 = 0

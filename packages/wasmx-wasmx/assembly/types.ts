@@ -60,6 +60,7 @@ export class SystemContract {
     storage_type: string
     init_message: Base64String
     pinned: boolean
+    metering_off: boolean
     native: boolean
     role: string
     deps: string[]
@@ -71,6 +72,7 @@ export class SystemContract {
         storage_type: string,
         init_message: Base64String,
         pinned: boolean,
+        metering_off: boolean,
         native: boolean,
         role: string,
         deps: string[],
@@ -81,6 +83,7 @@ export class SystemContract {
         this.storage_type = storage_type
         this.init_message = init_message
         this.pinned = pinned
+        this.metering_off = metering_off
         this.native = native
         this.role = role
         this.deps = deps
@@ -96,6 +99,7 @@ export class CodeInfo {
     creator: Bech32String
     deps: string[]
     pinned: boolean
+    metering_off: boolean
     metadata: CodeMetadata
     interpreted_bytecode_deployment: Base64String
     interpreted_bytecode_runtime: Base64String
@@ -105,6 +109,7 @@ export class CodeInfo {
         creator: Bech32String,
         deps: string[],
         pinned: boolean,
+        metering_off: boolean,
         metadata: CodeMetadata,
         interpreted_bytecode_deployment: Base64String,
         interpreted_bytecode_runtime: Base64String,
@@ -114,6 +119,7 @@ export class CodeInfo {
         this.creator = creator
         this.deps = deps
         this.pinned = pinned
+        this.metering_off = metering_off
         this.metadata = metadata
         this.interpreted_bytecode_deployment = interpreted_bytecode_deployment
         this.interpreted_bytecode_runtime = interpreted_bytecode_runtime

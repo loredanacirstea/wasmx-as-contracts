@@ -97,7 +97,7 @@ export function getTendermintVote(data: ValidatorProposalVote): typestnd.VoteTen
 export function initChain(req: typestnd.InitChainSetup): void {
     LoggerDebug("start chain init", [])
 
-    // TODO what are the correct empty valuew?
+    // TODO what are the correct empty value?
     // we need a non-empty string value, because we use this to compute next proposer
     const emptyBlockId = new typestnd.BlockID(base64ToHex(req.app_hash), new typestnd.PartSetHeader(0, ""))
     const last_commit_hash = ""
