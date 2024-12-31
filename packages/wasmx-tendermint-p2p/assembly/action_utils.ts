@@ -3,6 +3,7 @@ import { decode as decodeBase64, encode as encodeBase64 } from "as-base64/assemb
 import * as base64 from "as-base64/assembly"
 import { ActionParam, EventObject, ExternalActionCallData } from "xstate-fsm-as/assembly/types";
 import * as hooks from "wasmx-env/assembly/hooks";
+import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
 import * as consensuswrap from 'wasmx-consensus/assembly/consensus_wrap';
 import * as wblocks from "wasmx-blocks/assembly/types";
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
@@ -164,7 +165,7 @@ export function getConsensusParams(height: i64): typestnd.ConsensusParams {
 }
 
 export function callStorage(calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest("storage", calldata, BigInt.zero(), 100000000, isQuery);
+    const req = new CallRequest("storage", calldata, BigInt.zero(), DEFAULT_GAS_TX, isQuery);
     const resp = wasmxw.call(req, cfg.MODULE_NAME);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
@@ -495,7 +496,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, isretry: bo
         const myaddress = wasmxw.addr_humanize(wasmx.getAddress());
         LoggerInfo("setting up next consensus contract", ["new contract", info.consensusContract, "previous contract", myaddress])
         let calldata = `{"run":{"event":{"type":"setup","params":[{"key":"address","value":"${myaddress}"}]}}}`
-        let req = new CallRequest(info.consensusContract, calldata, BigInt.zero(), 100000000, false);
+        let req = new CallRequest(info.consensusContract, calldata, BigInt.zero(), DEFAULT_GAS_TX, false);
         let resp = wasmxw.call(req, cfg.MODULE_NAME);
         if (resp.success > 0) {
             LoggerError("cannot setup next consensus contract", ["new contract", info.consensusContract, "err", resp.data]);
@@ -506,7 +507,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, isretry: bo
             // stop this contract and any intervals on this contract
             // TODO cancel all intervals on stop() action
             calldata = `{"run":{"event":{"type":"stop","params":[]}}}`
-            req = new CallRequest(myaddress, calldata, BigInt.zero(), 100000000, false);
+            req = new CallRequest(myaddress, calldata, BigInt.zero(), DEFAULT_GAS_TX, false);
             resp = wasmxw.call(req, cfg.MODULE_NAME);
             if (resp.success > 0) {
                 LoggerError("cannot stop previous consensus contract", ["err", resp.data]);
@@ -544,14 +545,14 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, isretry: bo
     if (info.consensusContract != "" && newContractSetup) {
         LoggerInfo("starting new consensus contract", ["address", info.consensusContract])
         let calldata = `{"run":{"event":{"type":"prestart","params":[]}}}`
-        let req = new CallRequest(info.consensusContract, calldata, BigInt.zero(), 100000000, false);
+        let req = new CallRequest(info.consensusContract, calldata, BigInt.zero(), DEFAULT_GAS_TX, false);
         let resp = wasmxw.call(req, cfg.MODULE_NAME);
         if (resp.success > 0) {
             LoggerError("cannot start next consensus contract", ["new contract", info.consensusContract, "err", resp.data]);
             // we can restart the old contract here, so the chain does not stop
             const myaddress = wasmxw.addr_humanize(wasmx.getAddress());
             calldata = `{"run":{"event":{"type":"restart","params":[]}}}`
-            req = new CallRequest(myaddress, calldata, BigInt.zero(), 100000000, false);
+            req = new CallRequest(myaddress, calldata, BigInt.zero(), DEFAULT_GAS_TX, false);
             resp = wasmxw.call(req, cfg.MODULE_NAME);
             if (resp.success > 0) {
                 LoggerError("cannot restart previous consensus contract", ["err", resp.data]);

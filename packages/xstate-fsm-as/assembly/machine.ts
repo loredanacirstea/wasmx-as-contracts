@@ -2,6 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallRequest, CallResponse, Base64String, Bech32String } from "wasmx-env/assembly/types";
+import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import {
   EventObject,
@@ -381,7 +382,7 @@ function processExternalCall(
   }
   const calldata = new ExternalActionCallData(actionType, params, event);
   const calldatastr = JSON.stringify<ExternalActionCallData>(calldata);
-  const req = new CallRequest(contractAddress, calldatastr, BigInt.zero(), 10000000, false);
+  const req = new CallRequest(contractAddress, calldatastr, BigInt.zero(), DEFAULT_GAS_TX, false);
   const resp = wasmxw.call(req, MODULE_NAME);
   resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
   return resp;
@@ -983,7 +984,7 @@ export function setup(config: MachineExternal, contractAddress: string): void {
   const param = new ActionParam("previousAddress", contractAddress);
   const calldata = new ExternalActionCallData("setup", [param], new EventObject("",[]));
   const calldatastr = JSON.stringify<ExternalActionCallData>(calldata);
-  const req = new CallRequest(config.library, calldatastr, BigInt.zero(), 10000000, false);
+  const req = new CallRequest(config.library, calldatastr, BigInt.zero(), DEFAULT_GAS_TX, false);
   const resp = wasmxw.call(req, MODULE_NAME);
   if (resp.success > 0) {
     return revert("could not execute setup");

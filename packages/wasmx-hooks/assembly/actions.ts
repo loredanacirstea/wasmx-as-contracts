@@ -3,6 +3,7 @@ import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assemb
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap"
 import { BigInt } from "wasmx-env/assembly/bn"
 import { Hook } from "wasmx-env/assembly/hooks"
+import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
 import { MODULE_NAME, MsgInitialize, MsgRunHook, MsgSetHook, Params, QueryHookModulesRequest, QueryHookModulesResponse, QueryHooksRequest, QueryHooksResponse } from "./types";
 import { LoggerDebug, LoggerError, revert } from "./utils";
 import { getHookNames, getHookByName, setHooks, setHookByName } from "./storage";
@@ -88,7 +89,7 @@ function setHookInternal(hookName: string, sourceModule: string, targetModules: 
 function makeHookCall(hook: string, moduleOrContract: string, data: Base64String): void {
     LoggerDebug("hook call", ["hook", hook, "module", moduleOrContract])
     const calldata = `{"${hook}":{"data":"${data}"}}`
-    const req = new CallRequest(moduleOrContract, calldata, BigInt.zero(), 100000000, false);
+    const req = new CallRequest(moduleOrContract, calldata, BigInt.zero(), DEFAULT_GAS_TX, false);
     const resp = wasmxw.call(req, MODULE_NAME);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);

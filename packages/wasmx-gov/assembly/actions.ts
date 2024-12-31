@@ -2,6 +2,7 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap"
 import { BigInt } from "wasmx-env/assembly/bn"
+import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
 import * as banktypes from "wasmx-bank/assembly/types"
 import * as erc20types from "wasmx-erc20/assembly/types"
 import * as blocktypes from "wasmx-blocks/assembly/types"
@@ -464,7 +465,7 @@ export function getTokenAddress(denom: string): Bech32String {
 }
 
 export function callBank(calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest("bank", calldata, BigInt.zero(), 100000000, isQuery);
+    const req = new CallRequest("bank", calldata, BigInt.zero(), DEFAULT_GAS_TX, isQuery);
     const resp = wasmxw.call(req, MODULE_NAME);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
@@ -494,7 +495,7 @@ export function callGetTotalStake(): BigInt {
 }
 
 export function callContract(addr: Bech32String, calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest(addr, calldata, BigInt.zero(), 100000000, isQuery);
+    const req = new CallRequest(addr, calldata, BigInt.zero(), DEFAULT_GAS_TX, isQuery);
     const resp = wasmxw.call(req, MODULE_NAME);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);

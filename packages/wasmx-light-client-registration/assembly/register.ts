@@ -1,5 +1,6 @@
 import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
+import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
 import * as wasmxwrap from "wasmx-env/assembly/wasmx_wrap";
 import { Base64String, Bech32String, CallRequest, CallResponse } from "wasmx-env/assembly/types";
 import { parseUint8ArrayToU32BigEndian } from "wasmx-utils/assembly/utils";
@@ -120,7 +121,7 @@ function getMajority(value: i32): i32 {
 }
 
 function callLightClient(lcAddress: Bech32String, calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest(lcAddress, calldata, BigInt.zero(), 100000000, isQuery);
+    const req = new CallRequest(lcAddress, calldata, BigInt.zero(), DEFAULT_GAS_TX, isQuery);
     const resp = wasmxwrap.call(req);
     if (resp.success == 0) {
         resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);

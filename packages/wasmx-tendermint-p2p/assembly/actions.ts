@@ -4,6 +4,7 @@ import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assemb
 import { getParamsOrEventParams, actionParamsToMap } from 'xstate-fsm-as/assembly/utils';
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
 import * as tnd from "wasmx-tendermint/assembly/actions";
 import * as p2pw from "wasmx-p2p/assembly/p2p_wrap";
 import * as p2ptypes from "wasmx-p2p/assembly/types";
@@ -435,7 +436,7 @@ export function setup(
     }
 
     let calldata = `{"getContextValue":{"key":"${cfg.VALIDATOR_NODES_INFO}"}}`
-    let req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
+    let req = new CallRequest(oldContract, calldata, BigInt.zero(), DEFAULT_GAS_TX, true);
     let resp = wasmxw.call(req, cfg.MODULE_NAME);
     if (resp.success > 0) {
         return revert("cannot get nodeIPs from previous contract")
@@ -446,7 +447,7 @@ export function setup(
     setValidatorNodesInfo(nodeIps);
 
     calldata = `{"getContextValue":{"key":"state"}}`
-    req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
+    req = new CallRequest(oldContract, calldata, BigInt.zero(), DEFAULT_GAS_TX, true);
     resp = wasmxw.call(req, cfg.MODULE_NAME);
     if (resp.success > 0) {
         return revert("cannot get state from previous contract")
@@ -457,7 +458,7 @@ export function setup(
     setCurrentState(state);
 
     calldata = `{"getContextValue":{"key":"mempool"}}`
-    req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
+    req = new CallRequest(oldContract, calldata, BigInt.zero(), DEFAULT_GAS_TX, true);
     resp = wasmxw.call(req, cfg.MODULE_NAME);
     if (resp.success > 0) {
         return revert("cannot get mempool from previous contract")
@@ -468,7 +469,7 @@ export function setup(
     setMempool(mempool);
 
     calldata = `{"getContextValue":{"key":"currentNodeId"}}`
-    req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
+    req = new CallRequest(oldContract, calldata, BigInt.zero(), DEFAULT_GAS_TX, true);
     resp = wasmxw.call(req, cfg.MODULE_NAME);
     if (resp.success > 0) {
         return revert("cannot get currentNodeId from previous contract")
@@ -479,7 +480,7 @@ export function setup(
     setCurrentNodeId(currentNodeId);
 
     calldata = `{"getContextValue":{"key":"currentTerm"}}`
-    req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
+    req = new CallRequest(oldContract, calldata, BigInt.zero(), DEFAULT_GAS_TX, true);
     resp = wasmxw.call(req, cfg.MODULE_NAME);
     if (resp.success > 0) {
         return revert("cannot get currentTerm from previous contract")

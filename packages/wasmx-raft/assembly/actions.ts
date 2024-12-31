@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
-import * as wblockscalld from "wasmx-blocks/assembly/calldata";
+import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
@@ -1181,7 +1181,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         const myaddress = wasmxw.addr_humanize(wasmx.getAddress());
         LoggerInfo("setting up next consensus contract", ["new contract", newContract, "previous contract", myaddress])
         let calldata = `{"run":{"event":{"type":"setup","params":[{"key":"address","value":"${myaddress}"}]}}}`
-        let req = new CallRequest(newContract, calldata, BigInt.zero(), 100000000, false);
+        let req = new CallRequest(newContract, calldata, BigInt.zero(), DEFAULT_GAS_TX, false);
         let resp = wasmxw.call(req, MODULE_NAME);
         if (resp.success > 0) {
             LoggerError("cannot setup next consensus contract", ["new contract", newContract, "err", resp.data]);
@@ -1192,7 +1192,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
             // stop this contract and any intervals on this contract
             // TODO cancel all intervals on stop() action
             calldata = `{"run":{"event":{"type":"stop","params":[]}}}`
-            req = new CallRequest(myaddress, calldata, BigInt.zero(), 100000000, false);
+            req = new CallRequest(myaddress, calldata, BigInt.zero(), DEFAULT_GAS_TX, false);
             resp = wasmxw.call(req, MODULE_NAME);
             if (resp.success > 0) {
                 LoggerError("cannot stop previous consensus contract", ["err", resp.data]);
@@ -1217,14 +1217,14 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     if (newContract != "" && newContractSetup) {
         LoggerInfo("starting new consensus contract", ["address", newContract])
         let calldata = `{"run":{"event":{"type":"prestart","params":[]}}}`
-        let req = new CallRequest(newContract, calldata, BigInt.zero(), 100000000, false);
+        let req = new CallRequest(newContract, calldata, BigInt.zero(), DEFAULT_GAS_TX, false);
         let resp = wasmxw.call(req, MODULE_NAME);
         if (resp.success > 0) {
             LoggerError("cannot start next consensus contract", ["new contract", newContract, "err", resp.data]);
             // we can restart the old contract here, so the chain does not stop
             const myaddress = wasmxw.addr_humanize(wasmx.getAddress());
             calldata = `{"run":{"event":{"type":"restart","params":[]}}}`
-            req = new CallRequest(myaddress, calldata, BigInt.zero(), 100000000, false);
+            req = new CallRequest(myaddress, calldata, BigInt.zero(), DEFAULT_GAS_TX, false);
             resp = wasmxw.call(req, MODULE_NAME);
             if (resp.success > 0) {
                 LoggerError("cannot restart previous consensus contract", ["err", resp.data]);
@@ -1280,7 +1280,7 @@ export function setup(
     }
 
     let calldata = `{"getContextValue":{"key":"${cfg.NODE_IPS}"}}`
-    let req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
+    let req = new CallRequest(oldContract, calldata, BigInt.zero(), DEFAULT_GAS_TX, true);
     let resp = wasmxw.call(req, MODULE_NAME);
     if (resp.success > 0) {
         return revert("cannot get nodeIPs from previous contract")
@@ -1291,7 +1291,7 @@ export function setup(
     setNodeIPs(nodeIps);
 
     calldata = `{"getContextValue":{"key":"state"}}`
-    req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
+    req = new CallRequest(oldContract, calldata, BigInt.zero(), DEFAULT_GAS_TX, true);
     resp = wasmxw.call(req, MODULE_NAME);
     if (resp.success > 0) {
         return revert("cannot get state from previous contract")
@@ -1302,7 +1302,7 @@ export function setup(
     setCurrentState(state);
 
     calldata = `{"getContextValue":{"key":"mempool"}}`
-    req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
+    req = new CallRequest(oldContract, calldata, BigInt.zero(), DEFAULT_GAS_TX, true);
     resp = wasmxw.call(req, MODULE_NAME);
     if (resp.success > 0) {
         return revert("cannot get mempool from previous contract")
@@ -1313,7 +1313,7 @@ export function setup(
     setMempool(mempool);
 
     calldata = `{"getContextValue":{"key":"currentNodeId"}}`
-    req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
+    req = new CallRequest(oldContract, calldata, BigInt.zero(), DEFAULT_GAS_TX, true);
     resp = wasmxw.call(req, MODULE_NAME);
     if (resp.success > 0) {
         return revert("cannot get currentNodeId from previous contract")
@@ -1324,7 +1324,7 @@ export function setup(
     setCurrentNodeId(currentNodeId);
 
     calldata = `{"getContextValue":{"key":"currentTerm"}}`
-    req = new CallRequest(oldContract, calldata, BigInt.zero(), 100000000, true);
+    req = new CallRequest(oldContract, calldata, BigInt.zero(), DEFAULT_GAS_TX, true);
     resp = wasmxw.call(req, MODULE_NAME);
     if (resp.success > 0) {
         return revert("cannot get currentTerm from previous contract")

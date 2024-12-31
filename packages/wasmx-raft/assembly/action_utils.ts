@@ -2,6 +2,7 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
+import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
 import { LoggerDebug, LoggerDebugExtended, LoggerError, revert } from "./utils";
 import {
   Base64String,
@@ -220,7 +221,7 @@ export function getAllValidators(): staking.Validator[] {
 }
 
 export function callStorage(calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest("storage", calldata, BigInt.zero(), 100000000, isQuery);
+    const req = new CallRequest("storage", calldata, BigInt.zero(), DEFAULT_GAS_TX, isQuery);
     const resp = wasmxw.call(req, MODULE_NAME);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
@@ -228,7 +229,7 @@ export function callStorage(calldata: string, isQuery: boolean): CallResponse {
 }
 
 export function callStaking(calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest("staking", calldata, BigInt.zero(), 100000000, isQuery);
+    const req = new CallRequest("staking", calldata, BigInt.zero(), DEFAULT_GAS_TX, isQuery);
     const resp = wasmxw.call(req, MODULE_NAME);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);

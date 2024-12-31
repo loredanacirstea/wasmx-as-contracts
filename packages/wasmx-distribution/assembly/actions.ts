@@ -1,6 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
+import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
 import { MsgRunHook } from "wasmx-hooks/assembly/types";
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as banktypes from "wasmx-bank/assembly/types"
@@ -266,7 +267,7 @@ export function getBalance(address: Bech32String, denom: string): Coin {
 
 export function callBank(calldata: string, isQuery: boolean): CallResponse {
     // TODO denom as alias! when we have alias contract
-    const req = new CallRequest("bank", calldata, BigInt.zero(), 100000000, isQuery);
+    const req = new CallRequest("bank", calldata, BigInt.zero(), DEFAULT_GAS_TX, isQuery);
     const resp = wasmxw.call(req, MODULE_NAME);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
@@ -274,7 +275,7 @@ export function callBank(calldata: string, isQuery: boolean): CallResponse {
 }
 
 export function callStaking(calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest("staking", calldata, BigInt.zero(), 100000000, isQuery);
+    const req = new CallRequest("staking", calldata, BigInt.zero(), DEFAULT_GAS_TX, isQuery);
     const resp = wasmxw.call(req, MODULE_NAME);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);

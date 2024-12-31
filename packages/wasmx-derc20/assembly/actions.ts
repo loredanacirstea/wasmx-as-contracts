@@ -2,6 +2,7 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
+import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
 import { Bech32String, CallRequest, CallResponse, Coin, PageResponse } from "wasmx-env/assembly/types";
 import { isAuthorized } from "wasmx-env/assembly/utils";
 import { BigInt } from "wasmx-env/assembly/bn";
@@ -212,7 +213,7 @@ function bankSendCoin (from: Bech32String, to: Bech32String, value: BigInt, deno
 }
 
 function callBank(calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest("bank", calldata, BigInt.zero(), 100000000, isQuery);
+    const req = new CallRequest("bank", calldata, BigInt.zero(), DEFAULT_GAS_TX, isQuery);
     const resp = wasmxw.call(req, MODULE_NAME);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);

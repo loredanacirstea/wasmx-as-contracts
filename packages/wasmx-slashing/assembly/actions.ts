@@ -1,9 +1,7 @@
 import { JSON } from "json-as/assembly";
-import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
-import * as blocktypes from "wasmx-blocks/assembly/types";
-import * as constypes from "wasmx-consensus/assembly/types_tendermint";
+import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
 import * as stakingtypes from "wasmx-stake/assembly/types";
 import { decode as decodeBase64 } from "as-base64/assembly";
 import { MODULE_NAME, GenesisState, QuerySigningInfoRequest, QuerySigningInfoResponse, ValidatorSigningInfo, MsgRunHook, QuerySigningInfosRequest, QuerySigningInfosResponse, QueryParamsRequest, Params, QueryParamsResponse } from './types';
@@ -176,7 +174,7 @@ export function callStakingContract(calldatastr: string): CallResponse {
 }
 
 export function callContract(addr: Bech32String, calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest(addr, calldata, BigInt.zero(), 100000000, isQuery);
+    const req = new CallRequest(addr, calldata, BigInt.zero(), DEFAULT_GAS_TX, isQuery);
     const resp = wasmxw.call(req, MODULE_NAME);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);

@@ -1,5 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as base64 from "as-base64/assembly";
+import { DEFAULT_GAS_TX } from "./const";
 import * as wasmxw from "./wasmx_wrap";
 import { Bech32String, CallRequest, CallResponse } from "./types";
 import { BigInt } from "./bn";
@@ -28,7 +29,7 @@ export function toUpperCase(str: string): string {
 }
 
 export function callContract(addr: Bech32String, calldata: string, isQuery: boolean, moduleName: string): CallResponse {
-    const req = new CallRequest(addr, calldata, BigInt.zero(), 100000000, isQuery);
+    const req = new CallRequest(addr, calldata, BigInt.zero(), DEFAULT_GAS_TX, isQuery);
     const resp = wasmxw.call(req, moduleName);
     // result or error
     resp.data = String.UTF8.decode(base64.decode(resp.data).buffer);

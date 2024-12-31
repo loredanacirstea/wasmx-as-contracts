@@ -2,6 +2,7 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import { callContract, isAuthorized } from "wasmx-env/assembly/utils";
+import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
 import { Bech32String } from "wasmx-utils/assembly/types";
 import { CallRequest, CallResponse, CreateAccountRequest, Coin } from 'wasmx-env/assembly/types';
 import * as erc20 from "wasmx-erc20/assembly/types";
@@ -330,7 +331,7 @@ export function sendCoins(from: Bech32String, to: Bech32String, coins: Coin[]): 
 }
 
 export function callAuth(calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest(authtypes.MODULE_NAME, calldata, BigInt.zero(), 100000000, isQuery);
+    const req = new CallRequest(authtypes.MODULE_NAME, calldata, BigInt.zero(), DEFAULT_GAS_TX, isQuery);
     const resp = wasmxw.call(req, MODULE_NAME);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
@@ -339,7 +340,7 @@ export function callAuth(calldata: string, isQuery: boolean): CallResponse {
 
 export function callToken(address: Bech32String, calldata: string, isQuery: boolean): CallResponse {
     // TODO denom as alias! when we have alias contract
-    const req = new CallRequest(address, calldata, BigInt.zero(), 100000000, isQuery);
+    const req = new CallRequest(address, calldata, BigInt.zero(), DEFAULT_GAS_TX, isQuery);
     const resp = wasmxw.call(req, MODULE_NAME);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
