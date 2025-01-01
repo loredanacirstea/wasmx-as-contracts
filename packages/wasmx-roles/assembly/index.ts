@@ -1,15 +1,15 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import { RolesGenesis } from "wasmx-env/assembly/types";
 import { getCallDataWrap } from './calldata';
 import { GetAddressOrRole, GetRoleByLabel, GetRoleLabelByContract, initialize, RegisterRole } from "./actions";
 import { revert } from "./utils";
-import { CallDataInstantiate } from "./types";
 
 export function wasmx_env_2(): void {}
 
 export function instantiate(): void {
   const calldraw = wasmx.getCallData();
-  const calld = JSON.parse<CallDataInstantiate>(String.UTF8.decode(calldraw));
+  const calld = JSON.parse<RolesGenesis>(String.UTF8.decode(calldraw));
   initialize(calld.roles);
 }
 

@@ -1,9 +1,10 @@
 import { JSON } from "json-as/assembly";
 import * as roles from "wasmx-env/assembly/roles";
 import * as hooks from "wasmx-env/assembly/hooks";
-import { stringToBase64 } from "wasmx-utils/assembly/utils";
+import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
+import { stringToBase64, hexToUint8Array, strip0x } from "wasmx-utils/assembly/utils";
 import { CodeMetadata, ContractStorageType, GenesisState, Params, StorageCoreConsensus, StorageMetaConsensus, StorageSingleConsensus, SystemContract } from "./types";
-import { Base64String } from "wasmx-env/assembly/types";
+import { Base64String, Role, RolesGenesis } from "wasmx-env/assembly/types";
 
 export const ADDR_ECRECOVER = "0x0000000000000000000000000000000000000001"
 export const ADDR_ECRECOVERETH = "0x000000000000000000000000000000000000001f"
@@ -156,8 +157,8 @@ export function mutichainLocalInitMsg(initialPorts: string): Base64String {
 export const hooksInitMsg = wasmxExecMsg(`{"hooks":${JSON.stringify<hooks.Hook[]>(hooks.DEFAULT_HOOKS)}}`)
 export const hooksInitMsgNonC = wasmxExecMsg(`{"hooks":${JSON.stringify<hooks.Hook[]>(hooks.DEFAULT_HOOKS_NONC)}}`)
 
-export function lobbyInitMsg (minValidatorsCount: i32, enableEID: boolean, currentLevel: i32): Base64String {
-    return wasmxExecMsg(`{"instantiate":{"context":[{"key":"heartbeatTimeout","value":5000},{"key":"newchainTimeout","value":20000},{"key":"current_level","value":${currentLevel}},{"key":"min_validators_count","value":${minValidatorsCount}},{"key":"enable_eid_check","value":${enableEID}},{"key":"erc20CodeId","value":27},{"key":"derc20CodeId","value":28},{"key":"level_initial_balance","value":10000000000000000000},{"key":"newchainRequestTimeout","value":1000}],"initialState":"uninitialized"}}`)
+export function lobbyInitMsg (minValidatorsCount: i32, enableEID: boolean, currentLevel: i32, erc20CodeId: i32, derc20CodeId: i32): Base64String {
+    return wasmxExecMsg(`{"instantiate":{"context":[{"key":"heartbeatTimeout","value":5000},{"key":"newchainTimeout","value":20000},{"key":"current_level","value":${currentLevel}},{"key":"min_validators_count","value":${minValidatorsCount}},{"key":"enable_eid_check","value":${enableEID}},{"key":"erc20CodeId","value":${erc20CodeId}},{"key":"derc20CodeId","value":${derc20CodeId}},{"key":"level_initial_balance","value":10000000000000000000},{"key":"newchainRequestTimeout","value":1000}],"initialState":"uninitialized"}}`)
 }
 
 export function metaregistryInitMsg(currentLevel: i32): Base64String {
@@ -168,8 +169,8 @@ export function bankInitMsg(feeCollectorBech32: string, mintBech32: string): Bas
     return wasmxExecMsg(`{"authorities":["${roles.ROLE_STAKING}","${roles.ROLE_GOVERNANCE}","${roles.ROLE_BANK}","${feeCollectorBech32}","${mintBech32}"]}`)
 }
 
-export function mutichainInitMsg(minValidatorCount: i32, enableEIDCheck: boolean): Base64String {
-    return wasmxExecMsg(`{"params":{"min_validators_count":${minValidatorCount},"enable_eid_check":${enableEIDCheck.toString()},"erc20CodeId":27,"derc20CodeId":28,"level_initial_balance":"10000000000000000000"}}`)
+export function mutichainInitMsg(minValidatorCount: i32, enableEIDCheck: boolean, erc20CodeId: i32, derc20CodeId: i32): Base64String {
+    return wasmxExecMsg(`{"params":{"min_validators_count":${minValidatorCount},"enable_eid_check":${enableEIDCheck.toString()},"erc20CodeId":${erc20CodeId},"derc20CodeId":${derc20CodeId},"level_initial_balance":"10000000000000000000"}}`)
 }
 
 export const sc_auth = new SystemContract(
@@ -800,12 +801,12 @@ export const sc_level0_ondemand = new SystemContract(
     CodeMetadata.Empty(),
 )
 
-export function sc_multichain_registry(minValidatorCount: i32, enableEIDCheck: boolean): SystemContract {
+export function sc_multichain_registry(minValidatorCount: i32, enableEIDCheck: boolean, erc20CodeId: i32, derc20CodeId: i32): SystemContract {
     return new SystemContract(
         ADDR_MULTICHAIN_REGISTRY,
         MULTICHAIN_REGISTRY_v001,
         StorageCoreConsensus,
-        mutichainInitMsg(minValidatorCount, enableEIDCheck),
+        mutichainInitMsg(minValidatorCount, enableEIDCheck, erc20CodeId, derc20CodeId),
         true,
         true,
         false,
@@ -843,12 +844,12 @@ export const sc_lobby_library = new SystemContract(
     CodeMetadata.Empty(),
 )
 
-export function sc_lobby(minValidatorCount: i32, enableEIDCheck: boolean, currentLevel: i32): SystemContract {
+export function sc_lobby(minValidatorCount: i32, enableEIDCheck: boolean, currentLevel: i32, erc20CodeId: i32, derc20CodeId: i32): SystemContract {
     return new SystemContract(
         ADDR_LOBBY,
         LOBBY_v001,
         StorageSingleConsensus,
-        lobbyInitMsg(minValidatorCount, enableEIDCheck, currentLevel),
+        lobbyInitMsg(minValidatorCount, enableEIDCheck, currentLevel, erc20CodeId, derc20CodeId),
         false,
         false,
         false,
@@ -912,8 +913,8 @@ export const sc_hooks_nonc = new SystemContract(
     CodeMetadata.Empty(),
 )
 
-export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32: string, minValidatorCount: i32, enableEIDCheck: boolean, currentLevel: i32, initialPorts: string): SystemContract[] {
-    return [
+export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32: string, minValidatorCount: i32, enableEIDCheck: boolean, currentLevel: i32, initialPorts: string, bech32PrefixAccAddr: string): SystemContract[] {
+    let precompiles = [
         // auth must be first
         sc_auth,
         sc_roles,
@@ -950,8 +951,13 @@ export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32
 
         sc_staking,
         sc_bank(feeCollectorBech32, mintBech32),
-        sc_erc20,
-        sc_derc20,
+        sc_erc20, // leave last for erc20CodeId
+        sc_derc20, // leave last for derc20CodeId
+    ]
+    // codeID starts at 1
+    const erc20CodeId = precompiles.length - 1;
+    const derc20CodeId = precompiles.length;
+    precompiles = precompiles.concat([
         sc_slashing,
         sc_distribution,
         sc_gov,
@@ -972,20 +978,22 @@ export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32
         sc_level0,
         sc_multichain_registry_local(initialPorts),
         sc_lobby_library,
-        sc_lobby(minValidatorCount, enableEIDCheck, currentLevel),
+        sc_lobby(minValidatorCount, enableEIDCheck, currentLevel, erc20CodeId, derc20CodeId),
         sc_metaregistry(currentLevel),
         sc_level0_ondemand_library,
         sc_level0_ondemand,
 
-        sc_multichain_registry(minValidatorCount, enableEIDCheck),
+        sc_multichain_registry(minValidatorCount, enableEIDCheck, erc20CodeId, derc20CodeId),
 
         sc_chat,
         sc_chat_verifier,
-    ]
+    ])
+    precompiles = fillRoles(precompiles, bech32PrefixAccAddr)
+    return precompiles;
 }
 
-export function getDefaultGenesis(bootstrapAccountBech32: string, feeCollectorBech32: string, mintBech32: string, minValidatorCount: i32, enableEIDCheck: boolean, currentLevel: i32, initialPorts: string): GenesisState {
-    const systemContracts = getDefaultSystemContracts(feeCollectorBech32, mintBech32, minValidatorCount, enableEIDCheck, currentLevel, initialPorts)
+export function getDefaultGenesis(bootstrapAccountBech32: string, feeCollectorBech32: string, mintBech32: string, minValidatorCount: i32, enableEIDCheck: boolean, currentLevel: i32, initialPorts: string, bech32PrefixAccAddr: string): GenesisState {
+    const systemContracts = getDefaultSystemContracts(feeCollectorBech32, mintBech32, minValidatorCount, enableEIDCheck, currentLevel, initialPorts, bech32PrefixAccAddr)
     return new GenesisState(
         new Params(),
         bootstrapAccountBech32,
@@ -995,4 +1003,34 @@ export function getDefaultGenesis(bootstrapAccountBech32: string, feeCollectorBe
         [],
         "",
     )
+}
+
+export function fillRoles(precompiles: SystemContract[], bech32PrefixAccAddr: string): SystemContract[] {
+    const rolesarr = new Array<Role>();
+
+    for (let i = 0; i < precompiles.length; i++) {
+      const precompile = precompiles[i];
+      if (precompile.role != "") {
+        if (precompile.label == "") {
+          throw new Error(`Label cannot be empty for role ${precompile.role}`);
+        }
+        const addrbech32 = wasmxw.addr_humanize_mc(hexToUint8Array(strip0x(precompile.address)).buffer, bech32PrefixAccAddr)
+        rolesarr.push(new Role(precompile.role, precompile.label, addrbech32));
+      }
+    }
+
+    const msgInit = new RolesGenesis(rolesarr);
+    const msgInitBz = JSON.stringify(msgInit);
+    if (msgInitBz == null) {
+        throw new Error("json stringify err");
+    }
+
+    for (let i = 0; i < precompiles.length; i++) {
+      const precompile = precompiles[i];
+      if (precompile.role == roles.ROLE_ROLES) {
+        precompile.init_message = wasmxExecMsg(msgInitBz);
+      }
+    }
+
+    return precompiles;
 }

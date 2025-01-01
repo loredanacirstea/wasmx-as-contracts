@@ -1,7 +1,6 @@
 import { JSON } from "json-as/assembly";
-import { Bech32String } from "wasmx-env/assembly/types";
+import { Bech32String, Role } from "wasmx-env/assembly/types";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
-import { Role } from "./types";
 
 // role => contract address
 const KEY_CONTRACT_ADDRESS_BY_ROLE = "addrbyrole_"

@@ -21,6 +21,32 @@ export type ValidatorAddressString = string;
 
 // @ts-ignore
 @serializable
+export class Role {
+    role: string
+    label: string
+    contract_address: string
+    constructor(
+        role: string,
+        label: string,
+        contract_address: string,
+    ) {
+        this.role = role
+        this.label = label
+        this.contract_address = contract_address
+    }
+}
+
+// @ts-ignore
+@serializable
+export class RolesGenesis {
+    roles: Role[]
+    constructor(roles: Role[]) {
+        this.roles = roles
+    }
+}
+
+// @ts-ignore
+@serializable
 export class Account {
     address: Bech32String;
     pubKey: Base64String;

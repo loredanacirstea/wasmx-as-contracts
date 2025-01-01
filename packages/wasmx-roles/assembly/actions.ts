@@ -1,8 +1,8 @@
 import { JSON } from "json-as/assembly";
-import { Bech32String, Event, EventAttribute } from "wasmx-env/assembly/types";
+import { Bech32String, Event, EventAttribute, Role } from "wasmx-env/assembly/types";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as st from "./storage";
-import { CallDataInstantiate, GetAddressOrRoleRequest, GetRoleByLabelRequest, GetRoleLabelByContractRequest, RegisterRoleRequest, Role } from "./types";
+import { GetAddressOrRoleRequest, GetRoleByLabelRequest, GetRoleLabelByContractRequest, RegisterRoleRequest } from "./types";
 import { LoggerInfo, revert } from "./utils";
 import { AttributeKeyContractAddress, AttributeKeyLabel, AttributeKeyRole, EventTypeRegisterRole } from "./events";
 
