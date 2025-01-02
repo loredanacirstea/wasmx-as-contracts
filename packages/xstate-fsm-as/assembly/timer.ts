@@ -1,4 +1,5 @@
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
+import * as wasmxcorew from 'wasmx-env-core/assembly/wasmxcore_wrap';
 import { parseInt32, parseInt64 } from 'wasmx-utils/assembly/utils';
 import {INTERVAL_ID_KEY} from './config';
 import * as storage from './storage';
@@ -61,7 +62,7 @@ export function tryCancelIntervals(state: string, delay: string, intervalId: i64
   // remove the interval data
   removeInterval(state, delay, intervalId);
   // cancel timeout with wasmx
-  wasmxw.cancelTimeout(intervalId.toString());
+  wasmxcorew.cancelTimeout(intervalId.toString());
   if (active && intervalId > 0) {
     tryCancelIntervals(state, delay, intervalId - 1);
   }

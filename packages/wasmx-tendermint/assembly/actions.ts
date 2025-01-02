@@ -4,6 +4,7 @@ import * as wblocks from "wasmx-blocks/assembly/types";
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import * as wasmxcorew from 'wasmx-env-core/assembly/wasmxcore_wrap';
 import * as roles from "wasmx-env/assembly/roles";
 import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
 import {
@@ -258,7 +259,7 @@ export function registeredCheck(
         // don't send to ourselves or to removed nodes
         if (i == nodeId || ips[i].node.ip == "") continue;
         LoggerInfo("register request", ["IP", ips[i].node.ip, "address", ips[i].address])
-        const response = wasmxw.grpcRequest(ips[i].node.ip, Uint8Array.wrap(contract), msgBase64);
+        const response = wasmxcorew.grpcRequest(ips[i].node.ip, Uint8Array.wrap(contract), msgBase64);
         LoggerInfo("register response", ["error", response.error, "data", response.data])
         if (response.error.length > 0 || response.data.length == 0) {
             return
@@ -434,7 +435,7 @@ export function sendAppendEntry(
 
     // we send the request to the same contract
     const contract = wasmx.getAddress();
-    const response = wasmxw.grpcRequest(node.node.ip, Uint8Array.wrap(contract), msgBase64);
+    const response = wasmxcorew.grpcRequest(node.node.ip, Uint8Array.wrap(contract), msgBase64);
     if (response.error.length > 0) {
         return
     }
@@ -520,7 +521,7 @@ export function sendPrecommit(
     const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
     // we send the request to the same contract
     const contract = wasmx.getAddress();
-    const response = wasmxw.grpcRequest(node.node.ip, Uint8Array.wrap(contract), msgBase64);
+    const response = wasmxcorew.grpcRequest(node.node.ip, Uint8Array.wrap(contract), msgBase64);
     if (response.error.length > 0) {
         LoggerError("precommit failed", ["nodeId", nodeId.toString(), "address", node.address, "nodeIp", node.node.ip])
     }

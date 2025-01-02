@@ -1,6 +1,8 @@
 import { JSON } from "json-as/assembly";
-import { Bech32String, Event, EventAttribute, Role } from "wasmx-env/assembly/types";
+import { Bech32String, ContractStorageTypeByString, Event, EventAttribute, Role } from "wasmx-env/assembly/types";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
+import * as wasmxcorew from 'wasmx-env-core/assembly/wasmxcore_wrap';
+import * as wasmxcoret from "wasmx-env-core/assembly/types";
 import * as st from "./storage";
 import { GetAddressOrRoleRequest, GetRoleByLabelRequest, GetRoleLabelByContractRequest, RegisterRoleRequest } from "./types";
 import { LoggerInfo, revert } from "./utils";
@@ -8,7 +10,7 @@ import { AttributeKeyContractAddress, AttributeKeyLabel, AttributeKeyRole, Event
 
 export function initialize(roles: Role[]): ArrayBuffer {
     for (let i = 0; i < roles.length; i++) {
-        registerRole(roles[i].role, roles[i].label, roles[i].contract_address);
+        registerRoleInitial(roles[i].role, roles[i].label, roles[i].contract_address);
     }
     return new ArrayBuffer(0);
 }
@@ -36,6 +38,17 @@ export function GetRoleByLabel(req: GetRoleByLabelRequest): ArrayBuffer {
 
 // TODO replace the previous role? if a role cannot hold 2 contracts?
 // e.g. consensus
+export function registerRoleInitial(role: string, label: string, addr: Bech32String): void {
+    if (role == "") {
+        revert(`cannot register empty role for ${addr}`)
+    }
+    if (label == "") {
+        revert(`cannot register role ${role} with empty label for ${addr}`)
+    }
+    LoggerInfo("register role initial", ["role", role, "label", label, "contract_address", addr])
+    registerRoleInternal(role, label, addr)
+}
+
 export function registerRole(role: string, label: string, addr: Bech32String): void {
     if (role == "") {
         revert(`cannot register empty role for ${addr}`)
@@ -43,7 +56,54 @@ export function registerRole(role: string, label: string, addr: Bech32String): v
     if (label == "") {
         revert(`cannot register role ${role} with empty label for ${addr}`)
     }
+
+    registerRoleMigration(role, addr);
     LoggerInfo("register role", ["role", role, "label", label, "contract_address", addr])
+    registerRoleInternal(role, label, addr)
+}
+
+export function registerRoleMigration(role: string, addr: Bech32String): void {
+    // get previous contract in the role, if exists
+    const prevContract = st.getContractAddressByRole(role);
+    if (prevContract == "" || prevContract == addr) {
+        return;
+    }
+
+    // inherit storage type from previous contract
+    const prevContractInfo = wasmxw.getContractInfo(prevContract)
+    if (prevContractInfo == null) {
+        revert(`cannot find contract info for ${prevContract}`);
+        return
+    }
+    const contractInfo = wasmxw.getContractInfo(addr);
+    if (contractInfo == null) {
+        revert(`cannot find contract info for ${addr}`);
+        return
+    }
+    // migrate storage if needed
+    if (contractInfo.storage_type != prevContractInfo.storage_type) {
+        LoggerInfo("migrating contract storage", ["address", addr, "source storage type", contractInfo.storage_type, "target storage type", prevContractInfo.storage_type])
+
+        if (!ContractStorageTypeByString.has(contractInfo.storage_type)) {
+            revert(`invalid source storage type ${contractInfo.storage_type}`)
+        }
+        if (!ContractStorageTypeByString.has(prevContractInfo.storage_type)) {
+            revert(`invalid target storage type ${prevContractInfo.storage_type}`)
+        }
+
+        const sourceStorageType = ContractStorageTypeByString.get(contractInfo.storage_type)
+        const targetStorageType = ContractStorageTypeByString.get(prevContractInfo.storage_type)
+
+        wasmxcorew.migrateContractStateByStorageType(new wasmxcoret.MigrateContractStateByStorageRequest(addr, sourceStorageType, targetStorageType))
+
+        contractInfo.storage_type = prevContractInfo.storage_type;
+        LoggerInfo("contract storage migrated", ["address", addr]);
+
+        wasmxcorew.setContractInfo(addr, contractInfo);
+    }
+}
+
+export function registerRoleInternal(role: string, label: string, addr: Bech32String): void {
     const roleObj = new Role(role, label, addr);
     st.setContractAddressByRole(role, addr);
     st.setRoleByLabel(roleObj);

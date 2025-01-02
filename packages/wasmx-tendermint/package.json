@@ -29,6 +29,7 @@
     "as-tally": "file:../as-tally",
     "wasmx-blocks": "file:../wasmx-blocks",
     "wasmx-env": "file:../wasmx-env",
+    "wasmx-env-core": "file:../wasmx-env-core",
     "wasmx-consensus": "file:../wasmx-consensus",
     "wasmx-consensus-utils": "file:../wasmx-consensus-utils",
     "wasmx-utils": "file:../wasmx-utils",

@@ -3,8 +3,8 @@ import * as roles from "wasmx-env/assembly/roles";
 import * as hooks from "wasmx-env/assembly/hooks";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import { stringToBase64, hexToUint8Array, strip0x } from "wasmx-utils/assembly/utils";
-import { CodeMetadata, ContractStorageType, GenesisState, Params, StorageCoreConsensus, StorageMetaConsensus, StorageSingleConsensus, SystemContract } from "./types";
-import { Base64String, Role, RolesGenesis } from "wasmx-env/assembly/types";
+import { GenesisState, Params } from "./types";
+import { Base64String, CodeMetadata, Role, RolesGenesis, StorageCoreConsensus, StorageMetaConsensus, StorageSingleConsensus, SystemContract } from "wasmx-env/assembly/types";
 
 export const ADDR_ECRECOVER = "0x0000000000000000000000000000000000000001"
 export const ADDR_ECRECOVERETH = "0x000000000000000000000000000000000000001f"

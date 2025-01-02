@@ -4,6 +4,7 @@ import * as wblocks from "wasmx-blocks/assembly/types";
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import * as wasmxcorew from 'wasmx-env-core/assembly/wasmxcore_wrap';
 import * as staking from "wasmx-stake/assembly/types";
 import {
     EventObject,
@@ -1124,7 +1125,7 @@ function sendQuery(ip: string, contract: ArrayBuffer, req: QueryResponse): Query
     const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
     LoggerDebug("query request", ["req", msgstr])
 
-    const response = wasmxw.grpcRequest(ip, Uint8Array.wrap(contract), msgBase64);
+    const response = wasmxcorew.grpcRequest(ip, Uint8Array.wrap(contract), msgBase64);
     LoggerDebug("query response", ["error", response.error, "data", response.data])
     if (response.error.length > 0 || response.data.length == 0) {
         return null

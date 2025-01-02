@@ -23,7 +23,11 @@ import {
 import { LoggerDebug, LoggerInfo, revert } from './utils';
 import { Base64String } from "wasmx-env/assembly/types";
 
-export function wasmx_env_2(): void {}
+export function memory_assemblyscript_1(): void {}
+
+export function wasmx_env_i32_2(): void {}
+
+export function wasmx_env_core_i32_1(): void {}
 
 export function instantiate(): void {}
 

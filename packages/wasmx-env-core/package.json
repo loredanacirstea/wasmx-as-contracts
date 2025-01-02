@@ -1,7 +1,6 @@
 {
-  "name": "wasmx-raft",
+  "name": "wasmx-env-core",
   "version": "0.0.1",
-  "description": "",
   "main": "index.js",
   "scripts": {
     "test": "node tests",
@@ -12,8 +11,9 @@
   },
   "author": "Loredana Cirstea",
   "license": "UNLICENSED",
+  "description": "",
   "devDependencies": {
-    "assemblyscript": "^0.27.22"
+    "assemblyscript": "^0.27.31"
   },
   "type": "module",
   "exports": {
@@ -24,16 +24,9 @@
   },
   "dependencies": {
     "as-base64": "^0.2.0",
+    "as-tally": "file:../as-tally",
     "json-as": "file:../../../as-json",
     "visitor-as": "^0.11.4",
-    "wasmx-blocks": "file:../wasmx-blocks",
-    "wasmx-consensus": "file:../wasmx-consensus",
-    "wasmx-consensus-utils": "file:../wasmx-consensus-utils",
-    "wasmx-env": "file:../wasmx-env",
-    "wasmx-env-core": "file:../wasmx-env-core",
-    "wasmx-p2p": "file:../wasmx-p2p",
-    "wasmx-stake": "file:../wasmx-stake",
-    "wasmx-utils": "file:../wasmx-utils",
-    "xstate-fsm-as": "file:../xstate-fsm-as"
+    "wasmx-env": "file:../wasmx-env"
   }
 }

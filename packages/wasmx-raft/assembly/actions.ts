@@ -4,6 +4,7 @@ import * as wblocks from "wasmx-blocks/assembly/types";
 import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import * as wasmxcorew from 'wasmx-env-core/assembly/wasmxcore_wrap';
 import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
 import {
   Base64String,
@@ -56,7 +57,7 @@ export function registeredCheck(
         // don't send to ourselves or to removed nodes
         if (i == nodeId || ips[i].node.ip == "") continue;
         LoggerInfo("register request", ["IP", ips[i].node.ip, "address", ips[i].address])
-        const response = wasmxw.grpcRequest(ips[i].node.ip, Uint8Array.wrap(contract), msgBase64);
+        const response = wasmxcorew.grpcRequest(ips[i].node.ip, Uint8Array.wrap(contract), msgBase64);
         LoggerInfo("register response", ["error", response.error, "data", response.data])
         if (response.error.length > 0 || response.data.length == 0) {
             return
@@ -273,7 +274,7 @@ export function forwardTxsToLeader(
         const tx = txs[0];
         const msgstr = `{"run":{"event":{"type":"newTransaction","params":[{"key": "transaction","value":"${tx}"}]}}}`
         const msgBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msgstr)));
-        const response = wasmxw.grpcRequest(nodeIp.node.ip, Uint8Array.wrap(contract), msgBase64);
+        const response = wasmxcorew.grpcRequest(nodeIp.node.ip, Uint8Array.wrap(contract), msgBase64);
         LoggerDebug("forwarding tx to leader", ["nodeId", nodeId.toString(), "nodeIp", nodeIp.node.ip, "batch", i.toString(), "error", response.error])
 
         if (response.error.length == 0) {
@@ -446,7 +447,7 @@ function sendVoteRequest(nodeId: i32, node: NodeInfo, request: VoteRequest, term
 
     const contract = wasmx.getAddress();
     LoggerDebug("sending vote request", ["nodeId", nodeId.toString(), "nodeIp", node.node.ip, "termId", termId.toString(), "data", datastr])
-    const response = wasmxw.grpcRequest(node.node.ip, Uint8Array.wrap(contract), msgBase64);
+    const response = wasmxcorew.grpcRequest(node.node.ip, Uint8Array.wrap(contract), msgBase64);
     LoggerDebug("vote request response", ["nodeId", nodeId.toString(), "nodeIp", node.node.ip, "termId", termId.toString(), "data", response.data, "error", response.error])
     if (response.error.length > 0 || response.data.length == 0) {
         return
@@ -781,7 +782,7 @@ export function sendAppendEntry(
 
     // we send the request to the same contract
     const contract = wasmx.getAddress();
-    const response = wasmxw.grpcRequest(node.node.ip, Uint8Array.wrap(contract), msgBase64);
+    const response = wasmxcorew.grpcRequest(node.node.ip, Uint8Array.wrap(contract), msgBase64);
     if (response.error.length > 0) {
         return
     }

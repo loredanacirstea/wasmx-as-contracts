@@ -568,22 +568,22 @@ export function createNewChainGenesisData(chaindata: MsgNewChainResponse, state:
     const chainConfig = mcutils.buildChainConfig(req.denom_unit, req.base_denom_unit, req.chain_base_name)
 
     // create new genesis data
-    const wasmxContractState = new Map<Bech32String,wasmxtypes.ContractStorage[]>()
+    const wasmxContractState = new Map<Bech32String,wasmxt.ContractStorage[]>()
 
     // store common configuration now
     // additional config is set by each validator
     // TODO lobby - check that only metaregistry contract has wasmxstate set separately by each validator
-    const registryContractState = new Array<wasmxtypes.ContractStorage>(0)
+    const registryContractState = new Array<wasmxt.ContractStorage>(0)
 
     // store level0 config - TODO chainID may change
-    const level0Config = new wasmxtypes.ContractStorage(
+    const level0Config = new wasmxt.ContractStorage(
         utils.uint8ArrayToHex(Uint8Array.wrap(String.UTF8.encode(metaregstore.getDataKey(level0.Level0ChainIdFull)))),
         utils.stringToBase64(JSON.stringify<metaregtypes.ChainConfigData>(new metaregtypes.ChainConfigData(level0.Level0Config, level0.Level0ChainId))),
     )
     registryContractState.push(level0Config)
 
     // store newchain config in its metaregistry contract
-    const newChainConfig = new wasmxtypes.ContractStorage(
+    const newChainConfig = new wasmxt.ContractStorage(
         utils.uint8ArrayToHex(Uint8Array.wrap(String.UTF8.encode(metaregstore.getDataKey(chainId.full)))),
         utils.stringToBase64(JSON.stringify<metaregtypes.ChainConfigData>(new metaregtypes.ChainConfigData(chainConfig, chainId))),
     )
@@ -796,16 +796,16 @@ export function addGenTx(
     const chainId = wasmxw.getChainId()
     if (!chainId.includes(level0.Level0ChainId.base_name)) {
         // also add our chain configuration to the wasmx genesis metaregistry
-        let metaregState = new Array<wasmxtypes.ContractStorage>(0)
+        let metaregState = new Array<wasmxt.ContractStorage>(0)
         if (gendata.data.wasmxContractState.has(wasmxdefaults.ADDR_METAREGISTRY)) {
             metaregState = gendata.data.wasmxContractState.get(wasmxdefaults.ADDR_METAREGISTRY)
         }
 
         // duplicates are removed by merging the state
-        const newMetaregState = new Array<wasmxtypes.ContractStorage>(0)
+        const newMetaregState = new Array<wasmxt.ContractStorage>(0)
         const parentConfig = getChainConfigFromMetaregistry(chainId)
         if (parentConfig != null) {
-            const parentconfigst = new wasmxtypes.ContractStorage(
+            const parentconfigst = new wasmxt.ContractStorage(
                 utils.uint8ArrayToHex(Uint8Array.wrap(String.UTF8.encode(metaregstore.getDataKey(chainId)))),
                 utils.stringToBase64(JSON.stringify<metaregtypes.ChainConfigData>(parentConfig)),
             )

@@ -6,9 +6,7 @@ import {
     CallResponse,
     Base64String,
     WasmxLog,
-    GrpcResponse,
     MerkleSlices,
-    StartTimeoutRequest,
     LoggerLog,
     Bech32String,
     Account,
@@ -24,13 +22,8 @@ import {
     VerifyCosmosTxResponse,
     BlockInfo,
     HexString,
-    StartBackgroundProcessRequest,
-    StartBackgroundProcessResponse,
-    WriteToBackgroundProcessRequest,
-    WriteToBackgroundProcessResponse,
-    ReadFromBackgroundProcessRequest,
-    ReadFromBackgroundProcessResponse,
-    CancelTimeoutRequest,
+    CodeInfo,
+    ContractInfo,
 } from './types';
 import { u8ArrayToHex, uint8ArrayToHex } from "as-tally/assembly/tally";
 import { toUpperCase } from "./utils";
@@ -129,6 +122,22 @@ export function getAccount(addr: Bech32String): Account {
     return JSON.parse<Account>(String.UTF8.decode(acc));
 }
 
+export function getCodeInfo(codeId: u64): CodeInfo | null {
+    const acc = wasmx.getCodeInfo(i64(codeId));
+    if (acc.byteLength == 0) {
+        return null;
+    }
+    return JSON.parse<CodeInfo>(String.UTF8.decode(acc));
+}
+
+export function getContractInfo(addr: Bech32String): ContractInfo | null {
+    const acc = wasmx.getContractInfo(addr_canonicalize(addr));
+    if (acc.byteLength == 0) {
+        return null;
+    }
+    return JSON.parse<ContractInfo>(String.UTF8.decode(acc));
+}
+
 export function intToString(value: i32): string {
     let vstr = value.toString(10);
     if (!vstr.includes(".")) return vstr;
@@ -160,21 +169,6 @@ export function logWithMsgTopic(
 
 export function emitCosmosEvents(events: Event[]): void {
     wasmx.emitCosmosEvents(String.UTF8.encode(JSON.stringify<Event[]>(events)))
-}
-
-export function grpcRequest(ip: string, contract: Uint8Array, data: string): GrpcResponse {
-    const contractAddress = encodeBase64(contract);
-    const reqstr = `{"ip_address":"${ip}","contract":"${contractAddress}","data":"${data}"}`
-    LoggerDebugExtendedWrap("grpc request: ", ["request", reqstr]);
-    const req = String.UTF8.encode(reqstr);
-    const result = wasmx.grpcRequest(req);
-    LoggerDebugExtendedWrap("grpc request: ", ["response",  String.UTF8.decode(result)]);
-    const response = JSON.parse<GrpcResponse>(String.UTF8.decode(result));
-    if (response.error.length == 0) {
-        response.data = String.UTF8.decode(decodeBase64(response.data).buffer);
-    }
-    console.debug("grpc response data: " + response.data);
-    return response;
 }
 
 export function call(req: CallRequest, moduleName: string = ""): CallResponse {
@@ -336,34 +330,4 @@ export function ed25519PubToHex(pubKey: Base64String): HexString {
     const bz = wasmx.ed25519PubToHex(data);
     const hexstr = uint8ArrayToHex(Uint8Array.wrap(bz));
     return toUpperCase(hexstr);
-}
-
-export function startTimeout(id: string, contract: string, delayms: i64, args: string): void {
-    const req = new StartTimeoutRequest(id, contract, delayms, encodeBase64(Uint8Array.wrap(String.UTF8.encode(args))));
-    wasmx.startTimeout(String.UTF8.encode(JSON.stringify<StartTimeoutRequest>(req)));
-}
-
-export function cancelTimeout(id: string): void {
-    const req = new CancelTimeoutRequest(id);
-    wasmx.cancelTimeout(String.UTF8.encode(JSON.stringify<CancelTimeoutRequest>(req)));
-}
-
-export function startBackgroundProcess(contract: string, args: string): void {
-    const encodedargs = encodeBase64(Uint8Array.wrap(String.UTF8.encode(args)));
-    const msg = `{"data":"${encodedargs}"}`
-    const encodedmsg = encodeBase64(Uint8Array.wrap(String.UTF8.encode(msg)));
-    const req = new StartBackgroundProcessRequest(contract, encodedmsg);
-    wasmx.startBackgroundProcess(String.UTF8.encode(JSON.stringify<StartBackgroundProcessRequest>(req)));
-}
-
-export function writeToBackgroundProcess(contract: string, ptrFunc: string, data: Base64String): WriteToBackgroundProcessResponse {
-    const req = new WriteToBackgroundProcessRequest(contract, data, ptrFunc);
-    const resp = wasmx.writeToBackgroundProcess(String.UTF8.encode(JSON.stringify<WriteToBackgroundProcessRequest>(req)));
-    return JSON.parse<WriteToBackgroundProcessResponse>(String.UTF8.decode(resp));
-}
-
-export function readFromBackgroundProcess(contract: string, ptrFunc: string, lenFunc: string): ReadFromBackgroundProcessResponse {
-    const req = new ReadFromBackgroundProcessRequest(contract, ptrFunc, lenFunc);
-    const resp = wasmx.readFromBackgroundProcess(String.UTF8.encode(JSON.stringify<ReadFromBackgroundProcessRequest>(req)));
-    return JSON.parse<ReadFromBackgroundProcessResponse>(String.UTF8.decode(resp));
 }

@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 import { InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
-import { Base64String, Bech32String, Coin, PublicKey } from "wasmx-env/assembly/types";
+import { Base64String, Bech32String, Coin, ContractStorage, PublicKey } from "wasmx-env/assembly/types";
 import * as authtypes from "wasmx-auth/assembly/types";
 import * as banktypes from "wasmx-bank/assembly/types";
 import * as stakingtypes from "wasmx-stake/assembly/types";
@@ -8,7 +8,6 @@ import * as govtypes from "wasmx-gov/assembly/types";
 import * as slashingtypes from "wasmx-slashing/assembly/types";
 import * as distributiontypes from "wasmx-distribution/assembly/types";
 import { BigInt } from "wasmx-env/assembly/bn";
-import { ContractStorage } from "wasmx-wasmx/assembly/types";
 
 export const MODULE_NAME = "multichain_registry"
 

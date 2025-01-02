@@ -2,6 +2,7 @@ import { JSON } from "json-as/assembly";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { HookCalld } from 'wasmx-env/assembly/hooks'
+import * as wasmxcore from 'wasmx-env-core/assembly/wasmxcore';
 import { parseUint8ArrayToI32BigEndian } from 'wasmx-utils/assembly/utils';
 import {
     EventObject,
@@ -142,7 +143,7 @@ export function grpcRequest(ip: string, contract: Uint8Array, data: string): Grp
     const reqstr = `{"ip_address":"${ip}","contract":"${contractAddress}","data":"${data}"}`
     LoggerDebugExtended("grpc request", ["request", reqstr])
     const req = String.UTF8.encode(reqstr);
-    const result = wasmx.grpcRequest(req);
+    const result = wasmxcore.grpcRequest(req);
     console.debug("grpc response: " + String.UTF8.decode(result));
     const response = JSON.parse<GrpcResponse>(String.UTF8.decode(result));
     if (response.error.length == 0) {

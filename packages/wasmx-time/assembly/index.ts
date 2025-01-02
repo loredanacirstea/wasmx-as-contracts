@@ -1,13 +1,16 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from "wasmx-env/assembly/wasmx";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
+import * as wasmxcorew from "wasmx-env-core/assembly/wasmxcore_wrap";
 import { Block, QueryBlockRequest } from "./types";
 import { getEmtpyBlock, getNewBlock } from "./blocks";
 import { getParams, setParams } from "./storage";
 import { getCallDataInitialize, getCallDataWrap } from "./calldata";
 import { LoggerInfo, revert } from "./utils";
 
-export function wasmx_env_2(): void {}
+export function memory_assemblyscript_1(): void {}
+export function wasmx_env_i32_2(): void {}
+export function wasmx_env_core_i32_1(): void {}
 
 export function instantiate(): void {
   const calld = getCallDataInitialize()
@@ -64,7 +67,7 @@ export function peek(): void {
 export function startNode(): void {
   const contract = wasmxw.getAddress()
   LoggerInfo("sending background process request", ["contract", contract])
-  wasmxw.startBackgroundProcess(contract, `{"start":{}}`);
+  wasmxcorew.startBackgroundProcess(contract, `{"start":{}}`);
 }
 
 // TODO start should get the last timehash from someone else

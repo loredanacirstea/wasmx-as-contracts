@@ -67,7 +67,7 @@ export function RegisterDefaultSubChain(req: RegisterDefaultSubChainRequest): Ar
     }
     LoggerInfo("start registering new default subchain", ["chain_base_name", req.chain_base_name])
     const chainId = registerDefaultChainId(req.chain_base_name, req.level_index)
-    registerDefaultSubChainInternal(getParams(), chainId.full, req, INITIAL_LEVEL, new Map<Bech32String,wasmxtypes.ContractStorage[]>());
+    registerDefaultSubChainInternal(getParams(), chainId.full, req, INITIAL_LEVEL, new Map<Bech32String,wasmxt.ContractStorage[]>());
     LoggerInfo("registered new default subchain", ["chain_base_name", req.chain_base_name])
     return new ArrayBuffer(0);
 }
@@ -288,24 +288,24 @@ export function tryRegisterUpperLevel(lastRegisteredLevel: i32, lastRegisteredCh
     // genesis state for registry contract
 
     // registry contract storage key-pairs
-    const wasmxContractState = new Map<Bech32String,wasmxtypes.ContractStorage[]>()
+    const wasmxContractState = new Map<Bech32String,wasmxt.ContractStorage[]>()
     // key: HexString, value: Base64String
-    const registryContractState = new Array<wasmxtypes.ContractStorage>(2+subchainIds.length)
+    const registryContractState = new Array<wasmxt.ContractStorage>(2+subchainIds.length)
     // store current level
-    registryContractState[0] = new wasmxtypes.ContractStorage(
+    registryContractState[0] = new wasmxt.ContractStorage(
         utils.uint8ArrayToHex(Uint8Array.wrap(String.UTF8.encode(CURRENT_LEVEL))),
         utils.stringToBase64(nextLevel.toString()),
     )
     // store child contract chain ids
     // on the last registered level, we only have our own kids
-    registryContractState[1] = new wasmxtypes.ContractStorage(
+    registryContractState[1] = new wasmxt.ContractStorage(
         utils.uint8ArrayToHex(Uint8Array.wrap(String.UTF8.encode(getLevelChainIdsKey(lastRegisteredLevel)))),
         utils.stringToBase64(JSON.stringify<string[]>(subchainIds)),
     )
     // store child chain configurations
     for (let i = 0; i < subchainIds.length; i++) {
         const subchainId = subchainIds[i]
-        registryContractState[2+i] = new wasmxtypes.ContractStorage(
+        registryContractState[2+i] = new wasmxt.ContractStorage(
             utils.uint8ArrayToHex(Uint8Array.wrap(String.UTF8.encode(getDataKey(subchainId)))),
             utils.stringToBase64(wasmxw.sload(getDataKey(subchainId))),
         )
@@ -364,7 +364,7 @@ export function tryRegisterUpperLevel(lastRegisteredLevel: i32, lastRegisteredCh
     LoggerInfo("initialized subchain", ["subchain_level", nextLevel.toString(), "subchain_id", newChainId.full])
 }
 
-export function registerDefaultSubChainLevel(params: Params, chainId: ChainId, levelIndex: i32, wasmxContractState: Map<Bech32String,wasmxtypes.ContractStorage[]>, initialBalance: BigInt): SubChainData {
+export function registerDefaultSubChainLevel(params: Params, chainId: ChainId, levelIndex: i32, wasmxContractState: Map<Bech32String,wasmxt.ContractStorage[]>, initialBalance: BigInt): SubChainData {
     const denomUnit = `lvl${levelIndex}`
     const req = new RegisterDefaultSubChainRequest(denomUnit, 18, chainId.base_name, levelIndex, initialBalance, [])
     return registerDefaultSubChainInternal(params, chainId.full, req, levelIndex, wasmxContractState)
@@ -388,7 +388,7 @@ export function registerDefaultChainId(chainBaseName: string, levelIndex: i32): 
 
 // TODO each level can create a chain for the next level only?
 // so add the level number in genesis
-export function buildDefaultSubChainGenesisInternal(params: Params, chainId: string, currentLevel: i32, chainConfig: ChainConfig, req: RegisterDefaultSubChainRequest, wasmxContractState: Map<Bech32String,wasmxtypes.ContractStorage[]>, initialPorts: NodePorts): InitSubChainDeterministicRequest {
+export function buildDefaultSubChainGenesisInternal(params: Params, chainId: string, currentLevel: i32, chainConfig: ChainConfig, req: RegisterDefaultSubChainRequest, wasmxContractState: Map<Bech32String,wasmxt.ContractStorage[]>, initialPorts: NodePorts): InitSubChainDeterministicRequest {
     const peers: string[] = [];
     const defaultInitialHeight: i64 = 1;
     const consensusParams = getDefaultConsensusParams()
@@ -414,7 +414,7 @@ export function buildDefaultSubChainGenesisInternal(params: Params, chainId: str
 
 // TODO each level can create a chain for the next level only?
 // so add the level number in genesis
-export function registerDefaultSubChainInternal(params: Params, chainId: string, req: RegisterDefaultSubChainRequest, levelIndex: i32, wasmxContractState: Map<Bech32String,wasmxtypes.ContractStorage[]>): SubChainData {
+export function registerDefaultSubChainInternal(params: Params, chainId: string, req: RegisterDefaultSubChainRequest, levelIndex: i32, wasmxContractState: Map<Bech32String,wasmxt.ContractStorage[]>): SubChainData {
     const chainConfig = buildChainConfig(req.denom_unit, req.base_denom_unit, req.chain_base_name)
     const initialPorts = new NodePorts()
     const data = buildDefaultSubChainGenesisInternal(params, chainId, levelIndex, chainConfig, req, wasmxContractState, initialPorts)
@@ -541,7 +541,7 @@ export function initSubChainPrepareData(chaindata: SubChainData, genTxs: Base64S
     return chaindata;
 }
 
-export function includeWasmxState(genesisState: GenesisState, wasmxContractState: Map<string, wasmxtypes.ContractStorage[]>): GenesisState {
+export function includeWasmxState(genesisState: GenesisState, wasmxContractState: Map<string, wasmxt.ContractStorage[]>): GenesisState {
     // update wasmx state
     if (!genesisState.has(modnames.MODULE_WASMX)) {
         revert(`genesis state missing field: ${modnames.MODULE_WASMX}`)
@@ -564,7 +564,7 @@ export function includeWasmxState(genesisState: GenesisState, wasmxContractState
     return genesisState;
 }
 
-export function mergeWasmxState(oldstate: wasmxtypes.ContractStorage[], newstate: wasmxtypes.ContractStorage[]): wasmxtypes.ContractStorage[] {
+export function mergeWasmxState(oldstate: wasmxt.ContractStorage[], newstate: wasmxt.ContractStorage[]): wasmxt.ContractStorage[] {
     // merge state - if we have contradicting states, we revert
     const extantKeys = new Map<string,string>()
     for (let j = 0; j < oldstate.length; j++) {
@@ -650,7 +650,7 @@ export function callEvmContract(addr: Bech32String, calldata: string, isQuery: b
     return resp;
 }
 
-export function buildGenesisData(params: Params, denomUnit: string, baseDenomUnit: u32, bootstrapAccountBech32: string, feeCollectorBech32: string, mintBech32: string, currentLevel: i32, wasmxContractState: Map<Bech32String,wasmxtypes.ContractStorage[]>, initialPorts: NodePorts, bech32PrefixAccAddr: string): GenesisState {
+export function buildGenesisData(params: Params, denomUnit: string, baseDenomUnit: u32, bootstrapAccountBech32: string, feeCollectorBech32: string, mintBech32: string, currentLevel: i32, wasmxContractState: Map<Bech32String,wasmxt.ContractStorage[]>, initialPorts: NodePorts, bech32PrefixAccAddr: string): GenesisState {
     // validators are only added through genTxs
     const bankGenesis = bankdefaults.getDefaultGenesis(denomUnit, baseDenomUnit, params.erc20CodeId, params.derc20CodeId)
 

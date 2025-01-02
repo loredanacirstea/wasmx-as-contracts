@@ -176,45 +176,10 @@ export class WasmxLog {
 
 // @ts-ignore
 @serializable
-export class GrpcResponse {
-    data: string // base64
-    error: string
-    constructor(data: string, error: string) {
-        this.data = data;
-        this.error = error;
-    }
-}
-
-// @ts-ignore
-@serializable
 export class MerkleSlices {
 	slices: string[] // base64 encoded
     constructor(slices: string[]) {
         this.slices = slices;
-    }
-}
-
-// @ts-ignore
-@serializable
-export class StartTimeoutRequest {
-    id: string
-	contract: string
-	delay: i64
-	args: Base64String
-    constructor(id: string, contract: string, delay: i64, args: Base64String) {
-        this.id = id
-        this.contract = contract
-        this.delay = delay
-        this.args = args
-    }
-}
-
-// @ts-ignore
-@serializable
-export class CancelTimeoutRequest {
-    id: string
-    constructor(id: string) {
-        this.id = id
     }
 }
 
@@ -561,87 +526,6 @@ export class BlockInfo {
     }
 }
 
-// @ts-ignore
-@serializable
-export class StartBackgroundProcessRequest {
-    contract: string
-    args: Base64String
-    constructor(
-        contract: string,
-        args: Base64String,
-    ) {
-        this.contract = contract
-        this.args = args
-    }
-}
-
-// @ts-ignore
-@serializable
-export class StartBackgroundProcessResponse {
-    error: string
-    data: Base64String
-    constructor(
-        error: string,
-        data: Base64String,
-    ) {
-        this.error = error
-        this.data = data
-    }
-}
-
-// @ts-ignore
-@serializable
-export class WriteToBackgroundProcessRequest {
-    contract: string // role or address
-    data: Base64String
-    ptrFunc: string
-    constructor(
-        contract: string,
-        data: Base64String,
-        ptrFunc: string,
-    ) {
-        this.contract = contract
-        this.data = data
-        this.ptrFunc = ptrFunc
-    }
-}
-
-// @ts-ignore
-@serializable
-export class WriteToBackgroundProcessResponse {
-    error: string
-    constructor(error: string) {
-        this.error = error
-    }
-}
-
-// @ts-ignore
-@serializable
-export class ReadFromBackgroundProcessRequest {
-    contract: string // role or address
-    ptrFunc: string
-    lenFunc: string
-    constructor(
-        contract: string,
-        ptrFunc: string,
-        lenFunc: string,
-    ) {
-        this.contract = contract
-        this.lenFunc = lenFunc
-        this.ptrFunc = ptrFunc
-    }
-}
-
-// @ts-ignore
-@serializable
-export class ReadFromBackgroundProcessResponse {
-    error: string
-    data: Base64String
-    constructor(error: string, data: Base64String) {
-        this.error = error
-        this.data = data
-    }
-}
 
 // @ts-ignore
 @serializable
@@ -706,3 +590,197 @@ export class MsgIsAtomicTxInExecutionResponse {
         this.is_in_execution = is_in_execution
     }
 }
+
+// @ts-ignore
+@serializable
+export class CodeInfo {
+    code_hash: Base64String
+    creator: Bech32String
+    deps: string[]
+    pinned: boolean
+    metering_off: boolean
+    metadata: CodeMetadata
+    interpreted_bytecode_deployment: Base64String
+    interpreted_bytecode_runtime: Base64String
+    runtime_hash: Base64String
+    constructor(
+        code_hash: Base64String,
+        creator: Bech32String,
+        deps: string[],
+        pinned: boolean,
+        metering_off: boolean,
+        metadata: CodeMetadata,
+        interpreted_bytecode_deployment: Base64String,
+        interpreted_bytecode_runtime: Base64String,
+        runtime_hash: Base64String,
+    ) {
+        this.code_hash = code_hash
+        this.creator = creator
+        this.deps = deps
+        this.pinned = pinned
+        this.metering_off = metering_off
+        this.metadata = metadata
+        this.interpreted_bytecode_deployment = interpreted_bytecode_deployment
+        this.interpreted_bytecode_runtime = interpreted_bytecode_runtime
+        this.runtime_hash = runtime_hash
+    }
+}
+
+// @ts-ignore
+@serializable
+export class CodeOrigin {
+    chain_id: string
+    address: Bech32String
+    constructor(chain_id: string, address: Bech32String) {
+        this.chain_id = chain_id
+        this.address = address
+    }
+}
+
+// @ts-ignore
+@serializable
+export class ContractStorage {
+    key: HexString
+    value: Base64String
+    constructor(key: HexString, value: Base64String) {
+        this.key = key
+        this.value = value
+    }
+}
+
+// @ts-ignore
+@serializable
+export class CodeMetadata {
+    name: string = ""
+    categ: string[] = []
+    icon: string = ""
+    author: string = ""
+    site: string = ""
+    abi: string = ""
+    json_schema: string = ""
+    origin: CodeOrigin | null = null
+    constructor(
+        name: string,
+        categ: string[],
+        icon: string,
+        author: string,
+        site: string,
+        abi: string,
+        json_schema: string,
+        origin: CodeOrigin | null,
+    ) {
+        this.name = name
+        this.categ = categ
+        this.icon = icon
+        this.author = author
+        this.site = site
+        this.abi = abi
+        this.json_schema = json_schema
+        this.origin = origin
+    }
+
+    static Empty(): CodeMetadata {
+        return new CodeMetadata("", [], "", "", "", "", "", null)
+    }
+}
+
+// @ts-ignore
+@serializable
+export class SystemContract {
+    address: string
+    label: string
+    storage_type: string
+    init_message: Base64String
+    pinned: boolean
+    metering_off: boolean
+    native: boolean
+    role: string
+    deps: string[]
+    metadata: CodeMetadata
+    contract_state: ContractStorage[] = []
+    constructor(
+        address: string,
+        label: string,
+        storage_type: string,
+        init_message: Base64String,
+        pinned: boolean,
+        metering_off: boolean,
+        native: boolean,
+        role: string,
+        deps: string[],
+        metadata: CodeMetadata,
+    ) {
+        this.address = address
+        this.label = label
+        this.storage_type = storage_type
+        this.init_message = init_message
+        this.pinned = pinned
+        this.metering_off = metering_off
+        this.native = native
+        this.role = role
+        this.deps = deps
+        this.metadata = metadata
+        this.contract_state = []
+    }
+}
+
+
+// @ts-ignore
+@serializable
+export class ContractInfo {
+    code_id: u64
+    creator: Bech32String
+    label: string
+    storage_type: string
+    init_message: Base64String
+    provenance: string
+    ibc_port_id: string
+
+    constructor(
+        code_id: u64,
+        creator: Bech32String,
+        label: string,
+        storage_type: string,
+        init_message: Base64String,
+        provenance: string,
+        ibc_port_id: string,
+    ) {
+        this.code_id = code_id
+        this.creator = creator
+        this.label = label
+        this.storage_type = storage_type
+        this.init_message = init_message
+        this.provenance = provenance
+        this.ibc_port_id = ibc_port_id
+    }
+}
+
+// @ts-ignore
+@serializable
+export enum ContractStorageType {
+    CoreConsensus = 0,
+    MetaConsensus = 1,
+    SingleConsensus = 2,
+    Memory = 3,
+    Transient = 4,
+}
+
+export const StorageCoreConsensus = "CoreConsensus"
+export const StorageMetaConsensus = "MetaConsensus"
+export const StorageSingleConsensus = "SingleConsensus"
+export const StorageMemory = "Memory"
+export const StorageTransient = "Transient"
+
+export const ContractStorageTypeByString = new Map<string, ContractStorageType>();
+ContractStorageTypeByString.set(StorageCoreConsensus, ContractStorageType.CoreConsensus);
+ContractStorageTypeByString.set(StorageMetaConsensus, ContractStorageType.MetaConsensus);
+ContractStorageTypeByString.set(StorageSingleConsensus, ContractStorageType.SingleConsensus);
+ContractStorageTypeByString.set(StorageMemory, ContractStorageType.Memory);
+ContractStorageTypeByString.set(StorageTransient, ContractStorageType.Transient);
+
+export const ContractStorageTypeByEnum = new Map<ContractStorageType, string>();
+ContractStorageTypeByEnum.set(ContractStorageType.CoreConsensus, StorageCoreConsensus);
+ContractStorageTypeByEnum.set(ContractStorageType.MetaConsensus, StorageMetaConsensus);
+ContractStorageTypeByEnum.set(ContractStorageType.SingleConsensus, StorageSingleConsensus);
+ContractStorageTypeByEnum.set(ContractStorageType.Memory, StorageMemory);
+ContractStorageTypeByEnum.set(ContractStorageType.Transient, StorageTransient);

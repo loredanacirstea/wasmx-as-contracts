@@ -1,6 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import * as wasmxcorew from 'wasmx-env-core/assembly/wasmxcore_wrap';
 import { CallRequest, CallResponse, Base64String, Bech32String } from "wasmx-env/assembly/types";
 import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
@@ -217,7 +218,7 @@ function runAfterTransitions(statePath: string, delayKeys: string[]): void {
     const args = new TimerArgs(delayKeys[i], statePath, intervalId);
     const argsStr = JSON.stringify<TimerArgs>(args);
     LoggerDebug("starting timeout", ["intervalId", intervalId.toString(), "delay_key", delayKeys[i], "delay", delay.toString()]);
-    wasmxw.startTimeout(intervalId.toString(), contractAddress, delay, argsStr);
+    wasmxcorew.startTimeout(intervalId.toString(), contractAddress, delay, argsStr);
   }
 }
 
@@ -430,7 +431,7 @@ function sendRequest(
       revert("sendRequest empty data");
   }
   const contract = wasmx.getCaller();
-  wasmxw.grpcRequest(address, Uint8Array.wrap(contract), data);
+  wasmxcorew.grpcRequest(address, Uint8Array.wrap(contract), data);
 }
 
 export class Service implements StateMachine.Service {
