@@ -10,7 +10,8 @@ import { getParamsInternal, setParams, setNewValidator, getParams, getValidator,
 import { GenesisState, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool, BondedS, AfterValidatorCreated, AfterValidatorBonded, QueryValidatorDelegationsRequest, QueryValidatorDelegationsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryParamsRequest, QueryParamsResponse, ValidatorSimple, QueryValidatorInfosResponse, getValidatorFromMsgCreate, Description } from './types';
 import { LoggerDebug, LoggerError, revert } from './utils';
 import { parseInt64 } from "wasmx-utils/assembly/utils";
-import { Bech32String, CallRequest, CallResponse, Coin, PageRequest, PageResponse, ValidatorAddressString } from "wasmx-env/assembly/types";
+import { Bech32String, CallRequest, CallResponse, Coin, PageRequest, PageResponse, ValidatorAddressString, Event, EventAttribute } from "wasmx-env/assembly/types";
+import { AttributeKeyAmount, AttributeKeyValidator, EventTypeCreateValidator } from "./events";
 
 export const POWER_REDUCTION: u32 = 1000000
 
@@ -65,6 +66,15 @@ export function CreateValidator(req: MsgCreateValidator): void {
     // we do this here, instead of ApplyAndReturnValidatorSetUpdates
     // TODO - is this good enough?
     bondValidatorAndCallHook(validator);
+
+    const ev = new Event(
+        EventTypeCreateValidator,
+        [
+            new EventAttribute(AttributeKeyValidator, req.validator_address, true),
+            new EventAttribute(AttributeKeyAmount, req.value.amount.toString(10), true),
+        ],
+    )
+    wasmxw.emitCosmosEvents([ev]);
 }
 
 export function EditValidator(): void {
@@ -341,6 +351,10 @@ export function getPower(tokens: BigInt): i64 {
 }
 
 export function setNewValidatorAndCallHook(value: Validator): void {
+    const v = getValidator(value.operator_address)
+    if (v != null) {
+        revert(`validator already registered: ${value.operator_address}`)
+    }
     setNewValidator(value)
     runHookContract(AfterValidatorCreated, JSON.stringify<Validator>(value));
 }
