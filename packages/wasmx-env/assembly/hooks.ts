@@ -17,6 +17,7 @@ export const HOOK_NEW_SUBCHAIN = "NewSubChain"
 export const HOOK_BEGIN_BLOCK      = "BeginBlock"
 export const HOOK_END_BLOCK        = "EndBlock"
 export const HOOK_CREATE_VALIDATOR = "CreatedValidator"
+export const HOOK_ROLE_CHANGED     = "RoleChanged"
 
 // staking
 export const AfterValidatorCreated          = "AfterValidatorCreated"

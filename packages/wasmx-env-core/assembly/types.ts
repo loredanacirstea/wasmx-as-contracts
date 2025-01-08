@@ -133,3 +133,45 @@ export class MigrateContractStateByStorageRequest {
         this.target_storage_type = target_storage_type
     }
 }
+
+// @ts-ignore
+@serializable
+export class GlobalStorageStoreRequest {
+    store_key: string
+    key: Base64String
+    value: Base64String
+    constructor(store_key: string, key: Base64String, value: Base64String) {
+        this.store_key = store_key
+        this.key = key
+        this.value = value
+    }
+}
+
+// @ts-ignore
+@serializable
+export class GlobalStorageLoadRequest {
+    store_key: string
+    key: Base64String
+    constructor(store_key: string, key: Base64String) {
+        this.store_key = store_key
+        this.key = key
+    }
+}
+
+// @ts-ignore
+@serializable
+export class GlobalStorageResetRequest {
+    store_key: string
+    constructor(store_key: string) {
+        this.store_key = store_key
+    }
+}
+
+// @ts-ignore
+@serializable
+export class GlobalStorageResetResponse {
+    error: string
+    constructor(error: string) {
+        this.error = error
+    }
+}

@@ -64,6 +64,16 @@ export function parseUint8ArrayToI64BigEndian(buff: Uint8Array): i64 {
     return view.getInt64(0, false);
 }
 
+export function parseUint8ArrayToU64BigEndian(buff: Uint8Array): u64 {
+    var view = new DataView(buff.buffer, 0);
+    return view.getUint64(0, false);
+}
+
+export function u64FromBuffer(buff: ArrayBuffer, littleEndian: bool = false): u64 {
+    var view = new DataView(buff, 0);
+    return view.getUint64(0, littleEndian);
+}
+
 export function i32ToUint8ArrayBE(value: i32): Uint8Array {
     const v = new ArrayBuffer(4);
     var view = new DataView(v, 0);
@@ -75,6 +85,13 @@ export function i64ToUint8ArrayBE(value: i64): Uint8Array {
     const v = new ArrayBuffer(8);
     var view = new DataView(v, 0);
     view.setInt64(0, value, false);
+    return Uint8Array.wrap(v);
+}
+
+export function u64ToUint8ArrayBE(value: u64): Uint8Array {
+    const v = new ArrayBuffer(8);
+    var view = new DataView(v, 0);
+    view.setUint64(0, value, false);
     return Uint8Array.wrap(v);
 }
 
@@ -104,4 +121,23 @@ export function base64ToString(value: Base64String): string {
 
 export function stringToBase64(value: string): Base64String {
     return encodeBase64(Uint8Array.wrap(String.UTF8.encode(value)))
+}
+
+export function bytes(u8arr: u8[]): Uint8Array {
+    const v = new Uint8Array(u8arr.length);
+    for (let i = 0; i < u8arr.length; i++) {
+        v[i] = u8arr[i];
+    }
+    return v;
+}
+
+export function concatBytes(arr1: Uint8Array, arr2: Uint8Array): Uint8Array {
+    let combined = new Uint8Array(arr1.length + arr2.length);
+    combined.set(arr1, 0);
+    combined.set(arr2, arr1.length);
+    return combined;
+}
+
+export function stringToBytes(v: string): Uint8Array {
+    return Uint8Array.wrap(String.UTF8.encode(v));
 }

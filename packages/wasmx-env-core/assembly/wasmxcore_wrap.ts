@@ -12,6 +12,10 @@ import {
     StartTimeoutRequest,
     CancelTimeoutRequest,
     MigrateContractStateByStorageRequest,
+    GlobalStorageLoadRequest,
+    GlobalStorageStoreRequest,
+    GlobalStorageResetRequest,
+    GlobalStorageResetResponse,
 } from './types';
 import { LoggerDebugExtended } from "./utils";
 import { Base64String, Bech32String, ContractInfo } from "wasmx-env/assembly/types";
@@ -70,4 +74,30 @@ export function migrateContractStateByStorageType(req: MigrateContractStateBySto
 export function setContractInfo(addr: Bech32String, data: ContractInfo): void {
     const databuf = String.UTF8.encode(JSON.stringify<ContractInfo>(data))
     wasmxcore.setContractInfo(addr_canonicalize(addr), databuf);
+}
+
+export function storageLoadGlobal(req: GlobalStorageLoadRequest): ArrayBuffer {
+    const databuf = String.UTF8.encode(JSON.stringify<GlobalStorageLoadRequest>(req))
+    return wasmxcore.storageLoadGlobal(databuf)
+}
+
+export function storageStoreGlobal(req: GlobalStorageStoreRequest): void {
+    const databuf = String.UTF8.encode(JSON.stringify<GlobalStorageStoreRequest>(req))
+    wasmxcore.storageStoreGlobal(databuf)
+}
+
+export function storageDeleteGlobal(req: GlobalStorageLoadRequest): void {
+    const databuf = String.UTF8.encode(JSON.stringify<GlobalStorageLoadRequest>(req))
+    return wasmxcore.storageDeleteGlobal(databuf)
+}
+
+export function storageHasGlobal(req: GlobalStorageLoadRequest): i32 {
+    const databuf = String.UTF8.encode(JSON.stringify<GlobalStorageLoadRequest>(req))
+    return wasmxcore.storageHasGlobal(databuf)
+}
+
+export function storageResetGlobal(req: GlobalStorageResetRequest): GlobalStorageResetResponse {
+    const databuf = String.UTF8.encode(JSON.stringify<GlobalStorageResetRequest>(req))
+    const resp = wasmxcore.storageResetGlobal(databuf)
+    return JSON.parse<GlobalStorageResetResponse>(String.UTF8.decode(resp))
 }

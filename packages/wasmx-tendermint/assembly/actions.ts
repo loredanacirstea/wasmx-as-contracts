@@ -37,6 +37,7 @@ import { appendLogEntry, decodeTx, getBlockID, getCurrentNodeId, getCurrentState
 import { NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft";
 import { verifyMessage } from "wasmx-raft/assembly/action_utils";
 import { NetworkNode, NodeInfo } from "wasmx-p2p/assembly/types";
+import { callContract } from "wasmx-env/assembly/utils";
 
 // guards
 
@@ -1721,19 +1722,11 @@ export function callHookNonCContract(hookName: string, data: string): void {
 export function callHookContractInternal(contractRole: string, hookName: string, data: string): void {
     const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(data)))
     const calldatastr = `{"RunHook":{"hook":"${hookName}","data":"${dataBase64}"}}`;
-    const resp = callContract(contractRole, calldatastr, false)
+    const resp = callContract(contractRole, calldatastr, false, MODULE_NAME)
     if (resp.success > 0) {
         // we do not fail, we want the chain to continue
         LoggerError(`hooks failed`, ["error", resp.data])
     }
-}
-
-export function callContract(addr: Bech32String, calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest(addr, calldata, BigInt.zero(), DEFAULT_GAS_TX, isQuery);
-    const resp = wasmxw.call(req, MODULE_NAME);
-    // result or error
-    resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
-    return resp;
 }
 
 export function getTotalStaked(validators: staking.Validator[]): BigInt {

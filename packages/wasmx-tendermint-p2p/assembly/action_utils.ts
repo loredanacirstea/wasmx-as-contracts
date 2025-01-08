@@ -15,7 +15,7 @@ import * as modnames from "wasmx-env/assembly/modules";
 import * as mctypes from "wasmx-consensus/assembly/types_multichain";
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
 import * as tnd from "wasmx-tendermint/assembly/actions";
-import { callContract, callHookContract, callHookNonCContract, getMempool, setMempool, updateConsensusParams, updateValidators } from "wasmx-tendermint/assembly/actions";
+import { callHookContract, callHookNonCContract, getMempool, setMempool, updateConsensusParams, updateValidators } from "wasmx-tendermint/assembly/actions";
 import * as cfg from "./config";
 import { AppendEntry, CosmosmodGenesisState, IsNodeValidator, LogEntryAggregate } from "./types";
 import { LoggerDebug, LoggerDebugExtended, LoggerError, LoggerInfo, revert } from "./utils";
@@ -34,6 +34,7 @@ import * as raftp2pactions from "wasmx-raft-p2p/assembly/actions";
 import { NodeUpdate } from "wasmx-raft/assembly/types_raft";
 import { removeNode } from "wasmx-raft/assembly/actions";
 import { CurrentState, ValidatorQueueEntry } from "wasmx-tendermint/assembly/types_blockchain";
+import { callContract } from "wasmx-env/assembly/utils";
 
 export function wrapGuard(value: boolean): ArrayBuffer {
     if (value) return String.UTF8.encode("1");
@@ -534,7 +535,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, isretry: bo
 
                 // call consensus contract with "becomeValidator" transition
                 const calldatastr = `{"run":{"event": {"type": "becomeValidator", "params": []}}}`;
-                callContract(wasmxw.getAddress(), calldatastr, false);
+                callContract(wasmxw.getAddress(), calldatastr, false, cfg.MODULE_NAME);
             }
         }
     }

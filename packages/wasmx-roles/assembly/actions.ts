@@ -1,12 +1,16 @@
 import { JSON } from "json-as/assembly";
+import * as base64 from "as-base64/assembly";
 import { Bech32String, ContractStorageTypeByString, Event, EventAttribute, Role } from "wasmx-env/assembly/types";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
+import * as roles from "wasmx-env/assembly/roles";
+import * as hooks from "wasmx-env/assembly/hooks";
 import * as wasmxcorew from 'wasmx-env-core/assembly/wasmxcore_wrap';
 import * as wasmxcoret from "wasmx-env-core/assembly/types";
 import * as st from "./storage";
-import { GetAddressOrRoleRequest, GetRoleByLabelRequest, GetRoleLabelByContractRequest, RegisterRoleRequest } from "./types";
-import { LoggerInfo, revert } from "./utils";
+import { GetAddressOrRoleRequest, GetRoleByLabelRequest, GetRoleLabelByContractRequest, MODULE_NAME, RegisterRoleRequest } from "./types";
+import { LoggerError, LoggerInfo, revert } from "./utils";
 import { AttributeKeyContractAddress, AttributeKeyLabel, AttributeKeyRole, EventTypeRegisterRole } from "./events";
+import { callContract } from "wasmx-env/assembly/utils";
 
 export function initialize(roles: Role[]): ArrayBuffer {
     for (let i = 0; i < roles.length; i++) {
@@ -118,6 +122,7 @@ export function registerRoleInternal(role: string, label: string, addr: Bech32St
             ],
         )
     ]);
+    callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<Role>(roleObj))
 }
 
 export function deregisterRole(): void {
@@ -133,4 +138,22 @@ export function getAddressOrRole(addressOrRole: string): Bech32String {
     }
     wasmxw.validate_bech32_address(addressOrRole);
     return addressOrRole;
+}
+
+export function callHookContract(hookName: string, data: string): void {
+    callHookContractInternal(roles.ROLE_HOOKS, hookName, data)
+}
+
+export function callHookNonCContract(hookName: string, data: string): void {
+    callHookContractInternal(roles.ROLE_HOOKS_NONC, hookName, data)
+}
+
+export function callHookContractInternal(contractRole: string, hookName: string, data: string): void {
+    const dataBase64 = base64.encode(Uint8Array.wrap(String.UTF8.encode(data)))
+    const calldatastr = `{"RunHook":{"hook":"${hookName}","data":"${dataBase64}"}}`;
+    const resp = callContract(contractRole, calldatastr, false, MODULE_NAME)
+    if (resp.success > 0) {
+        // we do not fail, we want the chain to continue
+        LoggerError(`hooks failed`, ["error", resp.data])
+    }
 }

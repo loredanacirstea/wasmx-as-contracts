@@ -594,15 +594,15 @@ export class MsgIsAtomicTxInExecutionResponse {
 // @ts-ignore
 @serializable
 export class CodeInfo {
-    code_hash: Base64String
-    creator: Bech32String
-    deps: string[]
-    pinned: boolean
-    metering_off: boolean
-    metadata: CodeMetadata
-    interpreted_bytecode_deployment: Base64String
-    interpreted_bytecode_runtime: Base64String
-    runtime_hash: Base64String
+    code_hash: Base64String = ""
+    creator: Bech32String  = ""
+    deps: string[] = []
+    pinned: boolean = false
+    metering_off: boolean = false
+    metadata: CodeMetadata = new CodeMetadata("", [], "", "", "", "", "", new CodeOrigin("", ""))
+    interpreted_bytecode_deployment: Base64String = ""
+    interpreted_bytecode_runtime: Base64String = ""
+    runtime_hash: Base64String = ""
     constructor(
         code_hash: Base64String,
         creator: Bech32String,
@@ -658,7 +658,7 @@ export class CodeMetadata {
     site: string = ""
     abi: string = ""
     json_schema: string = ""
-    origin: CodeOrigin | null = null
+    origin: CodeOrigin = new CodeOrigin("", "")
     constructor(
         name: string,
         categ: string[],
@@ -667,7 +667,7 @@ export class CodeMetadata {
         site: string,
         abi: string,
         json_schema: string,
-        origin: CodeOrigin | null,
+        origin: CodeOrigin,
     ) {
         this.name = name
         this.categ = categ
@@ -680,7 +680,7 @@ export class CodeMetadata {
     }
 
     static Empty(): CodeMetadata {
-        return new CodeMetadata("", [], "", "", "", "", "", null)
+        return new CodeMetadata("", [], "", "", "", "", "", new CodeOrigin("", ""))
     }
 }
 

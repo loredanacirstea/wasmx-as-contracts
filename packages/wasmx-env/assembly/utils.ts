@@ -2,6 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as base64 from "as-base64/assembly";
 import { DEFAULT_GAS_TX } from "./const";
 import * as wasmxw from "./wasmx_wrap";
+import * as roles from "./roles";
 import { Bech32String, CallRequest, CallResponse } from "./types";
 import { BigInt } from "./bn";
 
