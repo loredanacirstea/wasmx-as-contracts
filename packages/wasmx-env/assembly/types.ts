@@ -658,7 +658,7 @@ export class CodeMetadata {
     site: string = ""
     abi: string = ""
     json_schema: string = ""
-    origin: CodeOrigin = new CodeOrigin("", "")
+    origin: CodeOrigin | null
     constructor(
         name: string,
         categ: string[],
@@ -667,7 +667,7 @@ export class CodeMetadata {
         site: string,
         abi: string,
         json_schema: string,
-        origin: CodeOrigin,
+        origin: CodeOrigin | null,
     ) {
         this.name = name
         this.categ = categ
@@ -680,7 +680,7 @@ export class CodeMetadata {
     }
 
     static Empty(): CodeMetadata {
-        return new CodeMetadata("", [], "", "", "", "", "", new CodeOrigin("", ""))
+        return new CodeMetadata("", [], "", "", "", "", "", null)
     }
 }
 
