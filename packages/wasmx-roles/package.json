@@ -26,6 +26,7 @@
     "as-base64": "^0.2.0",
     "json-as": "file:../../../as-json",
     "visitor-as": "^0.11.4",
+    "wasmx-codes-registry": "file:../wasmx-codes-registry",
     "wasmx-env": "file:../wasmx-env",
     "wasmx-env-core": "file:../wasmx-env-core",
     "wasmx-utils": "file:../wasmx-utils"

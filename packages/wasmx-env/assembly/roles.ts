@@ -1,5 +1,6 @@
 export var ROLE_EID_REGISTRY = "eid_registry"
 export var ROLE_STORAGE = "storage"
+export var ROLE_STORAGE_CONTRACTS = "storage_contracts"
 export var ROLE_STAKING = "staking"
 export var ROLE_BANK = "bank"
 export var ROLE_DENOM = "denom"

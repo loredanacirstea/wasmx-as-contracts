@@ -122,22 +122,6 @@ export function getAccount(addr: Bech32String): Account {
     return JSON.parse<Account>(String.UTF8.decode(acc));
 }
 
-export function getCodeInfo(codeId: u64): CodeInfo | null {
-    const acc = wasmx.getCodeInfo(i64(codeId));
-    if (acc.byteLength == 0) {
-        return null;
-    }
-    return JSON.parse<CodeInfo>(String.UTF8.decode(acc));
-}
-
-export function getContractInfo(addr: Bech32String): ContractInfo | null {
-    const acc = wasmx.getContractInfo(addr_canonicalize(addr));
-    if (acc.byteLength == 0) {
-        return null;
-    }
-    return JSON.parse<ContractInfo>(String.UTF8.decode(acc));
-}
-
 export function intToString(value: i32): string {
     let vstr = value.toString(10);
     if (!vstr.includes(".")) return vstr;

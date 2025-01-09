@@ -6,7 +6,6 @@ export declare function writeToBackgroundProcess(req: ArrayBuffer): ArrayBuffer
 export declare function readFromBackgroundProcess(req: ArrayBuffer): ArrayBuffer
 export declare function externalCall(data: ArrayBuffer): ArrayBuffer
 export declare function migrateContractStateByStorageType(data: ArrayBuffer): void
-export declare function setContractInfo(address: ArrayBuffer, data: ArrayBuffer): void
 
 export declare function storageLoadGlobal(req: ArrayBuffer): ArrayBuffer
 export declare function storageStoreGlobal(address: ArrayBuffer): void

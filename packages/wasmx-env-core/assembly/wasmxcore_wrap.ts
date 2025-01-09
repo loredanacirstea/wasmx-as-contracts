@@ -71,11 +71,6 @@ export function migrateContractStateByStorageType(req: MigrateContractStateBySto
     return wasmxcore.migrateContractStateByStorageType(data);
 }
 
-export function setContractInfo(addr: Bech32String, data: ContractInfo): void {
-    const databuf = String.UTF8.encode(JSON.stringify<ContractInfo>(data))
-    wasmxcore.setContractInfo(addr_canonicalize(addr), databuf);
-}
-
 export function storageLoadGlobal(req: GlobalStorageLoadRequest): ArrayBuffer {
     const databuf = String.UTF8.encode(JSON.stringify<GlobalStorageLoadRequest>(req))
     return wasmxcore.storageLoadGlobal(databuf)

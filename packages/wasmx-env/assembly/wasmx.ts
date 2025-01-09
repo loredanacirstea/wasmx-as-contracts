@@ -19,9 +19,6 @@ export declare function finish(value: ArrayBuffer): void
 export declare function revert(message: ArrayBuffer): void
 
 export declare function getAccount(address: ArrayBuffer): ArrayBuffer
-export declare function getCodeInfo(codeId: i64): ArrayBuffer
-export declare function getContractInfo(address: ArrayBuffer): ArrayBuffer
-
 export declare function call(data: ArrayBuffer): ArrayBuffer
 
 export declare function createAccount(data: ArrayBuffer): ArrayBuffer

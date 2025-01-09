@@ -1,11 +1,12 @@
 import { JSON } from "json-as/assembly";
 import * as base64 from "as-base64/assembly";
-import { Bech32String, ContractStorageTypeByString, Event, EventAttribute, Role } from "wasmx-env/assembly/types";
+import { Bech32String, ContractInfo, ContractStorageTypeByString, Event, EventAttribute, Role } from "wasmx-env/assembly/types";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as roles from "wasmx-env/assembly/roles";
 import * as hooks from "wasmx-env/assembly/hooks";
 import * as wasmxcorew from 'wasmx-env-core/assembly/wasmxcore_wrap';
 import * as wasmxcoret from "wasmx-env-core/assembly/types";
+import * as codesregt from "wasmx-codes-registry/assembly/types";
 import * as st from "./storage";
 import { GetAddressOrRoleRequest, GetRoleByLabelRequest, GetRoleLabelByContractRequest, MODULE_NAME, RegisterRoleRequest } from "./types";
 import { LoggerError, LoggerInfo, revert } from "./utils";
@@ -51,6 +52,8 @@ export function registerRoleInitial(role: string, label: string, addr: Bech32Str
     }
     LoggerInfo("register role initial", ["role", role, "label", label, "contract_address", addr])
     registerRoleInternal(role, label, addr)
+    // we do not call the hooks contract here, as it may not be initialized yet
+    // we use genesis data directly if we need other contracts to know about the roles
 }
 
 export function registerRole(role: string, label: string, addr: Bech32String): void {
@@ -63,7 +66,9 @@ export function registerRole(role: string, label: string, addr: Bech32String): v
 
     registerRoleMigration(role, addr);
     LoggerInfo("register role", ["role", role, "label", label, "contract_address", addr])
-    registerRoleInternal(role, label, addr)
+    const roleObj = registerRoleInternal(role, label, addr);
+    // we also call the hooks contract
+    callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<Role>(roleObj))
 }
 
 export function registerRoleMigration(role: string, addr: Bech32String): void {
@@ -74,12 +79,12 @@ export function registerRoleMigration(role: string, addr: Bech32String): void {
     }
 
     // inherit storage type from previous contract
-    const prevContractInfo = wasmxw.getContractInfo(prevContract)
+    const prevContractInfo = getContractInfo(prevContract)
     if (prevContractInfo == null) {
         revert(`cannot find contract info for ${prevContract}`);
         return
     }
-    const contractInfo = wasmxw.getContractInfo(addr);
+    const contractInfo = getContractInfo(addr);
     if (contractInfo == null) {
         revert(`cannot find contract info for ${addr}`);
         return
@@ -103,11 +108,11 @@ export function registerRoleMigration(role: string, addr: Bech32String): void {
         contractInfo.storage_type = prevContractInfo.storage_type;
         LoggerInfo("contract storage migrated", ["address", addr]);
 
-        wasmxcorew.setContractInfo(addr, contractInfo);
+        setContractInfo(addr, contractInfo);
     }
 }
 
-export function registerRoleInternal(role: string, label: string, addr: Bech32String): void {
+export function registerRoleInternal(role: string, label: string, addr: Bech32String): Role {
     const roleObj = new Role(role, label, addr);
     st.setContractAddressByRole(role, addr);
     st.setRoleByLabel(roleObj);
@@ -122,7 +127,7 @@ export function registerRoleInternal(role: string, label: string, addr: Bech32St
             ],
         )
     ]);
-    callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<Role>(roleObj))
+    return roleObj;
 }
 
 export function deregisterRole(): void {
@@ -155,5 +160,25 @@ export function callHookContractInternal(contractRole: string, hookName: string,
     if (resp.success > 0) {
         // we do not fail, we want the chain to continue
         LoggerError(`hooks failed`, ["error", resp.data])
+    }
+}
+
+export function getContractInfo(addr: Bech32String): ContractInfo | null {
+    const calldatastr = `{"GetContractInfo":{"address":"${addr}"}}`;
+    const resp = callContract(roles.ROLE_STORAGE_CONTRACTS, calldatastr, false, MODULE_NAME)
+    if (resp.success > 0) {
+        LoggerError(`get contract info failed`, ["error", resp.data])
+        return null;
+    }
+    const data = JSON.parse<codesregt.QueryContractInfoResponse>(resp.data)
+    return data.contract_info
+}
+
+export function setContractInfo(addr: Bech32String, data: ContractInfo): void {
+    const datastr = JSON.stringify<ContractInfo>(data)
+    const calldatastr = `{"SetContractInfo":{"address":"${addr}","contract_info":${datastr}}}`;
+    const resp = callContract(roles.ROLE_STORAGE_CONTRACTS, calldatastr, false, MODULE_NAME)
+    if (resp.success > 0) {
+        revert(`get contract info failed: ${resp.data}`)
     }
 }
