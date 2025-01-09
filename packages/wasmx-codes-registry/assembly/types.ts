@@ -102,9 +102,9 @@ export class QueryContractInstanceRequest {
 // @ts-ignore
 @serializable
 export class QueryContractInstanceResponse {
-    code_info: CodeInfo
-    contract_info: ContractInfo
-    constructor(code_info: CodeInfo, contract_info: ContractInfo) {
+    code_info: CodeInfo | null
+    contract_info: ContractInfo | null
+    constructor(code_info: CodeInfo | null, contract_info: ContractInfo | null) {
         this.code_info = code_info
         this.contract_info = contract_info
     }
