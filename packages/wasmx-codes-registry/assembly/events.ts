@@ -17,16 +17,12 @@ export const EventTypeUnpinCode   = "unpin_code"
 export const AttributeReservedPrefix = "_"
 
 export const AttributeKeyContractAddr        = "contract_address"
-export const AttributeKeyContractAddrCreated = "contract_address_created"
 export const AttributeKeyCodeID              = "code_id"
 export const AttributeKeyChecksum            = "code_checksum"
 export const AttributeKeyResultDataHex       = "result"
 export const AttributeKeyRequiredCapability  = "required_capability"
 
 export const AttributeKeyDependency = "dependency"
-
-export const AttributeKeyRole      = "role"
-export const AttributeKeyRoleLabel = "role_label"
 
 // this is prefixed with types CustomContractEventPrefix
 export const EventTypeWasmxLog               = "log"

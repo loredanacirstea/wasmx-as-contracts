@@ -4,6 +4,7 @@ import * as wblocks from "wasmx-blocks/assembly/types";
 import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import * as wasmxevs from 'wasmx-env/assembly/events';
 import * as wasmxcorew from 'wasmx-env-core/assembly/wasmxcore_wrap';
 import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
 import {
@@ -1146,15 +1147,15 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     }
     for (let i = 0; i < evs.length; i++) {
         const ev = evs[i];
-        if (ev.type == "register_role") {
+        if (ev.type == wasmxevs.EventTypeRegisterRole) {
             for (let j = 0; j < ev.attributes.length; j++) {
-                if (ev.attributes[j].key == "role") {
+                if (ev.attributes[j].key == wasmxevs.AttributeKeyRole) {
                     roleConsensus = ev.attributes[j].value == "consensus"
                 }
-                if (ev.attributes[j].key == "contract_address") {
+                if (ev.attributes[j].key == wasmxevs.AttributeKeyContractAddress) {
                     newContract = ev.attributes[j].value;
                 }
-                if (ev.attributes[j].key == "role_label") {
+                if (ev.attributes[j].key == wasmxevs.AttributeKeyRoleLabel) {
                     newLabel = ev.attributes[j].value;
                 }
             }

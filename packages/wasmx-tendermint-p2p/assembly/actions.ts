@@ -37,13 +37,13 @@ import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembl
 import { getAllValidators, getNodeIdByAddress, verifyMessageByAddr, verifyMessageBytesByAddr } from "wasmx-raft/assembly/action_utils";
 import { NodeUpdate } from "wasmx-raft/assembly/types_raft"
 import { Commit, getEmptyPrecommitArray, getEmptyValidatorProposalVoteArray, SignedMsgType, ValidatorCommitVote, ValidatorProposalVote } from "./types_blockchain";
-import { callContract } from "wasmx-tendermint/assembly/actions";
 import { NodePorts } from "wasmx-consensus/assembly/types_multichain";
 import * as roles from "wasmx-env/assembly/roles";
 import * as mcwrap from 'wasmx-consensus/assembly/multichain_wrap';
 import { decodeTx } from "wasmx-tendermint/assembly/action_utils";
 import { getLeaderChain } from "wasmx-consensus/assembly/multichain_utils";
 import { cleanAbsentCommits, getActiveValidatorInfo, getSortedBlockCommits, sortTendermintValidators } from "wasmx-consensus-utils/assembly/utils";
+import { callContract } from "wasmx-env/assembly/utils";
 
 // TODO add delta to timeouts each failed round
 // and reset after a successful round
@@ -410,7 +410,7 @@ export function setupNode(
 
 
     const calldatastr = `{"SetInitialPorts":{"initialPorts":${JSON.stringify<NodePorts>(data.initial_ports)}}}`;
-    const resp = callContract(roles.ROLE_MULTICHAIN_REGISTRY_LOCAL, calldatastr, false);
+    const resp = callContract(roles.ROLE_MULTICHAIN_REGISTRY_LOCAL, calldatastr, false, cfg.MODULE_NAME);
     if (resp.success > 0) {
         // we do not fail, we want the chain to continue
         LoggerError(`call failed: could not set initial ports`, ["contract", roles.ROLE_MULTICHAIN_REGISTRY_LOCAL, "error", resp.data])

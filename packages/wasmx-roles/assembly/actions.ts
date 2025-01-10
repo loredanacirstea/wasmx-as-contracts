@@ -4,13 +4,13 @@ import { Bech32String, ContractInfo, ContractStorageTypeByString, Event, EventAt
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as roles from "wasmx-env/assembly/roles";
 import * as hooks from "wasmx-env/assembly/hooks";
+import * as wasmxevs from 'wasmx-env/assembly/events';
 import * as wasmxcorew from 'wasmx-env-core/assembly/wasmxcore_wrap';
 import * as wasmxcoret from "wasmx-env-core/assembly/types";
 import * as codesregt from "wasmx-codes-registry/assembly/types";
 import * as st from "./storage";
 import { GetAddressOrRoleRequest, GetRoleByLabelRequest, GetRoleLabelByContractRequest, MODULE_NAME, RegisterRoleRequest } from "./types";
 import { LoggerError, LoggerInfo, revert } from "./utils";
-import { AttributeKeyContractAddress, AttributeKeyLabel, AttributeKeyRole, EventTypeRegisterRole } from "./events";
 import { callContract } from "wasmx-env/assembly/utils";
 
 export function initialize(roles: Role[]): ArrayBuffer {
@@ -119,11 +119,11 @@ export function registerRoleInternal(role: string, label: string, addr: Bech32St
     st.setRoleLabelByContract(addr, label);
     wasmxw.emitCosmosEvents([
         new Event(
-            EventTypeRegisterRole,
+            wasmxevs.EventTypeRegisterRole,
             [
-                new EventAttribute(AttributeKeyRole, role, true),
-                new EventAttribute(AttributeKeyLabel, label, true),
-                new EventAttribute(AttributeKeyContractAddress, addr, true),
+                new EventAttribute(wasmxevs.AttributeKeyRole, role, true),
+                new EventAttribute(wasmxevs.AttributeKeyRoleLabel, label, true),
+                new EventAttribute(wasmxevs.AttributeKeyContractAddress, addr, true),
             ],
         )
     ]);

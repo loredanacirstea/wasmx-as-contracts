@@ -8,12 +8,13 @@ import { ActionParam, EventObject } from "xstate-fsm-as/assembly/types";
 import { actionParamsToMap, getParamsOrEventParams } from "xstate-fsm-as/assembly/utils";
 import { revert } from "./utils";
 import { ChainConfig } from "wasmx-consensus/assembly/types_multichain";
-import { callContract } from "wasmx-tendermint/assembly/actions";
 import { BaseAccount, QueryAccountResponse } from "wasmx-auth/assembly/types";
 import { NodeInfo } from "wasmx-p2p/assembly/types";
 import { base64ToString, stringToBase64 } from "wasmx-utils/assembly/utils";
 import { QueryBuildGenTxRequest } from "./types";
 import { getSelfNodeInfo } from "./action_utils";
+import { callContract } from "wasmx-env/assembly/utils";
+import { MODULE_NAME } from "./config";
 
 export function buildGenTx(
     params: ActionParam[],
@@ -90,7 +91,7 @@ export function createGenTx(
 export function getSubChainConfig(chainId: string): ChainConfig | null {
     // call chain registry & get all subchains & start each node
     const calldatastr = `{"GetSubChainConfigById":{"chainId":"${chainId}"}}`;
-    const resp = callContract(roles.ROLE_MULTICHAIN_REGISTRY, calldatastr, true);
+    const resp = callContract(roles.ROLE_MULTICHAIN_REGISTRY, calldatastr, true, MODULE_NAME);
     if (resp.success > 0) {
         // we do not fail, we want the chain to continue
         return null
@@ -102,7 +103,7 @@ export function getSubChainConfig(chainId: string): ChainConfig | null {
 export function getAccountInfo(addr: wasmxt.Bech32String): QueryAccountResponse {
     // call chain registry & get all subchains & start each node
     const calldatastr = `{"GetAccount":{"address":"${addr}"}}`;
-    const resp = callContract(roles.ROLE_AUTH, calldatastr, true);
+    const resp = callContract(roles.ROLE_AUTH, calldatastr, true, MODULE_NAME);
     if (resp.success > 0) {
         return new QueryAccountResponse(null);
     }
@@ -112,7 +113,7 @@ export function getAccountInfo(addr: wasmxt.Bech32String): QueryAccountResponse 
 export function getValidator(addr: wasmxt.Bech32String): stakingtypes.Validator | null {
     // call chain registry & get all subchains & start each node
     const calldatastr = `{"GetValidator":{"validator_addr":"${addr}"}}`;
-    const resp = callContract(roles.ROLE_STAKING, calldatastr, true);
+    const resp = callContract(roles.ROLE_STAKING, calldatastr, true, MODULE_NAME);
     if (resp.success > 0) {
         return null
     }
