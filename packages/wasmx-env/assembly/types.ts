@@ -656,7 +656,7 @@ export class CodeMetadata {
     icon: string = ""
     author: string = ""
     site: string = ""
-    abi: string = ""
+    abi: Base64String = ""
     json_schema: string = ""
     origin: CodeOrigin | null
     constructor(
@@ -665,7 +665,7 @@ export class CodeMetadata {
         icon: string,
         author: string,
         site: string,
-        abi: string,
+        abi: Base64String,
         json_schema: string,
         origin: CodeOrigin | null,
     ) {
