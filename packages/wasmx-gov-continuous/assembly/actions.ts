@@ -403,6 +403,8 @@ function tryExecuteProposal(proposal: Proposal): void {
             proposal.failed_reason = result.data;
         } else {
             proposal.failed_reason = ""
+            // TODO when we have a better initial threshold
+            // proposal.status = gov.PROPOSAL_STATUS_PASSED
             wasmxw.emitCosmosEvents([
                 new Event(
                     EventTypeExecuteProposal,
