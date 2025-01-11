@@ -14,6 +14,8 @@ export class CallData {
     SetContractInfo: MsgSetContractInfoRequest | null = null;
 
     // query
+    GetCodeInfoPrefix: MsgEmpty | null = null;
+    GetContractInfoPrefix: MsgEmpty | null = null;
     GetLastCodeId: MsgEmpty | null = null;
     GetCodeInfo: QueryCodeInfoRequest | null = null;
     GetContractInfo: QueryContractInfoRequest | null = null;

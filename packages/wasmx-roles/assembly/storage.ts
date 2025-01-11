@@ -1,6 +1,20 @@
 import { JSON } from "json-as/assembly";
+import * as base64 from "as-base64/assembly";
 import { Bech32String, Role } from "wasmx-env/assembly/types";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
+import { base64ToString } from "wasmx-utils/assembly/utils";
+
+// A role can be filled by multiple contracts
+// but only one contract is a primary contract
+// labels must be unique for each contract, as an alias
+
+// Role: role, labels, primaryLabel, contractaddresses
+// role => Role
+// label => role
+// contractAddress => label
+// * addRole
+// * removeRole
+// * replaceRole
 
 // role => contract address
 const KEY_CONTRACT_ADDRESS_BY_ROLE = "addrbyrole_"
@@ -56,4 +70,15 @@ export function getRoleByLabel(label: string): Role | null {
     const value = wasmxw.sload(getKeyRoleByLabel(label));
     if (value == "") return null;
     return JSON.parse<Role>(value);
+}
+
+export function getRoles(): Role[] {
+    const roles = new Array<Role>(0)
+    const startKey = base64.encode(Uint8Array.wrap(String.UTF8.encode(KEY_ROLE_BY_LABEL)))
+    const values = wasmxw.sloadRange(startKey, "", false)
+    for (let i = 0; i < values.length; i++) {
+        const value = JSON.parse<Role>(base64ToString(values[i]))
+        roles.push(value);
+    }
+    return roles;
 }

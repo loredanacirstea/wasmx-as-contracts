@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as base64 from "as-base64/assembly";
-import { Bech32String, ContractInfo, ContractStorageTypeByString, Event, EventAttribute, Role } from "wasmx-env/assembly/types";
+import { Base64String, Bech32String, ContractInfo, ContractStorageTypeByString, Event, EventAttribute, Role, RolesGenesis } from "wasmx-env/assembly/types";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as roles from "wasmx-env/assembly/roles";
 import * as hooks from "wasmx-env/assembly/hooks";
@@ -13,9 +13,32 @@ import { GetAddressOrRoleRequest, GetRoleByLabelRequest, GetRoleLabelByContractR
 import { LoggerError, LoggerInfo, revert } from "./utils";
 import { callContract } from "wasmx-env/assembly/utils";
 
-export function initialize(roles: Role[]): ArrayBuffer {
-    for (let i = 0; i < roles.length; i++) {
-        registerRoleInitial(roles[i].role, roles[i].label, roles[i].contract_address);
+export function initialize(rolesInitial: Role[], prevContract: Bech32String): ArrayBuffer {
+    let foundself = false;
+    // prevContract holds current role contract metadata, if exists
+    if (prevContract != "") {
+        // migrate from previous contract
+        const oldroles = getOldRoles(prevContract);
+        for (let i = 0; i < oldroles.length; i++) {
+            const r = oldroles[i]
+            if (r.role == roles.ROLE_ROLES) {
+                foundself = true;
+                r.contract_address = wasmxw.getAddress();
+            }
+            registerRoleInitial(r.role, r.label, r.contract_address);
+        }
+    }
+
+    for (let i = 0; i < rolesInitial.length; i++) {
+        const r = rolesInitial[i]
+        if (r.role == roles.ROLE_ROLES) {
+            foundself = true;
+            r.contract_address = wasmxw.getAddress();
+        }
+        registerRoleInitial(r.role, r.label, r.contract_address);
+    }
+    if (!foundself) {
+        registerRoleInitial(roles.ROLE_ROLES, roles.ROLE_ROLES + "_" + "rolesv0.0.1" , wasmxw.getAddress());
     }
     return new ArrayBuffer(0);
 }
@@ -23,6 +46,12 @@ export function initialize(roles: Role[]): ArrayBuffer {
 export function RegisterRole(req: RegisterRoleRequest): ArrayBuffer {
     registerRole(req.role, req.label, req.contract_address);
     return new ArrayBuffer(0);
+}
+
+export function GetRoles(): ArrayBuffer {
+    const roles = st.getRoles();
+    const data = new RolesGenesis(roles, "")
+    return String.UTF8.encode(JSON.stringify<RolesGenesis>(data));
 }
 
 export function GetAddressOrRole(req: GetAddressOrRoleRequest): ArrayBuffer {
@@ -66,7 +95,7 @@ export function registerRole(role: string, label: string, addr: Bech32String): v
 
     registerRoleMigration(role, addr);
     LoggerInfo("register role", ["role", role, "label", label, "contract_address", addr])
-    const roleObj = registerRoleInternal(role, label, addr);
+    const roleObj = registerRoleInternalWithEvent(role, label, addr);
     // we also call the hooks contract
     callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<Role>(roleObj))
 }
@@ -113,10 +142,19 @@ export function registerRoleMigration(role: string, addr: Bech32String): void {
 }
 
 export function registerRoleInternal(role: string, label: string, addr: Bech32String): Role {
+    // const exists = st.getRoleByLabel(label)
+    // if (exists != null && label != exists.label) {
+    //     revert(`label is already assigned to a role: ${label}: ${exists.role}`);
+    // }
     const roleObj = new Role(role, label, addr);
     st.setContractAddressByRole(role, addr);
     st.setRoleByLabel(roleObj);
     st.setRoleLabelByContract(addr, label);
+    return roleObj;
+}
+
+export function registerRoleInternalWithEvent(role: string, label: string, addr: Bech32String): Role {
+    const roleObj = registerRoleInternal(role, label, addr)
     wasmxw.emitCosmosEvents([
         new Event(
             wasmxevs.EventTypeRegisterRole,
@@ -164,7 +202,8 @@ export function callHookContractInternal(contractRole: string, hookName: string,
 }
 
 export function getContractInfo(addr: Bech32String): ContractInfo | null {
-    const calldatastr = `{"GetContractInfo":{"address":"${addr}"}}`;
+    const addrb64 = base64.encode(Uint8Array.wrap(wasmxw.addr_canonicalize(addr)))
+    const calldatastr = `{"GetContractInfo":{"address":"${addrb64}"}}`;
     const resp = callContract(roles.ROLE_STORAGE_CONTRACTS, calldatastr, false, MODULE_NAME)
     if (resp.success > 0) {
         LoggerError(`get contract info failed`, ["error", resp.data])
@@ -181,4 +220,13 @@ export function setContractInfo(addr: Bech32String, data: ContractInfo): void {
     if (resp.success > 0) {
         revert(`get contract info failed: ${resp.data}`)
     }
+}
+
+export function getOldRoles(addr: Bech32String): Role[] {
+    const resp = callContract(addr, `{"GetRoles":{}}`, true, MODULE_NAME)
+    if (resp.success > 0) {
+        revert(`get contract info failed: ${resp.data}`)
+    }
+    const roles = JSON.parse<RolesGenesis>(resp.data)
+    return roles.roles;
 }

@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { RolesGenesis } from "wasmx-env/assembly/types";
 import { getCallDataWrap } from './calldata';
-import { GetAddressOrRole, GetRoleByLabel, GetRoleLabelByContract, initialize, RegisterRole } from "./actions";
+import { GetAddressOrRole, GetRoleByLabel, GetRoleLabelByContract, GetRoles, initialize, RegisterRole } from "./actions";
 import { revert } from "./utils";
 
 export function memory_assemblyscript_1(): void {}
@@ -14,7 +14,7 @@ export function wasmx_env_core_i32_1(): void {}
 export function instantiate(): void {
   const calldraw = wasmx.getCallData();
   const calld = JSON.parse<RolesGenesis>(String.UTF8.decode(calldraw));
-  initialize(calld.roles);
+  initialize(calld.roles, calld.previous_contract);
 }
 
 export function main(): void {
@@ -28,6 +28,8 @@ export function main(): void {
     result = GetRoleLabelByContract(calld.GetRoleLabelByContract!);
   } else if (calld.GetRoleByLabel != null) {
     result = GetRoleByLabel(calld.GetRoleByLabel!);
+  } else if (calld.GetRoles != null) {
+    result = GetRoles();
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)

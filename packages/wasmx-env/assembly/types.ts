@@ -39,9 +39,11 @@ export class Role {
 // @ts-ignore
 @serializable
 export class RolesGenesis {
-    roles: Role[]
-    constructor(roles: Role[]) {
+    roles: Role[] = []
+    previous_contract: Bech32String = ""
+    constructor(roles: Role[], previous_contract: Bech32String) {
         this.roles = roles
+        this.previous_contract = previous_contract
     }
 }
 

@@ -1,15 +1,18 @@
 import { JSON } from "json-as/assembly";
-import { Bech32String, CodeInfo, ContractInfo } from "wasmx-env/assembly/types";
+import * as base64 from "as-base64/assembly";
+import { Base64String, CodeInfo, ContractInfo } from "wasmx-env/assembly/types";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { u64ToUint8ArrayBE, bytes, concatBytes, stringToBytes, u64FromBuffer } from "wasmx-utils/assembly/utils";
+import { u64ToUint8ArrayBE, bytes, concatBytes, stringToBytes, u64FromBuffer, base64ToHex } from "wasmx-utils/assembly/utils";
 
 export const codePrefix: u8 = 1
-export const contractPrefix: u8 = 2
-export const contractStorePrefix: u8 = 3
-export const sequencePrefix: u8 = 4
-export const prefixSystemContract: u8 = 5
+export const codeHashPrefix: u8 = 2
+export const contractPrefix: u8 = 3
+export const contractStorePrefix: u8 = 4
+export const sequencePrefix: u8 = 5
+export const prefixSystemContract: u8 = 6
 
 export const KeyCodePrefix = bytes([codePrefix]);
+export const KeyCodeHashPrefix = bytes([codeHashPrefix]);
 export const KeyContractPrefix = bytes([contractPrefix]);
 export const KeyContractStorePrefix = bytes([contractStorePrefix]);
 export const KeyLastCodeID = concatBytes(bytes([sequencePrefix]), stringToBytes("lastCodeId"));
@@ -24,10 +27,18 @@ export function getCodeRootKey(): Uint8Array {
     return KeyCodePrefix
 }
 
+export function getCodeHashPrefix(): Uint8Array {
+    return KeyCodeHashPrefix
+}
+
 // GetCodeKey constructs the key for retreiving the ID for the WASM code
 export function getCodeKey(codeID: u64): Uint8Array {
     const contractIDBz = u64ToUint8ArrayBE(codeID)
     return concatBytes(getCodeRootKey(), contractIDBz);
+}
+
+export function getCodeHashKey(codeHash: Base64String): Uint8Array {
+    return concatBytes(getCodeHashPrefix(), base64.decode(codeHash));
 }
 
 // GetContractAddressRootKey returns the key for the WASM contract instance
@@ -36,9 +47,8 @@ export function getContractAddressRootKey(): Uint8Array {
 }
 
 // GetContractAddressKey returns the key for the WASM contract instance
-export function getContractAddressKey(addr: Bech32String): Uint8Array {
-    const addrbz = Uint8Array.wrap(String.UTF8.encode(addr))
-    return concatBytes(KeyContractPrefix, addrbz);
+export function getContractAddressKey(addr: Base64String): Uint8Array {
+    return concatBytes(getContractAddressRootKey(), base64.decode(addr));
 }
 
 // GetContractStorePrefix returns the store prefix for the WASM contract instance
@@ -66,7 +76,7 @@ export function getLastCodeId(): u64 {
 }
 
 // Get contract info by address
-export function getContractInfo(addr: string): ContractInfo | null {
+export function getContractInfo(addr: Base64String): ContractInfo | null {
     const key = getContractAddressKey(addr);
     const value = wasmx.storageLoad(key.buffer);
     if (value.byteLength == 0) return null;
@@ -74,13 +84,13 @@ export function getContractInfo(addr: string): ContractInfo | null {
 }
 
 // Check if a contract info exists
-export function hasContractInfo(addr: string): bool {
+export function hasContractInfo(addr: Base64String): bool {
     const key = getContractAddressKey(addr);
     return wasmx.storageLoad(key.buffer).byteLength > 0;
 }
 
 // Store contract info in the storage
-export function storeContractInfo(addr: string, contractInfo: ContractInfo): void {
+export function storeContractInfo(addr: Base64String, contractInfo: ContractInfo): void {
     const key = getContractAddressKey(addr);
     wasmx.storageStore(key.buffer, String.UTF8.encode(JSON.stringify<ContractInfo>(contractInfo)));
 }
@@ -97,6 +107,24 @@ export function storeContractInfo(addr: string, contractInfo: ContractInfo): voi
 //     }
 // }
 
+// Retrieve codeId by code hash
+export function getCodeId(codeHash: Base64String): u64 {
+    const key = getCodeHashKey(codeHash);
+    const bz = wasmx.storageLoad(key.buffer);
+    let id: u64 = 0;
+    if (bz.byteLength > 0) {
+        id = u64FromBuffer(bz);
+    }
+    return id;
+}
+
+export function setCodeId(codeHash: Base64String, codeId: u64): void {
+    const key = getCodeHashKey(codeHash);
+    const newBz = u64ToUint8ArrayBE(codeId);
+    wasmx.storageStore(key.buffer, newBz.buffer);
+}
+
+
 // Retrieve code info by ID
 export function getCodeInfo(codeID: u64): CodeInfo | null {
     const key = getCodeKey(codeID);
@@ -109,6 +137,7 @@ export function storeCodeInfo(codeID: u64, data: CodeInfo): void {
     const key = getCodeKey(codeID);
     const datastr = JSON.stringify<CodeInfo>(data)
     wasmx.storageStore(key.buffer, String.UTF8.encode(datastr));
+    setCodeId(data.code_hash, codeID);
 }
 
 // Check if code info exists

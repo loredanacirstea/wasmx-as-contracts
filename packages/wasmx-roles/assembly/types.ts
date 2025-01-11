@@ -46,3 +46,7 @@ export class GetRoleByLabelRequest {
         this.label = label
     }
 }
+
+// @ts-ignore
+@serializable
+export class GetRolesRequest {}
