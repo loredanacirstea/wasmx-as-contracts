@@ -5,6 +5,7 @@ import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxevs from 'wasmx-env/assembly/events';
+import * as hooks from 'wasmx-env/assembly/hooks';
 import * as wasmxcorew from 'wasmx-env-core/assembly/wasmxcore_wrap';
 import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
 import {
@@ -1172,7 +1173,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     // execute hooks if there is no consensus change
     // this must be ran from the new contract
     if (newContract == "") {
-        callHookContract("EndBlock", blockData);
+        callHookContract(hooks.HOOK_END_BLOCK, blockData);
     }
 
     // we have finalized and saved the new block
@@ -1347,7 +1348,7 @@ export function setup(
 
     // TODO we run the hooks that must be ran after block end
     const blockData = getFinalBlock(getLastBlockIndex())
-    callHookContract("EndBlock", blockData);
+    callHookContract(hooks.HOOK_END_BLOCK, blockData);
 }
 
 

@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataInstantiate, getCallDataWrap } from "./calldata";
-import { SetCodeInfo, SetContractInfo, GetCodeInfo, GetContractInfo, GetContractInstance, InitGenesis, NewCodeInfo, GetLastCodeId, GetCodeInfoPrefix, GetContractInfoPrefix } from "./actions";
+import { SetCodeInfo, SetContractInfo, GetCodeInfo, GetContractInfo, GetContractInstance, InitGenesis, NewCodeInfo, GetLastCodeId, GetCodeInfoPrefix, GetContractInfoPrefix, setup } from "./actions";
 import { revert } from "./utils";
 
 export function memory_assemblyscript_1(): void {}
@@ -36,6 +36,8 @@ export function main(): void {
     result = GetCodeInfoPrefix();
   } else if (calld.GetContractInfoPrefix != null) {
     result = GetContractInfoPrefix();
+  } else if (calld.setup != null) {
+    result = setup(calld.setup!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)

@@ -1,22 +1,26 @@
 import { JSON } from "json-as/assembly";
-import { Bech32String } from "wasmx-env/assembly/types";
+import { Base64String, Bech32String, Role, RoleChanged } from "wasmx-env/assembly/types";
 
 export const MODULE_NAME = "roles"
 
+export const AttributeKeyRoleMultipleLabels = "multiple_labels";
+export const AttributeKeyRoleStorageType = "storage_type";
+
 // @ts-ignore
 @serializable
-export class RegisterRoleRequest {
-    role: string
-    label: string
-    contract_address: string
-    constructor(
-        role: string,
-        label: string,
-        contract_address: string,
-    ) {
+export class SetRoleRequest {
+    role: Role
+    constructor(role: Role) {
         this.role = role
-        this.label = label
-        this.contract_address = contract_address
+    }
+}
+
+// @ts-ignore
+@serializable
+export class GetRoleByRoleNameRequest {
+    role: string = ""
+    constructor(role: string) {
+        this.role = role
     }
 }
 
@@ -50,3 +54,14 @@ export class GetRoleByLabelRequest {
 // @ts-ignore
 @serializable
 export class GetRolesRequest {}
+
+// @ts-ignore
+@serializable
+export class MsgRunHook {
+    hook: string
+    data: Base64String
+    constructor(hook: string, data: Base64String) {
+        this.hook = hook
+        this.data = data
+    }
+}

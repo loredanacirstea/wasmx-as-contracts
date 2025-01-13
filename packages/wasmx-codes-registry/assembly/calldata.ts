@@ -1,5 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import { MsgSetup } from "wasmx-env/assembly/types";
 import { GenesisState, MsgSetCodeInfoRequest, MsgSetContractInfoRequest, MsgSetNewCodeInfoRequest, QueryCodeInfoRequest, QueryContractInfoRequest, QueryContractInstanceRequest } from './types';
 
 // @ts-ignore
@@ -9,6 +10,9 @@ export class MsgEmpty {}
 // @ts-ignore
 @serializable
 export class CallData {
+    // system
+    setup: MsgSetup | null = null;
+
     NewCodeInfo: MsgSetNewCodeInfoRequest | null = null;
     SetCodeInfo: MsgSetCodeInfoRequest | null = null;
     SetContractInfo: MsgSetContractInfoRequest | null = null;

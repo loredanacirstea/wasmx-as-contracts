@@ -21,18 +21,66 @@ export type ValidatorAddressString = string;
 
 // @ts-ignore
 @serializable
-export class Role {
-    role: string
-    label: string
-    contract_address: string
-    constructor(
-        role: string,
-        label: string,
-        contract_address: string,
-    ) {
+export enum RoleChangedActionType {
+    Replace = 0,
+    Add = 1,
+    Remove = 2,
+}
+
+export const RoleChangedAction_Replace = "Replace"
+export const RoleChangedAction_Add = "Add"
+export const RoleChangedAction_Remove = "Remove"
+
+export const RoleChangedActionTypeByString = new Map<string, RoleChangedActionType>();
+RoleChangedActionTypeByString.set(RoleChangedAction_Replace, RoleChangedActionType.Replace);
+RoleChangedActionTypeByString.set(RoleChangedAction_Add, RoleChangedActionType.Add);
+RoleChangedActionTypeByString.set(RoleChangedAction_Remove, RoleChangedActionType.Remove);
+
+export const RoleChangedActionTypeByEnum = new Map<RoleChangedActionType, string>();
+RoleChangedActionTypeByEnum.set(RoleChangedActionType.Replace, RoleChangedAction_Replace);
+RoleChangedActionTypeByEnum.set(RoleChangedActionType.Add, RoleChangedAction_Add);
+RoleChangedActionTypeByEnum.set(RoleChangedActionType.Remove, RoleChangedAction_Remove);
+
+// @ts-ignore
+@serializable
+export class RoleChanged {
+    role: string = ""
+    label: string = ""
+    contract_address: string = ""
+    action_type: RoleChangedActionType = RoleChangedActionType.Replace
+    constructor(role: string = "", label: string = "",  contract_address: string = "", action_type: RoleChangedActionType = RoleChangedActionType.Replace) {
         this.role = role
         this.label = label
         this.contract_address = contract_address
+        this.action_type = action_type
+    }
+}
+
+// @ts-ignore
+@serializable
+export class Role {
+    role: string = ""
+    storage_type: ContractStorageType = ContractStorageType.CoreConsensus
+    // if primary exists, then the role can be used as target for transactions
+    // primary is the index for an entry from "labels" and "addresses"
+    primary: i32 = 0
+    multiple: bool = false
+    labels: string[] = []
+    addresses: string[] = []
+    constructor(
+        role: string,
+        storage_type: ContractStorageType,
+        primary: i32,
+        multiple: bool,
+        labels: string[],
+        addresses: string[],
+    ) {
+        this.role = role
+        this.storage_type = storage_type
+        this.primary = primary
+        this.multiple = multiple
+        this.labels = labels
+        this.addresses = addresses
     }
 }
 
@@ -40,10 +88,8 @@ export class Role {
 @serializable
 export class RolesGenesis {
     roles: Role[] = []
-    previous_contract: Bech32String = ""
-    constructor(roles: Role[], previous_contract: Bech32String) {
+    constructor(roles: Role[]) {
         this.roles = roles
-        this.previous_contract = previous_contract
     }
 }
 
@@ -754,6 +800,15 @@ export class ContractInfo {
         this.init_message = init_message
         this.provenance = provenance
         this.ibc_port_id = ibc_port_id
+    }
+}
+
+// @ts-ignore
+@serializable
+export class MsgSetup {
+    previous_address: Bech32String
+    constructor(previous_address: Bech32String) {
+        this.previous_address = previous_address
     }
 }
 

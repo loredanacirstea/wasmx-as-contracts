@@ -1,8 +1,9 @@
 import { JSON } from "json-as/assembly";
-import { GenesisState, MsgSetCodeInfoRequest, MsgSetContractInfoRequest, MsgSetNewCodeInfoRequest, QueryCodeInfoRequest, QueryCodeInfoResponse, QueryContractInfoRequest, QueryContractInfoResponse, QueryContractInstanceRequest, QueryContractInstanceResponse, QueryLastCodeIdResponse } from "./types";
+import { GenesisState, MODULE_NAME, MsgSetCodeInfoRequest, MsgSetContractInfoRequest, MsgSetNewCodeInfoRequest, QueryCodeInfoRequest, QueryCodeInfoResponse, QueryContractInfoRequest, QueryContractInfoResponse, QueryContractInstanceRequest, QueryContractInstanceResponse, QueryLastCodeIdResponse } from "./types";
 import { autoIncrementID, getCodeId, getCodeInfo, getCodeRootKey, getContractAddressRootKey, getContractInfo, getLastCodeId, storeCodeInfo, storeContractInfo } from "./storage";
 import { LoggerInfo, revert } from "./utils";
-import { CodeInfo } from "wasmx-env/assembly/types";
+import { Bech32String, CodeInfo, MsgSetup } from "wasmx-env/assembly/types";
+import { callContract } from "wasmx-env/assembly/utils";
 
 export function InitGenesis(req: GenesisState): ArrayBuffer {
     for (let i = 0; i < req.code_infos.length; i++) {
@@ -13,6 +14,12 @@ export function InitGenesis(req: GenesisState): ArrayBuffer {
         const data = req.contract_infos[i]
         storeContractInfo(data.address, data.contract_info)
     }
+    return new ArrayBuffer(0);
+}
+
+export function setup(req: MsgSetup): ArrayBuffer {
+    const prevContract = req.previous_address
+    // TODO migrate old data
     return new ArrayBuffer(0);
 }
 

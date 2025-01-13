@@ -92,6 +92,10 @@ export function sload(key: string): string {
     return String.UTF8.decode(value);
 }
 
+export function sdelete(key: string): void {
+    wasmx.storageDelete(String.UTF8.encode(key));
+}
+
 /// storageLoadRangePairs
 
 export function sloadRangeStringKeys(keyStart: string, keyEnd: string, reverse: bool): Base64String[] {

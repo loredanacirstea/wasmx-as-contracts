@@ -145,4 +145,3 @@ export function containsCodeInfo(codeID: u64): bool {
     const key = getCodeKey(codeID);
     return wasmx.storageLoad(key.buffer).byteLength > 0;
 }
-

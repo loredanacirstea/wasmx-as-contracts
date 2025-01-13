@@ -369,7 +369,7 @@ export function isFromDenomContract(caller: Bech32String): boolean {
 }
 
 function registerDenomRole(label: string, addr: Bech32String): void {
-    const calldata = `{"RegisterRole":{"role":"${roles.ROLE_DENOM}","label":"${label}","contract_address":"${addr}"}}`
+    const calldata = `{"SetContractForRole":{"role":"${roles.ROLE_DENOM}","label":"${label}","contract_address":"${addr}","action_type":1}}`
     const resp = callContract(roles.ROLE_ROLES, calldata, false, MODULE_NAME)
     if (resp.success > 0) {
         // we do not fail, we want the chain to continue

@@ -16,6 +16,7 @@ export const HOOK_NEW_SUBCHAIN = "NewSubChain"
 // consenssus
 export const HOOK_BEGIN_BLOCK      = "BeginBlock"
 export const HOOK_END_BLOCK        = "EndBlock"
+export const HOOK_FINALIZE_BLOCK = "FinalizeBlock"
 export const HOOK_CREATE_VALIDATOR = "CreatedValidator"
 export const HOOK_ROLE_CHANGED     = "RoleChanged"
 
@@ -78,7 +79,8 @@ export const DEFAULT_HOOKS: Hook[] = [
     new Hook(
         HOOK_END_BLOCK,
         [roles.ROLE_CONSENSUS],
-        [roles.ROLE_GOVERNANCE, roles.ROLE_DISTRIBUTION],
+        // roles should be last
+        [roles.ROLE_GOVERNANCE, roles.ROLE_DISTRIBUTION, roles.ROLE_ROLES],
     ),
     new Hook(
         HOOK_CREATE_VALIDATOR,

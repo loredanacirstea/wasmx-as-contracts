@@ -8,6 +8,7 @@ export declare function getCurrentBlock(): ArrayBuffer
 
 export declare function storageStore(key: ArrayBuffer, value: ArrayBuffer): void
 export declare function storageLoad(key: ArrayBuffer): ArrayBuffer
+export declare function storageDelete(key: ArrayBuffer): void
 export declare function storageLoadRange(key: ArrayBuffer): ArrayBuffer
 export declare function storageLoadRangePairs(key: ArrayBuffer): ArrayBuffer
 
