@@ -1,17 +1,21 @@
 import { JSON } from "json-as/assembly";
-import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
+import * as base64 from "as-base64/assembly";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap"
+import * as roles from "wasmx-env/assembly/roles"
 import { BigInt } from "wasmx-env/assembly/bn"
 import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
+import * as wasmxcoret from "wasmx-env-core/assembly/types";
+import * as wasmxcorew from 'wasmx-env-core/assembly/wasmxcore_wrap';
 import * as banktypes from "wasmx-bank/assembly/types"
 import * as derc20types from "wasmx-derc20/assembly/types"
 import * as erc20types from "wasmx-erc20/assembly/types"
 import { getParamsInternal, setParams, setNewValidator, getParams, getValidator, getValidatorsAddresses, getValidatorAddrByConsAddr, setValidator, getValidatorOperatorByHexAddr, setBaseDenom, getBaseDenom } from './storage';
-import { GenesisState, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool, BondedS, AfterValidatorCreated, AfterValidatorBonded, QueryValidatorDelegationsRequest, QueryValidatorDelegationsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryParamsRequest, QueryParamsResponse, ValidatorSimple, QueryValidatorInfosResponse, getValidatorFromMsgCreate, Description } from './types';
-import { LoggerDebug, LoggerError, revert } from './utils';
+import { GenesisState, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool, BondedS, AfterValidatorCreated, AfterValidatorBonded, QueryValidatorDelegationsRequest, QueryValidatorDelegationsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryParamsRequest, QueryParamsResponse, ValidatorSimple, QueryValidatorInfosResponse, getValidatorFromMsgCreate, Description, QueryContractInfoResponse } from './types';
+import { LoggerDebug, LoggerError, LoggerInfo, revert } from './utils';
 import { parseInt64 } from "wasmx-utils/assembly/utils";
-import { Bech32String, CallRequest, CallResponse, Coin, PageRequest, PageResponse, ValidatorAddressString, Event, EventAttribute } from "wasmx-env/assembly/types";
+import { Bech32String, CallRequest, CallResponse, Coin, PageRequest, PageResponse, ValidatorAddressString, Event, EventAttribute, MsgSetup, ContractInfo, ContractStorageTypeByString } from "wasmx-env/assembly/types";
 import { AttributeKeyAmount, AttributeKeyValidator, EventTypeCreateValidator } from "./events";
+import { callContract } from "wasmx-env/assembly/utils";
 
 export const POWER_REDUCTION: u32 = 1000000
 
@@ -43,6 +47,18 @@ export function InitGenesis(req: GenesisState): ArrayBuffer {
     }
     let data = JSON.stringify<InitGenesisResponse>(new InitGenesisResponse(vupdates))
     return String.UTF8.encode(data)
+}
+
+export function setup(req: MsgSetup): ArrayBuffer {
+    const oldaddr = req.previous_address
+    if (oldaddr != "") {
+        setupStorageMigration(oldaddr)
+    }
+    return new ArrayBuffer(0)
+}
+
+export function stop(): ArrayBuffer {
+    return new ArrayBuffer(0)
 }
 
 export function CreateValidator(req: MsgCreateValidator): void {
@@ -254,7 +270,7 @@ export function callGetValidatorBalance(validator: Bech32String): Coin {
     const tokenAddress = getTokenAddress()
     const calldata = new erc20types.MsgBalanceOf(validator);
     const calldatastr = `{"balanceOfValidator":${JSON.stringify<erc20types.MsgBalanceOf>(calldata)}}`;
-    const resp = callContract(tokenAddress, calldatastr, false)
+    const resp = callContract(tokenAddress, calldatastr, false, MODULE_NAME)
     if (resp.success > 0) {
         revert(`balanceOfValidator not found`)
     }
@@ -265,7 +281,7 @@ export function callGetValidatorBalance(validator: Bech32String): Coin {
 
 export function callGetValidatorDelegations(tokenAddress: Bech32String, req: QueryValidatorDelegationsRequest): string {
     const calldatastr = `{"GetValidatorDelegations":${JSON.stringify<QueryValidatorDelegationsRequest>(req)}}`;
-    const resp = callContract(tokenAddress, calldatastr, false)
+    const resp = callContract(tokenAddress, calldatastr, false, MODULE_NAME)
     if (resp.success > 0) {
         revert(`validator delegations not found for ${req.validator_addr}`)
     }
@@ -274,7 +290,7 @@ export function callGetValidatorDelegations(tokenAddress: Bech32String, req: Que
 
 export function callGetDelegatorValidators(tokenAddress: Bech32String, req: QueryDelegatorValidatorsRequest): ValidatorAddressString[] {
     const calldatastr = `{"GetDelegatorValidators":${JSON.stringify<QueryDelegatorValidatorsRequest>(req)}}`;
-    const resp = callContract(tokenAddress, calldatastr, false)
+    const resp = callContract(tokenAddress, calldatastr, false, MODULE_NAME)
     if (resp.success > 0) {
         revert(`validators not found for delegator ${req.delegator_addr}`)
     }
@@ -285,7 +301,7 @@ export function callGetDelegatorValidators(tokenAddress: Bech32String, req: Quer
 export function callGetDelegation(tokenAddress: Bech32String, delegator: Bech32String, validator: Bech32String): string {
     const calldata = new QueryDelegationRequest(delegator, validator);
     const calldatastr = `{"GetDelegation":${JSON.stringify<QueryDelegationRequest>(calldata)}}`;
-    const resp = callContract(tokenAddress, calldatastr, false)
+    const resp = callContract(tokenAddress, calldatastr, false, MODULE_NAME)
     if (resp.success > 0) {
         revert(`delegation not found`)
     }
@@ -295,7 +311,7 @@ export function callGetDelegation(tokenAddress: Bech32String, delegator: Bech32S
 export function callDelegate(tokenAddress: Bech32String, delegator: Bech32String, validator: Bech32String, value: BigInt): void {
     const calldata = new derc20types.MsgDelegate(delegator, validator, value);
     const calldatastr = `{"delegate":${JSON.stringify<derc20types.MsgDelegate>(calldata)}}`;
-    const resp = callContract(tokenAddress, calldatastr, false)
+    const resp = callContract(tokenAddress, calldatastr, false, MODULE_NAME)
     if (resp.success > 0) {
         revert(`could not delegate: ${resp.data}`)
     }
@@ -332,15 +348,7 @@ export function callBank(calldata: string, isQuery: boolean): CallResponse {
     const req = new CallRequest("bank", calldata, BigInt.zero(), DEFAULT_GAS_TX, isQuery);
     const resp = wasmxw.call(req, MODULE_NAME);
     // result or error
-    resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
-    return resp;
-}
-
-export function callContract(addr: Bech32String, calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest(addr, calldata, BigInt.zero(), DEFAULT_GAS_TX, isQuery);
-    const resp = wasmxw.call(req, MODULE_NAME);
-    // result or error
-    resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
+    resp.data = String.UTF8.decode(base64.decode(resp.data).buffer);
     return resp;
 }
 
@@ -369,12 +377,50 @@ export function bondValidatorAndCallHook(value: Validator): void {
 }
 
 export function runHookContract(hookName: string, data: string): void {
-    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(data)))
+    const dataBase64 = base64.encode(Uint8Array.wrap(String.UTF8.encode(data)))
     const calldatastr = `{"RunHook":{"hook":"${hookName}","data":"${dataBase64}"}}`;
-    const resp = callContract("hooks", calldatastr, false)
+    const resp = callContract("hooks", calldatastr, false, MODULE_NAME)
     if (resp.success > 0) {
         // we do not fail, we want the chain to continue
         LoggerError(`hooks failed`, ["error", resp.data])
     }
 }
 
+export function getContractInfo(addr: Bech32String): ContractInfo | null {
+    const addrb64 = base64.encode(Uint8Array.wrap(wasmxw.addr_canonicalize(addr)))
+    const calldatastr = `{"GetContractInfo":{"address":"${addrb64}"}}`;
+    const resp = callContract(roles.ROLE_STORAGE_CONTRACTS, calldatastr, false, MODULE_NAME)
+    if (resp.success > 0) {
+        LoggerError(`get contract info failed`, ["error", resp.data])
+        return null;
+    }
+    const data = JSON.parse<QueryContractInfoResponse>(resp.data)
+    return data.contract_info
+}
+
+export function setupStorageMigration(addr: Bech32String): void {
+    const sourceContractInfo = getContractInfo(addr);
+    if (sourceContractInfo == null) {
+        revert(`cannot find contract info for ${addr}`);
+        return
+    }
+    const ourAddr = wasmxw.getAddress()
+    const targetContractInfo = getContractInfo(ourAddr);
+    if (targetContractInfo == null) {
+        revert(`cannot find contract info for ${addr}`);
+        return
+    }
+
+    LoggerInfo("migrating contract storage", ["from_address", addr, "to_address", ourAddr, "source storage type", sourceContractInfo.storage_type, "target storage type", targetContractInfo.storage_type])
+
+    if (!ContractStorageTypeByString.has(sourceContractInfo.storage_type)) {
+        revert(`invalid source storage type ${sourceContractInfo.storage_type}`)
+    }
+    if (!ContractStorageTypeByString.has(targetContractInfo.storage_type)) {
+        revert(`invalid target storage type ${targetContractInfo.storage_type}`)
+    }
+
+    wasmxcorew.migrateContractStateByAddress(new wasmxcoret.MigrateContractStateByAddressRequest(addr, ourAddr, sourceContractInfo.storage_type, targetContractInfo.storage_type))
+
+    LoggerInfo("contract storage migrated", ["address", ourAddr, "target_storage_type", targetContractInfo.storage_type]);
+}

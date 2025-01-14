@@ -1,5 +1,5 @@
 import { JSON } from "json-as/assembly";
-import { Base64String, Bech32String, HexString, Coin, PageRequest, PageResponse, ValidatorAddressString, PublicKey } from 'wasmx-env/assembly/types';
+import { Base64String, Bech32String, HexString, Coin, PageRequest, PageResponse, ValidatorAddressString, PublicKey, ContractInfo } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn"
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint"
 
@@ -847,4 +847,13 @@ export function getValidatorFromMsgCreate(req: MsgCreateValidator): Validator {
         0,
         [],
     )
+}
+
+// @ts-ignore
+@serializable
+export class QueryContractInfoResponse {
+    contract_info: ContractInfo | null
+    constructor(contract_info: ContractInfo | null) {
+        this.contract_info = contract_info
+    }
 }

@@ -25,21 +25,25 @@ export enum RoleChangedActionType {
     Replace = 0,
     Add = 1,
     Remove = 2,
+    NoOp = 3,
 }
 
 export const RoleChangedAction_Replace = "Replace"
 export const RoleChangedAction_Add = "Add"
 export const RoleChangedAction_Remove = "Remove"
+export const RoleChangedAction_NoOp = "NoOp"
 
 export const RoleChangedActionTypeByString = new Map<string, RoleChangedActionType>();
 RoleChangedActionTypeByString.set(RoleChangedAction_Replace, RoleChangedActionType.Replace);
 RoleChangedActionTypeByString.set(RoleChangedAction_Add, RoleChangedActionType.Add);
 RoleChangedActionTypeByString.set(RoleChangedAction_Remove, RoleChangedActionType.Remove);
+RoleChangedActionTypeByString.set(RoleChangedAction_NoOp, RoleChangedActionType.NoOp);
 
 export const RoleChangedActionTypeByEnum = new Map<RoleChangedActionType, string>();
 RoleChangedActionTypeByEnum.set(RoleChangedActionType.Replace, RoleChangedAction_Replace);
 RoleChangedActionTypeByEnum.set(RoleChangedActionType.Add, RoleChangedAction_Add);
 RoleChangedActionTypeByEnum.set(RoleChangedActionType.Remove, RoleChangedAction_Remove);
+RoleChangedActionTypeByEnum.set(RoleChangedActionType.NoOp, RoleChangedAction_NoOp);
 
 // @ts-ignore
 @serializable

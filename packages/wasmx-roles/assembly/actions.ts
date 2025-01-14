@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as base64 from "as-base64/assembly";
-import { Base64String, Bech32String, ContractInfo, ContractStorageType, ContractStorageTypeByEnum, ContractStorageTypeByString, Event, EventAttribute, MsgSetup, Role, RoleChanged, RoleChangedActionType, RolesGenesis } from "wasmx-env/assembly/types";
+import { Base64String, Bech32String, ContractInfo, ContractStorageType, ContractStorageTypeByEnum, ContractStorageTypeByString, Event, EventAttribute, MsgSetup, Role, RoleChanged, RoleChangedActionType, RoleChangedActionTypeByEnum, RoleChangedActionTypeByString, RolesGenesis } from "wasmx-env/assembly/types";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as roles from "wasmx-env/assembly/roles";
 import * as hooks from "wasmx-env/assembly/hooks";
@@ -11,7 +11,7 @@ import * as blocktypes from "wasmx-blocks/assembly/types"
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as codesregt from "wasmx-codes-registry/assembly/types";
 import * as st from "./storage";
-import { AttributeKeyRoleMultipleLabels, AttributeKeyRoleStorageType, GetAddressOrRoleRequest, GetRoleByLabelRequest, GetRoleByRoleNameRequest, GetRoleLabelByContractRequest, MODULE_NAME, MsgRunHook, SetRoleRequest } from "./types";
+import { AttributeKeyRoleMultipleLabels, AttributeKeyRoleStorageType, GetAddressOrRoleRequest, GetRoleByLabelRequest, GetRoleByRoleNameRequest, GetRoleLabelByContractRequest, MODULE_NAME, MsgRunHook, RolesChangedHook, SetRoleRequest } from "./types";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
 import { callContract } from "wasmx-env/assembly/utils";
 
@@ -81,6 +81,7 @@ export function EndBlock(req: MsgRunHook): void {
             let roleName = ""
             let label = ""
             let addr = ""
+            let action = ""
             for (let j = 0; j < ev.attributes.length; j++) {
                 if (ev.attributes[j].key == wasmxevs.AttributeKeyRole) {
                     roleName = ev.attributes[j].value
@@ -91,14 +92,34 @@ export function EndBlock(req: MsgRunHook): void {
                 if (ev.attributes[j].key == wasmxevs.AttributeKeyRoleLabel) {
                     label = ev.attributes[j].value;
                 }
+                if (ev.attributes[j].key == wasmxevs.AttributeKeyActionType) {
+                    action = ev.attributes[j].value;
+                }
             }
             // consensus contract
             if (roleName == roles.ROLE_CONSENSUS) {
                 continue;
             }
-            if (roleName != "" && addr != "") {
-                LoggerInfo("found new role change", ["role", roleName, "address", addr, "label", label]);
-                triggerRoleChange(addr)
+            if (roleName != "" && addr != "" && action != "") {
+                if (!RoleChangedActionTypeByString.has(action)) {
+                    LoggerError(`invalid action for role change`, ["role", roleName, "action", action])
+                }
+
+                const actionType = RoleChangedActionTypeByString.get(action)
+                if (actionType == RoleChangedActionType.NoOp) {
+                    return;
+                }
+
+                // get old role
+                let prevAddress = ""
+                const role = st.getRoleByRoleName(roleName)
+                if (role != null && role.addresses.length > 0) {
+                    prevAddress = role.addresses[role.primary];
+                }
+
+                LoggerInfo("found new role change", ["role", roleName, "address", addr, "label", label, "action", action]);
+                registerRole(roleName, label, addr, actionType)
+                triggerRoleChange(addr, prevAddress)
             }
         }
     }
@@ -109,8 +130,9 @@ export function SetRole(req: SetRoleRequest): ArrayBuffer {
     return new ArrayBuffer(0);
 }
 
+// we just emit an event here! and do the storage changes on EndBlock event
 export function SetContractForRole(req: RoleChanged): ArrayBuffer {
-    registerRole(req);
+    setContractForRole(req);
     return new ArrayBuffer(0);
 }
 
@@ -169,14 +191,16 @@ export function registerNewRole(role: Role): void {
         revert(`cannot register role: labels count different than addresses count`)
     }
     registerRoleInternalWithEvent(role)
-    callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<Role>(role))
+    callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<RolesChangedHook>(new RolesChangedHook(role, null)))
 }
 
-export function registerRole(roleChange: RoleChanged): void {
-    const roleName = roleChange.role
-    const label = roleChange.label
-    const addr = roleChange.contract_address
-    const action = roleChange.action_type
+// do storage changes only for action Add, Remove
+// for Replace, we just emit an event here! and do the storage changes on EndBlock event
+export function setContractForRole(roleChanged: RoleChanged): void {
+    const roleName = roleChanged.role
+    const label = roleChanged.label
+    const addr = roleChanged.contract_address
+    const action = roleChanged.action_type
 
     if (roleName == "") {
         revert(`cannot register empty role for ${addr}`)
@@ -204,42 +228,50 @@ export function registerRole(roleChange: RoleChanged): void {
         revert(`cannot replace multiple role, use remove and add action type`)
     }
 
+    registerRoleEvent(role, label, addr, action);
+
     if (action == RoleChangedActionType.Remove) {
         const foundlabel = st.removeRoleContract(role, addr)
         LoggerInfo("remove contract from role", ["role", roleName, "label", foundlabel, "contract_address", addr])
-        callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<Role>(role))
-        wasmxw.emitCosmosEvents([new Event(
-            wasmxevs.EventTypeRemoveRoleContract,
-            [
-                new EventAttribute(wasmxevs.AttributeKeyRole, role.role, true),
-                new EventAttribute(wasmxevs.AttributeKeyRoleLabel, foundlabel, true),
-                new EventAttribute(wasmxevs.AttributeKeyContractAddress, addr, true),
-            ],
-        )]);
+        callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<RolesChangedHook>(new RolesChangedHook(null, roleChanged)))
         return;
     }
+    if (action == RoleChangedActionType.Add) {
+        st.addRoleContract(role, label, addr)
+        registerRoleMigration(ContractStorageTypeByEnum.get(role.storage_type), addr);
 
-    if (action == RoleChangedActionType.Replace) {
-        // not multiple
-        const foundlabel = st.removeRoleContract(role, role.addresses[0])
-        LoggerInfo("remove contract from role", ["role", roleName, "label", foundlabel, "contract_address", addr])
-        wasmxw.emitCosmosEvents([new Event(
-            wasmxevs.EventTypeRemoveRoleContract,
-            [
-                new EventAttribute(wasmxevs.AttributeKeyRole, role.role, true),
-                new EventAttribute(wasmxevs.AttributeKeyRoleLabel, foundlabel, true),
-                new EventAttribute(wasmxevs.AttributeKeyContractAddress, addr, true),
-            ],
-        )]);
+        LoggerInfo("register contract for role", ["role", roleName, "label", label, "contract_address", addr])
+
+        // we also call the hooks contract
+        callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<RolesChangedHook>(new RolesChangedHook(null, roleChanged)))
     }
+}
+
+// Replace action must be ran in EndBlock. don't revert
+export function registerRole(roleName: string, label: string, addr: Bech32String, action: RoleChangedActionType): void {
+    const roleChanged = new RoleChanged(roleName, label, addr, action)
+    const role = st.getRoleByRoleName(roleName)
+    if (role == null) {
+        LoggerError(`role not found`, ["role", roleName]);
+        return;
+    }
+    if (action != RoleChangedActionType.Replace) {
+        return;
+    }
+    // not multiple
+    const foundlabel = st.removeRoleContract(role, role.addresses[0])
+    LoggerInfo("remove contract from role", ["role", roleName, "label", foundlabel, "contract_address", addr])
+
+    st.addRoleContract(role, label, addr)
+
 
     // either we replace or add a contract
     registerRoleMigration(ContractStorageTypeByEnum.get(role.storage_type), addr);
 
     LoggerInfo("register contract for role", ["role", roleName, "label", label, "contract_address", addr])
-    addRoleInternalWithEvent(role, label, addr);
+
     // we also call the hooks contract
-    callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<Role>(role))
+    callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<RolesChangedHook>(new RolesChangedHook(null, roleChanged)))
 }
 
 export function registerRoleMigration(storageType: string, addr: Bech32String): void {
@@ -282,6 +314,7 @@ export function registerRoleInternalWithEvent(role: Role): void {
             new EventAttribute(AttributeKeyRoleStorageType, role.storage_type.toString(), true),
         ],
     ))
+    const nop = RoleChangedActionTypeByEnum.get(RoleChangedActionType.NoOp)
     for (let i = 0; i < role.labels.length; i++) {
         evs.push(new Event(
             wasmxevs.EventTypeRegisterRole,
@@ -289,20 +322,24 @@ export function registerRoleInternalWithEvent(role: Role): void {
                 new EventAttribute(wasmxevs.AttributeKeyRole, role.role, true),
                 new EventAttribute(wasmxevs.AttributeKeyRoleLabel, role.labels[i], true),
                 new EventAttribute(wasmxevs.AttributeKeyContractAddress, role.addresses[i], true),
+                new EventAttribute(wasmxevs.AttributeKeyActionType, nop, true),
             ],
         ))
     }
     wasmxw.emitCosmosEvents(evs);
 }
 
-export function addRoleInternalWithEvent(role: Role, label: string, addr: Bech32String): void {
-    st.addRoleContract(role, label, addr)
+export function registerRoleEvent(role: Role, label: string, addr: Bech32String, actionType: RoleChangedActionType): void {
+    if (!RoleChangedActionTypeByEnum.has(actionType)) {
+        revert(`invalid actionType ${actionType}`)
+    }
     wasmxw.emitCosmosEvents([new Event(
         wasmxevs.EventTypeRegisterRole,
         [
             new EventAttribute(wasmxevs.AttributeKeyRole, role.role, true),
             new EventAttribute(wasmxevs.AttributeKeyRoleLabel, label, true),
             new EventAttribute(wasmxevs.AttributeKeyContractAddress, addr, true),
+            new EventAttribute(wasmxevs.AttributeKeyActionType, RoleChangedActionTypeByEnum.get(actionType), true),
         ],
     )]);
 }
@@ -359,9 +396,9 @@ export function setContractInfo(addr: Bech32String, data: ContractInfo): void {
     }
 }
 
-export function triggerRoleChange(addr: Bech32String): void {
+export function triggerRoleChange(addr: Bech32String, prevAddress: Bech32String): void {
     // call new contract setup()
-    let resp = callContract(addr, `{"setup":{"previous_address":"${addr}"}}`, false, MODULE_NAME)
+    let resp = callContract(addr, `{"setup":{"previous_address":"${prevAddress}"}}`, false, MODULE_NAME)
     if (resp.success > 0) {
         // we allow contracts to not implement setup() if they don't need to
         LoggerError(`new role: contract setup failed`, ["error", resp.data])

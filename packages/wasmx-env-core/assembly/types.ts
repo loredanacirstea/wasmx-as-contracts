@@ -136,6 +136,21 @@ export class MigrateContractStateByStorageRequest {
 
 // @ts-ignore
 @serializable
+export class MigrateContractStateByAddressRequest {
+    source_contract_address: string
+    target_contract_address: string
+    source_storage_type: string
+    target_storage_type: string
+    constructor(source_contract_address: string, target_contract_address: string, source_storage_type: string, target_storage_type: string) {
+        this.source_contract_address = source_contract_address
+        this.target_contract_address = target_contract_address
+        this.source_storage_type = source_storage_type
+        this.target_storage_type = target_storage_type
+    }
+}
+
+// @ts-ignore
+@serializable
 export class GlobalStorageStoreRequest {
     store_key: string
     key: Base64String

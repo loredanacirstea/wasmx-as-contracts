@@ -1,10 +1,14 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, getCallDataWrap } from './calldata';
-import { InitGenesis, CreateValidator, UpdateValidators, GetAllValidators, GetValidator, GetDelegation, GetPool, ValidatorByConsAddr, ValidatorByHexAddr, GetValidatorDelegations, GetDelegatorValidators, GetDelegatorValidatorAddresses, GetParams, GetAllValidatorInfos } from "./actions";
+import { InitGenesis, CreateValidator, UpdateValidators, GetAllValidators, GetValidator, GetDelegation, GetPool, ValidatorByConsAddr, ValidatorByHexAddr, GetValidatorDelegations, GetDelegatorValidators, GetDelegatorValidatorAddresses, GetParams, GetAllValidatorInfos, setup, stop } from "./actions";
 import { revert } from "./utils";
 
-export function wasmx_env_2(): void {}
+export function memory_assemblyscript_1(): void {}
+
+export function wasmx_env_i32_2(): void {}
+
+export function wasmx_env_core_i32_1(): void {}
 
 export function instantiate(): void {}
 
@@ -40,6 +44,10 @@ export function main(): void {
     result = GetParams(calld.Params!);
   } else if (calld.UpdateValidators !== null) {
     result = UpdateValidators(calld.UpdateValidators!);
+  } else if (calld.setup !== null) {
+    result = setup(calld.setup!);
+  } else if (calld.stop !== null) {
+    result = stop();
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)

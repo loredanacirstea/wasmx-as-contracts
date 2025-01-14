@@ -8,6 +8,17 @@ export const AttributeKeyRoleStorageType = "storage_type";
 
 // @ts-ignore
 @serializable
+export class RolesChangedHook {
+    role: Role | null
+    role_changed: RoleChanged | null
+    constructor(role: Role | null, role_changed: RoleChanged | null) {
+        this.role = role
+        this.role_changed = role_changed
+    }
+}
+
+// @ts-ignore
+@serializable
 export class SetRoleRequest {
     role: Role
     constructor(role: Role) {

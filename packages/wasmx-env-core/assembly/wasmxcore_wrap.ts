@@ -16,6 +16,7 @@ import {
     GlobalStorageStoreRequest,
     GlobalStorageResetRequest,
     GlobalStorageResetResponse,
+    MigrateContractStateByAddressRequest,
 } from './types';
 import { LoggerDebugExtended } from "./utils";
 import { Base64String, Bech32String, ContractInfo } from "wasmx-env/assembly/types";
@@ -69,6 +70,11 @@ export function readFromBackgroundProcess(contract: string, ptrFunc: string, len
 export function migrateContractStateByStorageType(req: MigrateContractStateByStorageRequest): void {
     const data = String.UTF8.encode(JSON.stringify<MigrateContractStateByStorageRequest>(req))
     return wasmxcore.migrateContractStateByStorageType(data);
+}
+
+export function migrateContractStateByAddress(req: MigrateContractStateByAddressRequest): void {
+    const data = String.UTF8.encode(JSON.stringify<MigrateContractStateByAddressRequest>(req))
+    return wasmxcore.migrateContractStateByAddress(data);
 }
 
 export function storageLoadGlobal(req: GlobalStorageLoadRequest): ArrayBuffer {
