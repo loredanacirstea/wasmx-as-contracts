@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, getCallDataWrap } from './calldata';
-import { AfterValidatorBonded, AfterValidatorCreated, BeginBlock, GetParams, InitGenesis, SigningInfo, SigningInfos, getValidatorInfo } from "./actions";
+import { AfterValidatorBonded, AfterValidatorCreated, BeginBlock, GetMissedBlockBitmap, GetParams, InitGenesis, SigningInfo, SigningInfos, getValidatorInfo } from "./actions";
 import { revert } from "./utils";
 
 
@@ -26,6 +26,8 @@ export function main(): void {
     AfterValidatorBonded(calld.AfterValidatorBonded!);
   } else if (calld.Params !== null) {
     result = GetParams(calld.Params!);
+  } else if (calld.GetMissedBlockBitmap != null) {
+    result = GetMissedBlockBitmap(calld.GetMissedBlockBitmap!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)

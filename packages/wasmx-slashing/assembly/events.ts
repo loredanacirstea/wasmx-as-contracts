@@ -1,0 +1,11 @@
+export const EventTypeLiveness = "liveness"
+export const AttributeKeyAddress = "address"
+export const AttributeKeyMissedBlocks = "missed_blocks"
+export const AttributeKeyHeight = "height"
+
+export const EventTypeSlash = "slash"
+export const AttributeKeyPower = "power"
+export const AttributeKeyReason = "reason"
+export const AttributeKeyJailed = "jailed"
+export const AttributeKeyBurnedCoins = "burned_coins"
+export const AttributeValueMissingSignature = "missing_signature"

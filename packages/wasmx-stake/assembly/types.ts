@@ -1,5 +1,5 @@
 import { JSON } from "json-as/assembly";
-import { Base64String, Bech32String, HexString, Coin, PageRequest, PageResponse, ValidatorAddressString, PublicKey, ContractInfo } from 'wasmx-env/assembly/types';
+import { Base64String, Bech32String, HexString, Coin, PageRequest, PageResponse, ValidatorAddressString, PublicKey, ContractInfo, ConsensusAddressString } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn"
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint"
 
@@ -481,11 +481,11 @@ export class ValidatorUpdate {
 
 // @ts-ignore
 @serializable
-export class MsgGetAllValidators {}
+export class QueryGetAllValidators {}
 
 // @ts-ignore
 @serializable
-export class MsgGetAllValidatorInfos {}
+export class QueryGetAllValidatorInfos {}
 
 // @ts-ignore
 @serializable
@@ -855,5 +855,93 @@ export class QueryContractInfoResponse {
     contract_info: ContractInfo | null
     constructor(contract_info: ContractInfo | null) {
         this.contract_info = contract_info
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryIsValidatorJailed {
+    consaddr: ConsensusAddressString
+    constructor(consaddr: ConsensusAddressString) {
+        this.consaddr = consaddr
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryIsValidatorJailedResponse {
+    jailed: bool
+    constructor(jailed: bool) {
+        this.jailed = jailed
+    }
+}
+
+// @ts-ignore
+@serializable
+export class MsgSlash {
+    consaddr: ConsensusAddressString
+    infractionHeight: i64
+    power: i64
+    slashFactor: string
+    constructor(
+        consaddr: ConsensusAddressString,
+        infractionHeight: i64,
+        power: i64,
+        slashFactor: string,
+    ) {
+        this.consaddr = consaddr
+        this.infractionHeight = infractionHeight
+        this.power = power
+        this.slashFactor = slashFactor
+    }
+}
+
+// @ts-ignore
+@serializable
+export class MsgSlashWithInfractionReason {
+    consaddr: ConsensusAddressString
+    infractionHeight: i64
+    power: i64
+    slashFactor: string
+    infractionReason: string
+    constructor(
+        consaddr: ConsensusAddressString,
+        infractionHeight: i64,
+        power: i64,
+        slashFactor: string,
+        infractionReason: string,
+    ) {
+        this.consaddr = consaddr
+        this.infractionHeight = infractionHeight
+        this.power = power
+        this.slashFactor = slashFactor
+        this.infractionReason = infractionReason
+    }
+}
+
+// @ts-ignore
+@serializable
+export class MsgSlashWithInfractionReasonResponse {
+    amount_burned: BigInt
+    constructor(amount_burned: BigInt) {
+        this.amount_burned = amount_burned
+    }
+}
+
+// @ts-ignore
+@serializable
+export class MsgJail {
+    consaddr: ConsensusAddressString
+    constructor(consaddr: ConsensusAddressString) {
+        this.consaddr = consaddr
+    }
+}
+
+// @ts-ignore
+@serializable
+export class MsgUnjail {
+    consaddr: ConsensusAddressString
+    constructor(consaddr: ConsensusAddressString) {
+        this.consaddr = consaddr
     }
 }

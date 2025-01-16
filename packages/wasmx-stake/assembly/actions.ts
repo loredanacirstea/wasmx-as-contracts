@@ -10,7 +10,7 @@ import * as banktypes from "wasmx-bank/assembly/types"
 import * as derc20types from "wasmx-derc20/assembly/types"
 import * as erc20types from "wasmx-erc20/assembly/types"
 import { getParamsInternal, setParams, setNewValidator, getParams, getValidator, getValidatorsAddresses, getValidatorAddrByConsAddr, setValidator, getValidatorOperatorByHexAddr, setBaseDenom, getBaseDenom } from './storage';
-import { GenesisState, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool, BondedS, AfterValidatorCreated, AfterValidatorBonded, QueryValidatorDelegationsRequest, QueryValidatorDelegationsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryParamsRequest, QueryParamsResponse, ValidatorSimple, QueryValidatorInfosResponse, getValidatorFromMsgCreate, Description, QueryContractInfoResponse } from './types';
+import { GenesisState, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool, BondedS, AfterValidatorCreated, AfterValidatorBonded, QueryValidatorDelegationsRequest, QueryValidatorDelegationsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryParamsRequest, QueryParamsResponse, ValidatorSimple, QueryValidatorInfosResponse, getValidatorFromMsgCreate, Description, QueryContractInfoResponse, QueryIsValidatorJailed, MsgJail, MsgUnjail, MsgSlashWithInfractionReason, MsgSlash, QueryIsValidatorJailedResponse, MsgSlashWithInfractionReasonResponse } from './types';
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from './utils';
 import { parseInt64 } from "wasmx-utils/assembly/utils";
 import { Bech32String, CallRequest, CallResponse, Coin, PageRequest, PageResponse, ValidatorAddressString, Event, EventAttribute, MsgSetup, ContractInfo, ContractStorageTypeByString } from "wasmx-env/assembly/types";
@@ -128,6 +128,61 @@ export function UpdateValidators(req: MsgUpdateValidators): ArrayBuffer {
     console.debug("--staking UpdateValidators--")
     // const updates = req.updates;
     return new ArrayBuffer(0)
+}
+
+export function Jail(req: MsgJail): ArrayBuffer {
+    const resp = new ArrayBuffer(0)
+    const validator = getValidatorByConsAddr(req.consaddr)
+    if (validator == null) {
+        revert(`cannot jail validator, validator not found: ${req.consaddr}`)
+        return resp;
+    }
+    jailValidator(validator)
+    return resp;
+}
+
+export function Unjail(req: MsgUnjail): ArrayBuffer {
+    const resp = new ArrayBuffer(0)
+    const validator = getValidatorByConsAddr(req.consaddr)
+    if (validator == null) {
+        revert(`cannot jail validator, validator not found: ${req.consaddr}`)
+        return resp;
+    }
+    unjailValidator(validator)
+    return resp;
+}
+
+export function Slash(req: MsgSlash): ArrayBuffer {
+    const amount = slashWithInfraction(req.consaddr, req.infractionHeight, req.power, req.slashFactor, "")
+    return String.UTF8.encode(JSON.stringify<MsgSlashWithInfractionReasonResponse>(new MsgSlashWithInfractionReasonResponse(amount)))
+}
+
+export function SlashWithInfractionReason(req: MsgSlashWithInfractionReason): ArrayBuffer {
+    const amount = slashWithInfraction(req.consaddr, req.infractionHeight, req.power, req.slashFactor, req.infractionReason)
+    return String.UTF8.encode(JSON.stringify<MsgSlashWithInfractionReasonResponse>(new MsgSlashWithInfractionReasonResponse(amount)))
+}
+
+export function slashWithInfraction(consaddr: string, infractionHeight: i64, power: i64, slashFactor: string, infractionReason: string): BigInt {
+    // cosmos slashes the validator here and all the delegators
+    // TODO implement me
+    const validator = getValidatorByConsAddr(consaddr)
+    if (validator == null) {
+        revert(`cannot slash validator, validator not found: ${consaddr}`)
+        return BigInt.zero()
+    }
+    // TODO slash balance, maybe slash delegators
+    return BigInt.zero()
+}
+
+export function IsValidatorJailed(req: QueryIsValidatorJailed): ArrayBuffer {
+    const resp = new QueryIsValidatorJailedResponse(false)
+    const validator = getValidatorByConsAddr(req.consaddr)
+    if (validator == null) {
+        revert(`cannot jail validator, validator not found: ${req.consaddr}`)
+        return new ArrayBuffer(0);
+    }
+    resp.jailed = validator.jailed
+    return String.UTF8.encode(JSON.stringify<QueryIsValidatorJailedResponse>(resp))
 }
 
 // does not recalculate token balances!
@@ -251,6 +306,30 @@ export function ValidatorByHexAddr(req: QueryValidatorRequest): ArrayBuffer {
     }
     let data = JSON.stringify<QueryValidatorResponse>(new QueryValidatorResponse(validator))
     return String.UTF8.encode(data)
+}
+
+export function getValidatorByConsAddr(consaddr: string): Validator | null {
+    const addr = getValidatorAddrByConsAddr(consaddr)
+    if (addr == "") {
+        return null
+    }
+    return getValidator(addr)
+}
+
+export function jailValidator(validator: Validator): void {
+    if (validator.jailed) {
+        revert(`cannot jail already jailed validator: ${validator.operator_address}`)
+    }
+    validator.jailed = true
+    setValidator(validator)
+}
+
+export function unjailValidator(validator: Validator): void {
+    if (!validator.jailed) {
+        revert(`cannot unjail already unjailed validator: ${validator.operator_address}`)
+    }
+    validator.jailed = false
+    setValidator(validator)
 }
 
 // TODO do not use .tokens

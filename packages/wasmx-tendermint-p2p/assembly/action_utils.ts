@@ -320,6 +320,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, isretry: bo
         setCurrentState(currentState)
     }
 
+    // called by cosmos sdk during consensuswrap.BeginBlock
     // const blockDataBeginBlock = JSON.stringify<typestnd.RequestFinalizeBlock>(finalizeReq)
     // callHookContract("BeginBlock", blockDataBeginBlock);
 

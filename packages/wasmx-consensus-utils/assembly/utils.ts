@@ -43,7 +43,7 @@ export function getValidatorsHash2(validators: staking.Validator[]): string {
 }
 
 export function isValidatorInactive(valid: staking.Validator): boolean {
-    return valid.jailed || valid.status != staking.BondedS
+    return valid.jailed || (valid.status != staking.BondedS)
 }
 
 export function getActiveValidatorInfo(validators: staking.Validator[]): typestnd.TendermintValidator[] {

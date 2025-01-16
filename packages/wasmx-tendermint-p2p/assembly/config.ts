@@ -35,6 +35,7 @@ export const ELECTION_TIMEOUT_KEY = "electionTimeout";
 export const TERM_ID = "currentTerm"; // current round
 export const PREVOTE_ARRAY = "prevoteArray";
 export const PRECOMMIT_ARRAY = "precommitArray";
+export const MISSED_BLOCKS = "missedBlocks";
 
 export const NODE_UPDATE_REMOVE = 0
 export const NODE_UPDATE_ADD = 1

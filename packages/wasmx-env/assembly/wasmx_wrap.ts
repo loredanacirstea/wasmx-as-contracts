@@ -24,6 +24,7 @@ import {
     HexString,
     CodeInfo,
     ContractInfo,
+    StorageDeleteRange,
 } from './types';
 import { u8ArrayToHex, uint8ArrayToHex } from "as-tally/assembly/tally";
 import { toUpperCase } from "./utils";
@@ -94,6 +95,11 @@ export function sload(key: string): string {
 
 export function sdelete(key: string): void {
     wasmx.storageDelete(String.UTF8.encode(key));
+}
+
+export function sdeleteRange(keyStart: Base64String, keyEnd: Base64String): void {
+    const req = new StorageDeleteRange(keyStart, keyEnd)
+    wasmx.storageDeleteRange(String.UTF8.encode(JSON.stringify<StorageDeleteRange>(req)));
 }
 
 /// storageLoadRangePairs

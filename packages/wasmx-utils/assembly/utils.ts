@@ -139,5 +139,51 @@ export function concatBytes(arr1: Uint8Array, arr2: Uint8Array): Uint8Array {
 }
 
 export function stringToBytes(v: string): Uint8Array {
+    if (v == "") return new Uint8Array(0)
     return Uint8Array.wrap(String.UTF8.encode(v));
+}
+
+function isDigit(str: string, index: i32): boolean {
+    const code = str.charCodeAt(index);
+    return code >= 48 && code <= 57;
+}
+
+export function parseDurationToMs(duration: string): i64 {
+    const len = duration.length;
+    if (len == 0) return i64(0);
+
+    let unit = ""
+    if (isDigit(duration, len-1)) {
+        // this is in nanoseconds
+        return I64.parseInt(duration) / 1000 // miliseconds
+    }
+    unit = duration.substr(len-1);
+    if (!isDigit(duration, len-2)) {
+        unit = duration.substr(len-2);
+    }
+
+    let valueStr: string;
+
+    if (unit == "ms" || unit == "ns") {
+        valueStr = duration.substr(0, len - 2);
+    } else {
+        if (unit.length > 1) {
+            throw new Error("Invalid duration format: " + duration);
+        }
+        const singleUnit = duration.substr(len - 1); // Last character
+        if (singleUnit == "s" || singleUnit == "m" || singleUnit == "h") {
+            valueStr = duration.substr(0, len - 1);
+        } else {
+            throw new Error("Invalid duration format: " + duration);
+        }
+    }
+
+    const value = I64.parseInt(valueStr); // Parse the numeric part
+
+    if (unit == "ns") return value / 1000; // nanoseconds
+    if (unit == "ms") return value; // Milliseconds, no conversion
+    if (unit == "s") return value * 1000;
+    if (unit == "m") return value * 60 * 1000;
+    if (unit == "h") return value * 60 * 60 * 1000;
+    throw new Error("Unsupported time unit: " + unit);
 }

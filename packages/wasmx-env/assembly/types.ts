@@ -285,6 +285,17 @@ export class StorageRange {
 
 // @ts-ignore
 @serializable
+export class StorageDeleteRange {
+	start_key: Base64String = ""
+	end_key: Base64String = ""
+    constructor(start_key: Base64String, end_key: Base64String) {
+        this.start_key = start_key
+        this.end_key = end_key
+    }
+}
+
+// @ts-ignore
+@serializable
 export class StoragePair {
 	key: Base64String = ""
 	value: Base64String = ""
