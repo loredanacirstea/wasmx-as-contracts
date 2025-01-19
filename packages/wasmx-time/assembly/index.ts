@@ -2,11 +2,12 @@ import { JSON } from "json-as/assembly";
 import * as wasmx from "wasmx-env/assembly/wasmx";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as wasmxcorew from "wasmx-env-core/assembly/wasmxcore_wrap";
-import { Block, QueryBlockRequest } from "./types";
+import { Block, MODULE_NAME, QueryBlockRequest } from "./types";
 import { getEmtpyBlock, getNewBlock } from "./blocks";
 import { getParams, setParams } from "./storage";
 import { getCallDataInitialize, getCallDataWrap } from "./calldata";
 import { LoggerInfo, revert } from "./utils";
+import { onlyInternal } from "wasmx-env/assembly/utils";
 
 export function memory_assemblyscript_1(): void {}
 export function wasmx_env_i32_2(): void {}
@@ -38,6 +39,8 @@ var cycleCount: i64 = 0;
 var nextTime = Date.now();
 
 export function main(): void {
+  onlyInternal(MODULE_NAME, "");
+
   let result: ArrayBuffer = new ArrayBuffer(0)
   const calld = getCallDataWrap();
   if (calld.StartNode !== null) {

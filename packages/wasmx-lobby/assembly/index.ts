@@ -5,6 +5,8 @@ import { getCallDataWrap } from './calldata';
 import { revert } from "./utils";
 import * as actions from "./actions";
 import { wrapGuard } from "./actions";
+import { onlyInternal } from "wasmx-env/assembly/utils";
+import { MODULE_NAME } from "./types";
 
 export function wasmx_env_2(): void {}
 
@@ -15,6 +17,8 @@ export function wasmx_multichain_1(): void {}
 export function instantiate(): void {}
 
 export function main(): void {
+  onlyInternal(MODULE_NAME, "");
+
   let result: ArrayBuffer = new ArrayBuffer(0)
   const calld = getCallDataWrap();
   if (calld.method === "ifValidatorThreshold") {

@@ -17,9 +17,10 @@ import {
   GetAddressByDenom,
   MintCoins,
 } from "./actions";
-import { CallDataInstantiate } from "./types"
+import { CallDataInstantiate, MODULE_NAME } from "./types"
 import { setAuthorities } from "./storage";
 import { revert } from "./utils";
+import { onlyInternal } from "wasmx-env/assembly/utils";
 
 export function wasmx_env_2(): void {}
 
@@ -32,22 +33,9 @@ export function instantiate(): void {
 export function main(): void {
   let result: ArrayBuffer = new ArrayBuffer(0);
   const calld = getCallDataWrap();
-  if (calld.SendCoins !== null) {
-    Send(calld.SendCoins!);
-    result = new ArrayBuffer(0)
-  } else if (calld.SendCoinsFromModuleToAccount !== null) {
-    result = SendCoinsFromModuleToAccount(calld.SendCoinsFromModuleToAccount!);
-  } else if (calld.SendCoinsFromModuleToModule !== null) {
-    result = SendCoinsFromModuleToModule(calld.SendCoinsFromModuleToModule!);
-  } else if (calld.SendCoinsFromAccountToModule !== null) {
-    result = SendCoinsFromAccountToModule(calld.SendCoinsFromAccountToModule!);
-  } else if (calld.MultiSend !== null) {
-    result = MultiSend(calld.MultiSend!);
-  } else if (calld.UpdateParams !== null) {
-    result = UpdateParams(calld.UpdateParams!);
-  } else if (calld.SetSendEnabled !== null) {
-    result = SetSendEnabled(calld.SetSendEnabled!);
-  } else if (calld.GetBalance !== null) {
+
+  // public operations
+  if (calld.GetBalance !== null) {
     result = GetBalance(calld.GetBalance!);
   } else if (calld.GetAllBalances !== null) {
     result = AllBalances(calld.GetAllBalances!);
@@ -71,9 +59,36 @@ export function main(): void {
     result = DenomOwners(calld.GetDenomOwners!);
   } else if (calld.GetSendEnabled !== null) {
     result = SendEnabled(calld.GetSendEnabled!);
+  }
+
+  // internal operations
+  else if (calld.SendCoins !== null) {
+    onlyInternal(MODULE_NAME, "SendCoins");
+    Send(calld.SendCoins!);
+    result = new ArrayBuffer(0)
+  } else if (calld.SendCoinsFromModuleToAccount !== null) {
+    onlyInternal(MODULE_NAME, "SendCoinsFromModuleToAccount");
+    result = SendCoinsFromModuleToAccount(calld.SendCoinsFromModuleToAccount!);
+  } else if (calld.SendCoinsFromModuleToModule !== null) {
+    onlyInternal(MODULE_NAME, "SendCoinsFromModuleToModule");
+    result = SendCoinsFromModuleToModule(calld.SendCoinsFromModuleToModule!);
+  } else if (calld.SendCoinsFromAccountToModule !== null) {
+    onlyInternal(MODULE_NAME, "SendCoinsFromAccountToModule");
+    result = SendCoinsFromAccountToModule(calld.SendCoinsFromAccountToModule!);
+  } else if (calld.MultiSend !== null) {
+    onlyInternal(MODULE_NAME, "MultiSend");
+    result = MultiSend(calld.MultiSend!);
+  } else if (calld.UpdateParams !== null) {
+    onlyInternal(MODULE_NAME, "UpdateParams");
+    result = UpdateParams(calld.UpdateParams!);
+  } else if (calld.SetSendEnabled !== null) {
+    onlyInternal(MODULE_NAME, "SetSendEnabled");
+    result = SetSendEnabled(calld.SetSendEnabled!);
   } else if (calld.InitGenesis !== null) {
+    onlyInternal(MODULE_NAME, "InitGenesis");
     result = InitGenesis(calld.InitGenesis!);
   } else if (calld.MintCoins !== null) {
+    onlyInternal(MODULE_NAME, "MintCoins");
     result = MintCoins(calld.MintCoins!);
   } else {
     const calldraw = wasmx.getCallData();

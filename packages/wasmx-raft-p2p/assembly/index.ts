@@ -4,6 +4,8 @@ import { getCallDataWrap } from "wasmx-raft/assembly/calldata";
 import * as actions from "wasmx-raft/assembly/actions";
 import { revert } from "./utils";
 import { commitBlocks, connectPeers, forwardTxsToLeader, receiveAppendEntryResponse, receiveStateSyncRequest, receiveStateSyncResponse, receiveUpdateNodeResponse, receiveVoteResponse, requestNetworkSync, sendAppendEntries, sendHeartbeatResponse, sendVoteRequests, setupNode, updateNodeAndReturn, vote } from "./actions";
+import { onlyInternal } from "wasmx-env/assembly/utils";
+import { MODULE_NAME } from "./types";
 
 export function wasmx_env_2(): void {}
 
@@ -14,6 +16,8 @@ export function wasmx_consensus_json_1(): void {}
 export function instantiate(): void {}
 
 export function main(): void {
+  onlyInternal(MODULE_NAME, "");
+
   let result: ArrayBuffer = new ArrayBuffer(0);
   const calld = getCallDataWrap();
   if (calld.method === "isVotedLeader") {

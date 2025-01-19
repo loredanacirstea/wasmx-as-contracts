@@ -9,7 +9,6 @@ import * as stakingtypes from "wasmx-stake/assembly/types"
 import * as blocktypes from "wasmx-blocks/assembly/types"
 import * as erc20types from "wasmx-erc20/assembly/types"
 import * as derc20types from "wasmx-derc20/assembly/types"
-import { callContract } from "wasmx-stake/assembly/actions"
 import { decode as decodeBase64, encode as encodeBase64 } from "as-base64/assembly";
 import { Bech32String, CallRequest, CallResponse, Coin, DecCoin, PageRequest, ValidatorAddressString } from "wasmx-env/assembly/types";
 import { BigInt } from "wasmx-env/assembly/bn";
@@ -17,6 +16,7 @@ import { FEE_COLLECTOR_ROLE, MODULE_NAME, MsgCommunityPoolSpend, MsgCommunityPoo
 import * as types from "./types";
 import { LoggerDebug, LoggerDebugExtended, LoggerError, revert } from "./utils";
 import { getBaseDenom, getParams, getRewardsDenom, setBaseDenom, setParams, setRewardsDenom } from "./storage";
+import { callContract } from "wasmx-env/assembly/utils";
 
 export function InitGenesis(req: GenesisState): ArrayBuffer {
     setParams(req.params);
@@ -343,7 +343,7 @@ export function getTokenAddress(denom: string): Bech32String {
 export function callMintToken(tokenAddress: Bech32String, to: Bech32String, value: BigInt): void {
     const calldata = new erc20types.MsgMint(to, value);
     const calldatastr = `{"mint":${JSON.stringify<erc20types.MsgMint>(calldata)}}`;
-    const resp = callContract(tokenAddress, calldatastr, false)
+    const resp = callContract(tokenAddress, calldatastr, false, MODULE_NAME)
     if (resp.success > 0) {
         revert(`could not mint token: ${tokenAddress}`)
     }
@@ -352,7 +352,7 @@ export function callMintToken(tokenAddress: Bech32String, to: Bech32String, valu
 export function callBurnToken(tokenAddress: Bech32String, from: Bech32String, value: BigInt): void {
     const calldata = new erc20types.MsgBurn(from, value);
     const calldatastr = `{"burn":${JSON.stringify<erc20types.MsgBurn>(calldata)}}`;
-    const resp = callContract(tokenAddress, calldatastr, false)
+    const resp = callContract(tokenAddress, calldatastr, false, MODULE_NAME)
     if (resp.success > 0) {
         revert(`could not burn token: ${tokenAddress}: ${resp.data}`)
     }
@@ -361,7 +361,7 @@ export function callBurnToken(tokenAddress: Bech32String, from: Bech32String, va
 export function getTokenAmount(tokenAddress: Bech32String, addr: Bech32String): BigInt {
     const calldata = new erc20types.MsgBalanceOf(addr);
     const calldatastr = `{"balanceOf":${JSON.stringify<erc20types.MsgBalanceOf>(calldata)}}`;
-    const resp = callContract(tokenAddress, calldatastr, true)
+    const resp = callContract(tokenAddress, calldatastr, true, MODULE_NAME)
     if (resp.success > 0) {
         revert(`could not burn rewards`)
     }

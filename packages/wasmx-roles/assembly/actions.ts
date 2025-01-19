@@ -11,7 +11,7 @@ import * as blocktypes from "wasmx-blocks/assembly/types"
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as codesregt from "wasmx-codes-registry/assembly/types";
 import * as st from "./storage";
-import { AttributeKeyRoleMultipleLabels, AttributeKeyRoleStorageType, GetAddressOrRoleRequest, GetRoleByLabelRequest, GetRoleByRoleNameRequest, GetRoleLabelByContractRequest, MODULE_NAME, MsgRunHook, RolesChangedHook, SetRoleRequest } from "./types";
+import { AttributeKeyRoleMultipleLabels, AttributeKeyRoleStorageType, GetAddressOrRoleRequest, GetRoleByLabelRequest, GetRoleByRoleNameRequest, GetRoleLabelByContractRequest, GetRoleNameByAddressRequest, MODULE_NAME, MsgRunHook, RolesChangedHook, SetRoleRequest } from "./types";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
 import { callContract } from "wasmx-env/assembly/utils";
 
@@ -160,6 +160,11 @@ export function GetRoleByLabel(req: GetRoleByLabelRequest): ArrayBuffer {
     const value = st.getRoleByLabel(req.label);
     if (value == null) return new ArrayBuffer(0);
     return String.UTF8.encode(JSON.stringify<Role>(value));
+}
+
+export function GetRoleNameByAddress(req: GetRoleNameByAddressRequest): ArrayBuffer {
+    const role = st.getRoleByContractAddress(req.address)
+    return String.UTF8.encode(role);
 }
 
 // TODO replace the previous role? if a role cannot hold 2 contracts?

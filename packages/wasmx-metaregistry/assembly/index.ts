@@ -20,7 +20,18 @@ export function instantiate(): void {
 export function main(): void {
   let result: ArrayBuffer = new ArrayBuffer(0)
   const calld = getCallDataWrap();
-  if (calld.SetChainData !== null) {
+
+  // public / internal operations?
+  // TODO do we need onlyInternal ?
+  if (calld.GetChainData !== null) {
+    result = actions.GetChainData(calld.GetChainData!);
+  } else if (calld.GetSubChainConfigById !== null) {
+    result = actions.GetSubChainConfigById(calld.GetSubChainConfigById!);
+  } else if (calld.GetSubChainConfigByIds !== null) {
+    result = actions.GetSubChainConfigByIds(calld.GetSubChainConfigByIds!);
+  } else if (calld.GetSubChainConfigByIds !== null) {
+    result = actions.GetSubChainConfigByIds(calld.GetSubChainConfigByIds!);
+  } else if (calld.SetChainData !== null) {
     result = actions.SetChainData(calld.SetChainData!);
   } else if (calld.CrossChainTx !== null) {
     result = actions.CrossChainTx(calld.CrossChainTx!);
@@ -31,14 +42,6 @@ export function main(): void {
   } else if (calld.NewSubChain !== null) {
     actions.NewSubChain(calld.NewSubChain!)
     result = new ArrayBuffer(0);
-  } else if (calld.GetChainData !== null) {
-    result = actions.GetChainData(calld.GetChainData!);
-  } else if (calld.GetSubChainConfigById !== null) {
-    result = actions.GetSubChainConfigById(calld.GetSubChainConfigById!);
-  } else if (calld.GetSubChainConfigByIds !== null) {
-    result = actions.GetSubChainConfigByIds(calld.GetSubChainConfigByIds!);
-  } else if (calld.GetSubChainConfigByIds !== null) {
-    result = actions.GetSubChainConfigByIds(calld.GetSubChainConfigByIds!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)

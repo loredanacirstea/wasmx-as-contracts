@@ -4,8 +4,9 @@ import { GetParams } from "wasmx-gov/assembly/actions";
 import { CallData, getCallDataInitialize, getCallDataWrap } from './calldata';
 import { EndBlock, DoDeposit, InitGenesis, SubmitProposal, VoteWeighted, GetProposal, DoVote, SubmitProposalExtended, AddProposalOption, DoDepositVote, GetProposals, GetTallyResult, GetProposalExtended, GetProposalsExtended, GetNextWinnerThreshold } from "./actions";
 import { revert } from "./utils";
-import { Params } from "./types";
+import { MODULE_NAME, Params } from "./types";
 import { setParams } from "./storage";
+import { onlyInternal } from "wasmx-env/assembly/utils";
 
 export function wasmx_env_2(): void {}
 
@@ -20,9 +21,9 @@ export function main(): void {
 
   let result: ArrayBuffer = new ArrayBuffer(0)
   const calld = getCallDataWrap();
-  if (calld.EndBlock !== null) {
-    result = EndBlock(calld.EndBlock!);
-  } else if (calld.SubmitProposal !== null) {
+
+  // public operations
+  if (calld.SubmitProposal !== null) {
     result = SubmitProposal(calld.SubmitProposal!);
   } else if (calld.SubmitProposalExtended !== null) {
     result = SubmitProposalExtended(calld.SubmitProposalExtended!);
@@ -50,7 +51,14 @@ export function main(): void {
     result = GetNextWinnerThreshold(calld.GetNextWinnerThreshold!);
   } else if (calld.GetParams !== null) {
     result = GetParams(calld.GetParams!);
+  }
+
+  // internal operations
+  else if (calld.EndBlock !== null) {
+    onlyInternal(MODULE_NAME, "EndBlock");
+    result = EndBlock(calld.EndBlock!);
   } else if (calld.InitGenesis !== null) {
+    onlyInternal(MODULE_NAME, "InitGenesis");
     result = InitGenesis(calld.InitGenesis!);
   } else {
     const calldraw = wasmx.getCallData();

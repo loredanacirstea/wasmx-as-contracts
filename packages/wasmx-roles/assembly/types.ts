@@ -46,6 +46,15 @@ export class GetAddressOrRoleRequest {
 
 // @ts-ignore
 @serializable
+export class GetRoleNameByAddressRequest {
+    address: string
+    constructor(address: string) {
+        this.address = address
+    }
+}
+
+// @ts-ignore
+@serializable
 export class GetRoleLabelByContractRequest {
     address: Bech32String
     constructor(address: Bech32String) {

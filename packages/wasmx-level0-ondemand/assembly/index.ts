@@ -8,6 +8,8 @@ import * as tnd2mc from "wasmx-tendermint-p2p/assembly/multichain";
 import { wrapGuard } from "wasmx-level0/assembly/actions";
 import { revert } from "./utils";
 import * as actions from "./actions";
+import { onlyInternal } from "wasmx-env/assembly/utils";
+import { MODULE_NAME } from "./types";
 
 export function wasmx_env_2(): void {}
 
@@ -24,6 +26,8 @@ export function instantiate(): void {
 }
 
 export function main(): void {
+  onlyInternal(MODULE_NAME, "");
+
   let result: ArrayBuffer = new ArrayBuffer(0)
   const calld = getCallDataWrap();
   if (calld.method === "sendNewTransactionResponse") {

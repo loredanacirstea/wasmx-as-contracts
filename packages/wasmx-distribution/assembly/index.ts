@@ -3,6 +3,8 @@ import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, getCallDataWrap } from './calldata';
 import { CommunityPool, CommunityPoolSpend, DelegationRewards, DelegationTotalRewards, DelegatorValidators, DelegatorWithdrawAddress, DepositValidatorRewardsPool, FundCommunityPool, InitGenesis, Params, SetWithdrawAddress, UpdateParams, ValidatorCommission, ValidatorDistributionInfo, ValidatorOutstandingRewards, ValidatorSlashes, WithdrawDelegatorReward, WithdrawValidatorCommission, EndBlock as EndBlockInternal } from "./actions";
 import { revert } from "./utils";
+import { onlyInternal } from "wasmx-env/assembly/utils";
+import { MODULE_NAME } from "./types";
 
 export function wasmx_env_2(): void {}
 
@@ -13,9 +15,9 @@ export function instantiate(): void {}
 export function main(): void {
   let result: ArrayBuffer = new ArrayBuffer(0)
   const calld = getCallDataWrap();
-  if (calld.EndBlock !== null) {
-    EndBlockInternal(calld.EndBlock!);
-  } else if (calld.SetWithdrawAddress !== null) {
+
+  // public operations
+  if (calld.SetWithdrawAddress !== null) {
     result = SetWithdrawAddress(calld.SetWithdrawAddress!);
   } else if (calld.WithdrawDelegatorReward !== null) {
     result = WithdrawDelegatorReward(calld.WithdrawDelegatorReward!);
@@ -23,12 +25,6 @@ export function main(): void {
     result = WithdrawValidatorCommission(calld.WithdrawValidatorCommission!);
   } else if (calld.FundCommunityPool !== null) {
     result = FundCommunityPool(calld.FundCommunityPool!);
-  } else if (calld.UpdateParams !== null) {
-    result = UpdateParams(calld.UpdateParams!);
-  } else if (calld.CommunityPoolSpend !== null) {
-    result = CommunityPoolSpend(calld.CommunityPoolSpend!);
-  } else if (calld.DepositValidatorRewardsPool !== null) {
-    result = DepositValidatorRewardsPool(calld.DepositValidatorRewardsPool!);
   } else if (calld.Params !== null) {
     result = Params(calld.Params!);
   } else if (calld.ValidatorDistributionInfo !== null) {
@@ -49,7 +45,23 @@ export function main(): void {
     result = DelegatorWithdrawAddress(calld.DelegatorWithdrawAddress!);
   } else if (calld.CommunityPool !== null) {
     result = CommunityPool(calld.CommunityPool!);
+  }
+
+  // internal operations
+  else if (calld.EndBlock !== null) {
+    onlyInternal(MODULE_NAME, "EndBlock");
+    EndBlockInternal(calld.EndBlock!);
+  } else if (calld.UpdateParams !== null) {
+    onlyInternal(MODULE_NAME, "UpdateParams");
+    result = UpdateParams(calld.UpdateParams!);
+  } else if (calld.CommunityPoolSpend !== null) {
+    onlyInternal(MODULE_NAME, "CommunityPoolSpend");
+    result = CommunityPoolSpend(calld.CommunityPoolSpend!);
+  } else if (calld.DepositValidatorRewardsPool !== null) {
+    onlyInternal(MODULE_NAME, "DepositValidatorRewardsPool");
+    result = DepositValidatorRewardsPool(calld.DepositValidatorRewardsPool!);
   } else if (calld.InitGenesis !== null) {
+    onlyInternal(MODULE_NAME, "InitGenesis");
     result = InitGenesis(calld.InitGenesis!);
   } else {
     const calldraw = wasmx.getCallData();

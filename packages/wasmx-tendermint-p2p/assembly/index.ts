@@ -6,6 +6,8 @@ import * as actions from "./actions";
 import * as actionsmc from "./multichain";
 import { wrapGuard } from "./action_utils";
 import { revert } from "./utils";
+import { onlyInternal } from "wasmx-env/assembly/utils";
+import { MODULE_NAME } from "./config";
 
 export function wasmx_env_2(): void {}
 
@@ -20,6 +22,8 @@ export function wasmx_consensus_json_1(): void {}
 export function instantiate(): void {}
 
 export function main(): void {
+  onlyInternal(MODULE_NAME, "");
+
   let result: ArrayBuffer = new ArrayBuffer(0);
   const calld = getCallDataWrap();
   if (calld.method === "isNextProposer") {

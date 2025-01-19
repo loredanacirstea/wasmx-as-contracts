@@ -3,6 +3,8 @@ import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap } from './calldata';
 import * as actions from "./actions";
 import { revert } from "./utils";
+import { onlyInternal } from "wasmx-env/assembly/utils";
+import { MODULE_NAME } from "./types";
 
 export function memory_assemblyscript_1(): void {}
 
@@ -16,6 +18,9 @@ export function instantiate(): void {}
 
 export function main(): void {
     let result: ArrayBuffer = new ArrayBuffer(0);
+
+    onlyInternal(MODULE_NAME, "");
+
     const calld = getCallDataWrap();
     if (calld.method === "ifMajorityConfidenceGTCurrent") {
         result = actions.wrapGuard(actions.ifMajorityConfidenceGTCurrent(calld.params, calld.event));
