@@ -19,7 +19,7 @@ export function LoggerDebugExtended(msg: string, parts: string[]): void {
 }
 
 export function revert(message: string): void {
-    LoggerError("revert", ["err", message, "module", MODULE_NAME])
+    LoggerDebug("revert", ["err", message, "module", MODULE_NAME])
     wasmx.revert(String.UTF8.encode(message));
     throw new Error(message);
 }
