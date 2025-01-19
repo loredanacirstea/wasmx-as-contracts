@@ -8,7 +8,7 @@ import { decode as decodeBase64 } from "as-base64/assembly";
 import { MODULE_NAME, GenesisState, QuerySigningInfoRequest, QuerySigningInfoResponse, ValidatorSigningInfo, MsgRunHook, QuerySigningInfosRequest, QuerySigningInfosResponse, QueryParamsRequest, Params, QueryParamsResponse, MissedBlockBitmapChunkSize, ValidatorUpdateDelay, Infraction, InfractionByEnum, QueryMissedBlockBitmapRequest, QueryMissedBlockBitmapResponse } from './types';
 import { getParamsInternal, getParams, getValidatorSigningInfo, setParams, setValidatorSigningInfo, getValidatorSigningInfos, getMissedBlockBitmapChunk, setMissedBlockBitmapChunk, deleteMissedBlockBitmap } from "./storage";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
-import { Base64String, Bech32String, CallRequest, CallResponse, Event, EventAttribute, PageResponse } from "wasmx-env/assembly/types";
+import { Base64String, Bech32String, CallRequest, CallResponse, ConsensusAddressString, Event, EventAttribute, PageResponse } from "wasmx-env/assembly/types";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { AttributeKeyAddress, AttributeKeyBurnedCoins, AttributeKeyHeight, AttributeKeyJailed, AttributeKeyMissedBlocks, AttributeKeyPower, AttributeKeyReason, AttributeValueMissingSignature, EventTypeLiveness, EventTypeSlash } from "./events";
 import { parseDurationToMs } from "wasmx-utils/assembly/utils";
@@ -75,6 +75,32 @@ export function AfterValidatorRemoved(req: MsgRunHook): void {
 	// return h.k.deleteAddrPubkeyRelation(ctx, crypto.Address(consAddr))
     const data = String.UTF8.decode(decodeBase64(req.data).buffer)
     LoggerDebug("AfterValidatorRemoved", ["data", data])
+}
+
+// callable by any user
+export function Unjail(req: stakingtypes.MsgUnjail): ArrayBuffer {
+    const consAddress = getConsensusAddress(req.address)
+
+    // check unjail downtime
+    const info = getValidatorSigningInfo(consAddress)
+    if (info == null) {
+        revert(`unjail: validator info not found: ${consAddress}`);
+        return new ArrayBuffer(0);
+    }
+    if (info.jailed_until.getTime() > Date.now()) {
+        revert(`unjail: jailed downtime not finished: ${info.jailed_until.toISOString()}`)
+    }
+    // cannot be unjailed if tombstoned
+    if (info.tombstoned) {
+        revert(`unjail: validator is tombstoned`);
+    }
+
+    info.jailed_until = new Date(0);
+    setValidatorSigningInfo(consAddress, info);
+
+    // just forward to staking
+    UnjailStaking(req.address);
+    return String.UTF8.encode(JSON.stringify<stakingtypes.MsgUnjailResponse>(new stakingtypes.MsgUnjailResponse()))
 }
 
 export function BeginBlock(req: MsgRunHook): void {
@@ -267,7 +293,7 @@ function PunishValidator(blockHeight: i64, blockTime: Date, consaddr: string, pa
         )
     ]);
 
-    Jail(consaddr)
+    JailStaking(consaddr)
 
     // TODO ms??
     info.jailed_until = new Date(blockTime.getTime() + parseDurationToMs(params.downtime_jail_duration))
@@ -290,12 +316,30 @@ function PunishValidator(blockHeight: i64, blockTime: Date, consaddr: string, pa
     ])
 }
 
-export function Jail(consaddr: string): void {
+export function JailStaking(consaddr: string): void {
     const calldatastr = `{"Jail":{"consaddr":"${consaddr}"}}`;
     const resp = callStakingContract(calldatastr)
     if (resp.success > 0) {
         revert(`cannot jail validator: ${consaddr}`)
     }
+}
+
+export function UnjailStaking(operator: Bech32String): void {
+    const calldatastr = `{"Unjail":{"address":"${operator}"}}`;
+    const resp = callStakingContract(calldatastr)
+    if (resp.success > 0) {
+        revert(`cannot unjail validator: ${operator}`)
+    }
+}
+
+export function getConsensusAddress(operator: Bech32String): ConsensusAddressString {
+    const calldatastr = `{"ConsensusAddressByOperatorAddress":{"validator_addr":"${operator}"}}`;
+    const resp = callStakingContract(calldatastr)
+    if (resp.success > 0) {
+        revert(`cannot get consensus address validator: ${operator}`)
+    }
+    const res = JSON.parse<stakingtypes.QueryConsensusAddressByOperatorAddressResponse>(resp.data)
+    return res.consaddr;
 }
 
 export function SlashWithInfractionReason(consaddr: string, infractionHeight: i64, power: i64, slashFactor: string, infraction: Infraction): BigInt {

@@ -123,6 +123,22 @@ export function sortTendermintValidators(validators: typestnd.TendermintValidato
     });
 }
 
+export function filterAndSortCommitSignatures(signatures: typestnd.CommitSig[], validatorInfos: typestnd.TendermintValidator[]): typestnd.CommitSig[] {
+    const activeVals = new Map<String,bool>();
+    const sigs = new Array<typestnd.CommitSig>(0);
+
+    for (let i = 0; i < validatorInfos.length; i++) {
+        activeVals.set(validatorInfos[i].hex_address, true);
+    }
+    for (let i = 0; i < signatures.length; i++) {
+        const sig = signatures[i]
+        if (activeVals.has(sig.validator_address)) {
+            sigs.push(sig)
+        }
+    }
+    return sigs;
+}
+
 export function sortHexAddr(hex1: string, hex2: string): i32 {
     const a = hexToU8(hex1)
     const b = hexToU8(hex2)

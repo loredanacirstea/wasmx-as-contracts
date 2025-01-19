@@ -80,6 +80,7 @@ export class SigningInfo {
 export class ValidatorSigningInfo {
     //  e.g. mythosvalcons1....
     address: ConsensusAddressString
+    // Height at which validator was first a candidate OR was un-jailed
     start_height: i64
     index_offset: i64
     jailed_until: Date

@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, getCallDataWrap } from './calldata';
-import { InitGenesis, CreateValidator, UpdateValidators, GetAllValidators, GetValidator, GetDelegation, GetPool, ValidatorByConsAddr, ValidatorByHexAddr, GetValidatorDelegations, GetDelegatorValidators, GetDelegatorValidatorAddresses, GetParams, GetAllValidatorInfos, setup, stop, IsValidatorJailed, Slash, SlashWithInfractionReason, Jail, Unjail } from "./actions";
+import { InitGenesis, CreateValidator, UpdateValidators, GetAllValidators, GetValidator, GetDelegation, GetPool, ValidatorByConsAddr, ValidatorByHexAddr, GetValidatorDelegations, GetDelegatorValidators, GetDelegatorValidatorAddresses, GetParams, GetAllValidatorInfos, setup, stop, IsValidatorJailed, Slash, SlashWithInfractionReason, Jail, Unjail, ConsensusAddressByOperatorAddress } from "./actions";
 import { revert } from "./utils";
 
 export function memory_assemblyscript_1(): void {}
@@ -54,6 +54,8 @@ export function main(): void {
     result = Unjail(calld.Unjail!);
   } else if (calld.UpdateValidators !== null) {
     result = UpdateValidators(calld.UpdateValidators!);
+  } else if (calld.ConsensusAddressByOperatorAddress !== null) {
+    result = ConsensusAddressByOperatorAddress(calld.ConsensusAddressByOperatorAddress!);
   } else if (calld.setup !== null) {
     result = setup(calld.setup!);
   } else if (calld.stop !== null) {

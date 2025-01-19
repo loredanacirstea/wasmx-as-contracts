@@ -14,6 +14,8 @@ export class CallData {
     Params: QueryParamsRequest | null = null;
     GetMissedBlockBitmap: QueryMissedBlockBitmapRequest | null = null;
 
+    Unjail: stakingtypes.MsgUnjail | null = null;
+
     // hook
     BeginBlock: MsgRunHook | null = null;
     AfterValidatorCreated: MsgRunHook | null = null;

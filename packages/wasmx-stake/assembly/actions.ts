@@ -9,8 +9,8 @@ import * as wasmxcorew from 'wasmx-env-core/assembly/wasmxcore_wrap';
 import * as banktypes from "wasmx-bank/assembly/types"
 import * as derc20types from "wasmx-derc20/assembly/types"
 import * as erc20types from "wasmx-erc20/assembly/types"
-import { getParamsInternal, setParams, setNewValidator, getParams, getValidator, getValidatorsAddresses, getValidatorAddrByConsAddr, setValidator, getValidatorOperatorByHexAddr, setBaseDenom, getBaseDenom } from './storage';
-import { GenesisState, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool, BondedS, AfterValidatorCreated, AfterValidatorBonded, QueryValidatorDelegationsRequest, QueryValidatorDelegationsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryParamsRequest, QueryParamsResponse, ValidatorSimple, QueryValidatorInfosResponse, getValidatorFromMsgCreate, Description, QueryContractInfoResponse, QueryIsValidatorJailed, MsgJail, MsgUnjail, MsgSlashWithInfractionReason, MsgSlash, QueryIsValidatorJailedResponse, MsgSlashWithInfractionReasonResponse } from './types';
+import { getParamsInternal, setParams, setNewValidator, getParams, getValidator, getValidatorsAddresses, getValidatorAddrByConsAddr, setValidator, getValidatorOperatorByHexAddr, setBaseDenom, getBaseDenom, getConsAddress } from './storage';
+import { GenesisState, MsgCreateValidator, Validator, Unbonded, Commission, CommissionRates, ValidatorUpdate, MsgUpdateValidators, InitGenesisResponse, UnbondedS, QueryValidatorRequest, QueryValidatorResponse, QueryDelegationRequest, QueryValidatorsResponse, MODULE_NAME, QueryPoolRequest, QueryPoolResponse, Pool, BondedS, AfterValidatorCreated, AfterValidatorBonded, QueryValidatorDelegationsRequest, QueryValidatorDelegationsResponse, QueryDelegatorValidatorsRequest, QueryDelegatorValidatorsResponse, QueryParamsRequest, QueryParamsResponse, ValidatorSimple, QueryValidatorInfosResponse, getValidatorFromMsgCreate, Description, QueryContractInfoResponse, QueryIsValidatorJailed, MsgJail, MsgUnjail, MsgSlashWithInfractionReason, MsgSlash, QueryIsValidatorJailedResponse, MsgSlashWithInfractionReasonResponse, QueryConsensusAddressByOperatorAddressResponse, QueryConsensusAddressByOperatorAddress } from './types';
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from './utils';
 import { parseInt64 } from "wasmx-utils/assembly/utils";
 import { Bech32String, CallRequest, CallResponse, Coin, PageRequest, PageResponse, ValidatorAddressString, Event, EventAttribute, MsgSetup, ContractInfo, ContractStorageTypeByString } from "wasmx-env/assembly/types";
@@ -141,14 +141,18 @@ export function Jail(req: MsgJail): ArrayBuffer {
     return resp;
 }
 
+// can only be called internally
 export function Unjail(req: MsgUnjail): ArrayBuffer {
     const resp = new ArrayBuffer(0)
-    const validator = getValidatorByConsAddr(req.consaddr)
+    const validator = getValidator(req.address)
     if (validator == null) {
-        revert(`cannot jail validator, validator not found: ${req.consaddr}`)
+        revert(`cannot jail validator, validator not found: ${req.address}`)
         return resp;
     }
     unjailValidator(validator)
+
+    // TODO
+    // cannot be unjailed if no self-delegation exists
     return resp;
 }
 
@@ -276,6 +280,21 @@ export function GetPool(req: QueryPoolRequest): ArrayBuffer {
     const unbonded = GetBankSupply(baseDenom);
     const res = new QueryPoolResponse(new Pool(unbonded.amount.amount, bonded.amount.amount))
     return String.UTF8.encode(JSON.stringify<QueryPoolResponse>(res))
+}
+
+export function ConsensusAddressByOperatorAddress(req: QueryConsensusAddressByOperatorAddress): ArrayBuffer {
+    const validator = getValidator(req.validator_addr);
+    if (validator == null) {
+        revert(`validator not found: ${req.validator_addr}`);
+        return new ArrayBuffer(0);
+    }
+    if (validator.consensus_pubkey == null) {
+        revert(`validator consensus key not found: ${req.validator_addr}`);
+        return new ArrayBuffer(0);
+    }
+    const consAddr = getConsAddress(validator.consensus_pubkey!)
+    let data = JSON.stringify<QueryConsensusAddressByOperatorAddressResponse>(new QueryConsensusAddressByOperatorAddressResponse(consAddr))
+    return String.UTF8.encode(data)
 }
 
 export function ValidatorByConsAddr(req: QueryValidatorRequest): ArrayBuffer {

@@ -940,6 +940,28 @@ export class MsgJail {
 // @ts-ignore
 @serializable
 export class MsgUnjail {
+    address: Bech32String
+    constructor(address: Bech32String) {
+        this.address = address
+    }
+}
+
+// @ts-ignore
+@serializable
+export class MsgUnjailResponse{}
+
+// @ts-ignore
+@serializable
+export class QueryConsensusAddressByOperatorAddress {
+    validator_addr: Bech32String
+    constructor(validator_addr: ConsensusAddressString) {
+        this.validator_addr = validator_addr
+    }
+}
+
+// @ts-ignore
+@serializable
+export class QueryConsensusAddressByOperatorAddressResponse {
     consaddr: ConsensusAddressString
     constructor(consaddr: ConsensusAddressString) {
         this.consaddr = consaddr

@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { MsgCreateValidator, GenesisState, QueryGetAllValidators, MsgUpdateValidators, QueryValidatorRequest, QueryDelegationRequest, QueryPoolRequest, QueryValidatorDelegationsRequest, QueryDelegatorValidatorsRequest, QueryParamsRequest, QueryGetAllValidatorInfos, QueryIsValidatorJailed, MsgSlash, MsgJail, MsgUnjail, MsgSlashWithInfractionReason } from './types';
+import { MsgCreateValidator, GenesisState, QueryGetAllValidators, MsgUpdateValidators, QueryValidatorRequest, QueryDelegationRequest, QueryPoolRequest, QueryValidatorDelegationsRequest, QueryDelegatorValidatorsRequest, QueryParamsRequest, QueryGetAllValidatorInfos, QueryIsValidatorJailed, MsgSlash, MsgJail, MsgUnjail, MsgSlashWithInfractionReason, QueryConsensusAddressByOperatorAddress } from './types';
 import { MsgSetup } from "wasmx-env/assembly/types";
 
 // @ts-ignore
@@ -35,6 +35,7 @@ export class CallData {
     GetAllValidators: QueryGetAllValidators | null = null;
     GetAllValidatorInfos: QueryGetAllValidatorInfos | null = null;
     IsValidatorJailed: QueryIsValidatorJailed | null = null;
+    ConsensusAddressByOperatorAddress: QueryConsensusAddressByOperatorAddress | null = null;
 }
 
 export function getCallDataWrap(): CallData {

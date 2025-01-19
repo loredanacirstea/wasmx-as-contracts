@@ -33,7 +33,7 @@ import { LogEntryAggregate, AppendEntry, AppendEntryResponse, Precommit, MODULE_
 import * as cfg from "./config";
 import { LoggerDebug, LoggerInfo, LoggerError, revert, LoggerDebugExtended } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
-import { cleanAbsentCommits, extractIndexedTopics, getActiveValidatorInfo, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getSortedBlockCommits, getTxsHash, getValidatorsHash, sortTendermintValidators } from "wasmx-consensus-utils/assembly/utils"
+import { cleanAbsentCommits, extractIndexedTopics, filterAndSortCommitSignatures, getActiveValidatorInfo, getCommitHash, getConsensusParamsHash, getEvidenceHash, getHeaderHash, getResultsHash, getSortedBlockCommits, getTxsHash, getValidatorsHash, sortTendermintValidators } from "wasmx-consensus-utils/assembly/utils"
 import { getLeaderChain } from "wasmx-consensus/assembly/multichain_utils";
 import { appendLogEntry, decodeTx, getBlockID, getCurrentNodeId, getCurrentState, getLastLogIndex, getLogEntryObj, getNextIndexArray, getNodeCount, getNodeIPs, getTermId, removeLogEntry, setCurrentState, setLastLogIndex, setLogEntryAggregate, setLogEntryObj, setNextIndexArray, setNodeIPs, setTermId } from "./action_utils";
 import { NodeUpdate, UpdateNodeResponse } from "wasmx-raft/assembly/types_raft";
@@ -1058,6 +1058,9 @@ export function buildBlockProposal(txs: string[], optimisticExecution: boolean, 
     const validatorInfos = sortTendermintValidators(getActiveValidatorInfo(validators))
     const validatorSet = new typestnd.TendermintValidators(validatorInfos)
 
+    // get signatures only from active validators, sort in the same way as above validator set
+    const signatures = filterAndSortCommitSignatures(lastBlockCommit.signatures, validatorInfos)
+
     // we get the previous block validators for the last block commit signatures
     const previousBlock = getLogEntryAggregate(height - 1);
     let previousValidatorSet: typestnd.TendermintValidators;
@@ -1068,19 +1071,19 @@ export function buildBlockProposal(txs: string[], optimisticExecution: boolean, 
     }
 
     // we skip if the validator does not have the commit signatures for the previous block (unless this is the first block under consensus)
-    if (lastBlockCommit.signatures.length == 0 && height > (cfg.LOG_START+1)) {
+    if (signatures.length == 0 && height > (cfg.LOG_START+1)) {
         LoggerDebug("no commit signatures found for previous block ... skipping block proposal", ["height", height.toString()])
         return null;
     }
 
-    if (lastBlockCommit.signatures.length > previousValidatorSet.validators.length) {
-        revert(`last block validator set smaller than signature list: expected ${lastBlockCommit.signatures.length}, got ${previousValidatorSet.validators.length}`)
+    if (signatures.length > previousValidatorSet.validators.length) {
+        revert(`last block validator set smaller than signature list: expected ${signatures.length}, got ${previousValidatorSet.validators.length}`)
     }
 
     const lastCommit = new typestnd.CommitInfo(lastBlockCommit.round, []); // TODO for the last block
     const localLastCommit = new typestnd.ExtendedCommitInfo(lastBlockCommit.round, []);
-    for (let i = 0; i < lastBlockCommit.signatures.length; i++) {
-        const commitSig = lastBlockCommit.signatures[i]
+    for (let i = 0; i < signatures.length; i++) {
+        const commitSig = signatures[i]
         const val = previousValidatorSet.validators[i]
 
         // TODO VoteInfo should be hex
