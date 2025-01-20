@@ -4,7 +4,7 @@ import * as wasmx from "wasmx-env/assembly/wasmx";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import { MissedBlockBitmapChunkSize, Params, ValidatorSigningInfo} from "./types";
 import { ConsensusAddressString } from "wasmx-env/assembly/types";
-import { base64ToString, bytes, concatBytes, stringToBytes, u64ToUint8ArrayBE, uint8ArrayToHex } from "wasmx-utils/assembly/utils";
+import { base64ToString, bytes, concatBytes, stringToBytes, u64ToUint8ArrayBE } from "wasmx-utils/assembly/utils";
 
 export const paramPrefix: u8 = 1
 export const signingInfoPrefix: u8 = 2

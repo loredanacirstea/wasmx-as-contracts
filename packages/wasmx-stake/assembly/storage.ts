@@ -1,9 +1,8 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from "wasmx-env/assembly/wasmx_wrap";
-import {ValidatorInfo, Params, Validator} from "./types";
+import {Params, Validator} from "./types";
 import { Bech32String, ConsensusAddressString, HexString, PublicKey, ValidatorAddressString } from "wasmx-env/assembly/types";
 import { decode as decodeBase64 } from "as-base64/assembly";
-import { uint8ArrayToHex } from "../../as-tally/assembly/tally";
 import { revert } from "./utils";
 
 const VALIDATOR_ADDRESSES = "validators_addresses"

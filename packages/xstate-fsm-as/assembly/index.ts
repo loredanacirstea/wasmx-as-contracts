@@ -9,7 +9,7 @@ import {
 } from './machine';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, CallDataRun, getCallDataWrap, getInterpreterCalldata } from './calldata';
-import { arrayBufferToU8Array, base64ToString, uint8ArrayToHex } from 'wasmx-utils/assembly/utils';
+import { arrayBufferToU8Array, base64ToString } from 'wasmx-utils/assembly/utils';
 import {
   ActionParam,
   EventObject,

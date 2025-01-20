@@ -6,6 +6,8 @@ import * as wasmxw from "./wasmx_wrap";
 import * as roles from "./roles";
 import { Bech32String, CallRequest, CallResponse } from "./types";
 import { BigInt } from "./bn";
+import { uint8ArrayToHex } from "as-tally/assembly/tally";
+import { GOCORE_MODULE_ADDRESSES } from "./modules";
 
 export function isAuthorized(caller: Bech32String, authorities: Bech32String[]): boolean {
     let authorized = authorities.includes(caller);
@@ -61,15 +63,22 @@ export function callerHasRole(moduleName: string): bool {
     return false;
 }
 
-// used to restrict EOA callers
+// used to restrict EOA calls to internal/core contract functions
 export function onlyInternal(moduleName: string, message: string): void {
-    const caller = wasmxw.getCaller()
+    // 32 bytes
+    const callerBz = wasmx.getCaller()
+    const caller = wasmxw.addr_humanize(callerBz)
     const role = getRoleName(moduleName, caller)
+    if (role.length > 0) return;
 
-    if (role.length == 0) {
-        const msg = `unauthorized caller: ${caller}: ${message}`
-        wasmxw.LoggerDebug(moduleName, "revert", ["err", msg, "module", moduleName])
-        wasmx.revert(String.UTF8.encode(msg));
-        throw new Error(msg);
-    }
+    // check if caller is a host module
+    // left-padded with 0 to 32 bytes
+    const callerhex = uint8ArrayToHex(Uint8Array.wrap(callerBz))
+    if (GOCORE_MODULE_ADDRESSES.has(callerhex)) return;
+
+    // caller does not have system role, we revert
+    const msg = `unauthorized caller: ${caller}: ${message}`
+    wasmxw.LoggerDebug(moduleName, "revert", ["err", msg, "module", moduleName])
+    wasmx.revert(String.UTF8.encode(msg));
+    throw new Error(msg);
 }
