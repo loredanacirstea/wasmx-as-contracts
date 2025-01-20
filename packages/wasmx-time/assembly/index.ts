@@ -39,14 +39,14 @@ var cycleCount: i64 = 0;
 var nextTime = Date.now();
 
 export function main(): void {
-  onlyInternal(MODULE_NAME, "");
-
   let result: ArrayBuffer = new ArrayBuffer(0)
   const calld = getCallDataWrap();
   if (calld.StartNode !== null) {
+    onlyInternal(MODULE_NAME, "StartNode");
     startNode();
     result = new ArrayBuffer(0)
   } else if (calld.start !== null) {
+    onlyInternal(MODULE_NAME, "start");
     start();
   } else if (calld.getLastBlock !== null) {
     result = getLastBlock();
