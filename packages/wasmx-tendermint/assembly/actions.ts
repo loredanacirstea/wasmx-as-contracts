@@ -870,9 +870,9 @@ export function setup(
     // after we set last log index
     initializeIndexArrays(nodeIps.length);
 
-    // TODO we run the hooks that must be ran after block end
-    const blockData = getFinalBlock(getLastBlockIndex())
-    callHookContract(hooks.HOOK_END_BLOCK, blockData);
+    // // TODO we run the hooks that must be ran after block end
+    // const blockData = getFinalBlock(getLastBlockIndex())
+    // callHookContract(hooks.HOOK_END_BLOCK, blockData);
 }
 
 function setCurrentNodeId(index: i32): void {

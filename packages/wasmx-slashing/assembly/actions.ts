@@ -175,6 +175,10 @@ export function HandleValidatorSignature(blockHeight: i64, blockTime: Date, vote
     }
 
     const signedBlocksWindow = params.signed_blocks_window
+    if (signedBlocksWindow == i64(0)) {
+        revert(`cannot have zero signed_blocks_window param`)
+    }
+
     // Compute the relative index, so we count the blocks the validator *should*
 	// have signed. We will use the 0-value default signing info if not present,
 	// except for start height. The index is in the range [0, SignedBlocksWindow)

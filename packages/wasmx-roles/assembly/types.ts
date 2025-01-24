@@ -6,6 +6,10 @@ export const MODULE_NAME = "roles"
 export const AttributeKeyRoleMultipleLabels = "multiple_labels";
 export const AttributeKeyRoleStorageType = "storage_type";
 
+// for authorization purposes, when the old contract is replaced for a role in EndBlock
+// the old contract may need to still perform actions even after EndBlock (e.g. consensus contract needs to call Commit) and it needs authorization, so for now, we just assign a previous role
+export var ROLE_PREVIOUS = "previous_"
+
 // @ts-ignore
 @serializable
 export class RolesChangedHook {

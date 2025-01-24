@@ -92,8 +92,11 @@ export class Role {
 @serializable
 export class RolesGenesis {
     roles: Role[] = []
-    constructor(roles: Role[]) {
+    // contracts handle their own migration
+    individual_migration: string[] = []
+    constructor(roles: Role[], individual_migration: string[]) {
         this.roles = roles
+        this.individual_migration = individual_migration
     }
 }
 

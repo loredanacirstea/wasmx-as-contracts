@@ -11,13 +11,13 @@ import * as blocktypes from "wasmx-blocks/assembly/types"
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as codesregt from "wasmx-codes-registry/assembly/types";
 import * as st from "./storage";
-import { AttributeKeyRoleMultipleLabels, AttributeKeyRoleStorageType, GetAddressOrRoleRequest, GetRoleByLabelRequest, GetRoleByRoleNameRequest, GetRoleLabelByContractRequest, GetRoleNameByAddressRequest, MODULE_NAME, MsgRunHook, RolesChangedHook, SetRoleRequest } from "./types";
+import { AttributeKeyRoleMultipleLabels, AttributeKeyRoleStorageType, GetAddressOrRoleRequest, GetRoleByLabelRequest, GetRoleByRoleNameRequest, GetRoleLabelByContractRequest, GetRoleNameByAddressRequest, MODULE_NAME, MsgRunHook, ROLE_PREVIOUS, RolesChangedHook, SetRoleRequest } from "./types";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
 import { callContract } from "wasmx-env/assembly/utils";
 
 const defaultLabel = roles.ROLE_ROLES + "_" + "rolesv0.0.1";
 
-export function initialize(rolesInitial: Role[]): ArrayBuffer {
+export function initialize(rolesInitial: Role[], individualMigration: string[]): ArrayBuffer {
     let foundself = false;
     for (let i = 0; i < rolesInitial.length; i++) {
         const r = rolesInitial[i]
@@ -35,6 +35,7 @@ export function initialize(rolesInitial: Role[]): ArrayBuffer {
         const r = new Role(roles.ROLE_ROLES, ContractStorageType.CoreConsensus, 0, false, [defaultLabel], [wasmxw.getAddress()])
         registerRoleInitial(r);
     }
+    st.setMigrationException(individualMigration);
     return new ArrayBuffer(0);
 }
 
@@ -75,6 +76,8 @@ export function EndBlock(req: MsgRunHook): void {
         evs = evs.concat(finalizeResp.tx_results[i].events)
     }
 
+    const migrationExceptions = st.getMigrationException();
+
     for (let i = 0; i < evs.length; i++) {
         const ev = evs[i];
         if (ev.type == wasmxevs.EventTypeRegisterRole) {
@@ -96,10 +99,6 @@ export function EndBlock(req: MsgRunHook): void {
                     action = ev.attributes[j].value;
                 }
             }
-            // consensus contract
-            if (roleName == roles.ROLE_CONSENSUS) {
-                continue;
-            }
             if (roleName != "" && addr != "" && action != "") {
                 if (!RoleChangedActionTypeByString.has(action)) {
                     LoggerError(`invalid action for role change`, ["role", roleName, "action", action])
@@ -118,8 +117,29 @@ export function EndBlock(req: MsgRunHook): void {
                 }
 
                 LoggerInfo("found new role change", ["role", roleName, "address", addr, "label", label, "action", action]);
-                registerRole(roleName, label, addr, actionType)
-                triggerRoleChange(addr, prevAddress)
+                if (role != null) {
+                    registerRole(role, roleName, label, addr, actionType)
+                } else {
+                    LoggerError(`previous role not found`, ["role", roleName]);
+                }
+
+                // some contracts handle their own role migration for action type Replace
+                if (!migrationExceptions.includes(roleName)) {
+                    triggerRoleChange(addr, prevAddress)
+                }
+
+                // we remove role from old contract after role migration is done
+                // to avoid authorization issues, we assign a previous role, so the old contract can finish actions
+                if (role != null) {
+                    // not multiple
+                    const foundlabel = st.removeRoleContract(role, role.addresses[0])
+                    LoggerInfo("remove contract from role", ["role", roleName, "label", foundlabel, "contract_address", addr])
+
+                    // we assign a previous role to the contract
+                    const previousRole = new Role(ROLE_PREVIOUS + roleName, role.storage_type, i32(0), false, [foundlabel], [prevAddress]);
+                    LoggerInfo("setting previous role contract", ["role", previousRole.role, "label", foundlabel, "contract_address", prevAddress])
+                    st.setRole(previousRole)
+                }
             }
         }
     }
@@ -142,7 +162,8 @@ export function GetRoleByRoleName(req: GetRoleByRoleNameRequest): ArrayBuffer {
 
 export function GetRoles(): ArrayBuffer {
     const roles = st.getRoles();
-    const data = new RolesGenesis(roles)
+    const exceptions = st.getMigrationException();
+    const data = new RolesGenesis(roles, exceptions);
     return String.UTF8.encode(JSON.stringify<RolesGenesis>(data));
 }
 
@@ -176,7 +197,7 @@ export function registerRoleInitial(role: Role): void {
     if (role.labels.length != role.addresses.length) {
         revert(`cannot register role: labels count different than addresses count`)
     }
-    LoggerInfo("register role initial", ["role", role.role, "labels", role.labels.join(","), "contract_address", role.addresses.join(",")])
+    LoggerInfo("register role initial", ["role", role.role, "storage_type_enum", role.storage_type.toString(), "storage_type", ContractStorageTypeByEnum.get(role.storage_type), "labels", role.labels.join(","), "contract_address", role.addresses.join(",")])
     st.setRole(role)
     // we do not call the hooks contract here, as it may not be initialized yet
     // we use genesis data directly if we need other contracts to know about the roles
@@ -252,28 +273,19 @@ export function setContractForRole(roleChanged: RoleChanged): void {
     }
 }
 
-// Replace action must be ran in EndBlock. don't revert
-export function registerRole(roleName: string, label: string, addr: Bech32String, action: RoleChangedActionType): void {
+// Replace action: must be ran in EndBlock. don't revert
+export function registerRole(role: Role, roleName: string, label: string, addr: Bech32String, action: RoleChangedActionType): void {
     const roleChanged = new RoleChanged(roleName, label, addr, action)
-    const role = st.getRoleByRoleName(roleName)
-    if (role == null) {
-        LoggerError(`role not found`, ["role", roleName]);
-        return;
-    }
     if (action != RoleChangedActionType.Replace) {
         return;
     }
-    // not multiple
-    const foundlabel = st.removeRoleContract(role, role.addresses[0])
-    LoggerInfo("remove contract from role", ["role", roleName, "label", foundlabel, "contract_address", addr])
 
     st.addRoleContract(role, label, addr)
 
+    LoggerInfo("register contract for role", ["role", roleName, "label", label, "contract_address", addr, "storage_type", ContractStorageTypeByEnum.get(role.storage_type)])
 
     // either we replace or add a contract
     registerRoleMigration(ContractStorageTypeByEnum.get(role.storage_type), addr);
-
-    LoggerInfo("register contract for role", ["role", roleName, "label", label, "contract_address", addr])
 
     // we also call the hooks contract
     callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<RolesChangedHook>(new RolesChangedHook(null, roleChanged)))
@@ -296,10 +308,7 @@ export function registerRoleMigration(storageType: string, addr: Bech32String): 
             revert(`invalid target storage type ${storageType}`)
         }
 
-        const sourceStorageType = ContractStorageTypeByString.get(contractInfo.storage_type)
-        const targetStorageType = ContractStorageTypeByString.get(storageType)
-
-        wasmxcorew.migrateContractStateByStorageType(new wasmxcoret.MigrateContractStateByStorageRequest(addr, sourceStorageType, targetStorageType))
+        wasmxcorew.migrateContractStateByStorageType(new wasmxcoret.MigrateContractStateByStorageRequest(addr, contractInfo.storage_type, storageType))
 
         contractInfo.storage_type = storageType;
         LoggerInfo("contract storage migrated", ["address", addr]);
@@ -394,10 +403,11 @@ export function getContractInfo(addr: Bech32String): ContractInfo | null {
 
 export function setContractInfo(addr: Bech32String, data: ContractInfo): void {
     const datastr = JSON.stringify<ContractInfo>(data)
-    const calldatastr = `{"SetContractInfo":{"address":"${addr}","contract_info":${datastr}}}`;
+    const addrbz = base64.encode(Uint8Array.wrap(wasmxw.addr_canonicalize(addr)))
+    const calldatastr = `{"SetContractInfo":{"address":"${addrbz}","contract_info":${datastr}}}`;
     const resp = callContract(roles.ROLE_STORAGE_CONTRACTS, calldatastr, false, MODULE_NAME)
     if (resp.success > 0) {
-        revert(`get contract info failed: ${resp.data}`)
+        revert(`set contract info failed: ${resp.data}`)
     }
 }
 
@@ -406,14 +416,25 @@ export function triggerRoleChange(addr: Bech32String, prevAddress: Bech32String)
     let resp = callContract(addr, `{"setup":{"previous_address":"${prevAddress}"}}`, false, MODULE_NAME)
     if (resp.success > 0) {
         // we allow contracts to not implement setup() if they don't need to
-        LoggerError(`new role: contract setup failed`, ["error", resp.data])
+        // TODO ERROR_INVALID_FUNCTION = "invalid function call data"
+        if (resp.data.includes("invalid function call data")) {
+            LoggerDebug(`new contract does not have setup function, disregard error`, ["error", resp.data])
+        } else {
+            LoggerError(`new role: contract setup failed`, ["error", resp.data, "addr", addr])
+            revert(`could not replace role, aborting: ${resp.data}`)
+        }
     }
 
     // call old contract stop()
     resp = callContract(addr, `{"stop":{}}`, false, MODULE_NAME)
     if (resp.success > 0) {
-        // no need to revert
-        LoggerError(`new role: stopping previous contract failed`, ["error", resp.data])
+        if (resp.data.includes("invalid function call data")) {
+            LoggerDebug(`old contract does not have stop function, disregard error`, ["error", resp.data])
+        } else {
+            // no need to revert
+            LoggerError(`new role: stopping previous contract failed`, ["error", resp.data, "previous_contract", prevAddress])
+        }
+
     }
 }
 

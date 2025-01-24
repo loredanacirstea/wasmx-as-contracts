@@ -16,7 +16,7 @@ export function wasmx_env_core_i32_1(): void {}
 export function instantiate(): void {
   const calldraw = wasmx.getCallData();
   const calld = JSON.parse<RolesGenesis>(String.UTF8.decode(calldraw));
-  initialize(calld.roles);
+  initialize(calld.roles, calld.individual_migration);
 }
 
 export function main(): void {

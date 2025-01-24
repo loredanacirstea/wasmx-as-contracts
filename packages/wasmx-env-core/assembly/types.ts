@@ -125,9 +125,9 @@ export class CancelTimeoutRequest {
 @serializable
 export class MigrateContractStateByStorageRequest {
     contract_address: string
-    source_storage_type: ContractStorageType
-    target_storage_type: ContractStorageType
-    constructor(contract_address: string, source_storage_type: ContractStorageType, target_storage_type: ContractStorageType) {
+    source_storage_type: string
+    target_storage_type: string
+    constructor(contract_address: string, source_storage_type: string, target_storage_type: string) {
         this.contract_address = contract_address
         this.source_storage_type = source_storage_type
         this.target_storage_type = target_storage_type

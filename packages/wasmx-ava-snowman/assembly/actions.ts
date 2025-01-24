@@ -888,6 +888,9 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
         let resp = wasmxw.call(req);
         if (resp.success > 0) {
             LoggerError("cannot start next consensus contract", ["new contract", newContract, "err", resp.data]);
+
+            // TODO we will need to change the role again, but roles are CoreConsensus
+
             // we can restart the old contract here, so the chain does not stop
             const myaddress = wasmxw.addr_humanize(wasmx.getAddress());
             calldata = `{"run":{"event":{"type":"restart","params":[]}}}`

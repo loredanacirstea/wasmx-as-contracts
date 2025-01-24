@@ -541,7 +541,9 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, isretry: bo
         }
     }
 
-    // TODO if we cannot start with the new contract, maybe we should remove its consensus role
+    // TODO if we cannot start with the new contract we should remove its consensus role
+    // but we are already after Commit(), so restart is not really feasible with this mechanism
+    // we may need another mechanism where nodes can trigger transactions
 
     // if consensus changed, start the new contract
     if (info.consensusContract != "" && newContractSetup) {

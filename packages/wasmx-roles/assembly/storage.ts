@@ -21,6 +21,7 @@ import { revert } from "./utils";
 export const rolePrefix: u8 = 4
 export const roleNamePrefix: u8 = 5
 export const labelPrefix: u8 = 6
+export const migrationExceptionPrefix: u8 = 7
 
 // role => Role
 export const KeyRolePrefix = bytes([rolePrefix]);
@@ -29,6 +30,7 @@ export const KeyRoleNamePrefix = bytes([roleNamePrefix]);
 // contractAddress => label
 // use bech32 prefixed address, to support interchain roles
 export const KeyLabelPrefix = bytes([labelPrefix]);
+export const KeyMigrationExceptionPrefix = bytes([migrationExceptionPrefix]);
 
 export function getRoleKey(): Uint8Array {
     return KeyRolePrefix
@@ -40,6 +42,10 @@ export function getRoleNameKey(): Uint8Array {
 
 export function getLabelKey(): Uint8Array {
     return KeyLabelPrefix
+}
+
+export function getMigrationExceptionKey(): Uint8Array {
+    return KeyMigrationExceptionPrefix
 }
 
 export function getRoleKeyByRoleName(role: string): Uint8Array {
@@ -203,4 +209,16 @@ export function getLabelByContractAddress(addr: Bech32String): string {
 export function deleteLabelByContractAddress(addr: Bech32String): void {
     const key = getLabelKeyByAddress(addr)
     wasmx.storageDelete(key.buffer);
+}
+
+export function setMigrationException(value: string[]): void {
+    const key = getMigrationExceptionKey()
+    const data = JSON.stringify<string[]>(value);
+    wasmx.storageStore(key.buffer, String.UTF8.encode(data))
+}
+
+export function getMigrationException(): string[] {
+    const key = getMigrationExceptionKey()
+    const value = wasmx.storageLoad(key.buffer)
+    return JSON.parse<string[]>(String.UTF8.decode(value));
 }
