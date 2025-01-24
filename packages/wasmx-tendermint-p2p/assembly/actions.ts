@@ -1024,7 +1024,9 @@ export function receiveStateSyncResponse(
 
     let nextIndex = lastIndex+1
 
-    if (resp.entries.length > 0 && nextIndex != resp.start_batch_index) {
+    // edge case: the node may finalize a block after startup, so nextIndex can be different than start_batch_index
+
+    if (resp.entries.length > 0 && (nextIndex < resp.start_batch_index || nextIndex > resp.last_batch_index)) {
         LoggerError("out of order statesync response", ["count", resp.entries.length.toString(), "from", resp.start_batch_index.toString(), "to", resp.last_batch_index.toString(), "last_log_index", resp.last_log_index.toString(), "expected_start_index", nextIndex.toString()])
         return
     }
@@ -1034,6 +1036,10 @@ export function receiveStateSyncResponse(
     // now we check the new block
     for (let i = 0; i < resp.entries.length; i++) {
         const block = resp.entries[i]
+        // skip if we already have the blocks
+        if (block.index < nextIndex) {
+            continue;
+        }
 
         // we expect blocks to be in order
         // we store the block - make sure to overwrite any existing block

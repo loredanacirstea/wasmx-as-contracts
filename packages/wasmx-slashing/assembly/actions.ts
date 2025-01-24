@@ -312,7 +312,8 @@ function PunishValidator(blockHeight: i64, blockTime: Date, consaddr: string, pa
 
     LoggerInfo("slashing and jailing validator due to liveness fault", [
         "height", blockHeight.toString(),
-        "validator", consaddr,
+        "validator", validator.operator_address,
+        "consaddress", consaddr,
         // "min_height", minHeight,
         // "threshold", minSignedPerWindow,
         // "slashed", slashFractionDowntime.String(),
