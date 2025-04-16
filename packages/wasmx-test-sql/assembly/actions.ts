@@ -1,10 +1,15 @@
 import { JSON } from "json-as/assembly";
 import * as sqlw from "wasmx-env-sql/assembly/sql_wrap";
-import { MsgConnectRequest, MsgConnectResponse, MsgExecuteRequest, MsgExecuteResponse, MsgPingRequest, MsgPingResponse, MsgQueryRequest, MsgQueryResponse } from "wasmx-env-sql/assembly/types";
+import { MsgCloseRequest, MsgCloseResponse, MsgConnectRequest, MsgConnectResponse, MsgExecuteRequest, MsgExecuteResponse, MsgPingRequest, MsgPingResponse, MsgQueryRequest, MsgQueryResponse } from "wasmx-env-sql/assembly/types";
 
 export function Connect(req: MsgConnectRequest): ArrayBuffer {
     const resp = sqlw.Connect(req)
     return String.UTF8.encode(JSON.stringify<MsgConnectResponse>(resp))
+}
+
+export function Close(req: MsgCloseRequest): ArrayBuffer {
+    const resp = sqlw.Close(req)
+    return String.UTF8.encode(JSON.stringify<MsgCloseResponse>(resp))
 }
 
 export function Execute(req: MsgExecuteRequest): ArrayBuffer {

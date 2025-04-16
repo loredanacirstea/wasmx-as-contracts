@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap } from './calldata';
 import { revert } from "./utils";
-import { Connect, Execute, Query, Ping } from "./actions";
+import { Connect, Execute, Query, Ping, Close } from "./actions";
 
 export function wasmx_env_2(): void {}
 
@@ -18,6 +18,8 @@ export function main(): void {
   const calld = getCallDataWrap();
   if (calld.Connect !== null) {
     result = Connect(calld.Connect!);
+  } else if (calld.Close !== null) {
+    result = Close(calld.Close!);
   } else if (calld.Ping !== null) {
     result = Ping(calld.Ping!);
   } else if (calld.Execute !== null) {

@@ -1,5 +1,7 @@
 import { JSON } from "json-as/assembly";
 
+export const MODULE_NAME = "wasmx-env-sql"
+
 // @ts-ignore
 @serializable
 export class MsgConnectRequest {
@@ -20,6 +22,26 @@ export class MsgConnectRequest {
 // @ts-ignore
 @serializable
 export class MsgConnectResponse {
+    error: string
+    constructor(error: string) {
+        this.error = error
+    }
+}
+
+// @ts-ignore
+@serializable
+export class MsgCloseRequest {
+    id: string
+    constructor(
+        id: string,
+    ) {
+        this.id = id
+    }
+}
+
+// @ts-ignore
+@serializable
+export class MsgCloseResponse {
     error: string
     constructor(error: string) {
         this.error = error

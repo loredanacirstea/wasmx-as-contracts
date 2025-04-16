@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { MsgConnectRequest, MsgExecuteRequest, MsgPingRequest, MsgQueryRequest } from "wasmx-env-sql/assembly/types";
+import { MsgCloseRequest, MsgConnectRequest, MsgExecuteRequest, MsgPingRequest, MsgQueryRequest } from "wasmx-env-sql/assembly/types";
 
 // @ts-ignore
 @serializable
@@ -10,6 +10,7 @@ export class MsgEmpty {}
 @serializable
 export class CallData {
     Connect: MsgConnectRequest | null = null;
+    Close: MsgCloseRequest | null = null;
     Execute: MsgExecuteRequest | null = null;
     Query: MsgQueryRequest | null = null;
     Ping: MsgPingRequest | null = null;
