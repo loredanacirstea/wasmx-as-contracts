@@ -53,12 +53,16 @@ export class MsgCloseResponse {
 export class MsgExecuteRequest {
     id: string
     query: string
+    // Params []interface{} `json:"params"`
+    params: string // base64 encoded array of parameters
     constructor(
         id: string,
-        query: string
+        query: string,
+        params: string,
     ) {
         this.id = id
         this.query = query
+        this.params = params
     }
 }
 
