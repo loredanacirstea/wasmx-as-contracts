@@ -1,6 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { MsgCloseRequest, MsgConnectRequest, MsgExecuteRequest, MsgPingRequest, MsgQueryRequest } from "wasmx-env-sql/assembly/types";
+import { MsgNestedCall } from "./types";
 
 // @ts-ignore
 @serializable
@@ -14,6 +15,7 @@ export class CallData {
     Execute: MsgExecuteRequest | null = null;
     Query: MsgQueryRequest | null = null;
     Ping: MsgPingRequest | null = null;
+    NestedCall: MsgNestedCall | null = null;
 }
 
 export function getCallDataWrap(): CallData {

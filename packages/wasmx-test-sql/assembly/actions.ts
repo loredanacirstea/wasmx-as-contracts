@@ -1,6 +1,11 @@
 import { JSON } from "json-as/assembly";
+import * as base64 from "as-base64/assembly";
+import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as sqlw from "wasmx-env-sql/assembly/sql_wrap";
 import { MsgCloseRequest, MsgCloseResponse, MsgConnectRequest, MsgConnectResponse, MsgExecuteRequest, MsgExecuteResponse, MsgPingRequest, MsgPingResponse, MsgQueryRequest, MsgQueryResponse } from "wasmx-env-sql/assembly/types";
+import { MODULE_NAME, MsgNestedCall } from "./types";
+import { CallRequest } from "wasmx-env/assembly/types";
+import { BigInt } from "wasmx-env/assembly/bn";
 
 export function Connect(req: MsgConnectRequest): ArrayBuffer {
     const resp = sqlw.Connect(req)
@@ -25,4 +30,42 @@ export function Query(req: MsgQueryRequest): ArrayBuffer {
 export function Ping(req: MsgPingRequest): ArrayBuffer {
     const resp = sqlw.Ping(req)
     return String.UTF8.encode(JSON.stringify<MsgPingResponse>(resp))
+}
+
+export function NestedCall(req: MsgNestedCall): ArrayBuffer {
+    console.log(`* NestedCall: ${req.iteration_index} - revert_len=${req.revert_array.length} ; exec_len=${req.execute.length} ; query_len=${req.query.length}`)
+    if (req.revert_array.length != req.iteration_index + 1) {
+        wasmxw.revert("revertArray length mismatch")
+    }
+    if (req.execute.length != req.iteration_index + 1) {
+        wasmxw.revert("execute cmds length mismatch")
+    }
+    if (req.query.length != req.iteration_index + 1) {
+        wasmxw.revert("query cmds length mismatch")
+    }
+    if (req.isquery_array.length != req.iteration_index + 1) {
+        wasmxw.revert("is query array length mismatch")
+    }
+    const exec = req.execute.shift()
+    const query = req.query.shift()
+    const isquery = req.isquery_array.shift()
+    Execute(exec)
+
+    const qresp = Query(query)
+    const response: string[] = [String.UTF8.decode(qresp)]
+    const willrevert = req.revert_array.shift()
+    console.log(`* NestedCall: ${req.iteration_index} - willrevert=${willrevert} ; query=${response[0]}`)
+    if (req.iteration_index > 0) {
+        const newreq = new MsgNestedCall(req.execute, req.query, req.iteration_index - 1, req.revert_array, req.isquery_array)
+        const calldata = `{"NestedCall":${JSON.stringify<MsgNestedCall>(newreq)}}`
+        const callreq = new CallRequest(wasmxw.getAddress(), calldata, BigInt.zero(), 10000000, isquery)
+        const resp = wasmxw.call(callreq, MODULE_NAME)
+        resp.data = String.UTF8.decode(base64.decode(resp.data).buffer)
+        response.push(resp.data);
+        console.log(`* NestedCall: ${req.iteration_index} - nested_call_response=${resp.data}`)
+    }
+    if (willrevert) {
+        wasmxw.revert("nested call must revert")
+    }
+    return String.UTF8.encode(JSON.stringify<string[]>(response))
 }

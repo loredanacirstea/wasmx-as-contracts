@@ -51,10 +51,10 @@ export class MsgCloseResponse {
 // @ts-ignore
 @serializable
 export class MsgExecuteRequest {
-    id: string
-    query: string
+    id: string = ""
+    query: string = ""
     // Params []interface{} `json:"params"`
-    params: string // base64 encoded array of parameters
+    params: string = "" // base64 encoded array of parameters
     constructor(
         id: string,
         query: string,
@@ -92,14 +92,18 @@ export class MsgExecuteResponse {
 // @ts-ignore
 @serializable
 export class MsgQueryRequest {
-    id: string
-    query: string
+    id: string = ""
+    query: string = ""
+    // Params []interface{} `json:"params"`
+    params: string = "" // base64 encoded array of parameters
     constructor(
         id: string,
-        query: string
+        query: string,
+        params: string,
     ) {
         this.id = id
         this.query = query
+        this.params = params
     }
 }
 

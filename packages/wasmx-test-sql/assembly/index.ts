@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap } from './calldata';
 import { revert } from "./utils";
-import { Connect, Execute, Query, Ping, Close } from "./actions";
+import { Connect, Execute, Query, Ping, Close, NestedCall } from "./actions";
 
 export function wasmx_env_2(): void {}
 
@@ -26,6 +26,8 @@ export function main(): void {
     result = Execute(calld.Execute!);
   } else if (calld.Query !== null) {
     result = Query(calld.Query!);
+  } else if (calld.NestedCall !== null) {
+    result = NestedCall(calld.NestedCall!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)
