@@ -43,12 +43,11 @@ export function NestedCall(req: MsgNestedCall): ArrayBuffer {
     if (req.query.length != req.iteration_index + 1) {
         wasmxw.revert("query cmds length mismatch")
     }
-    if (req.isquery_array.length != req.iteration_index + 1) {
+    if (req.isquery_array.length != req.iteration_index) {
         wasmxw.revert("is query array length mismatch")
     }
     const exec = req.execute.shift()
     const query = req.query.shift()
-    const isquery = req.isquery_array.shift()
     Execute(exec)
 
     const qresp = Query(query)
@@ -56,6 +55,7 @@ export function NestedCall(req: MsgNestedCall): ArrayBuffer {
     const willrevert = req.revert_array.shift()
     console.log(`* NestedCall: ${req.iteration_index} - willrevert=${willrevert} ; query=${response[0]}`)
     if (req.iteration_index > 0) {
+        const isquery = req.isquery_array.shift()
         const newreq = new MsgNestedCall(req.execute, req.query, req.iteration_index - 1, req.revert_array, req.isquery_array)
         const calldata = `{"NestedCall":${JSON.stringify<MsgNestedCall>(newreq)}}`
         const callreq = new CallRequest(wasmxw.getAddress(), calldata, BigInt.zero(), 10000000, isquery)
