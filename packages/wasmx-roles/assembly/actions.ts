@@ -130,7 +130,7 @@ export function EndBlock(req: MsgRunHook): void {
 
                 // we remove role from old contract after role migration is done
                 // to avoid authorization issues, we assign a previous role, so the old contract can finish actions
-                if (role != null) {
+                if (role != null && !role.multiple) {
                     // not multiple
                     const foundlabel = st.removeRoleContract(role, role.addresses[0])
                     LoggerInfo("remove contract from role", ["role", roleName, "label", foundlabel, "contract_address", addr])
