@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as sql from './sql';
-import { MODULE_NAME, MsgCloseRequest, MsgCloseResponse, MsgConnectRequest, MsgConnectResponse, MsgExecuteRequest, MsgExecuteResponse, MsgPingRequest, MsgPingResponse, MsgQueryRequest, MsgQueryResponse } from "./types";
+import { MODULE_NAME, MsgCloseRequest, MsgCloseResponse, MsgConnectRequest, MsgConnectResponse, MsgExecuteBatchRequest, MsgExecuteBatchResponse, MsgExecuteRequest, MsgExecuteResponse, MsgPingRequest, MsgPingResponse, MsgQueryRequest, MsgQueryResponse } from "./types";
 
 export function Connect(req: MsgConnectRequest, moduleName: string = ""): MsgConnectResponse {
     const requestStr = JSON.stringify<MsgConnectRequest>(req);
@@ -23,6 +23,14 @@ export function Execute(req: MsgExecuteRequest, moduleName: string = ""): MsgExe
     // LoggerDebugExtended(`${MODULE_NAME}`, "Execute", ["request", requestStr])
     const responsebz = sql.Execute(String.UTF8.encode(requestStr));
     const resp = JSON.parse<MsgExecuteResponse>(String.UTF8.decode(responsebz));
+    return resp
+}
+
+export function BatchAtomic(req: MsgExecuteBatchRequest, moduleName: string = ""): MsgExecuteBatchResponse {
+    const requestStr = JSON.stringify<MsgExecuteBatchRequest>(req);
+    // LoggerDebugExtended(`${MODULE_NAME}`, "Batch", ["request", requestStr])
+    const responsebz = sql.BatchAtomic(String.UTF8.encode(requestStr));
+    const resp = JSON.parse<MsgExecuteBatchResponse>(String.UTF8.decode(responsebz));
     return resp
 }
 

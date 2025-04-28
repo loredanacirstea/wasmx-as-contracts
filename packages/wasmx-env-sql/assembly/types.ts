@@ -2,6 +2,8 @@ import { JSON } from "json-as/assembly";
 
 export const MODULE_NAME = "wasmx-env-sql"
 
+type Base64String = string;
+
 // @ts-ignore
 @serializable
 export class MsgConnectRequest {
@@ -53,16 +55,52 @@ export class MsgCloseResponse {
 export class MsgExecuteRequest {
     id: string = ""
     query: string = ""
-    // Params []interface{} `json:"params"`
-    params: string = "" // base64 encoded array of parameters
+    params: Base64String[] = [] // base64 encoded array of parameters
     constructor(
         id: string,
         query: string,
-        params: string,
+        params: string[],
     ) {
         this.id = id
         this.query = query
         this.params = params
+    }
+}
+
+// @ts-ignore
+@serializable
+export class SqlExecuteCommand {
+    query: string = ""
+    params: Base64String[] = []
+    constructor(
+        query: string,
+        params: Base64String[],
+    ) {
+        this.query = query
+        this.params = params
+    }
+}
+
+// @ts-ignore
+@serializable
+export class MsgExecuteBatchRequest {
+    id: string = ""
+    commands: SqlExecuteCommand[] = []
+    constructor(
+        id: string,
+        commands: SqlExecuteCommand[],
+    ) {
+        this.id = id
+        this.commands = commands
+    }
+}
+
+// @ts-ignore
+@serializable
+export class MsgExecuteBatchResponse {
+    error: string = ""
+    constructor(error: string) {
+        this.error = error
     }
 }
 
@@ -95,11 +133,11 @@ export class MsgQueryRequest {
     id: string = ""
     query: string = ""
     // Params []interface{} `json:"params"`
-    params: string = "" // base64 encoded array of parameters
+    params: Base64String[] = [] // base64 encoded array of parameters
     constructor(
         id: string,
         query: string,
-        params: string,
+        params: Base64String[],
     ) {
         this.id = id
         this.query = query
