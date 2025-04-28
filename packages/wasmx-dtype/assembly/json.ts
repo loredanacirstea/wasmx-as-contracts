@@ -1,6 +1,7 @@
 import { JSON } from "assemblyscript-json/assembly";
 import { Base64String } from "wasmx-env/assembly/types";
 import { stringToBase64 } from "wasmx-utils/assembly/utils";
+import { DTypeField } from "./types";
 
 export class QueryParams {
     keys: string[] = []
@@ -12,15 +13,23 @@ export class QueryParams {
 }
 
 // TODO maybe same types as databases
-export function jsonToQueryParams(value: string): QueryParams {
-    console.log("--jsonToQueryParams--" + value)
+export function jsonToQueryParams(value: string, fields: DTypeField[]): QueryParams {
     let jsonObj: JSON.Obj = <JSON.Obj>(JSON.parse(value));
-    console.log("--jsonToQueryParams keys--" + jsonObj.keys.length.toString() + "--" + jsonObj.keys.join(","))
+    const fieldMap = new Map<string,string>()
+    for (let i = 0; i < fields.length; i++) {
+        fieldMap.set(fields[i].name, fields[i].value_type);
+    }
     const keys = jsonObj.keys
     const values: Base64String[] = []
     for (let i = 0; i < keys.length; i++) {
-        const value = jsonObj.get(keys[i])
-        console.log("--key--" + keys[i])
+        const key = keys[i]
+        console.log("--key--" + key)
+        if (!fieldMap.has(key)) {
+            continue;
+        }
+        const valueType = fieldMap.get(key);
+        const value = jsonObj.get(key)
+
         if (value == null) {
             values.push("");
             continue;
@@ -30,17 +39,17 @@ export function jsonToQueryParams(value: string): QueryParams {
         if (value.isString) {
             console.log("--jsonToQueryParams2 value isString--" + value.toString())
             console.log("--jsonToQueryParams2 value isString--" + value.stringify())
-            values.push(stringToBase64(`{"type":"string","value":"${value.toString()}"}`));
+            values.push(stringToBase64(`{"type":"${valueType}","value":"${value.toString()}"}`));
             continue;
         }
         if (value.isInteger) {
             console.log("--jsonToQueryParams2 value isInteger--" + value.toString())
             console.log("--jsonToQueryParams2 value isInteger--" + value.stringify())
-            values.push(stringToBase64(`{"type":"string","value":${value.stringify()}}`));
+            values.push(stringToBase64(`{"type":"${valueType}","value":${value.stringify()}}`));
             continue;
         }
         if (value.isBool) {
-            values.push(stringToBase64(`{"type":"bool","value":${value.stringify()}}`));
+            values.push(stringToBase64(`{"type":"${valueType}","value":${value.stringify()}}`));
             continue;
         }
     }

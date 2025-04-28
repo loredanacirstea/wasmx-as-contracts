@@ -80,11 +80,13 @@ export class DTypeDbConnection {
     connection: string = ""
     driver: string = ""
     name: string = ""
-    constructor(id: i64, connection: string, driver: string, name: string) {
+    description: string = ""
+    constructor(id: i64, connection: string, driver: string, name: string, description: string) {
         this.id = id
         this.connection = connection
         this.driver = driver
         this.name = name
+        this.description = description
     }
 }
 
@@ -94,10 +96,12 @@ export class DTypeDb {
     id: i64 = 0
     connection_id: i64 = 0
     name: string = ""
-    constructor(id: i64, connection_id: i64, name: string) {
+    description: string = ""
+    constructor(id: i64, connection_id: i64, name: string, description: string) {
         this.id = id
         this.connection_id = connection_id
         this.name = name
+        this.description = description
     }
 }
 
@@ -107,12 +111,20 @@ export class DTypeTable {
     id: i64 = 0
     db_id: i64 = 0
     name: string = ""
-    constructor(id: i64, db_id: i64, name: string) {
+    description: string = ""
+    constructor(id: i64, db_id: i64, name: string, description: string) {
         this.id = id
         this.db_id = db_id
         this.name = name
+        this.description = description
     }
 }
+
+// FOREIGN KEY (user_id) REFERENCES users(id)
+//       ON DELETE CASCADE
+//       ON UPDATE CASCADE
+// or
+// user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
 
 // @ts-ignore
 @serializable
@@ -123,14 +135,29 @@ export class DTypeField {
     order_index: i32 = 0
     value_type: string = ""
     indexed: bool = false
+    sql_options: string = ""
+    foreign_key_table: string = ""
+    foreign_key_field: string = ""
+    foreign_key_sql_options: string = ""
+    description: string = ""
     permissions: string = ""
-    constructor(id: i64, table_id: i64, name: string, order_index: i32, value_type: string, indexed: bool, permissions: string) {
+    constructor(
+        id: i64, table_id: i64, name: string, order_index: i32, value_type: string, indexed: bool, sql_options: string,
+        foreign_key_table: string,
+        foreign_key_field: string,
+        foreign_key_sql_options: string,
+        description: string, permissions: string) {
         this.id = id
         this.table_id = table_id
         this.name = name
         this.order_index = order_index
         this.value_type = value_type
         this.indexed = indexed
+        this.sql_options = sql_options
+        this.foreign_key_table = foreign_key_table
+        this.foreign_key_field = foreign_key_field
+        this.foreign_key_sql_options = foreign_key_sql_options
+        this.description = description
         this.permissions = permissions
     }
 }
@@ -138,6 +165,17 @@ export class DTypeField {
 // @ts-ignore
 @serializable
 export class ConnectRequest {
+    id: i64 = 0
+    name: string = ""
+    constructor(id: i64, name: string) {
+        this.id = id
+        this.name = name
+    }
+}
+
+// @ts-ignore
+@serializable
+export class CloseRequest {
     id: i64 = 0
     name: string = ""
     constructor(id: i64, name: string) {
