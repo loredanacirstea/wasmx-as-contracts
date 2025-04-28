@@ -25,14 +25,13 @@ export class CreateTableRequest {
 
 // @ts-ignore
 @serializable
-export class InsertRequest {
+export class TableIndentifier {
     db_connection_id: i64 = 0
     db_id: i64 = 0
     table_id: i64 = 0
     db_connection_name: string = ""
     db_name: string = ""
     table_name: string = ""
-    data: Base64String = ""
     constructor(
         db_connection_id: i64,
         db_id: i64,
@@ -40,7 +39,6 @@ export class InsertRequest {
         db_connection_name: string,
         db_name: string,
         table_name: string,
-        data: Base64String,
     ) {
         this.db_connection_id = db_connection_id
         this.db_id = db_id
@@ -48,6 +46,42 @@ export class InsertRequest {
         this.db_connection_name = db_connection_name
         this.db_name = db_name
         this.table_name = table_name
+    }
+}
+
+// @ts-ignore
+@serializable
+export class TableIndentifierRequired {
+    db_id: i64 = 0
+    table_id: i64 = 0
+    db_connection_name: string = ""
+    db_name: string = ""
+    table_name: string = ""
+    constructor(
+        db_id: i64,
+        table_id: i64,
+        db_connection_name: string,
+        db_name: string,
+        table_name: string,
+    ) {
+        this.db_id = db_id
+        this.table_id = table_id
+        this.db_connection_name = db_connection_name
+        this.db_name = db_name
+        this.table_name = table_name
+    }
+}
+
+// @ts-ignore
+@serializable
+export class InsertRequest {
+    identifier: TableIndentifier
+    data: Base64String = ""
+    constructor(
+        identifier: TableIndentifier,
+        data: Base64String,
+    ) {
+        this.identifier = identifier
         this.data = data
     }
 }
@@ -55,23 +89,47 @@ export class InsertRequest {
 // @ts-ignore
 @serializable
 export class UpdateRequest {
-    database_id: i64
-    table_id: i64
+    identifier: TableIndentifier
+    condition: Base64String
     data: Base64String
     constructor(
-        database_id: i64,
-        table_id: i64,
+        identifier: TableIndentifier,
+        condition: Base64String,
         data: Base64String,
     ) {
-        this.database_id = database_id
-        this.table_id = table_id
+        this.identifier = identifier
+        this.condition = condition
         this.data = data
     }
 }
 
 // @ts-ignore
 @serializable
-export class ReadRequest {}
+export class ReadRequest {
+    identifier: TableIndentifier
+    data: Base64String
+    constructor(
+        identifier: TableIndentifier,
+        data: Base64String,
+    ) {
+        this.identifier = identifier
+        this.data = data
+    }
+}
+
+// @ts-ignore
+@serializable
+export class DeleteRequest {
+    identifier: TableIndentifier
+    condition: Base64String
+    constructor(
+        identifier: TableIndentifier,
+        condition: Base64String,
+    ) {
+        this.identifier = identifier
+        this.condition = condition
+    }
+}
 
 // @ts-ignore
 @serializable

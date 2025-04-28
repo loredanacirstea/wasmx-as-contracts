@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as sqlw from "wasmx-env-sql/assembly/sql_wrap";
 import { base64ToString, stringToBase64, stringToBytes } from "wasmx-utils/assembly/utils";
 import { MsgCloseRequest, MsgCloseResponse, MsgConnectRequest, MsgConnectResponse, MsgExecuteBatchRequest, MsgExecuteBatchResponse, MsgExecuteRequest, MsgExecuteResponse, MsgQueryRequest, MsgQueryResponse, SqlExecuteCommand } from "wasmx-env-sql/assembly/types";
-import { CallDataInstantiate, CloseRequest, ConnectRequest, CreateTableRequest, DTypeDb, DTypeDbConnection, DTypeField, DTypeTable, InsertRequest, MODULE_NAME, ReadRequest, UpdateRequest } from "./types";
+import { CallDataInstantiate, CloseRequest, ConnectRequest, CreateTableRequest, DeleteRequest, DTypeDb, DTypeDbConnection, DTypeField, DTypeTable, InsertRequest, MODULE_NAME, ReadRequest, TableIndentifier, TableIndentifierRequired, UpdateRequest } from "./types";
 import { revert } from "./utils";
 import { jsonToQueryParams } from "./json";
 import { Base64String } from "wasmx-env/assembly/types";
@@ -85,14 +85,14 @@ export function InstantiateDType(req: CallDataInstantiate): ArrayBuffer {
 
     // insert rows
     let query: string;
-    query = `INSERT OR REPLACE INTO ${DTypeDbConnName}(connection,driver,name,description) VALUES ("${dbpath}","${req.driver}","${DTypeConnection}","dtype database connection")`;
+    query = `INSERT OR REPLACE INTO ${DTypeDbConnName}(connection,driver,name,description) VALUES ('${dbpath}','${req.driver}','${DTypeConnection}','dtype database connection')`;
     createTable = new MsgExecuteRequest(DTypeConnection, query, [])
     respexec = sqlw.Execute(createTable);
     if (respexec.error != "") {
         revert(`could not insert table row: ${respexec.error}`)
     }
 
-    query = `INSERT OR REPLACE INTO ${DTypeDbName}(connection_id,name,description) VALUES (${respexec.last_insert_id},"dtype","dtype database")`;
+    query = `INSERT OR REPLACE INTO ${DTypeDbName}(connection_id,name,description) VALUES (${respexec.last_insert_id},'dtype','dtype database')`;
     createTable = new MsgExecuteRequest(DTypeConnection, query, [])
     respexec = sqlw.Execute(createTable);
     if (respexec.error != "") {
@@ -100,10 +100,10 @@ export function InstantiateDType(req: CallDataInstantiate): ArrayBuffer {
     }
 
     queryBatch = [
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeTableName}(name,db_id,description) VALUES ("${DTypeDbConnName}",1,"table for defining database connections")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeTableName}(name,db_id,description) VALUES ("${DTypeDbName}",1,"table for defining databases")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeTableName}(name,db_id,description) VALUES ("${DTypeTableName}",1,"table for defining database tables")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeTableName}(name,db_id,description) VALUES ("${DTypeFieldName}",1,"table for defining table fields")`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeTableName}(name,db_id,description) VALUES ('${DTypeDbConnName}',1,'table for defining database connections')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeTableName}(name,db_id,description) VALUES ('${DTypeDbName}',1,'table for defining databases')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeTableName}(name,db_id,description) VALUES ('${DTypeTableName}',1,'table for defining database tables')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeTableName}(name,db_id,description) VALUES ('${DTypeFieldName}',1,'table for defining table fields')`, []),
     ]
     batchReq = new MsgExecuteBatchRequest(DTypeConnection, queryBatch)
     respBatch = sqlw.BatchAtomic(batchReq);
@@ -117,38 +117,38 @@ export function InstantiateDType(req: CallDataInstantiate): ArrayBuffer {
 
     queryBatch = [
         // db connection fields
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableDbConnId},"id",1,"INTEGER",false,"PRIMARY KEY","","","","","")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableDbConnId},"connection",2,"VARCHAR",false,"NOT NULL","","","","","")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableDbConnId},"driver",3,"VARCHAR",true,"NOT NULL","","","","","")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableDbConnId},"name",4,"VARCHAR",true,"UNIQUE NOT NULL","","","","","")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableDbConnId},"description",5,"VARCHAR",false,"DEFAULT ''","","","","","")`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableDbConnId},'id',1,'INTEGER',false,'PRIMARY KEY','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableDbConnId},'connection',2,'VARCHAR',false,'NOT NULL','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableDbConnId},'driver',3,'VARCHAR',true,'NOT NULL','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableDbConnId},'name',4,'VARCHAR',true,'UNIQUE NOT NULL','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableDbConnId},'description',5,'VARCHAR',false,"DEFAULT ''",'','','','','')`, []),
 
         // db fields
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableDbId},"id",1,"INTEGER",false,"PRIMARY KEY","","","","","")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableDbId},"name",2,"VARCHAR",true,"UNIQUE NOT NULL","","","","","")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableDbId},"connection_id",3,"INTEGER",true,"NOT NULL","${DTypeDbConnName}","id","ON UPDATE CASCADE ON DELETE RESTRICT","","")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableDbId},"description",4,"VARCHAR",false,"DEFAULT ''","","","","","")`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableDbId},'id',1,'INTEGER',false,'PRIMARY KEY','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableDbId},'name',2,'VARCHAR',true,'UNIQUE NOT NULL','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableDbId},'connection_id',3,'INTEGER',true,'NOT NULL','${DTypeDbConnName}','id','ON UPDATE CASCADE ON DELETE RESTRICT','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableDbId},'description',4,'VARCHAR',false,"DEFAULT ''",'','','','','')`, []),
 
 
         // table fields
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableTableId},"id",1,"INTEGER",false,"PRIMARY KEY","","","","","")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableTableId},"db_id",2,"INTEGER",true,"NOT NULL","${DTypeDbName}","id","ON UPDATE CASCADE ON DELETE RESTRICT","","")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableTableId},"name",3,"VARCHAR",true,"NOT NULL","","","","","")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableTableId},"description",4,"VARCHAR",false,"DEFAULT ''","","","","","")`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableTableId},'id',1,'INTEGER',false,'PRIMARY KEY','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableTableId},'db_id',2,'INTEGER',true,'NOT NULL','${DTypeDbName}','id','ON UPDATE CASCADE ON DELETE RESTRICT','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableTableId},'name',3,'VARCHAR',true,'NOT NULL','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableTableId},'description',4,'VARCHAR',false,"DEFAULT ''",'','','','','')`, []),
 
         // field fields
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},"id",1,"INTEGER",false,"PRIMARY KEY","","","","","")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},"name",2,"VARCHAR",true,"NOT NULL","","","","","")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},"table_id",3,"INTEGER",true,"NOT NULL","${DTypeTableName}","id","ON UPDATE CASCADE ON DELETE RESTRICT","","")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},"order_index",4,"INTEGER",false,"NOT NULL","","","","","")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},"value_type",5,"VARCHAR",true,"NOT NULL","","","","","")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},"indexed",6,"BOOLEAN",true,"NOT NULL DEFAULT false","","","","","")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},"sql_options",7,"VARCHAR",false,"NOT NULL DEFAULT ''","","","","","")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},"foreign_key_table",8,"VARCHAR",false,"NOT NULL DEFAULT ''","","","","","")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},"foreign_key_field",9,"VARCHAR",false,"NOT NULL DEFAULT ''","","","","","")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},"foreign_key_sql_options",10,"VARCHAR",false,"NOT NULL DEFAULT ''","","","","","")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},"description",11,"TEXT",false,"NOT NULL DEFAULT ''","","","","","")`, []),
-        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},"permissions",12,"VARCHAR",false,"NOT NULL DEFAULT ''","","","","","")`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},'id',1,'INTEGER',false,'PRIMARY KEY','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},'name',2,'VARCHAR',true,'NOT NULL','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},'table_id',3,'INTEGER',true,'NOT NULL','${DTypeTableName}','id','ON UPDATE CASCADE ON DELETE RESTRICT','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},'order_index',4,'INTEGER',false,'NOT NULL','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},'value_type',5,'VARCHAR',true,'NOT NULL','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},'indexed',6,'BOOLEAN',true,'NOT NULL DEFAULT false','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},'sql_options',7,'VARCHAR',false,'NOT NULL DEFAULT ''','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},'foreign_key_table',8,'VARCHAR',false,"NOT NULL DEFAULT ''",'','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},'foreign_key_field',9,'VARCHAR',false,"NOT NULL DEFAULT ''",'','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},'foreign_key_sql_options',10,'VARCHAR',false,"NOT NULL DEFAULT ''",'','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},'description',11,'TEXT',false,"NOT NULL DEFAULT ''",'','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},'permissions',12,'VARCHAR',false,"NOT NULL DEFAULT ''",'','','','','')`, []),
     ]
     batchReq = new MsgExecuteBatchRequest(DTypeConnection, queryBatch)
     respBatch = sqlw.BatchAtomic(batchReq);
@@ -223,7 +223,7 @@ export function CreateTable(req: CreateTableRequest): ArrayBuffer {
     }
 
     const queryBatch = [
-        new SqlExecuteCommand(`CREATE TABLE IF NOT EXISTS ${tablerow.name} (id INTEGER PRIMARY KEY, ${queryDefs.join(",")})`, []),
+        new SqlExecuteCommand(`CREATE TABLE IF NOT EXISTS ${tablerow.name} (${queryDefs.join(",")})`, []),
     ].concat(indexes)
     const batchReq = new MsgExecuteBatchRequest(connrow.name, queryBatch)
     const respBatch = sqlw.BatchAtomic(batchReq);
@@ -234,62 +234,8 @@ export function CreateTable(req: CreateTableRequest): ArrayBuffer {
 }
 
 export function Insert(req: InsertRequest): ArrayBuffer {
-    let conn_name = req.db_connection_name;
-    let db_name = req.db_name;
-    let db_id = req.db_id;
-    let table_name = req.table_name;
-    let table_id = req.table_id;
-    if (conn_name == "") {
-        if (req.db_connection_id > 0) {
-            conn_name = getDbConnectionName(req.db_connection_id);
-        } else if (req.db_id) {
-            const dbrow = getDb(req.db_id);
-            conn_name = getDbConnectionName(dbrow.connection_id);
-            if (db_name == "") {
-                db_name = dbrow.name;
-                db_id = dbrow.id;
-            }
-        }
-    }
-    if (db_name == "") {
-        if (req.db_id > 0) {
-            const dbrow = getDb(req.db_id);
-            db_name = dbrow.name;
-            if (conn_name == "") {
-                conn_name = getDbConnectionName(dbrow.connection_id);
-            }
-        }
-    }
-    if (table_name == "") {
-        if (req.table_id > 0) {
-            const tablerow = getTable(req.table_id);
-            table_name = tablerow.name;
-            if (db_name == "") {
-                const dbrow = getDb(tablerow.db_id);
-                db_name = dbrow.name;
-                db_id = dbrow.id;
-                if (conn_name == "") {
-                    conn_name = getDbConnectionName(dbrow.connection_id);
-                }
-            }
-        }
-    }
-    if (db_id == 0 && db_name != "") {
-        const dbrow = getDbByName(db_name)
-        db_id = dbrow.id;
-    }
-    if (table_id == 0 && table_name != "" && db_id > 0) {
-        const tablerow = getTableByName(req.table_name, db_id);
-        table_id = tablerow.id
-    }
-
-    if (conn_name == "") revert(`could not determine connection name`)
-    if (db_name == "") revert(`could not determine db name`)
-    if (table_name == "") revert(`could not determine table name`)
-    if (db_id == 0) revert(`could not determine db id`)
-    if (table_id == 0) revert(`could not determine table id`)
-
-    const fields = getTableFields(table_id);
+    const identif = getIdentifier(req.identifier);
+    const fields = getTableFields(identif.table_id);
     const params = jsonToQueryParams(base64ToString(req.data), fields)
 
     const values: string[] = []
@@ -299,17 +245,101 @@ export function Insert(req: InsertRequest): ArrayBuffer {
 
     // if we need to use another database
     // (`ATTACH DATABASE ? AS ?`, otherFilePath, aliasName)
-    const query = `INSERT OR REPLACE INTO ${table_name}(${params.keys}) VALUES (${values.join(",")})`;
-    const resp = sqlw.Execute(new MsgExecuteRequest(conn_name, query, params.values))
+    const query = `INSERT INTO ${identif.table_name}(${params.keys}) VALUES (${values.join(",")})`;
+    const resp = sqlw.Execute(new MsgExecuteRequest(identif.db_connection_name, query, params.values))
+    return String.UTF8.encode(JSON.stringify<MsgExecuteResponse>(resp))
+}
+
+export function InsertOrReplace(req: InsertRequest): ArrayBuffer {
+    const identif = getIdentifier(req.identifier);
+    const fields = getTableFields(identif.table_id);
+    const params = jsonToQueryParams(base64ToString(req.data), fields)
+
+    const values: string[] = []
+    for (let i = 0; i < params.keys.length; i++) {
+        values.push("?")
+    }
+
+    // if we need to use another database
+    // (`ATTACH DATABASE ? AS ?`, otherFilePath, aliasName)
+    const query = `INSERT OR REPLACE INTO ${identif.table_name}(${params.keys}) VALUES (${values.join(",")})`;
+    const resp = sqlw.Execute(new MsgExecuteRequest(identif.db_connection_name, query, params.values))
     return String.UTF8.encode(JSON.stringify<MsgExecuteResponse>(resp))
 }
 
 export function Update(req: UpdateRequest): ArrayBuffer {
-    return new ArrayBuffer(0)
+    const identif = getIdentifier(req.identifier);
+    const fields = getTableFields(identif.table_id);
+    const condition = jsonToQueryParams(base64ToString(req.condition), fields)
+    const params = jsonToQueryParams(base64ToString(req.data), fields)
+
+    // TODO now we just use AND for conditions
+    // conditions can be more complex
+    const condvalues: string[] = []
+    for (let i = 0; i < condition.keys.length; i++) {
+        const key = condition.keys[i]
+        condvalues.push(`${key} = ?`)
+    }
+
+    const values: string[] = []
+    for (let i = 0; i < params.keys.length; i++) {
+        const key = params.keys[i]
+        values.push(`${key} = ?`)
+    }
+
+    let cond = "1"
+    if (condvalues.length > 0) {
+        cond = condvalues.join(" AND ")
+    }
+
+    const query = `UPDATE ${identif.table_name} SET ${values.join(",")} WHERE ${cond};`;
+    const resp = sqlw.Execute(new MsgExecuteRequest(identif.db_connection_name, query, params.values.concat(condition.values)))
+    return String.UTF8.encode(JSON.stringify<MsgExecuteResponse>(resp))
+}
+
+export function Delete(req: DeleteRequest): ArrayBuffer {
+    const identif = getIdentifier(req.identifier);
+    const fields = getTableFields(identif.table_id);
+    const condition = jsonToQueryParams(base64ToString(req.condition), fields)
+
+    // TODO now we just use AND for conditions
+    // conditions can be more complex
+    const condvalues: string[] = []
+    for (let i = 0; i < condition.keys.length; i++) {
+        const key = condition.keys[i]
+        condvalues.push(`${key} = ?`)
+    }
+
+    let cond = "1"
+    if (condvalues.length > 0) {
+        cond = condvalues.join(" AND ")
+    }
+
+    const query = `DELETE FROM ${identif.table_name} WHERE ${cond};`;
+    const resp = sqlw.Execute(new MsgExecuteRequest(identif.db_connection_name, query, condition.values))
+    return String.UTF8.encode(JSON.stringify<MsgExecuteResponse>(resp))
 }
 
 export function Read(req: ReadRequest): ArrayBuffer {
-    return new ArrayBuffer(0)
+    const identif = getIdentifier(req.identifier);
+    const fields = getTableFields(identif.table_id);
+    const params = jsonToQueryParams(base64ToString(req.data), fields)
+
+    const values: string[] = []
+    for (let i = 0; i < params.keys.length; i++) {
+        const key = params.keys[i]
+        values.push(`${key} = ?`)
+    }
+
+    let cond = "1"
+    if (values.length > 0) {
+        cond = values.join(",")
+    }
+    // TODO more complex queries - limit, etc.
+
+    const query = `SELECT * FROM ${identif.table_name} WHERE ${cond};`;
+    const resp = sqlw.Query(new MsgQueryRequest(identif.db_connection_name, query, params.values))
+    return String.UTF8.encode(JSON.stringify<MsgQueryResponse>(resp))
 }
 
 function prepareBatchAtomic(id: string, cmmds: string[]): MsgExecuteBatchRequest {
@@ -334,6 +364,64 @@ function joinPath(dir: string, filename: string): string {
     return dir.substring(0, lastndx) + "/" + filename;
 }
 
+function getIdentifier(identif: TableIndentifier): TableIndentifierRequired {
+    let conn_name = identif.db_connection_name;
+    let db_name = identif.db_name;
+    let db_id = identif.db_id;
+    let table_name = identif.table_name;
+    let table_id = identif.table_id;
+    if (conn_name == "") {
+        if (identif.db_connection_id > 0) {
+            conn_name = getDbConnectionName(identif.db_connection_id);
+        } else if (identif.db_id) {
+            const dbrow = getDb(identif.db_id);
+            conn_name = getDbConnectionName(dbrow.connection_id);
+            if (db_name == "") {
+                db_name = dbrow.name;
+                db_id = dbrow.id;
+            }
+        }
+    }
+    if (db_name == "") {
+        if (identif.db_id > 0) {
+            const dbrow = getDb(identif.db_id);
+            db_name = dbrow.name;
+            if (conn_name == "") {
+                conn_name = getDbConnectionName(dbrow.connection_id);
+            }
+        }
+    }
+    if (table_name == "") {
+        if (identif.table_id > 0) {
+            const tablerow = getTable(identif.table_id);
+            table_name = tablerow.name;
+            if (db_name == "") {
+                const dbrow = getDb(tablerow.db_id);
+                db_name = dbrow.name;
+                db_id = dbrow.id;
+                if (conn_name == "") {
+                    conn_name = getDbConnectionName(dbrow.connection_id);
+                }
+            }
+        }
+    }
+    if (db_id == 0 && db_name != "") {
+        const dbrow = getDbByName(db_name)
+        db_id = dbrow.id;
+    }
+    if (table_id == 0 && table_name != "" && db_id > 0) {
+        const tablerow = getTableByName(identif.table_name, db_id);
+        table_id = tablerow.id
+    }
+
+    if (conn_name == "") revert(`could not determine connection name`)
+    if (db_name == "") revert(`could not determine db name`)
+    if (table_name == "") revert(`could not determine table name`)
+    if (db_id == 0) revert(`could not determine db id`)
+    if (table_id == 0) revert(`could not determine table id`)
+    return new TableIndentifierRequired(db_id, table_id, conn_name, db_name, table_name)
+}
+
 function getDbConnection(db_connection_id: i64): DTypeDbConnection {
     const queryResp = sqlw.Query(new MsgQueryRequest(DTypeConnection, `SELECT * FROM ${DTypeDbConnName} WHERE id = ${db_connection_id}`, []))
     if (queryResp.error != "") {
@@ -347,7 +435,7 @@ function getDbConnection(db_connection_id: i64): DTypeDbConnection {
 }
 
 function getDbConnectionByName(name: string): DTypeDbConnection {
-    const queryResp = sqlw.Query(new MsgQueryRequest(DTypeConnection, `SELECT * FROM ${DTypeDbConnName} WHERE name = "${name}"`, []))
+    const queryResp = sqlw.Query(new MsgQueryRequest(DTypeConnection, `SELECT * FROM ${DTypeDbConnName} WHERE name = '${name}'`, []))
     if (queryResp.error != "") {
         revert(`query failed: ${queryResp.error}`);
     }
@@ -376,7 +464,7 @@ function getDb(db_id: i64): DTypeDb {
 }
 
 function getDbByName(name: string): DTypeDb {
-    const queryResp = sqlw.Query(new MsgQueryRequest(DTypeConnection, `SELECT * FROM ${DTypeDbName} WHERE name = "${name}"`, []))
+    const queryResp = sqlw.Query(new MsgQueryRequest(DTypeConnection, `SELECT * FROM ${DTypeDbName} WHERE name = '${name}'`, []))
     if (queryResp.error != "") {
         revert(`query failed: ${queryResp.error}`);
     }
@@ -400,7 +488,7 @@ function getTable(id: i64): DTypeTable {
 }
 
 function getTableByName(name: string, db_id: i64): DTypeTable {
-    const queryResp = sqlw.Query(new MsgQueryRequest(DTypeConnection, `SELECT * FROM ${DTypeTableName} WHERE name = "${name}" AND db_id = ${db_id}`, []))
+    const queryResp = sqlw.Query(new MsgQueryRequest(DTypeConnection, `SELECT * FROM ${DTypeTableName} WHERE name = '${name}' AND db_id = ${db_id}`, []))
     if (queryResp.error != "") {
         revert(`query failed: ${queryResp.error}`);
     }
@@ -412,7 +500,7 @@ function getTableByName(name: string, db_id: i64): DTypeTable {
 }
 
 function getFieldByName(name: string, table_id: i64): DTypeField {
-    const queryResp = sqlw.Query(new MsgQueryRequest(DTypeConnection, `SELECT * FROM ${DTypeFieldName} WHERE name = "${name}" AND table_id = ${table_id}`, []))
+    const queryResp = sqlw.Query(new MsgQueryRequest(DTypeConnection, `SELECT * FROM ${DTypeFieldName} WHERE name = '${name}' AND table_id = ${table_id}`, []))
     if (queryResp.error != "") {
         revert(`query failed: ${queryResp.error}`);
     }

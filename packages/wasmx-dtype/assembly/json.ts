@@ -23,7 +23,6 @@ export function jsonToQueryParams(value: string, fields: DTypeField[]): QueryPar
     const values: Base64String[] = []
     for (let i = 0; i < keys.length; i++) {
         const key = keys[i]
-        console.log("--key--" + key)
         if (!fieldMap.has(key)) {
             continue;
         }
@@ -34,17 +33,11 @@ export function jsonToQueryParams(value: string, fields: DTypeField[]): QueryPar
             values.push("");
             continue;
         }
-        console.log("--value1--" + value.toString())
-        console.log("--value2--" + value.stringify())
         if (value.isString) {
-            console.log("--jsonToQueryParams2 value isString--" + value.toString())
-            console.log("--jsonToQueryParams2 value isString--" + value.stringify())
             values.push(stringToBase64(`{"type":"${valueType}","value":"${value.toString()}"}`));
             continue;
         }
         if (value.isInteger) {
-            console.log("--jsonToQueryParams2 value isInteger--" + value.toString())
-            console.log("--jsonToQueryParams2 value isInteger--" + value.stringify())
             values.push(stringToBase64(`{"type":"${valueType}","value":${value.stringify()}}`));
             continue;
         }

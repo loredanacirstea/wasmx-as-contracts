@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap, getCallDataInstantiateWrap } from './calldata';
-import { Close, Connect, CreateTable, Insert, InstantiateDType, Read, Update } from "./actions";
+import { Close, Connect, CreateTable, Delete, Insert, InsertOrReplace, InstantiateDType, Read, Update } from "./actions";
 import { revert } from "./utils";
 
 export function wasmx_env_2(): void {}
@@ -20,8 +20,12 @@ export function main(): void {
     result = CreateTable(calld.CreateTable!);
   } else if (calld.Insert !== null) {
     result = Insert(calld.Insert!);
+  } else if (calld.InsertOrReplace !== null) {
+    result = InsertOrReplace(calld.InsertOrReplace!);
   } else if (calld.Update !== null) {
     result = Update(calld.Update!);
+  } else if (calld.Delete !== null) {
+    result = Delete(calld.Delete!);
   } else if (calld.Read !== null) {
     result = Read(calld.Read!);
   } else if (calld.Connect !== null) {
