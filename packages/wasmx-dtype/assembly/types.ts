@@ -241,3 +241,25 @@ export class CloseRequest {
         this.name = name
     }
 }
+
+// @ts-ignore
+@serializable
+export class BuildSchemaRequest {
+    identifier: TableIndentifier
+    constructor(
+        identifier: TableIndentifier,
+    ) {
+        this.identifier = identifier
+    }
+}
+
+// @ts-ignore
+@serializable
+export class BuildSchemaResponse {
+    data: Base64String
+    constructor(
+        data: Base64String,
+    ) {
+        this.data = data
+    }
+}

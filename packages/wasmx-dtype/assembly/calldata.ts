@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { CallDataInstantiate, CloseRequest, ConnectRequest, CreateTableRequest, DeleteRequest, InsertRequest, ReadRequest, UpdateRequest } from "./types";
+import { BuildSchemaRequest, CallDataInstantiate, CloseRequest, ConnectRequest, CreateTableRequest, DeleteRequest, InsertRequest, ReadRequest, UpdateRequest } from "./types";
 
 // @ts-ignore
 @serializable
@@ -18,6 +18,7 @@ export class CallData {
     Update: UpdateRequest | null = null;
     Delete: DeleteRequest | null = null;
     Read: ReadRequest | null = null;
+    BuildSchema: BuildSchemaRequest | null = null;
 }
 
 export function getCallDataWrap(): CallData {

@@ -2,10 +2,10 @@ import { JSON } from "json-as/assembly";
 import * as sqlw from "wasmx-env-sql/assembly/sql_wrap";
 import { base64ToString, stringToBase64, stringToBytes } from "wasmx-utils/assembly/utils";
 import { MsgCloseRequest, MsgCloseResponse, MsgConnectRequest, MsgConnectResponse, MsgExecuteBatchRequest, MsgExecuteBatchResponse, MsgExecuteRequest, MsgExecuteResponse, MsgQueryRequest, MsgQueryResponse, SqlExecuteCommand } from "wasmx-env-sql/assembly/types";
-import { CallDataInstantiate, CloseRequest, ConnectRequest, CreateTableRequest, DeleteRequest, DTypeDb, DTypeDbConnection, DTypeField, DTypeTable, InsertRequest, MODULE_NAME, ReadRequest, TableIndentifier, TableIndentifierRequired, UpdateRequest } from "./types";
+import { BuildSchemaRequest, BuildSchemaResponse, CallDataInstantiate, CloseRequest, ConnectRequest, CreateTableRequest, DeleteRequest, DTypeDb, DTypeDbConnection, DTypeField, DTypeTable, InsertRequest, MODULE_NAME, ReadRequest, TableIndentifier, TableIndentifierRequired, UpdateRequest } from "./types";
 import { revert } from "./utils";
 import { jsonToQueryParams } from "./json";
-import { Base64String } from "wasmx-env/assembly/types";
+import { generateJsonSchema } from "./schema";
 
 const DTypeConnection = "dtype_connection"
 const DTypeDbName = "dtype_db"
@@ -30,8 +30,6 @@ const SqlCreateIndexField3 = `CREATE INDEX IF NOT EXISTS idx_${DTypeFieldName}_v
 export function InstantiateDType(req: CallDataInstantiate): ArrayBuffer {
     const dbfile = "dtype.db"
     const dbpath = joinPath(req.dir, dbfile)
-
-    // TODO index names
 
     const connectMsg = new MsgConnectRequest(req.driver, dbpath, DTypeConnection);
     const resp = sqlw.Connect(connectMsg, MODULE_NAME);
@@ -89,14 +87,14 @@ export function InstantiateDType(req: CallDataInstantiate): ArrayBuffer {
     createTable = new MsgExecuteRequest(DTypeConnection, query, [])
     respexec = sqlw.Execute(createTable);
     if (respexec.error != "") {
-        revert(`could not insert table row: ${respexec.error}`)
+        revert(`could not insert row in ${DTypeDbConnName}: ${respexec.error}`)
     }
 
     query = `INSERT OR REPLACE INTO ${DTypeDbName}(connection_id,name,description) VALUES (${respexec.last_insert_id},'dtype','dtype database')`;
     createTable = new MsgExecuteRequest(DTypeConnection, query, [])
     respexec = sqlw.Execute(createTable);
     if (respexec.error != "") {
-        revert(`could not insert table row: ${respexec.error}`)
+        revert(`could not insert row in ${DTypeDbName}: ${respexec.error}`)
     }
 
     queryBatch = [
@@ -208,7 +206,7 @@ export function CreateTable(req: CreateTableRequest): ArrayBuffer {
         const nonEmpty = field.foreign_key_table != "" || field.foreign_key_field != "" || field.foreign_key_sql_options != ""
 
         if (!hasForeignKey && nonEmpty) {
-            revert(`foreign key definition invalidfor table id ${req.table_id}`)
+            revert(`foreign key definition invalid for table id ${req.table_id}`)
         }
         if (hasForeignKey) {
             // check table & field names are valid
@@ -340,6 +338,13 @@ export function Read(req: ReadRequest): ArrayBuffer {
     const query = `SELECT * FROM ${identif.table_name} WHERE ${cond};`;
     const resp = sqlw.Query(new MsgQueryRequest(identif.db_connection_name, query, params.values))
     return String.UTF8.encode(JSON.stringify<MsgQueryResponse>(resp))
+}
+
+export function BuildSchema(req: BuildSchemaRequest): ArrayBuffer {
+    const identif = getIdentifier(req.identifier);
+    const fields = getTableFields(identif.table_id);
+    const resp = generateJsonSchema(fields)
+    return String.UTF8.encode(JSON.stringify<BuildSchemaResponse>(new BuildSchemaResponse(stringToBase64(resp))))
 }
 
 function prepareBatchAtomic(id: string, cmmds: string[]): MsgExecuteBatchRequest {
