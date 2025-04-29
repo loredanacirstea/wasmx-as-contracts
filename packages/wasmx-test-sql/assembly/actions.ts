@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as base64 from "as-base64/assembly";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as sqlw from "wasmx-env-sql/assembly/sql_wrap";
-import { MsgCloseRequest, MsgCloseResponse, MsgConnectRequest, MsgConnectResponse, MsgExecuteRequest, MsgExecuteResponse, MsgPingRequest, MsgPingResponse, MsgQueryRequest, MsgQueryResponse } from "wasmx-env-sql/assembly/types";
+import { MsgCloseRequest, MsgCloseResponse, MsgConnectRequest, MsgConnectResponse, MsgExecuteBatchRequest, MsgExecuteBatchResponse, MsgExecuteRequest, MsgExecuteResponse, MsgPingRequest, MsgPingResponse, MsgQueryRequest, MsgQueryResponse } from "wasmx-env-sql/assembly/types";
 import { MODULE_NAME, MsgNestedCall } from "./types";
 import { CallRequest } from "wasmx-env/assembly/types";
 import { BigInt } from "wasmx-env/assembly/bn";
@@ -20,6 +20,11 @@ export function Close(req: MsgCloseRequest): ArrayBuffer {
 export function Execute(req: MsgExecuteRequest): ArrayBuffer {
     const resp = sqlw.Execute(req)
     return String.UTF8.encode(JSON.stringify<MsgExecuteResponse>(resp))
+}
+
+export function BatchAtomic(req: MsgExecuteBatchRequest): ArrayBuffer {
+    const resp = sqlw.BatchAtomic(req)
+    return String.UTF8.encode(JSON.stringify<MsgExecuteBatchResponse>(resp))
 }
 
 export function Query(req: MsgQueryRequest): ArrayBuffer {

@@ -2,7 +2,7 @@ import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap } from './calldata';
 import { revert } from "./utils";
-import { Connect, Execute, Query, Ping, Close, NestedCall } from "./actions";
+import { Connect, Execute, Query, Ping, Close, NestedCall, BatchAtomic } from "./actions";
 
 export function wasmx_env_2(): void {}
 
@@ -24,6 +24,8 @@ export function main(): void {
     result = Ping(calld.Ping!);
   } else if (calld.Execute !== null) {
     result = Execute(calld.Execute!);
+  } else if (calld.BatchAtomic !== null) {
+    result = BatchAtomic(calld.BatchAtomic!);
   } else if (calld.Query !== null) {
     result = Query(calld.Query!);
   } else if (calld.NestedCall !== null) {

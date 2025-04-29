@@ -1,5 +1,5 @@
 import { JSON } from "json-as/assembly";
-import { MsgCloseRequest, MsgCloseResponse, MsgConnectRequest, MsgConnectResponse, MsgExecuteRequest, MsgExecuteResponse, MsgPingRequest, MsgPingResponse, MsgQueryRequest, MsgQueryResponse } from "wasmx-env-sql/assembly/types";
+import { MsgExecuteRequest, MsgQueryRequest } from "wasmx-env-sql/assembly/types";
 
 export const MODULE_NAME = "test-sql"
 
