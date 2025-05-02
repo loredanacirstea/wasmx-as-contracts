@@ -99,8 +99,10 @@ export class MsgExecuteBatchRequest {
 @serializable
 export class MsgExecuteBatchResponse {
     error: string = ""
-    constructor(error: string) {
+    responses: MsgExecuteResponse[] = []
+    constructor(error: string, responses: MsgExecuteResponse[]) {
         this.error = error
+        this.responses = responses
     }
 }
 

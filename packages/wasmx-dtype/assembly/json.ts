@@ -2,6 +2,7 @@ import { JSON } from "assemblyscript-json/assembly";
 import { Base64String } from "wasmx-env/assembly/types";
 import { stringToBase64 } from "wasmx-utils/assembly/utils";
 import { DTypeField } from "./types";
+import { revert } from "./utils";
 
 export class QueryParams {
     keys: string[] = []
@@ -12,9 +13,30 @@ export class QueryParams {
     }
 }
 
-// TODO maybe same types as databases
-export function jsonToQueryParams(value: string, fields: DTypeField[]): QueryParams {
+export function jsonToQueryParams(value: string, fields: DTypeField[]): QueryParams[] {
+    console.log("--jsonToQueryParams--" + value)
+    // could be object or array
+    if (value.substr(0, 1) == "[") {
+        let arr: JSON.Arr = <JSON.Arr>(JSON.parse(value));
+        return jsonToQueryParamsArr(arr, fields)
+    }
+
     let jsonObj: JSON.Obj = <JSON.Obj>(JSON.parse(value));
+    return [jsonToQueryParamsObj(jsonObj, fields)];
+}
+
+export function jsonToQueryParamsArr(jsonObj: JSON.Arr, fields: DTypeField[]): QueryParams[] {
+    const result: QueryParams[] = []
+    for (let i = 0; i < jsonObj._arr.length; i++) {
+        const v = jsonObj._arr.at(i)
+        if (!v.isObj) revert("unexpected value")
+        const value: JSON.Obj = changetype<JSON.Obj>(v);
+        result.push(jsonToQueryParamsObj(value, fields))
+    }
+    return result
+}
+
+export function jsonToQueryParamsObj(jsonObj: JSON.Obj, fields: DTypeField[]): QueryParams {
     const fieldMap = new Map<string,string>()
     for (let i = 0; i < fields.length; i++) {
         fieldMap.set(fields[i].name, fields[i].value_type);
@@ -46,6 +68,5 @@ export function jsonToQueryParams(value: string, fields: DTypeField[]): QueryPar
             continue;
         }
     }
-
-    return new QueryParams(keys, values)
+    return new QueryParams(keys, values);
 }

@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap, getCallDataInstantiateWrap } from './calldata';
-import { BuildSchema, Close, Connect, CreateTable, Delete, Insert, InsertOrReplace, InstantiateDType, Read, Update } from "./actions";
+import { add, BuildSchema, Close, Connect, Count, CreateTable, Delete, Insert, InsertOrReplace, InstantiateDType, InstantiateTokens, move, Read, ReadField, sub, Update } from "./actions";
 import { revert } from "./utils";
 
 export function wasmx_env_2(): void {}
@@ -28,6 +28,10 @@ export function main(): void {
     result = Delete(calld.Delete!);
   } else if (calld.Read !== null) {
     result = Read(calld.Read!);
+  } else if (calld.Count !== null) {
+    result = Count(calld.Count!);
+  } else if (calld.ReadField !== null) {
+    result = ReadField(calld.ReadField!);
   } else if (calld.BuildSchema !== null) {
     result = BuildSchema(calld.BuildSchema!);
   } else if (calld.Connect !== null) {
@@ -36,6 +40,14 @@ export function main(): void {
     result = Close(calld.Close!);
   } else if (calld.Initialize !== null) {
     result = InstantiateDType(calld.Initialize!);
+  } else if (calld.InitializeTokens !== null) {
+    result = InstantiateTokens(calld.InitializeTokens!);
+  } else if (calld.Add !== null) {
+    result = add(calld.Add!);
+  } else if (calld.Sub !== null) {
+    result = sub(calld.Sub!);
+  } else if (calld.Move !== null) {
+    result = move(calld.Move!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)

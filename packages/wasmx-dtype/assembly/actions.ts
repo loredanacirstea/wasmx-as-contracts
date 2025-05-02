@@ -1,17 +1,16 @@
 import { JSON } from "json-as/assembly";
+import { JSON as JSONDyn } from "assemblyscript-json/assembly";
 import * as sqlw from "wasmx-env-sql/assembly/sql_wrap";
 import { base64ToString, stringToBase64, stringToBytes } from "wasmx-utils/assembly/utils";
 import { MsgCloseRequest, MsgCloseResponse, MsgConnectRequest, MsgConnectResponse, MsgExecuteBatchRequest, MsgExecuteBatchResponse, MsgExecuteRequest, MsgExecuteResponse, MsgQueryRequest, MsgQueryResponse, SqlExecuteCommand } from "wasmx-env-sql/assembly/types";
-import { BuildSchemaRequest, BuildSchemaResponse, CallDataInstantiate, CloseRequest, ConnectRequest, CreateTableRequest, DeleteRequest, DTypeDb, DTypeDbConnection, DTypeField, DTypeTable, InsertRequest, MODULE_NAME, ReadRequest, TableIndentifier, TableIndentifierRequired, UpdateRequest } from "./types";
+import { BuildSchemaRequest, BuildSchemaResponse, CallDataInstantiate, CallDataInstantiateTokens, CloseRequest, ConnectRequest, CountRequest, CountResponse, CreateTableRequest, DeleteRequest, DTypeDb, DTypeDbConnection, DTypeField, DTypeTable, InsertRequest, MODULE_NAME, ReadFieldRequest, ReadRequest, TableIndentifier, TableIndentifierRequired, UpdateRequest } from "./types";
 import { revert } from "./utils";
-import { jsonToQueryParams } from "./json";
+import { jsonToQueryParams, QueryParams } from "./json";
 import { generateJsonSchema } from "./schema";
-
-const DTypeConnection = "dtype_connection"
-const DTypeDbName = "dtype_db"
-const DTypeDbConnName = "dtype_db_connection"
-const DTypeTableName = "dtype_table"
-const DTypeFieldName = "dtype_field"
+import { DTypeConnection, DTypeDbConnName, DTypeDbName, DTypeFieldName, DTypeNodeName, DTypeRelationName, DTypeRelationTypeName, DTypeTableName, OwnedTable, OwnedTableId, tableDbConnId, tableDbId, tableFieldsId, tableNodeId, tableRelationId, tableRelationTypeId, tableTableId, TokensTable, TokensTableId } from "./config";
+import { AddRequest, MoveRequest, SubRequest } from "./types_tokens";
+import { BigInt } from "wasmx-env/assembly/bn";
+import { Base64String } from "wasmx-env/assembly/types";
 
 const SqlCreateTableDbConn = `CREATE TABLE IF NOT EXISTS ${DTypeDbConnName} (id INTEGER PRIMARY KEY, connection VARCHAR NOT NULL, driver VARCHAR NOT NULL, name VARCHAR UNIQUE NOT NULL, description TEXT DEFAULT '')`
 const SqlCreateIndexDbConn1 = `CREATE INDEX IF NOT EXISTS idx_${DTypeDbConnName}_name ON ${DTypeDbConnName}(name)`
@@ -27,7 +26,57 @@ const SqlCreateIndexField1 = `CREATE INDEX IF NOT EXISTS idx_${DTypeFieldName}_t
 const SqlCreateIndexField2 = `CREATE UNIQUE INDEX IF NOT EXISTS idx_${DTypeFieldName}_tableid_name ON ${DTypeFieldName}(table_id,name)`
 const SqlCreateIndexField3 = `CREATE INDEX IF NOT EXISTS idx_${DTypeFieldName}_value_type ON ${DTypeFieldName}(value_type)`
 
+const SqlCreateNode = `CREATE TABLE ${DTypeNodeName} (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    table_id INTEGER REFERENCES ${DTypeTableName}(id),
+    record_id INTEGER,
+    name TEXT
+);`
+const SqlCreateRelation = `CREATE TABLE ${DTypeRelationName} (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    relation_type_id INTEGER REFERENCES ${DTypeRelationTypeName}(id),
+    source_node_id INTEGER REFERENCES ${DTypeNodeName}(id),
+    target_node_id INTEGER REFERENCES ${DTypeNodeName}(id),
+    order_index INTEGER DEFAULT 0
+);`
+const SqlCreateRelationType = `CREATE TABLE ${DTypeRelationTypeName} (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR,
+    reverse_name VARCHAR,
+    reversable BOOLEAN DEFAULT true
+);`
+const SqlCreateIndexRelation1 = `CREATE INDEX relation_source_node_id_IDX ON relation (source_node_id);`
+const SqlCreateIndexRelation2 = `CREATE INDEX relation_target_node_id_IDX ON relation (target_node_id);`
+
+const GraphTables = `[{"name":"${DTypeNodeName}","db_id":"1","description":"table for graph nodes"},{"name":"${DTypeNodeName}","db_id":"1","description":"table for graph nodes"}]`
+
+
+const AssetTables = `[{"name":"${TokensTable}","db_id":"1","description":"table for registered tokens"},{"name":"${OwnedTable}","db_id":"1","description":"table for user owned tokens"}]`
+const TokenFields = `[
+{"table_id":${TokensTableId},"name":"id","order_index":1,"value_type":"INTEGER","indexed":false,"sql_options":"PRIMARY KEY","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${TokensTableId},"name":"value_type","order_index":2,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${TokensTableId},"name":"name","order_index":3,"value_type":"VARCHAR","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${TokensTableId},"name":"symbol","order_index":4,"value_type":"VARCHAR","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${TokensTableId},"name":"decimals","order_index":5,"value_type":"INTEGER","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${TokensTableId},"name":"address","order_index":6,"value_type":"VARCHAR","indexed":true,"sql_options":"UNIQUE NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${TokensTableId},"name":"total_supply","order_index":7,"value_type":"VARCHAR","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${TokensTableId},"name":"actions","order_index":8,"value_type":"TEXT","indexed":false,"sql_options":"NOT NULL DEFAULT '[]'","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${TokensTableId},"name":"actions_user","order_index":9,"value_type":"TEXT","indexed":false,"sql_options":"NOT NULL DEFAULT '[]'","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""}
+]`
+// TODO combine table_id, record_id for index
+const OwnedFields = `[
+{"table_id":${OwnedTableId},"name":"id","order_index":1,"value_type":"INTEGER","indexed":false,"sql_options":"PRIMARY KEY","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${OwnedTableId},"name":"table_id","order_index":2,"value_type":"INTEGER","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"${DTypeTableName}","foreign_key_field":"id","foreign_key_sql_options":"ON UPDATE CASCADE ON DELETE RESTRICT","description":"","permissions":""},
+{"table_id":${OwnedTableId},"name":"record_id","order_index":3,"value_type":"INTEGER","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${OwnedTableId},"name":"amount","order_index":4,"value_type":"VARCHAR","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${OwnedTableId},"name":"fungible","order_index":5,"value_type":"BOOLEAN","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${OwnedTableId},"name":"permissions","order_index":6,"value_type":"TEXT","indexed":false,"sql_options":"NOT NULL DEFAULT '[]'","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${OwnedTableId},"name":"creator","order_index":7,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${OwnedTableId},"name":"owner","order_index":8,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""}
+]`
+
 export function InstantiateDType(req: CallDataInstantiate): ArrayBuffer {
+    console.log("--InstantiateDType--")
     const dbfile = "dtype.db"
     const dbpath = joinPath(req.dir, dbfile)
 
@@ -108,10 +157,6 @@ export function InstantiateDType(req: CallDataInstantiate): ArrayBuffer {
     if (respBatch.error != "") {
         revert(`could not insert tables: ${respBatch.error}`)
     }
-    const tableDbConnId = 1;
-    const tableDbId = 2;
-    const tableTableId = 3;
-    const tableFieldsId = 4;
 
     queryBatch = [
         // db connection fields
@@ -154,6 +199,109 @@ export function InstantiateDType(req: CallDataInstantiate): ArrayBuffer {
         revert(`could not insert table field definitions: ${respBatch.error}`)
     }
 
+    // graph tables
+    createTable = new MsgExecuteRequest(DTypeConnection, SqlCreateNode, [])
+    respexec = sqlw.Execute(createTable);
+    if (respexec.error != "") {
+        revert(`could not create node table: ${respexec.error}`)
+    }
+
+    createTable = new MsgExecuteRequest(DTypeConnection, SqlCreateRelation, [])
+    respexec = sqlw.Execute(createTable);
+    if (respexec.error != "") {
+        revert(`could not create relation table: ${respexec.error}`)
+    }
+
+    createTable = new MsgExecuteRequest(DTypeConnection, SqlCreateRelationType, [])
+    respexec = sqlw.Execute(createTable);
+    if (respexec.error != "") {
+        revert(`could not create relation type table: ${respexec.error}`)
+    }
+
+    // create indexes
+    queryBatch = [
+        new SqlExecuteCommand(SqlCreateIndexRelation1, []),
+        new SqlExecuteCommand(SqlCreateIndexRelation2, []),
+    ]
+    batchReq = new MsgExecuteBatchRequest(DTypeConnection, queryBatch)
+    respBatch = sqlw.BatchAtomic(batchReq);
+    if (respBatch.error != "") {
+        revert(`could not create graph tables indexes: ${respBatch.error}`)
+    }
+
+    // insert graph table definitions
+    // TODO use jsons and call Insert & CreateTable (GraphTables)
+    queryBatch = [
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeTableName}(name,db_id,description) VALUES ('${DTypeNodeName}',1,'table for graph nodes')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeTableName}(name,db_id,description) VALUES ('${DTypeRelationName}',1,'table for graph relation')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeTableName}(name,db_id,description) VALUES ('${DTypeRelationTypeName}',1,'table for graph relation types')`, []),
+    ]
+    batchReq = new MsgExecuteBatchRequest(DTypeConnection, queryBatch)
+    respBatch = sqlw.BatchAtomic(batchReq);
+    if (respBatch.error != "") {
+        revert(`could not insert tables: ${respBatch.error}`)
+    }
+
+    // insert graph table fields
+    queryBatch = [
+        // node table
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableNodeId},'id',1,'INTEGER',false,'PRIMARY KEY','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableNodeId},'table_id',2,'INTEGER',true,'NOT NULL','${DTypeTableName}','id','ON UPDATE CASCADE ON DELETE RESTRICT','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableNodeId},'record_id',3,'INTEGER',true,'NOT NULL','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableNodeId},'name',4,'VARCHAR',false,'NOT NULL','','','','','')`, []),
+
+        // relation table
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableRelationId},'id',1,'INTEGER',false,'PRIMARY KEY','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableRelationId},'relation_type_id',2,'INTEGER',true,'NOT NULL','${DTypeRelationTypeName}','id','ON UPDATE CASCADE ON DELETE RESTRICT','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableRelationId},'source_node_id',3,'INTEGER',true,'NOT NULL','${DTypeNodeName}','id','ON UPDATE CASCADE ON DELETE RESTRICT','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableRelationId},'target_node_id',4,'INTEGER',true,'NOT NULL','${DTypeNodeName}','id','ON UPDATE CASCADE ON DELETE RESTRICT','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableRelationId},'order_index',5,'INTEGER',false,'NOT NULL DEFAULT 0','','','','','')`, []),
+
+        // relation type table
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableRelationTypeId},'id',1,'INTEGER',false,'PRIMARY KEY','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableRelationTypeId},'name',2,'VARCHAR',false,'NOT NULL','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableRelationTypeId},'reverse_name',3,'VARCHAR',false,'NOT NULL','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableRelationTypeId},'reversable',4,'BOOLEAN',true,'NOT NULL DEFAULT true','','','','','')`, []),
+    ]
+    batchReq = new MsgExecuteBatchRequest(DTypeConnection, queryBatch)
+    respBatch = sqlw.BatchAtomic(batchReq);
+    if (respBatch.error != "") {
+        revert(`could not insert table field definitions: ${respBatch.error}`)
+    }
+    return new ArrayBuffer(0)
+}
+
+export function InstantiateTokens(req: CallDataInstantiateTokens): ArrayBuffer {
+    console.log("--InstantiateDType token & owned--")
+
+    // Create token & owned tables
+    const identif = new TableIndentifier(tableDbConnId, tableDbId, tableTableId, DTypeConnection, DTypeDbName, DTypeTableName)
+    let respBatch = InsertOrReplaceInternal(identif, AssetTables)
+    if (respBatch.error != "") {
+        revert(`could not insert token table definitions: ${respBatch.error}`)
+    }
+    identif.table_id = tableFieldsId
+    identif.table_name = DTypeFieldName
+    respBatch = InsertOrReplaceInternal(identif, TokenFields)
+    if (respBatch.error != "") {
+        revert(`could not insert token fields definitions: ${respBatch.error}`)
+    }
+    respBatch = InsertOrReplaceInternal(identif, OwnedFields)
+    if (respBatch.error != "") {
+        revert(`could not insert owned fields definitions: ${respBatch.error}`)
+    }
+
+    let resp = CreateTableInternal(new CreateTableRequest(TokensTableId))
+    if (resp.error != "") {
+        revert(`could not create tokens table: ${resp.error}`)
+    }
+    resp = CreateTableInternal(new CreateTableRequest(OwnedTableId))
+    if (resp.error != "") {
+        revert(`could not create owned table: ${resp.error}`)
+    }
+
+    console.log("--InstantiateDType token & owned END--")
+
     return new ArrayBuffer(0)
 }
 
@@ -188,6 +336,11 @@ export function Close(req: CloseRequest): ArrayBuffer {
 }
 
 export function CreateTable(req: CreateTableRequest): ArrayBuffer {
+    const respBatch = CreateTableInternal(req)
+    return String.UTF8.encode(JSON.stringify<MsgExecuteBatchResponse>(respBatch))
+}
+
+export function CreateTableInternal(req: CreateTableRequest): MsgExecuteBatchResponse {
     const tablerow = getTable(req.table_id)
     const fields = getTableFields(req.table_id);
     const dbrow = getDb(tablerow.db_id);
@@ -228,123 +381,366 @@ export function CreateTable(req: CreateTableRequest): ArrayBuffer {
     if (respBatch.error != "") {
         revert(`could not create table and indexes: ${respBatch.error}`)
     }
-    return String.UTF8.encode(JSON.stringify<MsgExecuteBatchResponse>(respBatch))
+    return respBatch
 }
 
 export function Insert(req: InsertRequest): ArrayBuffer {
-    const identif = getIdentifier(req.identifier);
-    const fields = getTableFields(identif.table_id);
-    const params = jsonToQueryParams(base64ToString(req.data), fields)
-
-    const values: string[] = []
-    for (let i = 0; i < params.keys.length; i++) {
-        values.push("?")
-    }
-
-    // if we need to use another database
-    // (`ATTACH DATABASE ? AS ?`, otherFilePath, aliasName)
-    const query = `INSERT INTO ${identif.table_name}(${params.keys}) VALUES (${values.join(",")})`;
-    const resp = sqlw.Execute(new MsgExecuteRequest(identif.db_connection_name, query, params.values))
-    return String.UTF8.encode(JSON.stringify<MsgExecuteResponse>(resp))
+    const resp = InsertInternal(req)
+    return String.UTF8.encode(JSON.stringify<MsgExecuteBatchResponse>(resp))
 }
 
 export function InsertOrReplace(req: InsertRequest): ArrayBuffer {
-    const identif = getIdentifier(req.identifier);
-    const fields = getTableFields(identif.table_id);
-    const params = jsonToQueryParams(base64ToString(req.data), fields)
-
-    const values: string[] = []
-    for (let i = 0; i < params.keys.length; i++) {
-        values.push("?")
-    }
-
-    // if we need to use another database
-    // (`ATTACH DATABASE ? AS ?`, otherFilePath, aliasName)
-    const query = `INSERT OR REPLACE INTO ${identif.table_name}(${params.keys}) VALUES (${values.join(",")})`;
-    const resp = sqlw.Execute(new MsgExecuteRequest(identif.db_connection_name, query, params.values))
-    return String.UTF8.encode(JSON.stringify<MsgExecuteResponse>(resp))
+    const resp = InsertOrReplaceInternal(req.identifier, base64ToString(req.data))
+    return String.UTF8.encode(JSON.stringify<MsgExecuteBatchResponse>(resp))
 }
 
 export function Update(req: UpdateRequest): ArrayBuffer {
-    const identif = getIdentifier(req.identifier);
-    const fields = getTableFields(identif.table_id);
-    const condition = jsonToQueryParams(base64ToString(req.condition), fields)
-    const params = jsonToQueryParams(base64ToString(req.data), fields)
-
-    // TODO now we just use AND for conditions
-    // conditions can be more complex
-    const condvalues: string[] = []
-    for (let i = 0; i < condition.keys.length; i++) {
-        const key = condition.keys[i]
-        condvalues.push(`${key} = ?`)
-    }
-
-    const values: string[] = []
-    for (let i = 0; i < params.keys.length; i++) {
-        const key = params.keys[i]
-        values.push(`${key} = ?`)
-    }
-
-    let cond = "1"
-    if (condvalues.length > 0) {
-        cond = condvalues.join(" AND ")
-    }
-
-    const query = `UPDATE ${identif.table_name} SET ${values.join(",")} WHERE ${cond};`;
-    const resp = sqlw.Execute(new MsgExecuteRequest(identif.db_connection_name, query, params.values.concat(condition.values)))
-    return String.UTF8.encode(JSON.stringify<MsgExecuteResponse>(resp))
+    const resp = UpdateInternal(req)
+    return String.UTF8.encode(JSON.stringify<MsgExecuteBatchResponse>(resp))
 }
 
 export function Delete(req: DeleteRequest): ArrayBuffer {
-    const identif = getIdentifier(req.identifier);
-    const fields = getTableFields(identif.table_id);
-    const condition = jsonToQueryParams(base64ToString(req.condition), fields)
-
-    // TODO now we just use AND for conditions
-    // conditions can be more complex
-    const condvalues: string[] = []
-    for (let i = 0; i < condition.keys.length; i++) {
-        const key = condition.keys[i]
-        condvalues.push(`${key} = ?`)
-    }
-
-    let cond = "1"
-    if (condvalues.length > 0) {
-        cond = condvalues.join(" AND ")
-    }
-
-    const query = `DELETE FROM ${identif.table_name} WHERE ${cond};`;
-    const resp = sqlw.Execute(new MsgExecuteRequest(identif.db_connection_name, query, condition.values))
-    return String.UTF8.encode(JSON.stringify<MsgExecuteResponse>(resp))
+    const resp = DeleteInternal(req)
+    return String.UTF8.encode(JSON.stringify<MsgExecuteBatchResponse>(resp))
 }
 
 export function Read(req: ReadRequest): ArrayBuffer {
-    const identif = getIdentifier(req.identifier);
-    const fields = getTableFields(identif.table_id);
-    const params = jsonToQueryParams(base64ToString(req.data), fields)
-
-    const values: string[] = []
-    for (let i = 0; i < params.keys.length; i++) {
-        const key = params.keys[i]
-        values.push(`${key} = ?`)
-    }
-
-    let cond = "1"
-    if (values.length > 0) {
-        cond = values.join(",")
-    }
-    // TODO more complex queries - limit, etc.
-
-    const query = `SELECT * FROM ${identif.table_name} WHERE ${cond};`;
-    const resp = sqlw.Query(new MsgQueryRequest(identif.db_connection_name, query, params.values))
+    const resp = ReadInternal(req.identifier, req.data)
     return String.UTF8.encode(JSON.stringify<MsgQueryResponse>(resp))
+}
+
+export function ReadField(req: ReadFieldRequest): ArrayBuffer {
+    const resp = ReadFieldInternal(req)
+    return String.UTF8.encode(JSON.stringify<MsgQueryResponse>(resp))
+}
+
+export function Count(req: CountRequest): ArrayBuffer {
+    const resp = ReadInternal(req.identifier, req.data)
+    if (resp.error != "") {
+        return String.UTF8.encode(JSON.stringify<CountResponse>(new CountResponse(resp.error, 0)))
+    }
+    console.log("count--" + resp.data)
+    const data = base64ToString(resp.data)
+    let arr: JSONDyn.Arr = <JSONDyn.Arr>(JSONDyn.parse(data));
+    console.log("count--" + arr._arr.length.toString())
+    return String.UTF8.encode(JSON.stringify<CountResponse>(new CountResponse("", i64(arr._arr.length))))
 }
 
 export function BuildSchema(req: BuildSchemaRequest): ArrayBuffer {
     const identif = getIdentifier(req.identifier);
     const fields = getTableFields(identif.table_id);
+    if (fields.length == 0) revert(`table with no fields`)
     const resp = generateJsonSchema(fields)
     return String.UTF8.encode(JSON.stringify<BuildSchemaResponse>(new BuildSchemaResponse(stringToBase64(resp))))
+}
+
+export function add(req: AddRequest): ArrayBuffer {
+    const data = ReadFieldInternal(new ReadFieldRequest(req.identifier, 0, req.fieldName, req.condition))
+    const amount = BigInt.fromString(req.amount)
+    let value = BigInt.zero()
+    console.log("--add--" + data.data + "--" + base64ToString(data.data))
+    if (data.data != "") {
+        value = BigInt.fromString(base64ToString(data.data))
+    }
+    console.log("--add value--" + value.toString())
+    value = value.add(amount)
+    console.log("--add value--" + req.fieldName + "---" + value.toString())
+    const resp = UpdateInternal(new UpdateRequest(req.identifier, req.condition, stringToBase64(`{"${req.fieldName}":"${value.toString()}"}`)))
+    if (resp.error != "") {
+        revert(resp.error)
+    }
+    return new ArrayBuffer(0)
+}
+
+export function sub(req: SubRequest): ArrayBuffer {
+    const data = ReadFieldInternal(new ReadFieldRequest(req.identifier, 0, req.fieldName, req.condition))
+    const amount = BigInt.fromString(req.amount)
+    let value = BigInt.zero()
+    console.log("--sub--" + data.data + "--" + base64ToString(data.data))
+    if (data.data != "") {
+        value = BigInt.fromString(base64ToString(data.data))
+    }
+    value = value.sub(amount)
+    const resp = UpdateInternal(new UpdateRequest(req.identifier, req.condition, stringToBase64(`{"${req.fieldName}":"${value.toString()}"}`)))
+    if (resp.error != "") {
+        revert(resp.error)
+    }
+    return new ArrayBuffer(0)
+}
+
+export function move(req: MoveRequest): ArrayBuffer {
+    const amount = BigInt.fromString(req.amount)
+    const dataSource = ReadFieldInternal(new ReadFieldRequest(req.identifier, 0, req.fieldName, req.condition_source))
+    const dataTarget = ReadFieldInternal(new ReadFieldRequest(req.identifier, 0, req.fieldName, req.condition_target))
+
+    console.log("--move dataSource--" + dataSource.data + "--" + base64ToString(dataSource.data))
+    console.log("--move dataTarget--" + dataTarget.data + "--" + base64ToString(dataTarget.data))
+
+    let valueSource = BigInt.zero()
+    if (dataSource.data != "") {
+        valueSource = BigInt.fromString(base64ToString(dataSource.data))
+    }
+    let valueTarget = BigInt.zero()
+    if (dataTarget.data != "") {
+        valueTarget = BigInt.fromString(base64ToString(dataTarget.data))
+    }
+
+    if (valueSource.lt(amount)) {
+        revert(`move source amount not enough`)
+    }
+
+    valueSource = valueSource.sub(amount)
+    valueTarget = valueTarget.add(amount)
+
+    console.log("--valueSource--" + valueSource.toString())
+    console.log("--valueTarget--" + valueTarget.toString())
+
+    // atomic update operation
+    const condition = stringToBase64(`[${base64ToString(req.condition_source)},${base64ToString(req.condition_target)}]`)
+
+    const toUpdate = stringToBase64(`[{"${req.fieldName}":"${valueSource.toString()}"},{"${req.fieldName}":"${valueTarget.toString()}"}]`)
+
+    const resp = UpdateInternal(new UpdateRequest(req.identifier, condition, toUpdate))
+    if (resp.error != "") {
+        revert(resp.error)
+    }
+    return new ArrayBuffer(0)
+}
+
+export function InsertInternal(req: InsertRequest): MsgExecuteBatchResponse {
+    const identif = getIdentifier(req.identifier);
+    const fields = getTableFields(identif.table_id);
+    if (fields.length == 0) revert(`table with no fields`)
+    const params = jsonToQueryParams(base64ToString(req.data), fields)
+    if (params.length == 0) return new MsgExecuteBatchResponse("", [])
+
+    const queries: SqlExecuteCommand[] = []
+    for (let i = 0; i < params.length; i++) {
+        const param = params[i]
+        const values: string[] = []
+        for (let i = 0; i < param.keys.length; i++) {
+            values.push("?")
+        }
+        // if we need to use another database
+        // (`ATTACH DATABASE ? AS ?`, otherFilePath, aliasName)
+        const query = `INSERT INTO ${identif.table_name}(${param.keys}) VALUES (${values.join(",")})`;
+        queries.push(new SqlExecuteCommand(query, param.values))
+    }
+
+    if (queries.length == 1) {
+        const resp = sqlw.Execute(new MsgExecuteRequest(identif.db_connection_name, queries[0].query, queries[0].params))
+        return new MsgExecuteBatchResponse(resp.error, [resp]);
+    }
+
+    return sqlw.BatchAtomic(new MsgExecuteBatchRequest(identif.db_connection_name, queries))
+}
+
+export function InsertOrReplaceInternal(identifier: TableIndentifier, data: string): MsgExecuteBatchResponse {
+    console.log("--InsertOrReplaceInternal--" + data)
+
+    const identif = getIdentifier(identifier);
+
+    console.log("--InsertOrReplaceInternal identif--" + identif.table_id.toString())
+
+    const fields = getTableFields(identif.table_id);
+    console.log("--InsertOrReplaceInternal fields--" + fields.length.toString())
+    if (fields.length == 0) revert(`table with no fields`)
+
+    const params = jsonToQueryParams(data, fields)
+
+    console.log("--InsertOrReplaceInternal params--" + params.length.toString())
+
+    if (params.length == 0) return new MsgExecuteBatchResponse("", [])
+
+
+
+    const queries: SqlExecuteCommand[] = []
+    for (let i = 0; i < params.length; i++) {
+        const param = params[i]
+        const values: string[] = []
+        for (let i = 0; i < param.keys.length; i++) {
+            values.push("?")
+        }
+
+        // if we need to use another database
+        // (`ATTACH DATABASE ? AS ?`, otherFilePath, aliasName)
+        const query = `INSERT OR REPLACE INTO ${identif.table_name}(${param.keys}) VALUES (${values.join(",")})`;
+        queries.push(new SqlExecuteCommand(query, param.values))
+    }
+
+    if (queries.length == 1) {
+        const resp = sqlw.Execute(new MsgExecuteRequest(identif.db_connection_name, queries[0].query, queries[0].params))
+        return new MsgExecuteBatchResponse(resp.error, [resp]);
+    }
+
+    return sqlw.BatchAtomic(new MsgExecuteBatchRequest(identif.db_connection_name, queries))
+}
+
+export function UpdateInternal(req: UpdateRequest): MsgExecuteBatchResponse {
+    const identif = getIdentifier(req.identifier);
+    const fields = getTableFields(identif.table_id);
+    if (fields.length == 0) revert(`table with no fields`)
+    const conditions = jsonToQueryParams(base64ToString(req.condition), fields)
+    const params = jsonToQueryParams(base64ToString(req.data), fields)
+
+    if (params.length == 0) return new MsgExecuteBatchResponse("", [])
+    if (conditions.length != params.length) return new MsgExecuteBatchResponse("condition length mismatch", [])
+
+    const queries: SqlExecuteCommand[] = []
+    for (let i = 0; i < params.length; i++) {
+        const param = params[i]
+        const condition = conditions[i]
+
+        // TODO now we just use AND for conditions
+        // conditions can be more complex
+        const condvalues: string[] = []
+        for (let i = 0; i < condition.keys.length; i++) {
+            const key = condition.keys[i]
+            condvalues.push(`${key} = ?`)
+        }
+
+        const values: string[] = []
+        for (let i = 0; i < param.keys.length; i++) {
+            const key = param.keys[i]
+            values.push(`${key} = ?`)
+        }
+
+        let cond = "1"
+        if (condvalues.length > 0) {
+            cond = condvalues.join(" AND ")
+        }
+
+        const query = `UPDATE ${identif.table_name} SET ${values.join(",")} WHERE ${cond};`;
+        queries.push(new SqlExecuteCommand(query, param.values.concat(condition.values)))
+    }
+    if (queries.length == 1) {
+        const resp = sqlw.Execute(new MsgExecuteRequest(identif.db_connection_name, queries[0].query, queries[0].params))
+        return new MsgExecuteBatchResponse(resp.error, [resp]);
+    }
+
+    return sqlw.BatchAtomic(new MsgExecuteBatchRequest(identif.db_connection_name, queries))
+}
+
+export function DeleteInternal(req: DeleteRequest): MsgExecuteBatchResponse {
+    const identif = getIdentifier(req.identifier);
+    const fields = getTableFields(identif.table_id);
+    if (fields.length == 0) revert(`table with no fields`)
+    const conditions = jsonToQueryParams(base64ToString(req.condition), fields)
+
+    if (conditions.length == 0) return new MsgExecuteBatchResponse("delete must have a condition", [])
+
+    const queries: SqlExecuteCommand[] = []
+    for (let i = 0; i < conditions.length; i++) {
+        const condition = conditions[i]
+
+        // TODO now we just use AND for conditions
+        // conditions can be more complex
+        const condvalues: string[] = []
+        for (let i = 0; i < condition.keys.length; i++) {
+            const key = condition.keys[i]
+            condvalues.push(`${key} = ?`)
+        }
+
+        let cond = "1"
+        if (condvalues.length > 0) {
+            cond = condvalues.join(" AND ")
+        }
+
+        const query = `DELETE FROM ${identif.table_name} WHERE ${cond};`;
+        queries.push(new SqlExecuteCommand(query, condition.values))
+    }
+
+    if (queries.length == 1) {
+        const resp = sqlw.Execute(new MsgExecuteRequest(identif.db_connection_name, queries[0].query, queries[0].params))
+        return new MsgExecuteBatchResponse(resp.error, [resp]);
+    }
+
+    return sqlw.BatchAtomic(new MsgExecuteBatchRequest(identif.db_connection_name, queries))
+}
+
+// TODO batch reads
+export function ReadInternal(identifier: TableIndentifier, data: Base64String): MsgQueryResponse {
+    const identif = getIdentifier(identifier);
+    const fields = getTableFields(identif.table_id);
+    if (fields.length == 0) revert(`table with no fields`)
+    const params = jsonToQueryParams(base64ToString(data), fields)
+    if (params.length == 0) return new MsgQueryResponse("", "")
+    const param = params[0]
+
+    const values: string[] = []
+    for (let i = 0; i < param.keys.length; i++) {
+        const key = param.keys[i]
+        values.push(`${key} = ?`)
+    }
+
+    let cond = "1"
+    if (values.length > 0) {
+        cond = values.join(" AND ")
+    }
+    // TODO more complex queries - limit, etc.
+
+    const query = `SELECT * FROM ${identif.table_name} WHERE ${cond};`;
+    return sqlw.Query(new MsgQueryRequest(identif.db_connection_name, query, param.values))
+}
+
+export function ReadFieldInternal(req: ReadFieldRequest): MsgQueryResponse {
+    const identif = getIdentifier(req.identifier);
+    const fields = getTableFields(identif.table_id)
+    if (req.fieldName == "") {
+        revert(`missing field name`);
+    }
+    let field: DTypeField | null = null;
+    for (let i = 0; i < fields.length; i++) {
+        if (fields[i].name == req.fieldName) {
+            field = fields[i]
+        }
+    }
+    if (field == null) {
+        revert(`invalid field name`)
+        return new MsgQueryResponse("", "");
+    }
+    // if (req.fieldId > 0) {
+    //     field = getField(req.fieldId)
+    // } else {
+    //     field = getFieldByName(req.fieldName, identif.table_id)
+    // }
+    console.log("--ReadFieldInternal--" + base64ToString(req.data))
+    const params = jsonToQueryParams(base64ToString(req.data), fields)
+    console.log("--ReadFieldInternal params--" + params.length.toString())
+    if (params.length == 0) return new MsgQueryResponse("", "")
+    const param = params[0]
+    console.log("--ReadFieldInternal params--" + param.keys.join(",") + "--" + param.values.join(","))
+
+    const values: string[] = []
+    for (let i = 0; i < param.keys.length; i++) {
+        const key = param.keys[i]
+        values.push(`${key} = ?`)
+    }
+    console.log("--ReadFieldInternal values--" + values.length.toString())
+
+    let cond = "1"
+    if (values.length > 0) {
+        cond = values.join(" AND ")
+    }
+
+    const query = `SELECT ${field.name} FROM ${identif.table_name} WHERE ${cond};`;
+    const resp = sqlw.Query(new MsgQueryRequest(identif.db_connection_name, query, param.values))
+    console.log("--ReadFieldInternal q error--" + resp.error)
+    console.log("--ReadFieldInternal q data--" + resp.data)
+    if (resp.error != "") return new MsgQueryResponse(resp.error, "")
+
+    let jsonObj: JSONDyn.Arr = <JSONDyn.Arr>(JSONDyn.parse(base64ToString(resp.data)));
+    if (jsonObj._arr.length > 0) {
+        const v = jsonObj._arr.at(0)
+        if (!v.isObj) revert("unexpected value")
+        const value: JSONDyn.Obj = changetype<JSONDyn.Obj>(v);
+        if (value.has(req.fieldName)) {
+            const data = value.get(req.fieldName)
+            if (data != null) return new MsgQueryResponse("", stringToBase64(data.toString()))
+        }
+    }
+
+    return new MsgQueryResponse("", "")
 }
 
 function prepareBatchAtomic(id: string, cmmds: string[]): MsgExecuteBatchRequest {
@@ -500,6 +896,18 @@ function getTableByName(name: string, db_id: i64): DTypeTable {
     const rows = JSON.parse<DTypeTable[]>(base64ToString(queryResp.data))
     if (rows.length != 1) {
         revert(`table not found: ${name}, ${db_id}`);
+    }
+    return rows[0];
+}
+
+function getField(fieldId: i64): DTypeField {
+    const queryResp = sqlw.Query(new MsgQueryRequest(DTypeConnection, `SELECT * FROM ${DTypeFieldName} WHERE id = ${fieldId}`, []))
+    if (queryResp.error != "") {
+        revert(`query failed: ${queryResp.error}`);
+    }
+    const rows = JSON.parse<DTypeField[]>(base64ToString(queryResp.data))
+    if (rows.length != 1) {
+        revert(`field not found: ${fieldId}`);
     }
     return rows[0];
 }

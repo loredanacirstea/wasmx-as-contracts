@@ -5,6 +5,10 @@ export const MODULE_NAME = "dtype"
 
 // @ts-ignore
 @serializable
+export class CallDataInstantiateTokens {}
+
+// @ts-ignore
+@serializable
 export class CallDataInstantiate {
     dir: string = ""
     driver: string = ""
@@ -113,6 +117,51 @@ export class ReadRequest {
         data: Base64String,
     ) {
         this.identifier = identifier
+        this.data = data
+    }
+}
+
+// @ts-ignore
+@serializable
+export class CountRequest {
+    identifier: TableIndentifier
+    data: Base64String
+    constructor(
+        identifier: TableIndentifier,
+        data: Base64String,
+    ) {
+        this.identifier = identifier
+        this.data = data
+    }
+}
+
+// @ts-ignore
+@serializable
+export class CountResponse {
+    error: string = ""
+    count: i64 = 0
+    constructor( error: string, count: i64) {
+        this.error = error
+        this.count = count
+    }
+}
+
+// @ts-ignore
+@serializable
+export class ReadFieldRequest {
+    identifier: TableIndentifier
+    fieldId: i64 = 0
+    fieldName: string = ""
+    data: Base64String = ""
+    constructor(
+        identifier: TableIndentifier,
+        fieldId: i64,
+        fieldName: string,
+        data: Base64String,
+    ) {
+        this.identifier = identifier
+        this.fieldId = fieldId
+        this.fieldName = fieldName
         this.data = data
     }
 }

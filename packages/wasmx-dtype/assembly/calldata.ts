@@ -1,6 +1,7 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { BuildSchemaRequest, CallDataInstantiate, CloseRequest, ConnectRequest, CreateTableRequest, DeleteRequest, InsertRequest, ReadRequest, UpdateRequest } from "./types";
+import { BuildSchemaRequest, CallDataInstantiate, CallDataInstantiateTokens, CloseRequest, ConnectRequest, CountRequest, CreateTableRequest, DeleteRequest, InsertRequest, ReadFieldRequest, ReadRequest, UpdateRequest } from "./types";
+import { AddRequest, MoveRequest, SubRequest } from "./types_tokens";
 
 // @ts-ignore
 @serializable
@@ -10,6 +11,7 @@ export class MsgEmpty {}
 @serializable
 export class CallData {
     Initialize: CallDataInstantiate | null = null;
+    InitializeTokens: CallDataInstantiateTokens | null = null;
     CreateTable: CreateTableRequest | null = null;
     Connect: ConnectRequest | null = null;
     Close: CloseRequest | null = null;
@@ -18,7 +20,12 @@ export class CallData {
     Update: UpdateRequest | null = null;
     Delete: DeleteRequest | null = null;
     Read: ReadRequest | null = null;
+    ReadField: ReadFieldRequest | null = null;
+    Count: CountRequest | null = null;
     BuildSchema: BuildSchemaRequest | null = null;
+    Add: AddRequest | null = null;
+    Sub: SubRequest | null = null;
+    Move: MoveRequest | null = null;
 }
 
 export function getCallDataWrap(): CallData {
