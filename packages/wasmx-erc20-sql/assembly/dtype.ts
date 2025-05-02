@@ -100,7 +100,6 @@ export function countFromTable(tableId: i64, tableName: string, data: Base64Stri
     if (resp.success > 0) {
         revert(`readFromTable failed for table ${tableName}: ${resp.data}`)
     }
-    console.log("--countFromTable resp--" + resp.data)
     const result = JSON.parse<CountResponse>(resp.data)
     if (result.error != "") {
         revert(`readFromTable failed for table ${tableName}: ${result.error}`)
@@ -113,7 +112,6 @@ export function moveToken(source: Bech32String, target: Bech32String, amount: Bi
 }
 
 export function addToken(target: Bech32String, amount: BigInt): void {
-    console.log("--addToken--" + target + "--" + amount.toString())
     return addValue(config.OwnedTableId, config.OwnedTable, "amount", `{"owner":"${target}","creator":"${wasmxw.getAddress()}"}`, amount)
 }
 
@@ -187,7 +185,6 @@ export function updateFieldValues(tableId: i64, tableName: string, obj: string, 
     if (resp.success > 0) {
         revert(`updateFieldValues failed: ${resp.data}`)
     }
-    console.log("--updateFieldValues resp--" + resp.data)
     const response = JSON.parse<MsgExecuteBatchResponse>(resp.data)
     if (response.error != "") {
         revert(response.error)
@@ -203,7 +200,6 @@ export function insertFieldValues(tableId: i64, tableName: string, obj: string):
     if (resp.success > 0) {
         revert(`insertFieldValues failed: ${resp.data}`)
     }
-    console.log("--insertFieldValues resp--" + resp.data)
     const response = JSON.parse<MsgExecuteBatchResponse>(resp.data)
     if (response.error != "") {
         revert(response.error)
@@ -222,7 +218,6 @@ export function getFieldValue(tableId: i64, tableName: string, fieldName: string
     if (resp.success > 0) {
         revert(`getFieldValue failed for table ${tableName}, field ${fieldName}: ${resp.data}`)
     }
-    console.log("--getFieldValue resp--" + resp.data)
     const result = JSON.parse<MsgQueryResponse>(resp.data)
     if (result.error != "") {
         revert(`getFieldValue failed for table ${tableName}, field ${fieldName}: ${result.error}`)

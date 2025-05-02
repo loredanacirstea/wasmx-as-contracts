@@ -88,7 +88,6 @@ const PermissionFields = `[
 ]`
 
 export function InstantiateDType(req: CallDataInstantiate): ArrayBuffer {
-    console.log("--InstantiateDType--")
     const dbfile = "dtype.db"
     const dbpath = joinPath(req.dir, dbfile)
 
@@ -284,8 +283,6 @@ export function InstantiateDType(req: CallDataInstantiate): ArrayBuffer {
 }
 
 export function InstantiateTokens(req: CallDataInstantiateTokens): ArrayBuffer {
-    console.log("--InstantiateDType token & owned--")
-
     // Create token & owned tables
     const identif = new TableIndentifier(tableDbConnId, tableDbId, tableTableId, DTypeConnection, DTypeDbName, DTypeTableName)
     let respBatch = InsertOrReplaceInternal(identif, AssetTables)
@@ -319,8 +316,6 @@ export function InstantiateTokens(req: CallDataInstantiateTokens): ArrayBuffer {
     if (resp.error != "") {
         revert(`could not create permissions table: ${resp.error}`)
     }
-
-    console.log("--InstantiateDType token & owned END--")
 
     return new ArrayBuffer(0)
 }
@@ -439,10 +434,8 @@ export function Count(req: CountRequest): ArrayBuffer {
     if (resp.error != "") {
         return String.UTF8.encode(JSON.stringify<CountResponse>(new CountResponse(resp.error, 0)))
     }
-    console.log("count--" + resp.data)
     const data = base64ToString(resp.data)
     let arr: JSONDyn.Arr = <JSONDyn.Arr>(JSONDyn.parse(data));
-    console.log("count--" + arr._arr.length.toString())
     return String.UTF8.encode(JSON.stringify<CountResponse>(new CountResponse("", i64(arr._arr.length))))
 }
 
@@ -458,13 +451,10 @@ export function add(req: AddRequest): ArrayBuffer {
     const data = ReadFieldInternal(new ReadFieldRequest(req.identifier, 0, req.fieldName, req.condition))
     const amount = BigInt.fromString(req.amount)
     let value = BigInt.zero()
-    console.log("--add--" + data.data + "--" + base64ToString(data.data))
     if (data.data != "") {
         value = BigInt.fromString(base64ToString(data.data))
     }
-    console.log("--add value--" + value.toString())
     value = value.add(amount)
-    console.log("--add value--" + req.fieldName + "---" + value.toString())
     const resp = UpdateInternal(new UpdateRequest(req.identifier, req.condition, stringToBase64(`{"${req.fieldName}":"${value.toString()}"}`)))
     if (resp.error != "") {
         revert(resp.error)
@@ -476,7 +466,6 @@ export function sub(req: SubRequest): ArrayBuffer {
     const data = ReadFieldInternal(new ReadFieldRequest(req.identifier, 0, req.fieldName, req.condition))
     const amount = BigInt.fromString(req.amount)
     let value = BigInt.zero()
-    console.log("--sub--" + data.data + "--" + base64ToString(data.data))
     if (data.data != "") {
         value = BigInt.fromString(base64ToString(data.data))
     }
@@ -493,9 +482,6 @@ export function move(req: MoveRequest): ArrayBuffer {
     const dataSource = ReadFieldInternal(new ReadFieldRequest(req.identifier, 0, req.fieldName, req.condition_source))
     const dataTarget = ReadFieldInternal(new ReadFieldRequest(req.identifier, 0, req.fieldName, req.condition_target))
 
-    console.log("--move dataSource--" + dataSource.data + "--" + base64ToString(dataSource.data))
-    console.log("--move dataTarget--" + dataTarget.data + "--" + base64ToString(dataTarget.data))
-
     let valueSource = BigInt.zero()
     if (dataSource.data != "") {
         valueSource = BigInt.fromString(base64ToString(dataSource.data))
@@ -511,9 +497,6 @@ export function move(req: MoveRequest): ArrayBuffer {
 
     valueSource = valueSource.sub(amount)
     valueTarget = valueTarget.add(amount)
-
-    console.log("--valueSource--" + valueSource.toString())
-    console.log("--valueTarget--" + valueTarget.toString())
 
     // atomic update operation
     const condition = stringToBase64(`[${base64ToString(req.condition_source)},${base64ToString(req.condition_target)}]`)
@@ -556,23 +539,13 @@ export function InsertInternal(req: InsertRequest): MsgExecuteBatchResponse {
 }
 
 export function InsertOrReplaceInternal(identifier: TableIndentifier, data: string): MsgExecuteBatchResponse {
-    console.log("--InsertOrReplaceInternal--" + data)
-
     const identif = getIdentifier(identifier);
-
-    console.log("--InsertOrReplaceInternal identif--" + identif.table_id.toString())
-
     const fields = getTableFields(identif.table_id);
-    console.log("--InsertOrReplaceInternal fields--" + fields.length.toString())
+
     if (fields.length == 0) revert(`table with no fields`)
 
     const params = jsonToQueryParams(data, fields)
-
-    console.log("--InsertOrReplaceInternal params--" + params.length.toString())
-
     if (params.length == 0) return new MsgExecuteBatchResponse("", [])
-
-
 
     const queries: SqlExecuteCommand[] = []
     for (let i = 0; i < params.length; i++) {
@@ -719,24 +692,16 @@ export function ReadFieldInternal(req: ReadFieldRequest): MsgQueryResponse {
         revert(`invalid field name`)
         return new MsgQueryResponse("", "");
     }
-    // if (req.fieldId > 0) {
-    //     field = getField(req.fieldId)
-    // } else {
-    //     field = getFieldByName(req.fieldName, identif.table_id)
-    // }
-    console.log("--ReadFieldInternal--" + base64ToString(req.data))
+
     const params = jsonToQueryParams(base64ToString(req.data), fields)
-    console.log("--ReadFieldInternal params--" + params.length.toString())
     if (params.length == 0) return new MsgQueryResponse("", "")
     const param = params[0]
-    console.log("--ReadFieldInternal params--" + param.keys.join(",") + "--" + param.values.join(","))
 
     const values: string[] = []
     for (let i = 0; i < param.keys.length; i++) {
         const key = param.keys[i]
         values.push(`${key} = ?`)
     }
-    console.log("--ReadFieldInternal values--" + values.length.toString())
 
     let cond = "1"
     if (values.length > 0) {
@@ -745,8 +710,7 @@ export function ReadFieldInternal(req: ReadFieldRequest): MsgQueryResponse {
 
     const query = `SELECT ${field.name} FROM ${identif.table_name} WHERE ${cond};`;
     const resp = sqlw.Query(new MsgQueryRequest(identif.db_connection_name, query, param.values))
-    console.log("--ReadFieldInternal q error--" + resp.error)
-    console.log("--ReadFieldInternal q data--" + resp.data)
+
     if (resp.error != "") return new MsgQueryResponse(resp.error, "")
 
     let jsonObj: JSONDyn.Arr = <JSONDyn.Arr>(JSONDyn.parse(base64ToString(resp.data)));

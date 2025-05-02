@@ -14,7 +14,6 @@ export class QueryParams {
 }
 
 export function jsonToQueryParams(value: string, fields: DTypeField[]): QueryParams[] {
-    console.log("--jsonToQueryParams--" + value)
     // could be object or array
     if (value.substr(0, 1) == "[") {
         let arr: JSON.Arr = <JSON.Arr>(JSON.parse(value));

@@ -49,16 +49,12 @@ export function balanceOf(req: MsgBalanceOf): ArrayBuffer {
 }
 
 export function transfer(req: MsgTransfer): ArrayBuffer {
-    console.log("--transfer--" + req.to)
     const from = wasmxw.getCaller();
-
     if (!assetExists(req.to)) {
-        console.log("--insertOwnedFieldValues--" + req.to)
         insertOwnedFieldValues(req.to, BigInt.zero())
     }
 
     LoggerDebug("transfer", ["from", from, "to", req.to, "value", req.value.toString()])
-    console.log("--moveToken--")
     moveToken(from, req.to, req.value);
     logTransfer(from, req.to, req.value);
     return String.UTF8.encode(JSON.stringify<MsgTransferResponse>(new MsgTransferResponse()))
