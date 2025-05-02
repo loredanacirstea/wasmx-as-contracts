@@ -7,10 +7,12 @@ import { BuildSchemaRequest, BuildSchemaResponse, CallDataInstantiate, CallDataI
 import { revert } from "./utils";
 import { jsonToQueryParams, QueryParams } from "./json";
 import { generateJsonSchema } from "./schema";
-import { DTypeConnection, DTypeDbConnName, DTypeDbName, DTypeFieldName, DTypeNodeName, DTypeRelationName, DTypeRelationTypeName, DTypeTableName, OwnedTable, OwnedTableId, tableDbConnId, tableDbId, tableFieldsId, tableNodeId, tableRelationId, tableRelationTypeId, tableTableId, TokensTable, TokensTableId } from "./config";
+import { DTypeConnection, DTypeDbConnName, DTypeDbName, DTypeFieldName, DTypeNodeName, DTypeRelationName, DTypeRelationTypeName, DTypeTableName, OwnedTable, OwnedTableId, PermissionsTable, PermissionsTableId, tableDbConnId, tableDbId, tableFieldsId, tableNodeId, tableRelationId, tableRelationTypeId, tableTableId, TokensTable, TokensTableId } from "./config";
 import { AddRequest, MoveRequest, SubRequest } from "./types_tokens";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { Base64String } from "wasmx-env/assembly/types";
+
+// TODO each table has field creator: Bech32String (contract address with write rights)
 
 const SqlCreateTableDbConn = `CREATE TABLE IF NOT EXISTS ${DTypeDbConnName} (id INTEGER PRIMARY KEY, connection VARCHAR NOT NULL, driver VARCHAR NOT NULL, name VARCHAR UNIQUE NOT NULL, description TEXT DEFAULT '')`
 const SqlCreateIndexDbConn1 = `CREATE INDEX IF NOT EXISTS idx_${DTypeDbConnName}_name ON ${DTypeDbConnName}(name)`
@@ -51,7 +53,7 @@ const SqlCreateIndexRelation2 = `CREATE INDEX relation_target_node_id_IDX ON rel
 const GraphTables = `[{"name":"${DTypeNodeName}","db_id":"1","description":"table for graph nodes"},{"name":"${DTypeNodeName}","db_id":"1","description":"table for graph nodes"}]`
 
 
-const AssetTables = `[{"name":"${TokensTable}","db_id":"1","description":"table for registered tokens"},{"name":"${OwnedTable}","db_id":"1","description":"table for user owned tokens"}]`
+const AssetTables = `[{"name":"${TokensTable}","db_id":"1","description":"table for registered tokens"},{"name":"${OwnedTable}","db_id":"1","description":"table for user owned tokens"},{"name":"${PermissionsTable}","db_id":"1","description":"table for asset permissions"}]`
 const TokenFields = `[
 {"table_id":${TokensTableId},"name":"id","order_index":1,"value_type":"INTEGER","indexed":false,"sql_options":"PRIMARY KEY","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
 {"table_id":${TokensTableId},"name":"value_type","order_index":2,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
@@ -73,6 +75,16 @@ const OwnedFields = `[
 {"table_id":${OwnedTableId},"name":"permissions","order_index":6,"value_type":"TEXT","indexed":false,"sql_options":"NOT NULL DEFAULT '[]'","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
 {"table_id":${OwnedTableId},"name":"creator","order_index":7,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
 {"table_id":${OwnedTableId},"name":"owner","order_index":8,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""}
+]`
+
+const PermissionFields = `[
+{"table_id":${PermissionsTableId},"name":"id","order_index":1,"value_type":"INTEGER","indexed":false,"sql_options":"PRIMARY KEY","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${PermissionsTableId},"name":"table_id","order_index":2,"value_type":"INTEGER","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"${DTypeTableName}","foreign_key_field":"id","foreign_key_sql_options":"ON UPDATE CASCADE ON DELETE RESTRICT","description":"","permissions":""},
+{"table_id":${PermissionsTableId},"name":"record_id","order_index":3,"value_type":"INTEGER","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${PermissionsTableId},"name":"owner","order_index":4,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${PermissionsTableId},"name":"spender","order_index":5,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${PermissionsTableId},"name":"owned","order_index":6,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${PermissionsTableId},"name":"amount","order_index":7,"value_type":"VARCHAR","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""}
 ]`
 
 export function InstantiateDType(req: CallDataInstantiate): ArrayBuffer {
@@ -290,6 +302,10 @@ export function InstantiateTokens(req: CallDataInstantiateTokens): ArrayBuffer {
     if (respBatch.error != "") {
         revert(`could not insert owned fields definitions: ${respBatch.error}`)
     }
+    respBatch = InsertOrReplaceInternal(identif, PermissionFields)
+    if (respBatch.error != "") {
+        revert(`could not insert permission fields definitions: ${respBatch.error}`)
+    }
 
     let resp = CreateTableInternal(new CreateTableRequest(TokensTableId))
     if (resp.error != "") {
@@ -298,6 +314,10 @@ export function InstantiateTokens(req: CallDataInstantiateTokens): ArrayBuffer {
     resp = CreateTableInternal(new CreateTableRequest(OwnedTableId))
     if (resp.error != "") {
         revert(`could not create owned table: ${resp.error}`)
+    }
+    resp = CreateTableInternal(new CreateTableRequest(PermissionsTableId))
+    if (resp.error != "") {
+        revert(`could not create permissions table: ${resp.error}`)
     }
 
     console.log("--InstantiateDType token & owned END--")

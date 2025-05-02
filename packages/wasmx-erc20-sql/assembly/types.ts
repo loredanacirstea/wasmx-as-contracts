@@ -168,28 +168,6 @@ export class MsgAllowanceResponse {
 
 // @ts-ignore
 @serializable
-export class MsgMint {
-    to: Bech32String
-    value: BigInt
-    constructor(to: Bech32String, value: BigInt) {
-        this.to = to
-        this.value = value
-    }
-}
-
-// @ts-ignore
-@serializable
-export class MsgBurn {
-    from: Bech32String
-    value: BigInt
-    constructor(from: Bech32String, value: BigInt) {
-        this.from = from
-        this.value = value
-    }
-}
-
-// @ts-ignore
-@serializable
 export class TokenInfo {
     name: string
     symbol: string

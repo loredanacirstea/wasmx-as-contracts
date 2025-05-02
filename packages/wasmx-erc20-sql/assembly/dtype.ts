@@ -7,7 +7,7 @@ import * as config from "wasmx-dtype/assembly/config";
 import { MODULE_NAME } from './types';
 import { callContract } from "wasmx-env/assembly/utils";
 import { ROLE_DTYPE } from "wasmx-env/assembly/roles";
-import { base64ToString, stringToBase64 } from "wasmx-utils/assembly/utils";
+import { base64ToString, parseInt64, stringToBase64 } from "wasmx-utils/assembly/utils";
 import { revert } from "./utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { MsgExecuteBatchResponse, MsgQueryResponse } from "wasmx-env-sql/assembly/types";
@@ -26,30 +26,16 @@ function getDTypeIdentifier(table_id: i64, table_name: string): TableIndentifier
     return new TableIndentifier(config.tableDbConnId, config.tableDbId, table_id, config.DTypeConnection, config.DTypeDbName, table_name)
 }
 
-export function getFieldValue(tableId: i64, tableName: string, fieldName: string, data: Base64String): string {
-    const calld = JSON.stringify<ReadFieldRequest>(new ReadFieldRequest(
-        getDTypeIdentifier(tableId, tableName),
-        0, fieldName,
-        data,
-    ))
-    const resp = callContract(ROLE_DTYPE, `{"ReadField":${calld}}`, true, MODULE_NAME)
-    if (resp.success > 0) {
-        revert(`getFieldValue failed for table ${tableName}, field ${fieldName}: ${resp.data}`)
-    }
-    console.log("--getFieldValue resp--" + resp.data)
-    const result = JSON.parse<MsgQueryResponse>(resp.data)
-    if (result.error != "") {
-        revert(`getFieldValue failed for table ${tableName}, field ${fieldName}: ${result.error}`)
-    }
-    return base64ToString(result.data)
-}
-
 export function getTokenFieldValue(name: string): string {
     return getFieldValue(config.TokensTableId, config.TokensTable, name,  stringToBase64(`{"address":"${wasmxw.getAddress()}"}`))
 }
 
 export function getOwnedFieldValue(name: string, owner: Bech32String): string {
     return getFieldValue(config.OwnedTableId, config.OwnedTable, name,  stringToBase64(`{"owner":"${owner}","creator":"${wasmxw.getAddress()}"}`))
+}
+
+export function getPermissionFieldValue(name: string, owner: Bech32String, spender: Bech32String): string {
+    return getFieldValue(config.PermissionsTableId, config.PermissionsTable, name,  stringToBase64(`{"owner":"${owner}","owned":"${wasmxw.getAddress()}","spender":"${spender}"}`))
 }
 
 export function insertTokenFieldValues(keys: string[], values: string[]): i64 {
@@ -60,21 +46,19 @@ export function insertTokenFieldValues(keys: string[], values: string[]): i64 {
     named.set("address", wasmxw.getAddress())
     named.set("value_type", "erc20")
     const obj = JSON.stringify(named)
-    const calld = JSON.stringify<InsertRequest>(new InsertRequest(
-        getDTypeIdentifier(config.TokensTableId, config.TokensTable),
-        stringToBase64(obj),
-    ))
-    const resp = callContract(ROLE_DTYPE, `{"Insert":${calld}}`, false, MODULE_NAME)
-    if (resp.success > 0) {
-        revert(`setTokenFieldValues failed: ${resp.data}`)
-    }
-    console.log("--insertTokenFieldValues resp--" + resp.data)
-    const response = JSON.parse<MsgExecuteBatchResponse>(resp.data)
-    if (response.error != "") {
-        revert(response.error)
-    }
-    if (response.responses.length == 0) revert(`no insert performed`)
-    return response.responses[0].last_insert_id
+    return insertFieldValues(config.TokensTableId, config.TokensTable, obj)
+}
+
+export function insertOwnedFieldValues(owner: Bech32String, amount: BigInt): i64 {
+    const obj = `{"table_id":${config.TokensTableId},"record_id":${getRecordId()},"amount":"${amount.toString()}","fungible":true,"permissions":"","creator":"${wasmxw.getAddress()}","owner":"${owner}"}`
+    return insertFieldValues(config.OwnedTableId, config.OwnedTable, obj)
+}
+
+export function insertPermissionFieldValues(owner: Bech32String, spender: Bech32String, amount: BigInt): i64 {
+    const ownedIdStr = getFieldValue(config.OwnedTableId, config.OwnedTable, "id",  stringToBase64(`{"creator":"${wasmxw.getAddress()}","owner":"${owner}"}`))
+    const ownedId = parseInt64(ownedIdStr)
+    const obj = `{"table_id":${config.OwnedTableId},"record_id":${ownedId},"owner":"${owner}","spender":"${spender}","owned":"${wasmxw.getAddress()}", "amount":"${amount.toString()}"}`
+    return insertFieldValues(config.PermissionsTableId, config.PermissionsTable, obj)
 }
 
 export function setTokenFieldValues(keys: string[], values: string[]): void {
@@ -84,39 +68,8 @@ export function setTokenFieldValues(keys: string[], values: string[]): void {
     }
     named.set("address", wasmxw.getAddress())
     const obj = JSON.stringify(named)
-    const calld = JSON.stringify<UpdateRequest>(new UpdateRequest(
-        getDTypeIdentifier(config.TokensTableId, config.TokensTable),
-        stringToBase64(`{"address":"${wasmxw.getAddress()}"}`),
-        stringToBase64(obj),
-    ))
-    const resp = callContract(ROLE_DTYPE, `{"Update":${calld}}`, false, MODULE_NAME)
-    if (resp.success > 0) {
-        revert(`setTokenFieldValues failed: ${resp.data}`)
-    }
-    console.log("--setTokenFieldValues resp--" + resp.data)
-    const response = JSON.parse<MsgExecuteBatchResponse>(resp.data)
-    if (response.error != "") {
-        revert(response.error)
-    }
+    updateFieldValues(config.TokensTableId, config.TokensTable, obj, `{"address":"${wasmxw.getAddress()}"}`)
 }
-
-export function insertOwnedFieldValues(owner: Bech32String, amount: BigInt): void {
-    const obj = `{"table_id":${config.TokensTableId},"record_id":${getRecordId()},"amount":"${amount.toString()}","fungible":true,"permissions":"","creator":"${wasmxw.getAddress()}","owner":"${owner}"}`
-    const calld = JSON.stringify<InsertRequest>(new InsertRequest(
-        getDTypeIdentifier(config.OwnedTableId, config.OwnedTable),
-        stringToBase64(obj),
-    ))
-    const resp = callContract(ROLE_DTYPE, `{"Insert":${calld}}`, false, MODULE_NAME)
-    if (resp.success > 0) {
-        revert(`insertOwnedFieldValues failed: ${resp.data}`)
-    }
-    console.log("--insertOwnedFieldValues resp--" + resp.data)
-    const response = JSON.parse<MsgExecuteBatchResponse>(resp.data)
-    if (response.error != "") {
-        revert(response.error)
-    }
-}
-
 
 export function setOwnedFieldValues(name: string, keys: string[], values: string[]): void {
     const named = new Map<string,string>()
@@ -124,24 +77,17 @@ export function setOwnedFieldValues(name: string, keys: string[], values: string
         named.set(keys[i], values[i])
     }
     const obj = JSON.stringify(named)
-    const calld = JSON.stringify<UpdateRequest>(new UpdateRequest(
-        getDTypeIdentifier(config.OwnedTableId, config.OwnedTable),
-        stringToBase64(`{"owner":"${name}","creator":"${wasmxw.getAddress()}"}`),
-        stringToBase64(obj),
-    ))
-    const resp = callContract(ROLE_DTYPE, `{"Update":${calld}}`, false, MODULE_NAME)
-    if (resp.success > 0) {
-        revert(`setOwnedFieldValues failed: ${resp.data}`)
-    }
-    console.log("--setOwnedFieldValues resp--" + resp.data)
-    const response = JSON.parse<MsgExecuteBatchResponse>(resp.data)
-    if (response.error != "") {
-        revert(response.error)
-    }
+
+    updateFieldValues(config.OwnedTableId, config.OwnedTable, obj, `{"owner":"${name}","creator":"${wasmxw.getAddress()}"}`)
 }
 
 export function assetExists(owner: Bech32String): boolean {
     const count = countFromTable(config.OwnedTableId, config.OwnedTable, stringToBase64(`{"owner":"${owner}","creator":"${wasmxw.getAddress()}"}`))
+    return count > 0;
+}
+
+export function permissionExists(owner: Bech32String, spender: Bech32String): boolean {
+    const count = countFromTable(config.PermissionsTableId, config.PermissionsTable, stringToBase64(`{"owner":"${owner}","owned":"${wasmxw.getAddress()}","spender":"${spender}"}`))
     return count > 0;
 }
 
@@ -163,11 +109,40 @@ export function countFromTable(tableId: i64, tableName: string, data: Base64Stri
 }
 
 export function moveToken(source: Bech32String, target: Bech32String, amount: BigInt): void {
+    return moveValue(config.OwnedTableId, config.OwnedTable, "amount", `{"owner":"${source}","creator":"${wasmxw.getAddress()}"}`, `{"owner":"${target}","creator":"${wasmxw.getAddress()}"}`, amount)
+}
+
+export function addToken(target: Bech32String, amount: BigInt): void {
+    console.log("--addToken--" + target + "--" + amount.toString())
+    return addValue(config.OwnedTableId, config.OwnedTable, "amount", `{"owner":"${target}","creator":"${wasmxw.getAddress()}"}`, amount)
+}
+
+export function subToken(target: Bech32String, amount: BigInt): void {
+    return subValue(config.OwnedTableId, config.OwnedTable, "amount", `{"owner":"${target}","creator":"${wasmxw.getAddress()}"}`, amount)
+}
+
+export function addSupply(amount: BigInt): void {
+    return addValue(config.TokensTableId, config.TokensTable, "total_supply", `{"address":"${wasmxw.getAddress()}"}`, amount)
+}
+
+export function subSupply(amount: BigInt): void {
+    return subValue(config.OwnedTableId, config.OwnedTable, "total_supply", `{"address":"${wasmxw.getAddress()}"}`, amount)
+}
+
+export function addPermission(owner: Bech32String, spender: Bech32String, amount: BigInt): void {
+    return addValue(config.PermissionsTableId, config.PermissionsTable, "amount", `{"owner":"${owner}","spender":"${spender}","owned":"${wasmxw.getAddress()}"}`, amount)
+}
+
+export function subPermission(owner: Bech32String, spender: Bech32String, amount: BigInt): void {
+    return subValue(config.PermissionsTableId, config.PermissionsTable, "amount", `{"owner":"${owner}","spender":"${spender}","owned":"${wasmxw.getAddress()}"}`, amount)
+}
+
+export function moveValue(tableId: i64, tableName: string, fieldName: string, condSource: string, condTarget: string, amount: BigInt): void {
     const calld = JSON.stringify<MoveRequest>(new MoveRequest(
-        getDTypeIdentifier(config.OwnedTableId, config.OwnedTable),
-        "amount",
-        stringToBase64(`{"owner":"${source}","creator":"${wasmxw.getAddress()}"}`),
-        stringToBase64(`{"owner":"${target}","creator":"${wasmxw.getAddress()}"}`),
+        getDTypeIdentifier(tableId, tableName),
+        fieldName,
+        stringToBase64(condSource),
+        stringToBase64(condTarget),
         amount.toString(),
     ))
     const resp = callContract(ROLE_DTYPE, `{"Move":${calld}}`, false, MODULE_NAME)
@@ -176,12 +151,11 @@ export function moveToken(source: Bech32String, target: Bech32String, amount: Bi
     }
 }
 
-export function addToken(target: Bech32String, amount: BigInt): void {
-    console.log("--addToken--" + target + "--" + amount.toString())
+export function addValue(tableId: i64, tableName: string, fieldName: string, cond: string, amount: BigInt): void {
     const calld = JSON.stringify<AddRequest>(new AddRequest(
-        getDTypeIdentifier(config.OwnedTableId, config.OwnedTable),
-        "amount",
-        stringToBase64(`{"owner":"${target}","creator":"${wasmxw.getAddress()}"}`),
+        getDTypeIdentifier(tableId, tableName),
+        fieldName,
+        stringToBase64(cond),
         amount.toString(),
     ))
     const resp = callContract(ROLE_DTYPE, `{"Add":${calld}}`, false, MODULE_NAME)
@@ -190,11 +164,11 @@ export function addToken(target: Bech32String, amount: BigInt): void {
     }
 }
 
-export function subToken(target: Bech32String, amount: BigInt): void {
+export function subValue(tableId: i64, tableName: string, fieldName: string, cond: string, amount: BigInt): void {
     const calld = JSON.stringify<SubRequest>(new SubRequest(
-        getDTypeIdentifier(config.OwnedTableId, config.OwnedTable),
-        "amount",
-        stringToBase64(`{"owner":"${target}","creator":"${wasmxw.getAddress()}"}`),
+        getDTypeIdentifier(tableId, tableName),
+        fieldName,
+        stringToBase64(cond),
         amount.toString(),
     ))
     const resp = callContract(ROLE_DTYPE, `{"Sub":${calld}}`, false, MODULE_NAME)
@@ -203,30 +177,55 @@ export function subToken(target: Bech32String, amount: BigInt): void {
     }
 }
 
-export function addSupply(amount: BigInt): string {
-    const calld = JSON.stringify<AddRequest>(new AddRequest(
-        getDTypeIdentifier(config.TokensTableId, config.TokensTable),
-        "total_supply",
-        stringToBase64(`{"address":"${wasmxw.getAddress()}"}`),
-        amount.toString(),
+export function updateFieldValues(tableId: i64, tableName: string, obj: string, cond: string): void {
+    const calld = JSON.stringify<UpdateRequest>(new UpdateRequest(
+        getDTypeIdentifier(tableId, tableName),
+        stringToBase64(cond),
+        stringToBase64(obj),
     ))
-    const resp = callContract(ROLE_DTYPE, `{"Add":${calld}}`, false, MODULE_NAME)
+    const resp = callContract(ROLE_DTYPE, `{"Update":${calld}}`, false, MODULE_NAME)
     if (resp.success > 0) {
-        revert(`addSupply failed: ${resp.data}`)
+        revert(`updateFieldValues failed: ${resp.data}`)
     }
-    return resp.data
+    console.log("--updateFieldValues resp--" + resp.data)
+    const response = JSON.parse<MsgExecuteBatchResponse>(resp.data)
+    if (response.error != "") {
+        revert(response.error)
+    }
 }
 
-export function subSupply(amount: BigInt): string {
-    const calld = JSON.stringify<SubRequest>(new SubRequest(
-        getDTypeIdentifier(config.OwnedTableId, config.OwnedTable),
-        "total_supply",
-        stringToBase64(`{"address":"${wasmxw.getAddress()}"}`),
-        amount.toString(),
+export function insertFieldValues(tableId: i64, tableName: string, obj: string): i64 {
+    const calld = JSON.stringify<InsertRequest>(new InsertRequest(
+        getDTypeIdentifier(tableId, tableName),
+        stringToBase64(obj),
     ))
-    const resp = callContract(ROLE_DTYPE, `{"Sub":${calld}}`, false, MODULE_NAME)
+    const resp = callContract(ROLE_DTYPE, `{"Insert":${calld}}`, false, MODULE_NAME)
     if (resp.success > 0) {
-        revert(`subToken failed: ${resp.data}`)
+        revert(`insertFieldValues failed: ${resp.data}`)
     }
-    return resp.data
+    console.log("--insertFieldValues resp--" + resp.data)
+    const response = JSON.parse<MsgExecuteBatchResponse>(resp.data)
+    if (response.error != "") {
+        revert(response.error)
+    }
+    if (response.responses.length == 0) revert(`no insert performed`)
+    return response.responses[0].last_insert_id
+}
+
+export function getFieldValue(tableId: i64, tableName: string, fieldName: string, data: Base64String): string {
+    const calld = JSON.stringify<ReadFieldRequest>(new ReadFieldRequest(
+        getDTypeIdentifier(tableId, tableName),
+        0, fieldName,
+        data,
+    ))
+    const resp = callContract(ROLE_DTYPE, `{"ReadField":${calld}}`, true, MODULE_NAME)
+    if (resp.success > 0) {
+        revert(`getFieldValue failed for table ${tableName}, field ${fieldName}: ${resp.data}`)
+    }
+    console.log("--getFieldValue resp--" + resp.data)
+    const result = JSON.parse<MsgQueryResponse>(resp.data)
+    if (result.error != "") {
+        revert(`getFieldValue failed for table ${tableName}, field ${fieldName}: ${result.error}`)
+    }
+    return base64ToString(result.data)
 }

@@ -10,6 +10,7 @@ export const DTypeRelationTypeName = "relation_type"
 
 export const TokensTable = "token"
 export const OwnedTable = "owned"
+export const PermissionsTable = "permissions"
 
 export const tableDbConnId = 1;
 export const tableDbId = 2;
@@ -20,3 +21,4 @@ export const tableRelationId = 6;
 export const tableRelationTypeId = 7;
 export const TokensTableId = 8;
 export const OwnedTableId = 9;
+export const PermissionsTableId = 10;

@@ -4,9 +4,9 @@ import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { Bech32String, Coin } from "wasmx-env/assembly/types";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { hexToUint8Array32 } from "wasmx-utils/assembly/utils";
-import { getTokenFieldValue, getOwnedFieldValue, setTokenFieldValues, moveToken, addSupply, addToken, insertTokenFieldValues, insertOwnedFieldValues, setRecordId, assetExists } from "./dtype";
+import { getTokenFieldValue, getOwnedFieldValue, setTokenFieldValues, moveToken, addSupply, addToken, insertTokenFieldValues, insertOwnedFieldValues, setRecordId, assetExists, getPermissionFieldValue, subPermission, addPermission, insertPermissionFieldValues, permissionExists } from "./dtype";
 import { MsgAllowance, MsgAllowanceResponse, MsgApprove, MsgBalanceOf, MsgBalanceOfResponse, MsgDecimalsResponse, MsgNameResponse, MsgSymbolResponse, MsgTotalSupplyResponse, MsgTransfer, MsgTransferFrom, MsgTransferFromResponse, MsgTransferResponse } from "./types";
-import { LoggerDebug } from "./utils";
+import { LoggerDebug, revert } from "./utils";
 import { CallDataInstantiate } from "./types";
 
 export function instantiateToken(calld: CallDataInstantiate): void {
@@ -42,11 +42,8 @@ export function totalSupply(): ArrayBuffer {
 }
 
 export function balanceOf(req: MsgBalanceOf): ArrayBuffer {
-    console.log("--balanceOf--" + req.owner)
     const symbol = getTokenFieldValue("symbol")
-    console.log("--balanceOf--" + symbol)
     const value = getOwnedFieldValue("amount", req.owner)
-    console.log("--balanceOf value--" + value)
     const balance = BigInt.fromString(value)
     return String.UTF8.encode(JSON.stringify<MsgBalanceOfResponse>(new MsgBalanceOfResponse(new Coin(symbol, balance))))
 }
@@ -69,43 +66,31 @@ export function transfer(req: MsgTransfer): ArrayBuffer {
 
 export function transferFrom(req: MsgTransferFrom): ArrayBuffer {
     const spender = wasmxw.getCaller();
-    // let allow = getAllowance(req.from, spender)
-    // if (allow >= req.value) {
-    //     move(req.from, req.to, req.value)
-    //     // @ts-ignore
-    //     allow -= req.value;
-    //     setAllowance(req.from, spender, allow);
-    // }
+    const value = getPermissionFieldValue("amount", req.from, spender)
+    const allow = BigInt.fromString(value)
+    if (allow < req.value) {
+        revert(`not enough allowance`)
+    }
+    moveToken(req.from, req.to, req.value)
+    subPermission(req.from, spender, req.value);
     return String.UTF8.encode(JSON.stringify<MsgTransferFromResponse>(new MsgTransferFromResponse()))
 }
 
 export function approve(req: MsgApprove): ArrayBuffer {
-    // const owner = wasmxw.getCaller();
-    // setAllowance(owner, req.spender, req.value);
-    // logApproval(owner, req.spender, req.value)
+    const owner = wasmxw.getCaller();
+    if (!permissionExists(owner, req.spender)) {
+        insertPermissionFieldValues(owner, req.spender, BigInt.zero())
+    }
+    addPermission(owner, req.spender, req.value);
+    logApproval(owner, req.spender, req.value)
     return new ArrayBuffer(0);
 }
 
 export function allowance(req: MsgAllowance): ArrayBuffer {
-    // const value = getAllowance(req.owner, req.spender)
-    // return String.UTF8.encode(JSON.stringify<MsgAllowanceResponse>(new MsgAllowanceResponse(value)))
-    return new ArrayBuffer(0);
+    const value = getPermissionFieldValue("amount", req.owner, req.spender)
+    const allowance = BigInt.fromString(value)
+    return String.UTF8.encode(JSON.stringify<MsgAllowanceResponse>(new MsgAllowanceResponse(allowance)))
 }
-
-// export function move(from: Bech32String, to: Bech32String, amount: BigInt): void {
-//     let balanceFrom = getBalance(from);
-//     if (balanceFrom < amount) {
-//         revert(`cannot move coins from ${from} to ${to}; amount: ${amount.toString()}; balance: ${balanceFrom.toString()} `)
-//     }
-//     let balanceTo = getBalance(to);
-//     // @ts-ignore
-//     balanceFrom -= amount;
-//     // @ts-ignore
-//     balanceTo += amount;
-//     setBalance(from, balanceFrom);
-//     logTransfer(from, to, amount);
-//     setBalance(to, balanceTo);
-// }
 
 export function logTransfer(from: Bech32String, to: Bech32String, amount: BigInt): void {
     const topic0str = `Transfer(address,address,uint256)`
