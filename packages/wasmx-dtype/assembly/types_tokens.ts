@@ -14,6 +14,7 @@ export class Token {
     total_supply: string = "";
     actions: string = "";
     actions_user: string = "";
+    fungible: bool = false;
 
     constructor(
         id: i64,
@@ -24,7 +25,8 @@ export class Token {
         address: string,
         total_supply: string,
         actions: string,
-        actions_user: string
+        actions_user: string,
+        fungible: bool,
     ) {
         this.id = id;
         this.value_type = value_type;
@@ -35,6 +37,7 @@ export class Token {
         this.total_supply = total_supply;
         this.actions = actions;
         this.actions_user = actions_user;
+        this.fungible = fungible;
     }
 
     toExtended(): TokenExtended {
@@ -48,6 +51,7 @@ export class Token {
             this.total_supply,
             JSON.parse<string[]>(this.actions),
             JSON.parse<string[]>(this.actions_user),
+            this.fungible,
         )
     }
 }
@@ -64,6 +68,7 @@ export class TokenExtended {
     total_supply: string = "";
     actions: string[] = [];
     actions_user: string[] = [];
+    fungible: bool = false;
 
     constructor(
         id: i64,
@@ -74,7 +79,8 @@ export class TokenExtended {
         address: string,
         total_supply: string,
         actions: string[],
-        actions_user: string[]
+        actions_user: string[],
+        fungible: bool,
     ) {
         this.id = id;
         this.value_type = value_type;
@@ -85,6 +91,7 @@ export class TokenExtended {
         this.total_supply = total_supply;
         this.actions = actions;
         this.actions_user = actions_user;
+        this.fungible = fungible;
     }
 
     toRaw(): Token {
@@ -98,6 +105,7 @@ export class TokenExtended {
             this.total_supply,
             JSON.stringify<string[]>(this.actions),
             JSON.stringify<string[]>(this.actions_user),
+            this.fungible,
         )
     }
 }
@@ -109,8 +117,6 @@ export class Owned {
     table_id: i64 = 0;
     record_id: i64 = 0;
     amount: string = "";
-    fungible: bool = false;
-    permissions: string = "";
     creator: Bech32String = "";
     owner: Bech32String = "";
 
@@ -119,8 +125,6 @@ export class Owned {
         table_id: i64,
         record_id: i64,
         amount: string,
-        fungible: bool,
-        permissions: string,
         creator: Bech32String,
         owner: Bech32String,
     ) {
@@ -128,8 +132,6 @@ export class Owned {
         this.table_id = table_id;
         this.record_id = record_id;
         this.amount = amount;
-        this.fungible = fungible;
-        this.permissions = permissions;
         this.creator = creator;
         this.owner = owner;
     }
@@ -140,22 +142,9 @@ export class Owned {
             this.table_id,
             this.record_id,
             this.amount,
-            this.fungible,
-            JSON.parse<Permission[]>(this.permissions),
             this.creator,
             this.owner,
         )
-    }
-}
-
-// @ts-ignore
-@serializable
-export class Permission {
-    address: Bech32String = ""
-    amount: string = ""
-    constructor(address: Bech32String, amount: string) {
-        this.address = address
-        this.amount = amount
     }
 }
 
@@ -166,8 +155,6 @@ export class OwnedExtended {
     table_id: i64 = 0;
     record_id: i64 = 0;
     amount: string = "";
-    fungible: bool = false;
-    permissions: Permission[] = [];
     creator: Bech32String = "";
     owner: Bech32String = "";
 
@@ -176,8 +163,6 @@ export class OwnedExtended {
         table_id: i64,
         record_id: i64,
         amount: string,
-        fungible: bool,
-        permissions: Permission[],
         creator: Bech32String,
         owner: Bech32String,
     ) {
@@ -185,8 +170,6 @@ export class OwnedExtended {
         this.table_id = table_id;
         this.record_id = record_id;
         this.amount = amount;
-        this.fungible = fungible;
-        this.permissions = permissions;
         this.creator = creator;
         this.owner = owner;
     }
@@ -197,8 +180,6 @@ export class OwnedExtended {
             this.table_id,
             this.record_id,
             this.amount,
-            this.fungible,
-            JSON.stringify<Permission[]>(this.permissions),
             this.creator,
             this.owner,
         )

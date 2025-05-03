@@ -5,7 +5,7 @@ export const MODULE_NAME = "dtype"
 
 // @ts-ignore
 @serializable
-export class CallDataInstantiateTokens {}
+export class CallDataInitializeTokens {}
 
 // @ts-ignore
 @serializable

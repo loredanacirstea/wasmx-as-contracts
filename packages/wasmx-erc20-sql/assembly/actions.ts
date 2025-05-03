@@ -10,7 +10,7 @@ import { LoggerDebug, revert } from "./utils";
 import { CallDataInstantiate } from "./types";
 
 export function instantiateToken(calld: CallDataInstantiate): void {
-    const recordId = insertTokenFieldValues(["name", "symbol", "decimals", "total_supply"], [calld.name, calld.symbol, calld.decimals.toString(), calld.total_supply.toString()]);
+    const recordId = insertTokenFieldValues(calld.name, calld.symbol, calld.decimals, calld.total_supply);
     setRecordId(recordId);
 
     // assign supply to creator

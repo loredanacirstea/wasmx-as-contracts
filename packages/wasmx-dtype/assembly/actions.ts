@@ -3,89 +3,15 @@ import { JSON as JSONDyn } from "assemblyscript-json/assembly";
 import * as sqlw from "wasmx-env-sql/assembly/sql_wrap";
 import { base64ToString, stringToBase64, stringToBytes } from "wasmx-utils/assembly/utils";
 import { MsgCloseRequest, MsgCloseResponse, MsgConnectRequest, MsgConnectResponse, MsgExecuteBatchRequest, MsgExecuteBatchResponse, MsgExecuteRequest, MsgExecuteResponse, MsgQueryRequest, MsgQueryResponse, SqlExecuteCommand } from "wasmx-env-sql/assembly/types";
-import { BuildSchemaRequest, BuildSchemaResponse, CallDataInstantiate, CallDataInstantiateTokens, CloseRequest, ConnectRequest, CountRequest, CountResponse, CreateTableRequest, DeleteRequest, DTypeDb, DTypeDbConnection, DTypeField, DTypeTable, InsertRequest, MODULE_NAME, ReadFieldRequest, ReadRequest, TableIndentifier, TableIndentifierRequired, UpdateRequest } from "./types";
+import { BuildSchemaRequest, BuildSchemaResponse, CallDataInstantiate, CallDataInitializeTokens, CloseRequest, ConnectRequest, CountRequest, CountResponse, CreateTableRequest, DeleteRequest, DTypeDb, DTypeDbConnection, DTypeField, DTypeTable, InsertRequest, MODULE_NAME, ReadFieldRequest, ReadRequest, TableIndentifier, TableIndentifierRequired, UpdateRequest } from "./types";
 import { revert } from "./utils";
 import { jsonToQueryParams, QueryParams } from "./json";
 import { generateJsonSchema } from "./schema";
-import { DTypeConnection, DTypeDbConnName, DTypeDbName, DTypeFieldName, DTypeNodeName, DTypeRelationName, DTypeRelationTypeName, DTypeTableName, OwnedTable, OwnedTableId, PermissionsTable, PermissionsTableId, tableDbConnId, tableDbId, tableFieldsId, tableNodeId, tableRelationId, tableRelationTypeId, tableTableId, TokensTable, TokensTableId } from "./config";
+import { DTypeConnection, DTypeDbConnName, DTypeDbName, DTypeFieldName, DTypeNodeName, DTypeRelationName, DTypeRelationTypeName, DTypeTableName, OwnedTable, OwnedTableId, AllowanceTable, AllowanceTableId, tableDbConnId, tableDbId, tableFieldsId, tableNodeId, tableRelationId, tableRelationTypeId, tableTableId, TokensTable, TokensTableId, IdentityTableId, FullNameTableId, EmailTableId } from "./config";
 import { AddRequest, MoveRequest, SubRequest } from "./types_tokens";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { Base64String } from "wasmx-env/assembly/types";
-
-// TODO each table has field creator: Bech32String (contract address with write rights)
-
-const SqlCreateTableDbConn = `CREATE TABLE IF NOT EXISTS ${DTypeDbConnName} (id INTEGER PRIMARY KEY, connection VARCHAR NOT NULL, driver VARCHAR NOT NULL, name VARCHAR UNIQUE NOT NULL, description TEXT DEFAULT '')`
-const SqlCreateIndexDbConn1 = `CREATE INDEX IF NOT EXISTS idx_${DTypeDbConnName}_name ON ${DTypeDbConnName}(name)`
-const SqlCreateIndexDbConn2 = `CREATE INDEX IF NOT EXISTS idx_${DTypeDbConnName}_driver ON ${DTypeDbConnName}(driver)`
-const SqlCreateTableDb = `CREATE TABLE IF NOT EXISTS ${DTypeDbName} (id INTEGER PRIMARY KEY, name VARCHAR UNIQUE NOT NULL, connection_id INTEGER NOT NULL REFERENCES ${DTypeDbConnName}(id) ON UPDATE CASCADE ON DELETE RESTRICT, description TEXT DEFAULT '')`
-const SqlCreateIndexDb1 = `CREATE INDEX IF NOT EXISTS idx_${DTypeDbName}_connection_id ON ${DTypeDbName}(connection_id)`
-const SqlCreateIndexDb2 = `CREATE INDEX IF NOT EXISTS idx_${DTypeDbName}_name ON ${DTypeDbName}(name)`
-const SqlCreateTableTable = `CREATE TABLE IF NOT EXISTS ${DTypeTableName} (id INTEGER PRIMARY KEY, name VARCHAR NOT NULL, db_id INTEGER NOT NULL REFERENCES ${DTypeDbName}(id) ON UPDATE CASCADE ON DELETE RESTRICT, description TEXT DEFAULT '')`
-const SqlCreateIndexTable1 = `CREATE INDEX IF NOT EXISTS idx_${DTypeTableName}_db_id ON ${DTypeTableName}(db_id)`
-const SqlCreateIndexTable2 = `CREATE UNIQUE INDEX IF NOT EXISTS idx_${DTypeTableName}_dbid_name ON ${DTypeTableName}(db_id,name)`
-const SqlCreateTableField = `CREATE TABLE IF NOT EXISTS ${DTypeFieldName} (id INTEGER PRIMARY KEY, name VARCHAR NOT NULL, table_id INTEGER NOT NULL REFERENCES ${DTypeTableName}(id) ON UPDATE CASCADE ON DELETE RESTRICT, order_index INTEGER NOT NULL, value_type VARCHAR NOT NULL, indexed BOOLEAN NOT NULL DEFAULT false, sql_options VARCHAR NOT NULL DEFAULT '', foreign_key_table VARCHAR NOT NULL DEFAULT '', foreign_key_field VARCHAR NOT NULL DEFAULT '', foreign_key_sql_options VARCHAR NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '', permissions VARCHAR NOT NULL DEFAULT '')`
-const SqlCreateIndexField1 = `CREATE INDEX IF NOT EXISTS idx_${DTypeFieldName}_table_id ON ${DTypeFieldName}(table_id)`
-const SqlCreateIndexField2 = `CREATE UNIQUE INDEX IF NOT EXISTS idx_${DTypeFieldName}_tableid_name ON ${DTypeFieldName}(table_id,name)`
-const SqlCreateIndexField3 = `CREATE INDEX IF NOT EXISTS idx_${DTypeFieldName}_value_type ON ${DTypeFieldName}(value_type)`
-
-const SqlCreateNode = `CREATE TABLE ${DTypeNodeName} (
-    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    table_id INTEGER REFERENCES ${DTypeTableName}(id),
-    record_id INTEGER,
-    name TEXT
-);`
-const SqlCreateRelation = `CREATE TABLE ${DTypeRelationName} (
-    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    relation_type_id INTEGER REFERENCES ${DTypeRelationTypeName}(id),
-    source_node_id INTEGER REFERENCES ${DTypeNodeName}(id),
-    target_node_id INTEGER REFERENCES ${DTypeNodeName}(id),
-    order_index INTEGER DEFAULT 0
-);`
-const SqlCreateRelationType = `CREATE TABLE ${DTypeRelationTypeName} (
-    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    name VARCHAR,
-    reverse_name VARCHAR,
-    reversable BOOLEAN DEFAULT true
-);`
-const SqlCreateIndexRelation1 = `CREATE INDEX relation_source_node_id_IDX ON relation (source_node_id);`
-const SqlCreateIndexRelation2 = `CREATE INDEX relation_target_node_id_IDX ON relation (target_node_id);`
-
-const GraphTables = `[{"name":"${DTypeNodeName}","db_id":"1","description":"table for graph nodes"},{"name":"${DTypeNodeName}","db_id":"1","description":"table for graph nodes"}]`
-
-
-const AssetTables = `[{"name":"${TokensTable}","db_id":"1","description":"table for registered tokens"},{"name":"${OwnedTable}","db_id":"1","description":"table for user owned tokens"},{"name":"${PermissionsTable}","db_id":"1","description":"table for asset permissions"}]`
-const TokenFields = `[
-{"table_id":${TokensTableId},"name":"id","order_index":1,"value_type":"INTEGER","indexed":false,"sql_options":"PRIMARY KEY","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${TokensTableId},"name":"value_type","order_index":2,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${TokensTableId},"name":"name","order_index":3,"value_type":"VARCHAR","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${TokensTableId},"name":"symbol","order_index":4,"value_type":"VARCHAR","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${TokensTableId},"name":"decimals","order_index":5,"value_type":"INTEGER","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${TokensTableId},"name":"address","order_index":6,"value_type":"VARCHAR","indexed":true,"sql_options":"UNIQUE NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${TokensTableId},"name":"total_supply","order_index":7,"value_type":"VARCHAR","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${TokensTableId},"name":"actions","order_index":8,"value_type":"TEXT","indexed":false,"sql_options":"NOT NULL DEFAULT '[]'","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${TokensTableId},"name":"actions_user","order_index":9,"value_type":"TEXT","indexed":false,"sql_options":"NOT NULL DEFAULT '[]'","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""}
-]`
-// TODO combine table_id, record_id for index
-const OwnedFields = `[
-{"table_id":${OwnedTableId},"name":"id","order_index":1,"value_type":"INTEGER","indexed":false,"sql_options":"PRIMARY KEY","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${OwnedTableId},"name":"table_id","order_index":2,"value_type":"INTEGER","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"${DTypeTableName}","foreign_key_field":"id","foreign_key_sql_options":"ON UPDATE CASCADE ON DELETE RESTRICT","description":"","permissions":""},
-{"table_id":${OwnedTableId},"name":"record_id","order_index":3,"value_type":"INTEGER","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${OwnedTableId},"name":"amount","order_index":4,"value_type":"VARCHAR","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${OwnedTableId},"name":"fungible","order_index":5,"value_type":"BOOLEAN","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${OwnedTableId},"name":"permissions","order_index":6,"value_type":"TEXT","indexed":false,"sql_options":"NOT NULL DEFAULT '[]'","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${OwnedTableId},"name":"creator","order_index":7,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${OwnedTableId},"name":"owner","order_index":8,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""}
-]`
-
-const PermissionFields = `[
-{"table_id":${PermissionsTableId},"name":"id","order_index":1,"value_type":"INTEGER","indexed":false,"sql_options":"PRIMARY KEY","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${PermissionsTableId},"name":"table_id","order_index":2,"value_type":"INTEGER","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"${DTypeTableName}","foreign_key_field":"id","foreign_key_sql_options":"ON UPDATE CASCADE ON DELETE RESTRICT","description":"","permissions":""},
-{"table_id":${PermissionsTableId},"name":"record_id","order_index":3,"value_type":"INTEGER","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${PermissionsTableId},"name":"owner","order_index":4,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${PermissionsTableId},"name":"spender","order_index":5,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${PermissionsTableId},"name":"owned","order_index":6,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${PermissionsTableId},"name":"amount","order_index":7,"value_type":"VARCHAR","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""}
-]`
+import { AssetTables, OwnedFields, AllowanceFields, SqlCreateIndexDb1, SqlCreateIndexDb2, SqlCreateIndexDbConn1, SqlCreateIndexDbConn2, SqlCreateIndexField1, SqlCreateIndexField2, SqlCreateIndexField3, SqlCreateIndexRelation1, SqlCreateIndexRelation2, SqlCreateIndexTable1, SqlCreateIndexTable2, SqlCreateNode, SqlCreateRelation, SqlCreateRelationType, SqlCreateTableDb, SqlCreateTableDbConn, SqlCreateTableField, SqlCreateTableTable, TokenFields, IdentityTableFields, FullNameTableFields, EmailTableFields, IdentityTables } from "./defs";
 
 export function InstantiateDType(req: CallDataInstantiate): ArrayBuffer {
     const dbfile = "dtype.db"
@@ -282,7 +208,7 @@ export function InstantiateDType(req: CallDataInstantiate): ArrayBuffer {
     return new ArrayBuffer(0)
 }
 
-export function InstantiateTokens(req: CallDataInstantiateTokens): ArrayBuffer {
+export function InitializeTokens(req: CallDataInitializeTokens): ArrayBuffer {
     // Create token & owned tables
     const identif = new TableIndentifier(tableDbConnId, tableDbId, tableTableId, DTypeConnection, DTypeDbName, DTypeTableName)
     let respBatch = InsertOrReplaceInternal(identif, AssetTables)
@@ -299,7 +225,7 @@ export function InstantiateTokens(req: CallDataInstantiateTokens): ArrayBuffer {
     if (respBatch.error != "") {
         revert(`could not insert owned fields definitions: ${respBatch.error}`)
     }
-    respBatch = InsertOrReplaceInternal(identif, PermissionFields)
+    respBatch = InsertOrReplaceInternal(identif, AllowanceFields)
     if (respBatch.error != "") {
         revert(`could not insert permission fields definitions: ${respBatch.error}`)
     }
@@ -312,9 +238,47 @@ export function InstantiateTokens(req: CallDataInstantiateTokens): ArrayBuffer {
     if (resp.error != "") {
         revert(`could not create owned table: ${resp.error}`)
     }
-    resp = CreateTableInternal(new CreateTableRequest(PermissionsTableId))
+    resp = CreateTableInternal(new CreateTableRequest(AllowanceTableId))
     if (resp.error != "") {
         revert(`could not create permissions table: ${resp.error}`)
+    }
+
+    return new ArrayBuffer(0)
+}
+
+export function InitializeIdentity(): ArrayBuffer {
+    // Create token & owned tables
+    const identif = new TableIndentifier(tableDbConnId, tableDbId, tableTableId, DTypeConnection, DTypeDbName, DTypeTableName)
+    let respBatch = InsertOrReplaceInternal(identif, IdentityTables)
+    if (respBatch.error != "") {
+        revert(`could not insert identity table definitions: ${respBatch.error}`)
+    }
+    identif.table_id = tableFieldsId
+    identif.table_name = DTypeFieldName
+    respBatch = InsertOrReplaceInternal(identif, IdentityTableFields)
+    if (respBatch.error != "") {
+        revert(`could not insert identity fields definitions: ${respBatch.error}`)
+    }
+    respBatch = InsertOrReplaceInternal(identif, FullNameTableFields)
+    if (respBatch.error != "") {
+        revert(`could not insert full name fields definitions: ${respBatch.error}`)
+    }
+    respBatch = InsertOrReplaceInternal(identif, EmailTableFields)
+    if (respBatch.error != "") {
+        revert(`could not insert email fields definitions: ${respBatch.error}`)
+    }
+
+    let resp = CreateTableInternal(new CreateTableRequest(IdentityTableId))
+    if (resp.error != "") {
+        revert(`could not create identity table: ${resp.error}`)
+    }
+    resp = CreateTableInternal(new CreateTableRequest(FullNameTableId))
+    if (resp.error != "") {
+        revert(`could not create full name table: ${resp.error}`)
+    }
+    resp = CreateTableInternal(new CreateTableRequest(EmailTableId))
+    if (resp.error != "") {
+        revert(`could not create email table: ${resp.error}`)
     }
 
     return new ArrayBuffer(0)

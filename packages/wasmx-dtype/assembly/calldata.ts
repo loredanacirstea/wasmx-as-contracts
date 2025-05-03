@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { BuildSchemaRequest, CallDataInstantiate, CallDataInstantiateTokens, CloseRequest, ConnectRequest, CountRequest, CreateTableRequest, DeleteRequest, InsertRequest, ReadFieldRequest, ReadRequest, UpdateRequest } from "./types";
+import { BuildSchemaRequest, CallDataInstantiate, CallDataInitializeTokens, CloseRequest, ConnectRequest, CountRequest, CreateTableRequest, DeleteRequest, InsertRequest, ReadFieldRequest, ReadRequest, UpdateRequest } from "./types";
 import { AddRequest, MoveRequest, SubRequest } from "./types_tokens";
 
 // @ts-ignore
@@ -11,7 +11,8 @@ export class MsgEmpty {}
 @serializable
 export class CallData {
     Initialize: CallDataInstantiate | null = null;
-    InitializeTokens: CallDataInstantiateTokens | null = null;
+    InitializeTokens: CallDataInitializeTokens | null = null;
+    InitializeIdentity: MsgEmpty | null = null;
     CreateTable: CreateTableRequest | null = null;
     Connect: ConnectRequest | null = null;
     Close: CloseRequest | null = null;

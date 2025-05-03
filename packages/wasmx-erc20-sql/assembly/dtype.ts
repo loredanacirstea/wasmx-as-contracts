@@ -35,22 +35,16 @@ export function getOwnedFieldValue(name: string, owner: Bech32String): string {
 }
 
 export function getPermissionFieldValue(name: string, owner: Bech32String, spender: Bech32String): string {
-    return getFieldValue(config.PermissionsTableId, config.PermissionsTable, name,  stringToBase64(`{"owner":"${owner}","owned":"${wasmxw.getAddress()}","spender":"${spender}"}`))
+    return getFieldValue(config.AllowanceTableId, config.AllowanceTable, name,  stringToBase64(`{"owner":"${owner}","owned":"${wasmxw.getAddress()}","spender":"${spender}"}`))
 }
 
-export function insertTokenFieldValues(keys: string[], values: string[]): i64 {
-    const named = new Map<string,string>()
-    for (let i = 0; i < keys.length; i++) {
-        named.set(keys[i], values[i])
-    }
-    named.set("address", wasmxw.getAddress())
-    named.set("value_type", "erc20")
-    const obj = JSON.stringify(named)
+export function insertTokenFieldValues(name: string, symbol: string, decimals: i32, total_supply: BigInt): i64 {
+    const obj = `{"value_type":"erc20","name":"${name}","symbol":"${symbol}","decimals":${decimals},"decimals":${decimals},"total_supply":"${total_supply.toString()}","address":"${wasmxw.getAddress()}","fungible":true}`
     return insertFieldValues(config.TokensTableId, config.TokensTable, obj)
 }
 
 export function insertOwnedFieldValues(owner: Bech32String, amount: BigInt): i64 {
-    const obj = `{"table_id":${config.TokensTableId},"record_id":${getRecordId()},"amount":"${amount.toString()}","fungible":true,"permissions":"","creator":"${wasmxw.getAddress()}","owner":"${owner}"}`
+    const obj = `{"table_id":${config.TokensTableId},"record_id":${getRecordId()},"amount":"${amount.toString()}","creator":"${wasmxw.getAddress()}","owner":"${owner}"}`
     return insertFieldValues(config.OwnedTableId, config.OwnedTable, obj)
 }
 
@@ -58,7 +52,7 @@ export function insertPermissionFieldValues(owner: Bech32String, spender: Bech32
     const ownedIdStr = getFieldValue(config.OwnedTableId, config.OwnedTable, "id",  stringToBase64(`{"creator":"${wasmxw.getAddress()}","owner":"${owner}"}`))
     const ownedId = parseInt64(ownedIdStr)
     const obj = `{"table_id":${config.OwnedTableId},"record_id":${ownedId},"owner":"${owner}","spender":"${spender}","owned":"${wasmxw.getAddress()}", "amount":"${amount.toString()}"}`
-    return insertFieldValues(config.PermissionsTableId, config.PermissionsTable, obj)
+    return insertFieldValues(config.AllowanceTableId, config.AllowanceTable, obj)
 }
 
 export function setTokenFieldValues(keys: string[], values: string[]): void {
@@ -87,7 +81,7 @@ export function assetExists(owner: Bech32String): boolean {
 }
 
 export function permissionExists(owner: Bech32String, spender: Bech32String): boolean {
-    const count = countFromTable(config.PermissionsTableId, config.PermissionsTable, stringToBase64(`{"owner":"${owner}","owned":"${wasmxw.getAddress()}","spender":"${spender}"}`))
+    const count = countFromTable(config.AllowanceTableId, config.AllowanceTable, stringToBase64(`{"owner":"${owner}","owned":"${wasmxw.getAddress()}","spender":"${spender}"}`))
     return count > 0;
 }
 
@@ -128,11 +122,11 @@ export function subSupply(amount: BigInt): void {
 }
 
 export function addPermission(owner: Bech32String, spender: Bech32String, amount: BigInt): void {
-    return addValue(config.PermissionsTableId, config.PermissionsTable, "amount", `{"owner":"${owner}","spender":"${spender}","owned":"${wasmxw.getAddress()}"}`, amount)
+    return addValue(config.AllowanceTableId, config.AllowanceTable, "amount", `{"owner":"${owner}","spender":"${spender}","owned":"${wasmxw.getAddress()}"}`, amount)
 }
 
 export function subPermission(owner: Bech32String, spender: Bech32String, amount: BigInt): void {
-    return subValue(config.PermissionsTableId, config.PermissionsTable, "amount", `{"owner":"${owner}","spender":"${spender}","owned":"${wasmxw.getAddress()}"}`, amount)
+    return subValue(config.AllowanceTableId, config.AllowanceTable, "amount", `{"owner":"${owner}","spender":"${spender}","owned":"${wasmxw.getAddress()}"}`, amount)
 }
 
 export function moveValue(tableId: i64, tableName: string, fieldName: string, condSource: string, condTarget: string, amount: BigInt): void {
