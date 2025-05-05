@@ -8,3 +8,4 @@ export declare function SendMail(req: ArrayBuffer): ArrayBuffer
 export declare function Verify(req: ArrayBuffer): ArrayBuffer
 export declare function SupportsAuth(req: ArrayBuffer): ArrayBuffer
 export declare function MaxMessageSize(req: ArrayBuffer): ArrayBuffer
+export declare function BuildMail(req: ArrayBuffer): ArrayBuffer

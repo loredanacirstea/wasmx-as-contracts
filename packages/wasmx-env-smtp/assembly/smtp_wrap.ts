@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import { LoggerDebugExtended } from "wasmx-env/assembly/wasmx_wrap"
 import * as smtp from './smtp';
-import { SmtpCloseRequest, SmtpCloseResponse, SmtpConnectionOauth2Request, SmtpConnectionResponse, SmtpConnectionSimpleRequest, MODULE_NAME, SmtpQuitRequest, SmtpQuitResponse, SmtpExtensionRequest, SmtpExtensionResponse, SmtpNoopRequest, SmtpNoopResponse, SmtpSendMailRequest, SmtpSendMailResponse, SmtpVerifyRequest, SmtpVerifyResponse, SmtpSupportsAuthRequest, SmtpSupportsAuthResponse, SmtpMaxMessageSizeRequest, SmtpMaxMessageSizeResponse } from "./types";
+import { SmtpCloseRequest, SmtpCloseResponse, SmtpConnectionOauth2Request, SmtpConnectionResponse, SmtpConnectionSimpleRequest, MODULE_NAME, SmtpQuitRequest, SmtpQuitResponse, SmtpExtensionRequest, SmtpExtensionResponse, SmtpNoopRequest, SmtpNoopResponse, SmtpSendMailRequest, SmtpSendMailResponse, SmtpVerifyRequest, SmtpVerifyResponse, SmtpSupportsAuthRequest, SmtpSupportsAuthResponse, SmtpMaxMessageSizeRequest, SmtpMaxMessageSizeResponse, SmtpBuildMailRequest, SmtpBuildMailResponse } from "./types";
 
 export function ConnectWithPassword(req: SmtpConnectionSimpleRequest, moduleName: string = ""): SmtpConnectionResponse {
     const requestStr = JSON.stringify<SmtpConnectionSimpleRequest>(req);
@@ -80,5 +80,13 @@ export function MaxMessageSize(req: SmtpMaxMessageSizeRequest, moduleName: strin
     LoggerDebugExtended(`${MODULE_NAME}:${moduleName}`, "MaxMessageSize", ["request", requestStr]);
     const responsebz = smtp.MaxMessageSize(String.UTF8.encode(requestStr));
     const resp = JSON.parse<SmtpMaxMessageSizeResponse>(String.UTF8.decode(responsebz));
+    return resp;
+}
+
+export function BuildMail(req: SmtpBuildMailRequest, moduleName: string = ""): SmtpBuildMailResponse {
+    const requestStr = JSON.stringify<SmtpBuildMailRequest>(req);
+    LoggerDebugExtended(`${MODULE_NAME}:${moduleName}`, "BuildMail", ["request", requestStr]);
+    const responsebz = smtp.BuildMail(String.UTF8.encode(requestStr));
+    const resp = JSON.parse<SmtpBuildMailResponse>(String.UTF8.decode(responsebz));
     return resp;
 }
