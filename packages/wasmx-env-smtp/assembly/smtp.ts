@@ -1,0 +1,10 @@
+export declare function ConnectWithPassword(req: ArrayBuffer): ArrayBuffer
+export declare function ConnectOAuth2(req: ArrayBuffer): ArrayBuffer
+export declare function Close(req: ArrayBuffer): ArrayBuffer
+export declare function Quit(req: ArrayBuffer): ArrayBuffer
+export declare function Extension(req: ArrayBuffer): ArrayBuffer
+export declare function Noop(req: ArrayBuffer): ArrayBuffer
+export declare function SendMail(req: ArrayBuffer): ArrayBuffer
+export declare function Verify(req: ArrayBuffer): ArrayBuffer
+export declare function SupportsAuth(req: ArrayBuffer): ArrayBuffer
+export declare function MaxMessageSize(req: ArrayBuffer): ArrayBuffer
