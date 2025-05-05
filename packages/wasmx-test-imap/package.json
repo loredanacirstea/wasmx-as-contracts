@@ -1,0 +1,36 @@
+{
+  "name": "wasmx-imap",
+  "version": "0.0.1",
+  "main": "index.js",
+  "scripts": {
+    "test": "node tests",
+    "asbuild:debug": "asc assembly/index.ts --target debug",
+    "asbuild:release": "asc assembly/index.ts --target release",
+    "asbuild": "npm run asbuild:debug && npm run asbuild:release",
+    "start": "npx serve ."
+  },
+  "author": "Loredana Cirstea",
+  "license": "UNLICENSED",
+  "description": "",
+  "devDependencies": {
+    "assemblyscript": "^0.27.36"
+  },
+  "dependencies": {
+    "as-base64": "^0.2.0",
+    "assemblyscript-json": "file://../../../assemblyscript-json",
+    "json-as": "file:../../../as-json",
+    "visitor-as": "^0.11.4",
+    "wasmx-env": "file:../wasmx-env",
+    "wasmx-utils": "file:../wasmx-utils",
+    "wasmx-dtype": "file:../wasmx-dtype",
+    "wasmx-env-imap": "file:../wasmx-env-imap",
+    "wasmx-env-sql": "file:../wasmx-env-sql"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./build/release.js",
+      "types": "./build/release.d.ts"
+    }
+  }
+}
