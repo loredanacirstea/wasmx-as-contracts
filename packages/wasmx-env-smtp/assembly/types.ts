@@ -95,9 +95,9 @@ export class SmtpSendMailRequest {
     id: string = "";
     from: string = "";
     to: Array<string> = new Array<string>();
-    email: Array<u8> = new Array<u8>();
+    email: Base64String = "";
 
-    constructor(id: string, from: string, to: Array<string>, email: Array<u8>) {
+    constructor(id: string, from: string, to: Array<string>, email: Base64String) {
         this.id = id;
         this.from = from;
         this.to = to;
