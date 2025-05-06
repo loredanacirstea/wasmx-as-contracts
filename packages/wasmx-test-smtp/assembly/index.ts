@@ -7,7 +7,7 @@ import { revert } from "./utils";
 export function wasmx_env_2(): void {}
 
 export function wasmx_sql_1(): void {}
-export function wasmx_imap_1(): void {}
+export function wasmx_smtp_1(): void {}
 
 export function instantiate(): void {}
 

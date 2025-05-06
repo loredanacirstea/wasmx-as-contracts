@@ -7,13 +7,15 @@ export const MODULE_NAME = "wasmx-env-smtp"
 @serializable
 export class SmtpConnectionSimpleRequest {
     id: string = "";
-    smtp_server_url: string = "";
+    smtp_server_url_starttls: string = "";
+    smtp_server_url_tls: string = "";
     username: string = "";
     password: string = "";
 
-    constructor(id: string, smtp_server_url: string, username: string, password: string) {
+    constructor(id: string, smtp_server_url_starttls: string, smtp_server_url_tls: string, username: string, password: string) {
         this.id = id;
-        this.smtp_server_url = smtp_server_url;
+        this.smtp_server_url_starttls = smtp_server_url_starttls;
+        this.smtp_server_url_tls = smtp_server_url_tls;
         this.username = username;
         this.password = password;
     }
@@ -23,13 +25,15 @@ export class SmtpConnectionSimpleRequest {
 @serializable
 export class SmtpConnectionOauth2Request {
     id: string = "";
-    smtp_server_url: string = "";
+    smtp_server_url_starttls: string = "";
+    smtp_server_url_tls: string = "";
     username: string = "";
     access_token: string = "";
 
-    constructor(id: string, smtp_server_url: string, username: string, access_token: string) {
+    constructor(id: string, smtp_server_url_starttls: string, smtp_server_url_tls: string, username: string, access_token: string) {
         this.id = id;
-        this.smtp_server_url = smtp_server_url;
+        this.smtp_server_url_starttls = smtp_server_url_starttls;
+        this.smtp_server_url_tls = smtp_server_url_tls;
         this.username = username;
         this.access_token = access_token;
     }
