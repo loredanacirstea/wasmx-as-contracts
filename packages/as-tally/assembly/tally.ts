@@ -1,3 +1,5 @@
+import { JSON } from "json-as";
+
 const MAX32: u64 = u64(Math.pow(2, 32));
 const MAX16: u32 = u32(Math.pow(2, 16));
 
@@ -17,6 +19,18 @@ export class tally {
         if (!littleEndian) {
             this.a8.reverse();
         }
+    }
+
+    @serializer
+    serializer(self: tally): string {
+        return `"${self.toString(16)}"`;
+    }
+
+    @deserializer
+    deserializer(data: string): tally {
+        const base = data.slice(0, 2) == "0x" ? 16 : 10
+        return tally.fromString(data, base);
+
     }
 
     @operator('+')
