@@ -4,6 +4,7 @@ import { Base64String, Bech32String } from 'wasmx-env/assembly/types';
 import { CountRequest, CountResponse, InsertRequest, ReadFieldRequest, ReadRequest, TableIndentifier, UpdateRequest } from "wasmx-dtype/assembly/types";
 import { AddRequest, MoveRequest, SubRequest } from "wasmx-dtype/assembly/types_tokens";
 import * as config from "wasmx-dtype/assembly/config";
+import { getDTypeIdentifier } from "wasmx-dtype/assembly/helpers";
 import { MODULE_NAME } from './types';
 import { callContract } from "wasmx-env/assembly/utils";
 import { ROLE_DTYPE } from "wasmx-env/assembly/roles";
@@ -20,10 +21,6 @@ export function getRecordId(): i64 {
     const v = wasmxw.sload("record_id")
     if (v == "") return i64(0);
     return i64(parseInt(v, 10))
-}
-
-function getDTypeIdentifier(table_id: i64, table_name: string): TableIndentifier {
-    return new TableIndentifier(config.tableDbConnId, config.tableDbId, table_id, config.DTypeConnection, config.DTypeDbName, table_name)
 }
 
 export function getTokenFieldValue(name: string): string {

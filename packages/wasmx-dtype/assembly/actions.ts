@@ -3,15 +3,15 @@ import { JSON as JSONDyn } from "assemblyscript-json/assembly";
 import * as sqlw from "wasmx-env-sql/assembly/sql_wrap";
 import { base64ToString, stringToBase64, stringToBytes } from "wasmx-utils/assembly/utils";
 import { MsgCloseRequest, MsgCloseResponse, MsgConnectRequest, MsgConnectResponse, MsgExecuteBatchRequest, MsgExecuteBatchResponse, MsgExecuteRequest, MsgExecuteResponse, MsgQueryRequest, MsgQueryResponse, SqlExecuteCommand } from "wasmx-env-sql/assembly/types";
-import { BuildSchemaRequest, BuildSchemaResponse, CallDataInstantiate, CallDataInitializeTokens, CloseRequest, ConnectRequest, CountRequest, CountResponse, CreateTableRequest, DeleteRequest, DTypeDb, DTypeDbConnection, DTypeField, DTypeTable, InsertRequest, MODULE_NAME, ReadFieldRequest, ReadRequest, TableIndentifier, TableIndentifierRequired, UpdateRequest } from "./types";
+import { BuildSchemaRequest, BuildSchemaResponse, CallDataInstantiate, CallDataInitializeTokens, CloseRequest, ConnectRequest, CountRequest, CountResponse, CreateTableRequest, DeleteRequest, DTypeDb, DTypeDbConnection, DTypeField, DTypeTable, InsertRequest, MODULE_NAME, ReadFieldRequest, ReadRequest, TableIndentifier, TableIndentifierRequired, UpdateRequest, CreateIndexesRequest, DeleteIndexesRequest, TableIndex, CreateIndexResponse, DeleteIndexResponse } from "./types";
 import { revert } from "./utils";
 import { jsonToQueryParams, QueryParams } from "./json";
 import { generateJsonSchema } from "./schema";
-import { DTypeConnection, DTypeDbConnName, DTypeDbName, DTypeFieldName, DTypeNodeName, DTypeRelationName, DTypeRelationTypeName, DTypeTableName, OwnedTable, OwnedTableId, AllowanceTable, AllowanceTableId, tableDbConnId, tableDbId, tableFieldsId, tableNodeId, tableRelationId, tableRelationTypeId, tableTableId, TokensTable, TokensTableId, IdentityTableId, FullNameTableId, EmailTableId } from "./config";
+import { DTypeConnection, DTypeDbConnName, DTypeDbName, DTypeFieldName, DTypeNodeName, DTypeRelationName, DTypeRelationTypeName, DTypeTableName, OwnedTable, OwnedTableId, AllowanceTable, AllowanceTableId, tableDbConnId, tableDbId, tableFieldsId, tableNodeId, tableRelationId, tableRelationTypeId, tableTableId, TokensTable, TokensTableId, IdentityTableId, FullNameTableId, EmailTableId, tableTableIndexId, DTypeTableIndexName } from "./config";
 import { AddRequest, MoveRequest, SubRequest } from "./types_tokens";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { Base64String } from "wasmx-env/assembly/types";
-import { AssetTables, OwnedFields, AllowanceFields, SqlCreateIndexDb1, SqlCreateIndexDb2, SqlCreateIndexDbConn1, SqlCreateIndexDbConn2, SqlCreateIndexField1, SqlCreateIndexField2, SqlCreateIndexField3, SqlCreateIndexRelation1, SqlCreateIndexRelation2, SqlCreateIndexTable1, SqlCreateIndexTable2, SqlCreateNode, SqlCreateRelation, SqlCreateRelationType, SqlCreateTableDb, SqlCreateTableDbConn, SqlCreateTableField, SqlCreateTableTable, TokenFields, IdentityTableFields, FullNameTableFields, EmailTableFields, IdentityTables } from "./defs";
+import { AssetTables, OwnedFields, AllowanceFields, SqlCreateIndexDb1, SqlCreateIndexDb2, SqlCreateIndexDbConn1, SqlCreateIndexDbConn2, SqlCreateIndexField1, SqlCreateIndexField2, SqlCreateIndexField3, SqlCreateIndexRelation1, SqlCreateIndexRelation2, SqlCreateIndexTable1, SqlCreateIndexTable2, SqlCreateNode, SqlCreateRelation, SqlCreateRelationType, SqlCreateTableDb, SqlCreateTableDbConn, SqlCreateTableField, SqlCreateTableTable, TokenFields, IdentityTableFields, FullNameTableFields, EmailTableFields, IdentityTables, SqlCreateIndexTable, AllowanceIndexes } from "./defs";
 
 export function InstantiateDType(req: CallDataInstantiate): ArrayBuffer {
     const dbfile = "dtype.db"
@@ -38,6 +38,12 @@ export function InstantiateDType(req: CallDataInstantiate): ArrayBuffer {
     }
 
     createTable = new MsgExecuteRequest(DTypeConnection, SqlCreateTableTable, [])
+    respexec = sqlw.Execute(createTable);
+    if (respexec.error != "") {
+        revert(`could not create table: ${respexec.error}`)
+    }
+
+    createTable = new MsgExecuteRequest(DTypeConnection, SqlCreateIndexTable, [])
     respexec = sqlw.Execute(createTable);
     if (respexec.error != "") {
         revert(`could not create table: ${respexec.error}`)
@@ -87,6 +93,7 @@ export function InstantiateDType(req: CallDataInstantiate): ArrayBuffer {
         new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeTableName}(name,db_id,description) VALUES ('${DTypeDbConnName}',1,'table for defining database connections')`, []),
         new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeTableName}(name,db_id,description) VALUES ('${DTypeDbName}',1,'table for defining databases')`, []),
         new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeTableName}(name,db_id,description) VALUES ('${DTypeTableName}',1,'table for defining database tables')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeTableName}(name,db_id,description) VALUES ('${DTypeTableIndexName}',1,'table for defining table indexes')`, []),
         new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeTableName}(name,db_id,description) VALUES ('${DTypeFieldName}',1,'table for defining table fields')`, []),
     ]
     batchReq = new MsgExecuteBatchRequest(DTypeConnection, queryBatch)
@@ -116,6 +123,13 @@ export function InstantiateDType(req: CallDataInstantiate): ArrayBuffer {
         new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableTableId},'name',3,'VARCHAR',true,'NOT NULL','','','','','')`, []),
         new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableTableId},'description',4,'VARCHAR',false,"DEFAULT ''",'','','','','')`, []),
 
+        // table index fields
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableTableIndexId},'id',1,'INTEGER',false,'PRIMARY KEY','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableTableIndexId},'name',2,'VARCHAR',true,'NOT NULL','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableTableIndexId},'table_id',3,'INTEGER',true,'NOT NULL','${DTypeTableName}','id','ON UPDATE CASCADE ON DELETE RESTRICT','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableTableIndexId},'isunique',4,'BOOLEAN',false,'NOT NULL DEFAULT false','','','','','')`, []),
+        new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableTableIndexId},'fields',5,'VARCHAR',false,'NOT NULL DEFAULT \'\'','','','','','')`, []),
+
         // field fields
         new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},'id',1,'INTEGER',false,'PRIMARY KEY','','','','','')`, []),
         new SqlExecuteCommand(`INSERT OR REPLACE INTO ${DTypeFieldName}(table_id,name,order_index,value_type,indexed,sql_options,foreign_key_table,foreign_key_field,foreign_key_sql_options,description,permissions) VALUES (${tableFieldsId},'name',2,'VARCHAR',true,'NOT NULL','','','','','')`, []),
@@ -133,7 +147,7 @@ export function InstantiateDType(req: CallDataInstantiate): ArrayBuffer {
     batchReq = new MsgExecuteBatchRequest(DTypeConnection, queryBatch)
     respBatch = sqlw.BatchAtomic(batchReq);
     if (respBatch.error != "") {
-        revert(`could not insert table field definitions: ${respBatch.error}`)
+        revert(`could not insert table field definitions for dtype tables: ${respBatch.error}`)
     }
 
     // graph tables
@@ -203,7 +217,7 @@ export function InstantiateDType(req: CallDataInstantiate): ArrayBuffer {
     batchReq = new MsgExecuteBatchRequest(DTypeConnection, queryBatch)
     respBatch = sqlw.BatchAtomic(batchReq);
     if (respBatch.error != "") {
-        revert(`could not insert table field definitions: ${respBatch.error}`)
+        revert(`could not insert table field definitions for graph tables: ${respBatch.error}`)
     }
     return new ArrayBuffer(0)
 }
@@ -242,6 +256,11 @@ export function InitializeTokens(req: CallDataInitializeTokens): ArrayBuffer {
     if (resp.error != "") {
         revert(`could not create permissions table: ${resp.error}`)
     }
+
+    CreateIndexInternal(
+        new TableIndentifierRequired(tableDbId, AllowanceTableId, DTypeConnection, DTypeDbName, AllowanceTable),
+        JSON.parse<TableIndex[]>(AllowanceIndexes),
+    )
 
     return new ArrayBuffer(0)
 }
@@ -364,7 +383,8 @@ export function CreateTableInternal(req: CreateTableRequest): MsgExecuteBatchRes
 }
 
 export function Insert(req: InsertRequest): ArrayBuffer {
-    const resp = InsertInternal(req)
+    const identif = getIdentifier(req.identifier);
+    const resp = InsertInternal(identif, base64ToString(req.data))
     return String.UTF8.encode(JSON.stringify<MsgExecuteBatchResponse>(resp))
 }
 
@@ -409,6 +429,68 @@ export function BuildSchema(req: BuildSchemaRequest): ArrayBuffer {
     if (fields.length == 0) revert(`table with no fields`)
     const resp = generateJsonSchema(fields)
     return String.UTF8.encode(JSON.stringify<BuildSchemaResponse>(new BuildSchemaResponse(stringToBase64(resp))))
+}
+
+export function CreateIndex(req: CreateIndexesRequest): ArrayBuffer {
+    const identif = getIdentifier(req.identifier);
+    const names = CreateIndexInternal(identif, req.indexes);
+    return String.UTF8.encode(JSON.stringify<CreateIndexResponse>(new CreateIndexResponse(names)))
+}
+
+export function DeleteIndex(req: DeleteIndexesRequest): ArrayBuffer {
+    const identif = getIdentifier(req.identifier);
+    let queryBatch: SqlExecuteCommand[] = []
+    for (let i = 0; i < req.names.length; i++) {
+        const cmd = `DROP INDEX ${req.names[i]};`
+        queryBatch.push(new SqlExecuteCommand(cmd, []));
+    }
+    let batchReq = new MsgExecuteBatchRequest(identif.db_connection_name, queryBatch)
+    let respBatch = sqlw.BatchAtomic(batchReq);
+    if (respBatch.error != "") {
+        revert(`could not delete indexes: ${respBatch.error}`)
+    }
+    return String.UTF8.encode(JSON.stringify<DeleteIndexResponse>(new DeleteIndexResponse()))
+}
+
+
+export function CreateIndexInternal(identif: TableIndentifierRequired, indexes: TableIndex[]): string[] {
+    let inserts: string[] = []
+    let queryBatch: SqlExecuteCommand[] = []
+    let names: string[] = []
+    for (let i = 0; i < indexes.length; i++) {
+        const indx = indexes[i]
+        const name = buildIndexName(identif.table_name, indx)
+        const cmd = buildCreateIndex(identif.table_name, indx)
+        const icmd = `{"table_id":${identif.table_id},"name":"${name}","isunique":${indx.isunique},"fields":"${indx.fields.join(",")}"}` // comma separated
+        inserts.push(icmd)
+        names.push(name)
+        queryBatch.push(new SqlExecuteCommand(cmd, []));
+    }
+
+    let respBatch = InsertInternal(new TableIndentifierRequired(tableDbId, tableTableIndexId, DTypeConnection, DTypeDbName, DTypeTableIndexName), `[${inserts.join(",")}]`)
+    if (respBatch.error != "") {
+        revert(`could not insert indexes: ${respBatch.error}`)
+    }
+
+    let batchReq = new MsgExecuteBatchRequest(identif.db_connection_name, queryBatch)
+    respBatch = sqlw.BatchAtomic(batchReq);
+    if (respBatch.error != "") {
+        revert(`could not create indexes: ${respBatch.error}`)
+    }
+    return names
+}
+
+function buildIndexName(tableName: string, index: TableIndex): string {
+    return `idx_${tableName}_${index.fields.join("_")}`;
+}
+
+function buildCreateIndex(tableName: string, index: TableIndex): string {
+    let isunique = ""
+    if (index.isunique) {
+        isunique = " UNIQUE"
+    }
+    const index_name = buildIndexName(tableName, index)
+    return `CREATE${isunique} INDEX IF NOT EXISTS ${index_name} ON ${tableName} (${index.fields.join(", ")});`
 }
 
 export function add(req: AddRequest): ArrayBuffer {
@@ -474,11 +556,10 @@ export function move(req: MoveRequest): ArrayBuffer {
     return new ArrayBuffer(0)
 }
 
-export function InsertInternal(req: InsertRequest): MsgExecuteBatchResponse {
-    const identif = getIdentifier(req.identifier);
+export function InsertInternal(identif: TableIndentifierRequired, data: string): MsgExecuteBatchResponse {
     const fields = getTableFields(identif.table_id);
     if (fields.length == 0) revert(`table with no fields`)
-    const params = jsonToQueryParams(base64ToString(req.data), fields)
+    const params = jsonToQueryParams(data, fields)
     if (params.length == 0) return new MsgExecuteBatchResponse("", [])
 
     const queries: SqlExecuteCommand[] = []

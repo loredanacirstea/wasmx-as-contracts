@@ -1,5 +1,6 @@
 import { JSON } from "json-as/assembly";
 import { Base64String } from "wasmx-env/assembly/types";
+export { MsgExecuteBatchResponse, MsgQueryResponse } from "wasmx-env-sql/assembly/types";
 
 export const MODULE_NAME = "dtype"
 
@@ -26,6 +27,52 @@ export class CreateTableRequest {
         this.table_id = table_id
     }
 }
+
+// @ts-ignore
+@serializable
+export class TableIndex {
+    fields: string[] = []
+    isunique: boolean = false
+    constructor(fields: string[], isunique: boolean) {
+        this.fields = fields
+        this.isunique = isunique
+    }
+}
+
+// @ts-ignore
+@serializable
+export class CreateIndexesRequest {
+    identifier: TableIndentifier
+    indexes: TableIndex[]
+    constructor(identifier: TableIndentifier, indexes: TableIndex[]) {
+        this.identifier = identifier
+        this.indexes = indexes
+    }
+}
+
+// @ts-ignore
+@serializable
+export class CreateIndexResponse {
+    names: string[] = []
+    constructor(names: string[]) {
+        this.names = names
+    }
+}
+
+// @ts-ignore
+@serializable
+export class DeleteIndexesRequest {
+    identifier: TableIndentifier
+    names: string[] = []
+    constructor(identifier: TableIndentifier, names: string[]) {
+        this.identifier = identifier
+        this.names = names
+    }
+}
+
+// @ts-ignore
+@serializable
+export class DeleteIndexResponse {}
 
 // @ts-ignore
 @serializable

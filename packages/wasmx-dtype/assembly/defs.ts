@@ -1,4 +1,4 @@
-import { DTypeDbConnName, DTypeDbName, DTypeFieldName, DTypeNodeName, DTypeRelationName, DTypeRelationTypeName, DTypeTableName, OwnedTable, OwnedTableId, AllowanceTable, AllowanceTableId, TokensTable, TokensTableId, IdentityTable, FullNameTable, EmailTable, IdentityTableId, FullNameTableId, EmailTableId } from "./config";
+import { DTypeDbConnName, DTypeDbName, DTypeFieldName, DTypeNodeName, DTypeRelationName, DTypeRelationTypeName, DTypeTableName, OwnedTable, OwnedTableId, AllowanceTable, AllowanceTableId, TokensTable, TokensTableId, IdentityTable, FullNameTable, EmailTable, IdentityTableId, FullNameTableId, EmailTableId, DTypeTableIndexName } from "./config";
 
 // TODO each table has field creator: Bech32String (contract address with write rights)
 
@@ -11,6 +11,9 @@ export const SqlCreateIndexDb2 = `CREATE INDEX IF NOT EXISTS idx_${DTypeDbName}_
 export const SqlCreateTableTable = `CREATE TABLE IF NOT EXISTS ${DTypeTableName} (id INTEGER PRIMARY KEY, name VARCHAR NOT NULL, db_id INTEGER NOT NULL REFERENCES ${DTypeDbName}(id) ON UPDATE CASCADE ON DELETE RESTRICT, description TEXT DEFAULT '')`
 export const SqlCreateIndexTable1 = `CREATE INDEX IF NOT EXISTS idx_${DTypeTableName}_db_id ON ${DTypeTableName}(db_id)`
 export const SqlCreateIndexTable2 = `CREATE UNIQUE INDEX IF NOT EXISTS idx_${DTypeTableName}_dbid_name ON ${DTypeTableName}(db_id,name)`
+
+export const SqlCreateIndexTable = `CREATE TABLE IF NOT EXISTS ${DTypeTableIndexName} (id INTEGER PRIMARY KEY, name VARCHAR NOT NULL, table_id INTEGER NOT NULL REFERENCES ${DTypeTableName}(id) ON UPDATE CASCADE ON DELETE RESTRICT, isunique BOOLEAN NOT NULL DEFAULT false, fields VARCHAR DEFAULT '')`
+
 export const SqlCreateTableField = `CREATE TABLE IF NOT EXISTS ${DTypeFieldName} (id INTEGER PRIMARY KEY, name VARCHAR NOT NULL, table_id INTEGER NOT NULL REFERENCES ${DTypeTableName}(id) ON UPDATE CASCADE ON DELETE RESTRICT, order_index INTEGER NOT NULL, value_type VARCHAR NOT NULL, indexed BOOLEAN NOT NULL DEFAULT false, sql_options VARCHAR NOT NULL DEFAULT '', foreign_key_table VARCHAR NOT NULL DEFAULT '', foreign_key_field VARCHAR NOT NULL DEFAULT '', foreign_key_sql_options VARCHAR NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '', permissions VARCHAR NOT NULL DEFAULT '')`
 export const SqlCreateIndexField1 = `CREATE INDEX IF NOT EXISTS idx_${DTypeFieldName}_table_id ON ${DTypeFieldName}(table_id)`
 export const SqlCreateIndexField2 = `CREATE UNIQUE INDEX IF NOT EXISTS idx_${DTypeFieldName}_tableid_name ON ${DTypeFieldName}(table_id,name)`
@@ -72,6 +75,11 @@ export const AllowanceFields = `[
 {"table_id":${AllowanceTableId},"name":"spender","order_index":5,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
 {"table_id":${AllowanceTableId},"name":"owned","order_index":6,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
 {"table_id":${AllowanceTableId},"name":"amount","order_index":7,"value_type":"VARCHAR","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""}
+]`
+
+export const AllowanceIndexes = `[
+{"fields":["table_id","record_id"],"isunique":true},
+{"fields":["owner","spender","owned"],"isunique":true}
 ]`
 
 // identity

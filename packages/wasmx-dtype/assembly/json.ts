@@ -54,8 +54,10 @@ export function jsonToQueryParamsObj(jsonObj: JSON.Obj, fields: DTypeField[]): Q
             values.push("");
             continue;
         }
+        // TODO consider encoding to bytes each value
         if (value.isString) {
-            values.push(stringToBase64(`{"type":"${valueType}","value":"${value.toString()}"}`));
+            // stringify escapes symbols
+            values.push(stringToBase64(`{"type":"${valueType}","value":${value.stringify()}}`));
             continue;
         }
         if (value.isInteger) {
@@ -66,6 +68,7 @@ export function jsonToQueryParamsObj(jsonObj: JSON.Obj, fields: DTypeField[]): Q
             values.push(stringToBase64(`{"type":"${valueType}","value":${value.stringify()}}`));
             continue;
         }
+        revert(`unexpected SQL parameter value: ${value.stringify()}`)
     }
     return new QueryParams(keys, values);
 }
