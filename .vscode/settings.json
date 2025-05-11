@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.tay": "lisp",
+        "locale": "c"
+    },
+    "CodeGPT.apiKey": "CodeGPT Plus Beta"
+}

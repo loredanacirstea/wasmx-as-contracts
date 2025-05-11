@@ -22,17 +22,17 @@ export class tally {
         }
     }
 
-    @serializer
-    serializer(self: tally): string {
-        return `"${self.toString(16)}"`;
-    }
+    // @serializer
+    // static serializer(self: tally): string {
+    //     return `"${self.toString(16)}"`;
+    // }
 
-    @deserializer
-    deserializer(data: string): tally {
-        const base = data.slice(0, 2) == "0x" ? 16 : 10
-        return tally.fromString(data, base);
+    // @deserializer
+    // static deserializer(data: string): tally {
+    //     const base = data.slice(0, 2) == "0x" ? 16 : 10
+    //     return tally.fromString(data, base);
 
-    }
+    // }
 
     @operator('+')
     static __add(a: tally, b: tally): tally  {

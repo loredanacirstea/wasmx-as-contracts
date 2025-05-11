@@ -1,5 +1,12 @@
 # wasmx-as-contracts
 
+## monorepo
+
+* npm install for all packages
+```
+npm install
+```
+
 ## dev
 
 ```

@@ -25,7 +25,7 @@
   "license": "UNLICENSED",
   "devDependencies": {
     "assemblyscript": "0.27.36",
-    "json-as": "file:../../../as-json"
+    "json-as": "^1.0.4"
   },
   "type": "module",
   "exports": {

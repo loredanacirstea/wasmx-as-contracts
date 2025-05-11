@@ -1,0 +1,13 @@
+{
+    "name": "wasmx-monorepo",
+    "private": true,
+    "workspaces": [
+      "packages/*"
+    ],
+    "overrides": {
+      "json-as": "github:loredanacirstea/as-json#struct-nullable-array"
+    },
+    "scripts": {
+      "install-all": "npm install"
+    }
+  }

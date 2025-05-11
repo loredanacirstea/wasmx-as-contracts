@@ -25,6 +25,6 @@
   },
   "dependencies": {
     "as-tally": "file:../as-tally",
-    "json-as": "file:../../../as-json"
+    "json-as": "^1.0.4"
   }
 }

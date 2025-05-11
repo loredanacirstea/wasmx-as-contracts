@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "as-base64": "^0.2.0",
-    "json-as": "file:../../../as-json",
+    "json-as": "^1.0.4",
     "wasmx-blocks": "file:../wasmx-blocks",
     "wasmx-consensus": "file:../wasmx-consensus",
     "wasmx-env": "file:../wasmx-env",
