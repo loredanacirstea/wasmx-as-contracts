@@ -1,9 +1,6 @@
-import { JSON } from "json-as";
-
 const MAX32: u64 = u64(Math.pow(2, 32));
 const MAX16: u32 = u32(Math.pow(2, 16));
 
-@json
 export class tally {
     buf: ArrayBuffer;
     // a64: Uint64Array;
@@ -23,12 +20,12 @@ export class tally {
     }
 
     // @serializer
-    // static serializer(self: tally): string {
+    // serializer(self: tally): string {
     //     return `"${self.toString(16)}"`;
     // }
 
     // @deserializer
-    // static deserializer(data: string): tally {
+    // deserializer(data: string): tally {
     //     const base = data.slice(0, 2) == "0x" ? 16 : 10
     //     return tally.fromString(data, base);
 

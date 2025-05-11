@@ -24,8 +24,7 @@
   "author": "Loredana Cirstea",
   "license": "UNLICENSED",
   "devDependencies": {
-    "assemblyscript": "0.27.36",
-    "json-as": "^1.0.4"
+    "assemblyscript": "0.27.36"
   },
   "type": "module",
   "exports": {
