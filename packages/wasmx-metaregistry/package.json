@@ -26,7 +26,6 @@
     "as-base64": "^0.2.0",
     "as-tally": "file:../as-tally",
     "json-as": "file:../../../as-json",
-    "visitor-as": "^0.11.4",
     "wasmx-consensus": "file:../wasmx-consensus",
     "wasmx-env": "file:../wasmx-env",
     "wasmx-utils": "file:../wasmx-utils",

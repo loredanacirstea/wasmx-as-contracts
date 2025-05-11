@@ -26,7 +26,6 @@
     "as-base64": "^0.2.0",
     "assemblyscript-json": "file://../../../assemblyscript-json",
     "json-as": "file:../../../as-json",
-    "visitor-as": "^0.11.4",
     "wasmx-env": "file:../wasmx-env",
     "wasmx-utils": "file:../wasmx-utils",
     "wasmx-env-sql": "file:../wasmx-env-sql"

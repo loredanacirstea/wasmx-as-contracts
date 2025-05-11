@@ -20,10 +20,10 @@
     }
   },
   "devDependencies": {
-    "assemblyscript": "^0.27.5"
+    "assemblyscript": "0.27.36"
   },
   "dependencies": {
-    "as-bignum": "^0.2.31",
-    "json-as": "^0.5.36"
+    "as-bignum": "0.3.1",
+    "json-as": "file:../../../as-json"
   }
 }

@@ -25,7 +25,6 @@
   "dependencies": {
     "as-base64": "^0.2.0",
     "as-tally": "file:../as-tally",
-    "json-as": "file:../../../as-json",
-    "visitor-as": "^0.11.4"
+    "json-as": "file:../../../as-json"
   }
 }

@@ -20,12 +20,11 @@
     }
   },
   "devDependencies": {
-    "assemblyscript": "^0.27.5",
-    "visitor-as": "^0.11.4",
+    "assemblyscript": "^0.25.0",
     "wasmx": "file:tests/wasmx"
   },
   "dependencies": {
     "as-tally": "file:../as-tally",
-    "json-as": "github:loredanacirstea/as-json"
+    "json-as": "file:../../../as-json"
   }
 }

@@ -25,7 +25,6 @@
   "dependencies": {
     "as-base64": "^0.2.0",
     "json-as": "file:../../../as-json",
-    "visitor-as": "^0.11.4",
     "wasmx-env": "file:../wasmx-env",
     "wasmx-p2p": "file:../wasmx-p2p",
     "wasmx-utils": "file:../wasmx-utils"
