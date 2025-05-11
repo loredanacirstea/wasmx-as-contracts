@@ -61,6 +61,7 @@ export function getEmailFields(emailTableId: i64): string {
 {"table_id":${emailTableId},"name":"header","order_index":10,"value_type":"TEXT","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
 {"table_id":${emailTableId},"name":"header_References","order_index":11,"value_type":"TEXT","indexed":false,"sql_options":"NOT NULL DEFAULT '[]'","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
 {"table_id":${emailTableId},"name":"flags","order_index":12,"value_type":"VARCHAR","indexed":false,"sql_options":"NOT NULL DEFAULT '[]'","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${emailTableId},"name":"name","order_index":13,"value_type":"VARCHAR","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""}
+{"table_id":${emailTableId},"name":"name","order_index":13,"value_type":"VARCHAR","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${emailTableId},"name":"owner","order_index":14,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""}
 ]`
 }

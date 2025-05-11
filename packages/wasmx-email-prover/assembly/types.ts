@@ -1,4 +1,5 @@
 import { JSON } from "json-as/assembly";
+import { SeqSetRange, UidSetRange } from "wasmx-env-imap/assembly/types";
 import { Base64String } from "wasmx-env/assembly/types";
 
 export const MODULE_NAME = "email-prover"
@@ -89,14 +90,14 @@ export class MsgCacheEmailRequest {
     user_id: i64 = 0
     username: string = ""
     email_folder: string = ""
-    email_uid: u32 = 0
-    email_seq: u32 = 0
-    constructor(user_id: i64, username: string, email_folder: string, email_uid: u32, email_seq: u32) {
+    uid_range: UidSetRange[] = []
+    seq_range: SeqSetRange[] = []
+    constructor(user_id: i64, username: string, email_folder: string, uid_range: UidSetRange[], seq_range: SeqSetRange[]) {
         this.user_id = user_id
         this.username = username
         this.email_folder = email_folder
-        this.email_uid = email_uid
-        this.email_seq = email_seq
+        this.uid_range = uid_range
+        this.seq_range = seq_range
     }
 }
 
@@ -190,6 +191,7 @@ export class Provider {
 @serializable
 export class EmailToWrite {
     uid: i64 = 0
+    owner: string = ""
     raw: Base64String = ""
     bh: Base64String = ""
     body: Base64String = ""
@@ -203,6 +205,7 @@ export class EmailToWrite {
     name: string = ""
     constructor(
         uid: i64,
+        owner: string,
         raw: Base64String,
         bh: Base64String,
         body: Base64String,
@@ -216,6 +219,7 @@ export class EmailToWrite {
         name: string,
     ) {
         this.uid = uid
+        this.owner = owner
         this.raw = raw
         this.bh = bh
         this.body = body
@@ -251,4 +255,22 @@ export class ThreadToWrite {
         this.email_message_ids = email_message_ids
         this.missing_refs = missing_refs
     }
+}
+
+// @ts-ignore
+@serializable
+export class ResponseStringWithError {
+    constructor(
+        public error: string,
+        public data: string,
+    ) {}
+}
+
+// @ts-ignore
+@serializable
+export class LastKnownReferenceResult {
+    constructor(
+        public id: i64,
+        public missingRefs: Array<string>,
+    ) {}
 }

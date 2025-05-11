@@ -215,6 +215,29 @@ export class ReadFieldRequest {
 
 // @ts-ignore
 @serializable
+export class GetRecordsByRelationTypeRequest {
+    relationTypeId: i64
+    relationType: string
+    tableId: i64
+    recordId: i64
+    nodeType: string // "source" || "target"
+    constructor(
+        relationTypeId: i64,
+        relationType: string,
+        tableId: i64,
+        recordId: i64,
+        nodeType: string,
+    ) {
+        this.relationTypeId = relationTypeId
+        this.relationType = relationType
+        this.tableId = tableId
+        this.recordId = recordId
+        this.nodeType = nodeType
+    }
+}
+
+// @ts-ignore
+@serializable
 export class DeleteRequest {
     identifier: TableIndentifier
     condition: Base64String

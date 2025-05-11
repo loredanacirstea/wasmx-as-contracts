@@ -1,7 +1,7 @@
 import { JSON } from "json-as/assembly";
 import { LoggerDebugExtended } from "wasmx-env/assembly/wasmx_wrap"
 import * as imap from './imap';
-import { ImapCloseRequest, ImapCloseResponse, ImapConnectionOauth2Request, ImapConnectionResponse, ImapConnectionSimpleRequest, ImapCreateFolderRequest, ImapCreateFolderResponse, ImapFetchRequest, ImapFetchResponse, ImapListenRequest, ImapListenResponse, MODULE_NAME } from "./types";
+import { Email, ImapCloseRequest, ImapCloseResponse, ImapConnectionOauth2Request, ImapConnectionResponse, ImapConnectionSimpleRequest, ImapCreateFolderRequest, ImapCreateFolderResponse, ImapFetchRequest, ImapFetchResponse, ImapListenRequest, ImapListenResponse, MODULE_NAME } from "./types";
 
 export function ConnectWithPassword(req: ImapConnectionSimpleRequest, moduleName: string = ""): ImapConnectionResponse {
     const requestStr = JSON.stringify<ImapConnectionSimpleRequest>(req);

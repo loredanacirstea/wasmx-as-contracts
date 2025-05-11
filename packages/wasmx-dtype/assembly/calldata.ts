@@ -1,6 +1,6 @@
 import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { BuildSchemaRequest, CallDataInstantiate, CallDataInitializeTokens, CloseRequest, ConnectRequest, CountRequest, CreateTableRequest, DeleteRequest, InsertRequest, ReadFieldRequest, ReadRequest, UpdateRequest, CreateIndexesRequest, DeleteIndexesRequest } from "./types";
+import { BuildSchemaRequest, CallDataInstantiate, CallDataInitializeTokens, CloseRequest, ConnectRequest, CountRequest, CreateTableRequest, DeleteRequest, InsertRequest, ReadFieldRequest, ReadRequest, UpdateRequest, CreateIndexesRequest, DeleteIndexesRequest, GetRecordsByRelationTypeRequest } from "./types";
 import { AddRequest, MoveRequest, SubRequest } from "./types_tokens";
 
 // @ts-ignore
@@ -24,6 +24,7 @@ export class CallData {
     Delete: DeleteRequest | null = null;
     Read: ReadRequest | null = null;
     ReadField: ReadFieldRequest | null = null;
+    GetRecordsByRelationType: GetRecordsByRelationTypeRequest | null = null;
     Count: CountRequest | null = null;
     BuildSchema: BuildSchemaRequest | null = null;
     Add: AddRequest | null = null;

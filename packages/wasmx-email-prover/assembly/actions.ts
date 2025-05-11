@@ -81,19 +81,11 @@ export function CacheEmail(req: MsgCacheEmailRequest): ArrayBuffer {
     const ids = getTableIds()
     const relationTypeIds = getRelationTypes();
     const connId = getConnectionId(req.username)
-    const seq_set: SeqSetRange[] = [];
-    const uid_set: UidSetRange[] = [];
-    if (req.email_seq) {
-        seq_set.push(new SeqSetRange(req.email_seq, req.email_seq))
-    }
-    if (req.email_uid) {
-        uid_set.push(new UidSetRange(req.email_uid, req.email_uid))
-    }
     const fetchReq = new ImapFetchRequest(
         connId,
         req.email_folder,
-        seq_set,
-        uid_set,
+        req.seq_range,
+        req.uid_range,
         null, null, null, false,
     )
     const resp = imapw.Fetch(fetchReq, MODULE_NAME)
@@ -103,7 +95,9 @@ export function CacheEmail(req: MsgCacheEmailRequest): ArrayBuffer {
     if (resp.data.length == 0) {
         revert(`Fetch email response empty`)
     }
-    saveEmail(ids, relationTypeIds, req.username, resp.data[0]);
+    for (let i = 0; i < resp.data.length; i++) {
+        saveEmail(ids, relationTypeIds, req.username, resp.data[i]);
+    }
     return new ArrayBuffer(0)
 }
 

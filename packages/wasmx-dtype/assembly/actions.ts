@@ -3,7 +3,7 @@ import { JSON as JSONDyn } from "assemblyscript-json/assembly";
 import * as sqlw from "wasmx-env-sql/assembly/sql_wrap";
 import { base64ToString, stringToBase64, stringToBytes } from "wasmx-utils/assembly/utils";
 import { MsgCloseRequest, MsgCloseResponse, MsgConnectRequest, MsgConnectResponse, MsgExecuteBatchRequest, MsgExecuteBatchResponse, MsgExecuteRequest, MsgExecuteResponse, MsgQueryRequest, MsgQueryResponse, SqlExecuteCommand } from "wasmx-env-sql/assembly/types";
-import { BuildSchemaRequest, BuildSchemaResponse, CallDataInstantiate, CallDataInitializeTokens, CloseRequest, ConnectRequest, CountRequest, CountResponse, CreateTableRequest, DeleteRequest, DTypeDb, DTypeDbConnection, DTypeField, DTypeTable, InsertRequest, MODULE_NAME, ReadFieldRequest, ReadRequest, TableIndentifier, TableIndentifierRequired, UpdateRequest, CreateIndexesRequest, DeleteIndexesRequest, TableIndex, CreateIndexResponse, DeleteIndexResponse } from "./types";
+import { BuildSchemaRequest, BuildSchemaResponse, CallDataInstantiate, CallDataInitializeTokens, CloseRequest, ConnectRequest, CountRequest, CountResponse, CreateTableRequest, DeleteRequest, DTypeDb, DTypeDbConnection, DTypeField, DTypeTable, InsertRequest, MODULE_NAME, ReadFieldRequest, ReadRequest, TableIndentifier, TableIndentifierRequired, UpdateRequest, CreateIndexesRequest, DeleteIndexesRequest, TableIndex, CreateIndexResponse, DeleteIndexResponse, GetRecordsByRelationTypeRequest } from "./types";
 import { revert } from "./utils";
 import { jsonToQueryParams, QueryParams } from "./json";
 import { generateJsonSchema } from "./schema";
@@ -12,6 +12,7 @@ import { AddRequest, MoveRequest, SubRequest } from "./types_tokens";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { Base64String } from "wasmx-env/assembly/types";
 import { AssetTables, OwnedFields, AllowanceFields, SqlCreateIndexDb1, SqlCreateIndexDb2, SqlCreateIndexDbConn1, SqlCreateIndexDbConn2, SqlCreateIndexField1, SqlCreateIndexField2, SqlCreateIndexField3, SqlCreateIndexRelation1, SqlCreateIndexRelation2, SqlCreateIndexTable1, SqlCreateIndexTable2, SqlCreateNode, SqlCreateRelation, SqlCreateRelationType, SqlCreateTableDb, SqlCreateTableDbConn, SqlCreateTableField, SqlCreateTableTable, TokenFields, IdentityTableFields, FullNameTableFields, EmailTableFields, IdentityTables, SqlCreateIndexTable, AllowanceIndexes } from "./defs";
+import { QueryRecordsByRelationTypeAndSource, QueryRecordsByRelationTypeAndTarget } from "./queries";
 
 export function InstantiateDType(req: CallDataInstantiate): ArrayBuffer {
     const dbfile = "dtype.db"
@@ -413,6 +414,11 @@ export function ReadField(req: ReadFieldRequest): ArrayBuffer {
     return String.UTF8.encode(JSON.stringify<MsgQueryResponse>(resp))
 }
 
+export function GetRecordsByRelationType(req: GetRecordsByRelationTypeRequest): ArrayBuffer {
+    const resp = GetRecordsByRelationTypeInternal(req.relationTypeId, req.relationType, req.tableId, req.recordId, req.nodeType)
+    return String.UTF8.encode(JSON.stringify<MsgQueryResponse>(resp))
+}
+
 export function Count(req: CountRequest): ArrayBuffer {
     const resp = ReadInternal(req.identifier, req.data)
     if (resp.error != "") {
@@ -719,6 +725,28 @@ export function ReadInternal(identifier: TableIndentifier, data: Base64String): 
 
     const query = `SELECT * FROM ${identif.table_name} WHERE ${cond};`;
     return sqlw.Query(new MsgQueryRequest(identif.db_connection_name, query, param.values))
+}
+
+export function GetRecordsByRelationTypeInternal(reltypeId: i64, reltype: string, tableId: i64, recordId: i64, nodeType: string): MsgQueryResponse {
+    if (reltypeId == 0 && reltype == "") {
+        revert(`cannot retrieve records, invalid relation type`)
+    }
+    let query: string;
+    let params: string[] = [];
+    let qfn = QueryRecordsByRelationTypeAndSource
+    if (nodeType == "target") {
+        qfn = QueryRecordsByRelationTypeAndTarget
+    }
+    if (reltypeId > 0) {
+        query = qfn("id");
+        params.push(stringToBase64(`{"type":"INTEGER","value":${reltypeId}}`))
+    } else {
+        query = qfn("name");
+        params.push(stringToBase64(`{"type":"VARCHAR","value":"${reltype}"}`))
+    }
+    params.push(stringToBase64(`{"type":"INTEGER","value":"${tableId}"}`))
+    params.push(stringToBase64(`{"type":"INTEGER","value":"${recordId}"}`))
+    return sqlw.Query(new MsgQueryRequest(DTypeConnection, query, params))
 }
 
 export function ReadFieldInternal(req: ReadFieldRequest): MsgQueryResponse {
