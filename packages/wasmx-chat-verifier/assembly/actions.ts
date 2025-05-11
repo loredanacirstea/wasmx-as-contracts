@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { validateBlock, validateConsecutiveBlocks } from "wasmx-chat/assembly/block";
 import { MsgStoreConversation, QueryVerifyConversation } from "./types";
 import { revert } from "./utils";

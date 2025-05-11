@@ -1,11 +1,10 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String } from "wasmx-env/assembly/types";
 import { Hook } from "wasmx-env/assembly/hooks";
 
 export const MODULE_NAME = "hooks"
 
-// @ts-ignore
-@serializable
+@json
 export class MsgInitialize {
     hooks: Hook[]
     constructor(hooks: Hook[]) {
@@ -13,15 +12,13 @@ export class MsgInitialize {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Params {
     constructor() {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSetHook {
     hook: string
     modules: string[]
@@ -31,8 +28,7 @@ export class MsgSetHook {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgRunHook {
     hook: string
     data: Base64String
@@ -42,8 +38,7 @@ export class MsgRunHook {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryHookModulesRequest {
     hook: string
     constructor(hook: string) {
@@ -51,8 +46,7 @@ export class QueryHookModulesRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryHookModulesResponse {
     modules: string[]
     constructor(modules: string[]) {
@@ -60,12 +54,10 @@ export class QueryHookModulesResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryHooksRequest {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryHooksResponse {
     hooks: string[]
     constructor(hooks: string[]) {

@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { GenesisState, MODULE_NAME, MsgSetCodeInfoRequest, MsgSetContractInfoRequest, MsgSetNewCodeInfoRequest, QueryCodeInfoRequest, QueryCodeInfoResponse, QueryContractInfoRequest, QueryContractInfoResponse, QueryContractInstanceRequest, QueryContractInstanceResponse, QueryLastCodeIdResponse } from "./types";
 import { autoIncrementID, getCodeId, getCodeInfo, getCodeRootKey, getContractAddressRootKey, getContractInfo, getLastCodeId, storeCodeInfo, storeContractInfo } from "./storage";
 import { LoggerInfo, revert } from "./utils";

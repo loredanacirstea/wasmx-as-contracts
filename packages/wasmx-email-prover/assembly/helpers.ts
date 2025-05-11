@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { JSON as JSONDyn } from "assemblyscript-json/assembly";
 import { Address, Email, Envelope } from "wasmx-env-imap/assembly/types";
 import { EmailToWrite, LastKnownReferenceResult, RelationTypeIds, TableIds, ThreadToWrite } from "./types";
@@ -251,7 +251,7 @@ export function EmailRecordfromEmail(email: Email, owner: string): EmailToWrite 
         stringToBase64(email.raw),
         email.bh,
         email.body,
-        email.internal_date.getTime(),
+        email.internalDate.getTime(),
         envelope,
         email.envelope!.Subject,
         email.envelope!.MessageID,

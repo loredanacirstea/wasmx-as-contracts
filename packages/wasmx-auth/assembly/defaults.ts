@@ -1,6 +1,4 @@
-import { Coin } from "wasmx-env/assembly/types";
 import { GenesisState, Params, TypeUrl_BaseAccount, TypeUrl_ModuleAccount } from "./types";
-import { BigInt } from "wasmx-env/assembly/bn";
 
 export const max_memo_characters = 256
 export const tx_sig_limit = 7

@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap"
 import * as fsm from 'xstate-fsm-as/assembly/storage';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";

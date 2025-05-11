@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { Bech32String } from 'wasmx-env/assembly/types';
 import { parseInt32, parseInt64 } from "wasmx-utils/assembly/utils";

@@ -1,10 +1,9 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { KvGetRequest, KvSetRequest, MsgCloseRequest, MsgCloseResponse, MsgConnectRequest, MsgConnectResponse } from "wasmx-env-kvdb/assembly/types";
 
 export const MODULE_NAME = "test-kvdb"
 
-// @ts-ignore
-@serializable
+@json
 export class MsgNestedCall {
     execute: KvSetRequest[]
     query: KvGetRequest[]

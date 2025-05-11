@@ -1,17 +1,15 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxt from "wasmx-env/assembly/types";
 import { MsgInitialize, MsgSetChainDataRequest, QueryGetChainDataRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QuerySubChainConfigByIdsRequest } from "./types";
 import { Base64String } from "wasmx-env/assembly/types";
 
-// @ts-ignore
-@serializable
+@json
 export class HookCalld {
     data: Base64String = ""
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     SetChainData: MsgSetChainDataRequest | null = null;
 

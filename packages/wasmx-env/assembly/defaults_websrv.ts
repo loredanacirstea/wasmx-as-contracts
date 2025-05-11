@@ -1,7 +1,6 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 
-// @ts-ignore
-@serializable
+@json
 export class Params {
     oauth_client_registration_only_e_id: boolean
     constructor( oauth_client_registration_only_e_id: boolean) {
@@ -9,8 +8,7 @@ export class Params {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GenesisState {
     params: Params
     constructor(params: Params) {

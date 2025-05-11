@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmxwrap from "wasmx-env/assembly/wasmx_wrap";
 import { ChainInfo, Chains, Config } from "./types";
 

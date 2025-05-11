@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String, Bech32String, HexString, Coin, PageRequest, PageResponse, ValidatorAddressString, PublicKey, ContractInfo, ConsensusAddressString } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn"
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint"
@@ -9,8 +9,7 @@ export const MODULE_NAME = "staking"
 export const AfterValidatorCreated = "AfterValidatorCreated"
 export const AfterValidatorBonded = "AfterValidatorBonded"
 
-// @ts-ignore
-@serializable
+@json
 export type BondStatusNumber = i32
 // UNSPECIFIED defines an invalid validator status.
 export const Unspecified = 0;
@@ -21,8 +20,7 @@ export const Unbonding = 2;
 // BONDED defines a validator that is bonded.
 export const Bonded = 3;
 
-// @ts-ignore
-@serializable
+@json
 export type BondStatusString = string
 // UNSPECIFIED defines an invalid validator status.
 export const UnspecifiedS = "BOND_STATUS_UNSPECIFIED"; // Unspecified
@@ -35,8 +33,7 @@ export const BondedS = "BOND_STATUS_BONDED"; // Bonded
 
 export const TypeUrl_MsgCreateValidator = "/cosmos.staking.v1beta1.MsgCreateValidator"
 
-// @ts-ignore
-@serializable
+@json
 export class Description {
     // moniker defines a human-readable name for the validator.
     moniker: string = ""
@@ -57,8 +54,7 @@ export class Description {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CommissionRates {
     // TODO
     // rate is the commission rate charged to delegators, as a fraction.
@@ -74,8 +70,7 @@ export class CommissionRates {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgCreateValidator {
     description: Description
     commission: CommissionRates
@@ -100,12 +95,10 @@ export class MsgCreateValidator {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgCreateValidatorResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorInfo {
     address: HexString = ""
     pub_key: Base64String  = ""// crypto.PubKey
@@ -119,8 +112,7 @@ export class ValidatorInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Delegation {
     delegator_address: Bech32String = ""
     validator_address: ValidatorAddressString = ""
@@ -132,8 +124,7 @@ export class Delegation {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class LastValidatorPower {
     // address is the address of the validator.
     address: string = ""
@@ -145,8 +136,7 @@ export class LastValidatorPower {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class UnbondingDelegationEntry {
     // creation_height is the height which the unbonding took place.
     creation_height: i64
@@ -170,8 +160,7 @@ export class UnbondingDelegationEntry {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class UnbondingDelegation {
     // delegator_address is the encoded address of the delegator.
     delegator_address: string
@@ -186,14 +175,12 @@ export class UnbondingDelegation {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class RedelegationEntry {}
 
 // Redelegation contains the list of a particular delegator's redelegating bonds
 // from a particular source validator to a particular destination validator.
-// @ts-ignore
-@serializable
+@json
 export class Redelegation {
 	// delegator_address is the bech32-encoded address of the delegator.
 	delegator_address: string
@@ -211,8 +198,7 @@ export class Redelegation {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GenesisState {
     // params defines all the parameters of related to deposit.
     params: Params
@@ -246,8 +232,7 @@ export class GenesisState {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class InitGenesisResponse {
     updates: ValidatorUpdate[]
     constructor(updates: ValidatorUpdate[]) {
@@ -255,8 +240,7 @@ export class InitGenesisResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Params {
 	// unbonding_time is the time duration of unbonding.
 	unbonding_time: string
@@ -280,8 +264,7 @@ export class Params {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Commission {
     // commission_rates defines the initial commission rates to be used for creating a validator.
     commission_rates: CommissionRates
@@ -293,8 +276,7 @@ export class Commission {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Validator {
 	// operator_address defines the address of the validator's operator; bech encoded in JSON.
 	operator_address: Bech32String
@@ -341,8 +323,7 @@ export class Validator {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorSimple {
 	// operator_address defines the address of the validator's operator; bech encoded in JSON.
 	operator_address: Bech32String
@@ -416,8 +397,7 @@ export class ValidatorSimple {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class RedelegationEntryResponse {
     redelegation_entry: RedelegationEntry
     balance: BigInt
@@ -427,8 +407,7 @@ export class RedelegationEntryResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class RedelegationResponse {
     redelegation: Redelegation
     entries: RedelegationEntryResponse[]
@@ -441,8 +420,7 @@ export class RedelegationResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class HistoricalInfo {
     header: typestnd.Header
     valset: Validator[]
@@ -455,8 +433,7 @@ export class HistoricalInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgDelegate {
     delegator_address: string
     validator_address: ValidatorAddressString
@@ -468,8 +445,7 @@ export class MsgDelegate {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorUpdate {
     pub_key: PublicKey | null
     power:  i64
@@ -479,16 +455,13 @@ export class ValidatorUpdate {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryGetAllValidators {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryGetAllValidatorInfos {}
 
-// @ts-ignore
-@serializable
+@json
 export class MsgUpdateValidators {
     updates: ValidatorUpdate[]
     constructor(updates: ValidatorUpdate[]) {
@@ -496,8 +469,7 @@ export class MsgUpdateValidators {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryValidatorsRequest {
     pagination: PageRequest
     constructor(pagination: PageRequest) {
@@ -505,8 +477,7 @@ export class QueryValidatorsRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryValidatorsResponse {
     validators: Validator[]
     pagination: PageResponse
@@ -516,8 +487,7 @@ export class QueryValidatorsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryValidatorInfosResponse {
     validators: ValidatorSimple[]
     pagination: PageResponse
@@ -527,8 +497,7 @@ export class QueryValidatorInfosResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryValidatorRequest {
     validator_addr: ValidatorAddressString
     constructor(validator_addr: ValidatorAddressString) {
@@ -536,8 +505,7 @@ export class QueryValidatorRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryValidatorResponse {
     validator: Validator
     constructor(validator: Validator) {
@@ -545,8 +513,7 @@ export class QueryValidatorResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryValidatorDelegationsRequest {
     validator_addr: ValidatorAddressString
     pagination: PageRequest
@@ -556,8 +523,7 @@ export class QueryValidatorDelegationsRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryValidatorDelegationsResponse {
     delegation_responses: DelegationResponse[]
     pagination: PageResponse
@@ -567,8 +533,7 @@ export class QueryValidatorDelegationsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryValidatorUnbondingDelegationsRequest {
     validator_addr: ValidatorAddressString
     pagination: PageRequest
@@ -578,8 +543,7 @@ export class QueryValidatorUnbondingDelegationsRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryValidatorUnbondingDelegationsResponse {
     unbonding_responses: UnbondingDelegation[]
     pagination: PageResponse
@@ -589,8 +553,7 @@ export class QueryValidatorUnbondingDelegationsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDelegationRequest {
     delegator_addr: Bech32String
     validator_addr: ValidatorAddressString
@@ -600,8 +563,7 @@ export class QueryDelegationRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DelegationCosmos {
     delegator_address: Bech32String
     validator_address: Bech32String
@@ -613,8 +575,7 @@ export class DelegationCosmos {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DelegationResponse {
     delegation: DelegationCosmos
     balance: Coin
@@ -624,8 +585,7 @@ export class DelegationResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDelegationResponse {
     delegation_response: DelegationResponse
     constructor(delegation_response: DelegationResponse) {
@@ -633,8 +593,7 @@ export class QueryDelegationResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryUnbondingDelegationRequest {
     delegator_addr: Bech32String
     validator_addr: ValidatorAddressString
@@ -644,8 +603,7 @@ export class QueryUnbondingDelegationRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryUnbondingDelegationResponse {
     unbond: UnbondingDelegation
     constructor(unbond: UnbondingDelegation) {
@@ -653,8 +611,7 @@ export class QueryUnbondingDelegationResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDelegatorDelegationsRequest {
     delegator_addr: Bech32String
     pagination: PageRequest
@@ -664,8 +621,7 @@ export class QueryDelegatorDelegationsRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDelegatorDelegationsResponse {
     delegation_responses: DelegationResponse[]
     pagination: PageResponse
@@ -675,8 +631,7 @@ export class QueryDelegatorDelegationsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDelegatorUnbondingDelegationsRequest {
     delegator_addr: Bech32String
     pagination: PageRequest
@@ -686,8 +641,7 @@ export class QueryDelegatorUnbondingDelegationsRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDelegatorUnbondingDelegationsResponse {
     unbonding_responses: UnbondingDelegation[]
     pagination: PageResponse
@@ -697,8 +651,7 @@ export class QueryDelegatorUnbondingDelegationsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryRedelegationsRequest {
     delegator_addr: Bech32String
     src_validator_addr: Bech32String
@@ -717,8 +670,7 @@ export class QueryRedelegationsRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryRedelegationsResponse {
     redelegation_responses: RedelegationResponse[]
     pagination: PageResponse
@@ -728,8 +680,7 @@ export class QueryRedelegationsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDelegatorValidatorsRequest {
     delegator_addr: Bech32String
     pagination: PageRequest
@@ -742,8 +693,7 @@ export class QueryDelegatorValidatorsRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDelegatorValidatorsResponse {
     validators: Validator[]
     pagination: PageResponse
@@ -753,8 +703,7 @@ export class QueryDelegatorValidatorsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDelegatorValidatorRequest {
     delegator_addr: Bech32String
     validator_addr: ValidatorAddressString
@@ -767,8 +716,7 @@ export class QueryDelegatorValidatorRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDelegatorValidatorResponse {
     validator: Validator
     constructor(validator: Validator) {
@@ -776,8 +724,7 @@ export class QueryDelegatorValidatorResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryHistoricalInfoRequest {
     height: i64
     constructor(height: i64) {
@@ -785,8 +732,7 @@ export class QueryHistoricalInfoRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryHistoricalInfoResponse {
     hist: HistoricalInfo
     constructor(hist: HistoricalInfo) {
@@ -794,16 +740,13 @@ export class QueryHistoricalInfoResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryPoolRequest {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryParamsRequest {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryParamsResponse {
     params: Params
     constructor(params: Params) {
@@ -811,8 +754,7 @@ export class QueryParamsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Pool {
     not_bonded_tokens: BigInt
     bonded_tokens: BigInt
@@ -822,8 +764,7 @@ export class Pool {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryPoolResponse {
     pool: Pool
     constructor(pool: Pool) {
@@ -849,8 +790,7 @@ export function getValidatorFromMsgCreate(req: MsgCreateValidator): Validator {
     )
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryContractInfoResponse {
     contract_info: ContractInfo | null
     constructor(contract_info: ContractInfo | null) {
@@ -858,8 +798,7 @@ export class QueryContractInfoResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryIsValidatorJailed {
     consaddr: ConsensusAddressString
     constructor(consaddr: ConsensusAddressString) {
@@ -867,8 +806,7 @@ export class QueryIsValidatorJailed {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryIsValidatorJailedResponse {
     jailed: bool
     constructor(jailed: bool) {
@@ -876,8 +814,7 @@ export class QueryIsValidatorJailedResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSlash {
     consaddr: ConsensusAddressString
     infractionHeight: i64
@@ -896,8 +833,7 @@ export class MsgSlash {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSlashWithInfractionReason {
     consaddr: ConsensusAddressString
     infractionHeight: i64
@@ -919,8 +855,7 @@ export class MsgSlashWithInfractionReason {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSlashWithInfractionReasonResponse {
     amount_burned: BigInt
     constructor(amount_burned: BigInt) {
@@ -928,8 +863,7 @@ export class MsgSlashWithInfractionReasonResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgJail {
     consaddr: ConsensusAddressString
     constructor(consaddr: ConsensusAddressString) {
@@ -937,8 +871,7 @@ export class MsgJail {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgUnjail {
     address: Bech32String
     constructor(address: Bech32String) {
@@ -946,12 +879,10 @@ export class MsgUnjail {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgUnjailResponse{}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryConsensusAddressByOperatorAddress {
     validator_addr: Bech32String
     constructor(validator_addr: ConsensusAddressString) {
@@ -959,8 +890,7 @@ export class QueryConsensusAddressByOperatorAddress {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryConsensusAddressByOperatorAddressResponse {
     consaddr: ConsensusAddressString
     constructor(consaddr: ConsensusAddressString) {

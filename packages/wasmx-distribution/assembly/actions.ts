@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
@@ -282,8 +282,7 @@ export function callStaking(calldata: string, isQuery: boolean): CallResponse {
     return resp;
 }
 
-// @ts-ignore
-@serializable
+@json
 export class BigFloat {
     num: BigInt
     denom: BigInt

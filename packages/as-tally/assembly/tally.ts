@@ -3,6 +3,7 @@ import { JSON } from "json-as";
 const MAX32: u64 = u64(Math.pow(2, 32));
 const MAX16: u32 = u32(Math.pow(2, 16));
 
+@json
 export class tally {
     buf: ArrayBuffer;
     // a64: Uint64Array;

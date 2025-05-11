@@ -1,5 +1,5 @@
 // this is used for testing
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { Base64String } from "wasmx-env/assembly/types";
 import { revert } from "./utils";
@@ -24,8 +24,7 @@ export function main(): void {
   wasmx.finish(result);
 }
 
-// @ts-ignore
-@serializable
+@json
 class MsgStart {
   protocolId: string
   pk: Base64String
@@ -39,8 +38,7 @@ class MsgStart {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgChat {
   protocolId: string
   pk: Base64String
@@ -84,8 +82,7 @@ function chat(req: MsgChat): void {
   p2pw.SendMessageToChatRoom(new SendMessageToChatRoomRequest("", "", `hello to chat room from ${req.node.port} !`, req.protocolId, req.roomId));
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     start: MsgStart | null = null;
     chat: MsgChat | null = null;

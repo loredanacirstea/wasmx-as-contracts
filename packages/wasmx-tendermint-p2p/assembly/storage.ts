@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as fsm from 'xstate-fsm-as/assembly/storage';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";

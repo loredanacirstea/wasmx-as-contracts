@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, getCallDataInitialize, getCallDataWrap } from './calldata';
 import { ConvertAddressByChainId, CrossChainQuery, CrossChainQueryNonDeterministic, CrossChainTx, GetCurrentLevel, GetSubChainById, GetSubChainConfigById, GetSubChainConfigByIds, GetSubChainIds, GetSubChainIdsByLevel, GetSubChainIdsByValidator, GetSubChains, GetSubChainsByIds, GetValidatorAddressesByChainId, GetValidatorsByChainId, InitSubChain, RegisterDefaultSubChain, RegisterSubChain, RegisterSubChainValidator, RemoveSubChain } from "./actions";

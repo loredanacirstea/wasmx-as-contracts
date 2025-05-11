@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { encode as base64encode } from "as-base64/assembly";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { base64ToString, parseInt64 } from "wasmx-utils/assembly/utils";

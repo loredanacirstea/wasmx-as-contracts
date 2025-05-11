@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, getCallDataWrap } from './calldata';
 import { EndBlock, DoDeposit, InitGenesis, SubmitProposal, VoteWeighted, GetProposal, GetParams, DoVote, GetProposals, GetTallyResult } from "./actions";

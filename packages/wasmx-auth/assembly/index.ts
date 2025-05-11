@@ -1,6 +1,5 @@
-import { JSON } from "json-as/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { CallData, getCallDataWrap } from './calldata';
+import { getCallDataWrap } from './calldata';
 import { GetAccount, GetAccountAddressByID, GetAccountInfo, GetAccounts, GetAddressBytesToString, GetAddressStringToBytes, GetBech32Prefix, InitGenesis, GetModuleAccountByName, GetModuleAccounts, GetParams, SetAccount, UpdateParams, HasAccount, SetNewBaseAccount, SetNewModuleAccount } from "./actions";
 import { revert } from "./utils";
 import { MODULE_NAME } from "./types";

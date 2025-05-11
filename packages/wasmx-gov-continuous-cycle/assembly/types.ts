@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String, Bech32String, Coin } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn"
 import * as gov from "wasmx-gov/assembly/types"

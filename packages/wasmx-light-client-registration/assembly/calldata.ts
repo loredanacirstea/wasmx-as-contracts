@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { encode as encodeBase64, decode as decodeBase64, encode } from "as-base64/assembly";
 import { Base64String, Bech32String } from 'wasmx-env/assembly/types';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
@@ -10,8 +10,7 @@ import {
     getNextProposer,
 } from './register';
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataInstantiate {
     min_validators: i32;
     constructor(min_validators: i32) {
@@ -19,8 +18,7 @@ export class CallDataInstantiate {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     registerChain: CallDataRegisterChain | null = null;
     registerValidator: CallDataRegisterValidator | null = null;
@@ -28,8 +26,7 @@ export class CallData {
     getNextProposer: CallDataGetNextProposer | null = null;
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataRegisterChain {
     id: string;
     lightClientAddress: string;
@@ -39,8 +36,7 @@ export class CallDataRegisterChain {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataRegisterValidator {
     chainId: string;
     constructor(chainId: string) {
@@ -48,8 +44,7 @@ export class CallDataRegisterValidator {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataAddHeader {
     chainId: string;
     header: Base64String;
@@ -63,8 +58,7 @@ export class CallDataAddHeader {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataGetNextProposer {
     chainId: string;
     headerHash: string;

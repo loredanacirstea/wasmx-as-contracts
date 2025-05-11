@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String } from "wasmx-env/assembly/types";
 import { NetworkNode, NodeInfo } from "wasmx-p2p/assembly/types";
 import { ChainConfig, ChainId, InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
@@ -8,8 +8,7 @@ import { SubChainData } from "wasmx-multichain-registry/assembly/types";
 
 export const MODULE_NAME = "lobby"
 
-// @ts-ignore
-@serializable
+@json
 export class Params {
     current_level: i32
     min_validators_count: i32
@@ -27,8 +26,7 @@ export class Params {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgLastChainId {
     id: ChainId
     constructor(id: ChainId) {
@@ -36,8 +34,7 @@ export class MsgLastChainId {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgLastNodeId {
     id: string = ""
     constructor(id: string) {
@@ -45,8 +42,7 @@ export class MsgLastNodeId {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class PotentialValidator {
     node: NetworkNode
     addressBytes: Base64String
@@ -58,8 +54,7 @@ export class PotentialValidator {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class PotentialValidatorWithSignature {
     validator: PotentialValidator
     signature: string
@@ -69,8 +64,7 @@ export class PotentialValidatorWithSignature {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgNewChainRequest {
     level: i32 = 0
     validator: PotentialValidator
@@ -80,8 +74,7 @@ export class MsgNewChainRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgNewChainAccepted {
     level: i32 = 0
     chainId: ChainId
@@ -93,8 +86,7 @@ export class MsgNewChainAccepted {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgNewChainResponse {
     msg: MsgNewChainAccepted
     signatures: Base64String[]
@@ -104,8 +96,7 @@ export class MsgNewChainResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgNewChainGenesisData {
     data: SubChainData
     validators: PotentialValidator[]
@@ -121,8 +112,7 @@ export class MsgNewChainGenesisData {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CurrentChainSetup {
     data: typestnd.InitChainSetup
     node: NodeInfo
@@ -132,8 +122,7 @@ export class CurrentChainSetup {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ChainConfigData {
     chain_id: string
     chain_config: ChainConfig

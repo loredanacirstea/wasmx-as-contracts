@@ -1,11 +1,10 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Coin } from "./types";
 import { BigInt } from "./bn";
 
 export const CONSTANT_FEE: u64 = 1000
 
-// @ts-ignore
-@serializable
+@json
 export class GenesisState {
     constant_fee: Coin
     constructor(constant_fee: Coin) {

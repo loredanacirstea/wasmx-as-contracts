@@ -1,13 +1,11 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 
-// @ts-ignore
-@serializable
+@json
 export class GenesisAccountPermissions {
     // TODO
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GenesisState {
     account_permissions: GenesisAccountPermissions[]
     disabled_type_urls: string[]

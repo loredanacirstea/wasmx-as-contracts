@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as base64 from "as-base64/assembly"
 import { ActionParam, EventObject } from "xstate-fsm-as/assembly/types";
 import { getParamsOrEventParams, actionParamsToMap } from 'xstate-fsm-as/assembly/utils';

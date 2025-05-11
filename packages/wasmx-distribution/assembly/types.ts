@@ -1,12 +1,11 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Bech32String, Coin, DecCoin, PageRequest, PageResponse, ValidatorAddressString } from "wasmx-env/assembly/types";
 
 export const MODULE_NAME = "distribution"
 
 export const FEE_COLLECTOR_ROLE = "fee_collector"
 
-// @ts-ignore
-@serializable
+@json
 export class Params {
     community_tax: string // f64
     base_proposer_reward: string // f64
@@ -20,8 +19,7 @@ export class Params {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DelegatorWithdrawInfo {
     delegator_address: Bech32String
     withdraw_address: Bech32String
@@ -31,8 +29,7 @@ export class DelegatorWithdrawInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorOutstandingRewardsRecord {
     validator_address: ValidatorAddressString
     outstanding_rewards: DecCoin[]
@@ -42,8 +39,7 @@ export class ValidatorOutstandingRewardsRecord {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorAccumulatedCommission {
     commission: DecCoin[]
     constructor(commission: DecCoin[] ) {
@@ -51,8 +47,7 @@ export class ValidatorAccumulatedCommission {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorAccumulatedCommissionRecord {
     validator_address: ValidatorAddressString
     accumulated: ValidatorAccumulatedCommission
@@ -62,8 +57,7 @@ export class ValidatorAccumulatedCommissionRecord {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorHistoricalRewards {
     cumulative_reward_ratio: DecCoin[]
     reference_count: u32
@@ -73,8 +67,7 @@ export class ValidatorHistoricalRewards {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorCurrentRewards {
     rewards: DecCoin[]
     period: u64
@@ -84,8 +77,7 @@ export class ValidatorCurrentRewards {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorHistoricalRewardsRecord {
     validator_address: ValidatorAddressString
     period: u64
@@ -97,8 +89,7 @@ export class ValidatorHistoricalRewardsRecord {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorCurrentRewardsRecord {
     validator_address: ValidatorAddressString
     rewards: ValidatorCurrentRewards
@@ -108,8 +99,7 @@ export class ValidatorCurrentRewardsRecord {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DelegatorStartingInfo {
     previous_period: u64
     stake: f64
@@ -125,8 +115,7 @@ export class DelegatorStartingInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DelegatorStartingInfoRecord {
     delegator_address: Bech32String
     validator_address: ValidatorAddressString
@@ -138,8 +127,7 @@ export class DelegatorStartingInfoRecord {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorSlashEvent {
     validator_period: u64
     fraction: f64 // LegacyDec
@@ -152,8 +140,7 @@ export class ValidatorSlashEvent {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorSlashEventRecord {
     validator_address: ValidatorAddressString
     height: u64
@@ -167,8 +154,7 @@ export class ValidatorSlashEventRecord {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class FeePool {
     community_pool: DecCoin[]
     constructor(community_pool: DecCoin[]) {
@@ -177,8 +163,7 @@ export class FeePool {
 }
 
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorOutstandingRewards {
     rewards: DecCoin[]
     constructor(rewards: DecCoin[]) {
@@ -186,8 +171,7 @@ export class ValidatorOutstandingRewards {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorSlashEvents {
     validator_slash_events: ValidatorSlashEvent[]
     constructor(validator_slash_events: ValidatorSlashEvent[]) {
@@ -195,8 +179,7 @@ export class ValidatorSlashEvents {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CommunityPoolSpendProposal {
     title: string
     description: string
@@ -215,8 +198,7 @@ export class CommunityPoolSpendProposal {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CommunityPoolSpendProposalWithDeposit {
     title: string
     description: string
@@ -238,8 +220,7 @@ export class CommunityPoolSpendProposalWithDeposit {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DelegationDelegatorReward {
     validator_address: ValidatorAddressString
     reward: DecCoin[]
@@ -252,8 +233,7 @@ export class DelegationDelegatorReward {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GenesisState {
     params: Params
     fee_pool: FeePool
@@ -296,8 +276,7 @@ export class GenesisState {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSetWithdrawAddress {
     delegator_address: Bech32String
     withdraw_address: Bech32String
@@ -310,14 +289,12 @@ export class MsgSetWithdrawAddress {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSetWithdrawAddressResponse {
     constructor() {}
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgWithdrawDelegatorReward {
     delegator_address: Bech32String
     validator_address: ValidatorAddressString
@@ -330,8 +307,7 @@ export class MsgWithdrawDelegatorReward {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgWithdrawDelegatorRewardResponse {
     amount: Coin[]
     constructor(amount: Coin[]) {
@@ -339,8 +315,7 @@ export class MsgWithdrawDelegatorRewardResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgWithdrawValidatorCommission {
     validator_address: ValidatorAddressString
     constructor(validator_address: ValidatorAddressString) {
@@ -348,8 +323,7 @@ export class MsgWithdrawValidatorCommission {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgWithdrawValidatorCommissionResponse {
     amount: Coin[]
     constructor(amount: Coin[]) {
@@ -357,8 +331,7 @@ export class MsgWithdrawValidatorCommissionResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgFundCommunityPool {
     amount: Coin[]
     depositor: Bech32String
@@ -368,14 +341,12 @@ export class MsgFundCommunityPool {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgFundCommunityPoolResponse {
     constructor() {}
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgUpdateParams {
     authority: Bech32String
     params: Params
@@ -388,14 +359,12 @@ export class MsgUpdateParams {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgUpdateParamsResponse {
     constructor() {}
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgCommunityPoolSpend {
     authority: Bech32String
     recipient: string
@@ -411,14 +380,12 @@ export class MsgCommunityPoolSpend {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgCommunityPoolSpendResponse {
     constructor() {}
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgDepositValidatorRewardsPool {
     depositor: Bech32String
     validator_address: ValidatorAddressString
@@ -434,20 +401,17 @@ export class MsgDepositValidatorRewardsPool {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgDepositValidatorRewardsPoolResponse {
     constructor() {}
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryParamsRequest {
     constructor() {}
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryParamsResponse {
     params: Params
     constructor(params: Params) {
@@ -455,8 +419,7 @@ export class QueryParamsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryValidatorDistributionInfoRequest {
     validator_address: ValidatorAddressString
     constructor(validator_address: ValidatorAddressString) {
@@ -464,8 +427,7 @@ export class QueryValidatorDistributionInfoRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryValidatorDistributionInfoResponse {
     operator_address: ValidatorAddressString
     self_bond_rewards: DecCoin[]
@@ -481,8 +443,7 @@ export class QueryValidatorDistributionInfoResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryValidatorOutstandingRewardsRequest {
     validator_address: ValidatorAddressString
     constructor(validator_address: ValidatorAddressString) {
@@ -490,8 +451,7 @@ export class QueryValidatorOutstandingRewardsRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryValidatorOutstandingRewardsResponse {
     rewards: ValidatorOutstandingRewards
     constructor(rewards: ValidatorOutstandingRewards) {
@@ -499,8 +459,7 @@ export class QueryValidatorOutstandingRewardsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryValidatorCommissionRequest {
     validator_address: ValidatorAddressString
     constructor(validator_address: ValidatorAddressString) {
@@ -508,8 +467,7 @@ export class QueryValidatorCommissionRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryValidatorCommissionResponse {
     commission: ValidatorAccumulatedCommission
     constructor(commission: ValidatorAccumulatedCommission) {
@@ -517,8 +475,7 @@ export class QueryValidatorCommissionResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryValidatorSlashesRequest {
     validator_address: ValidatorAddressString
     starting_height: u64
@@ -537,8 +494,7 @@ export class QueryValidatorSlashesRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryValidatorSlashesResponse {
     slashes: ValidatorSlashEvent[]
     pagination: PageResponse
@@ -551,8 +507,7 @@ export class QueryValidatorSlashesResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDelegationRewardsRequest {
     delegator_address: Bech32String
     validator_address: ValidatorAddressString
@@ -565,8 +520,7 @@ export class QueryDelegationRewardsRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDelegationRewardsResponse {
     rewards: DecCoin[]
     constructor(rewards: DecCoin[]) {
@@ -574,8 +528,7 @@ export class QueryDelegationRewardsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDelegationTotalRewardsRequest {
     delegator_address: Bech32String
     constructor(delegator_address: Bech32String) {
@@ -583,8 +536,7 @@ export class QueryDelegationTotalRewardsRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDelegationTotalRewardsResponse {
     rewards: DelegationDelegatorReward[]
     total: DecCoin[]
@@ -597,8 +549,7 @@ export class QueryDelegationTotalRewardsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDelegatorValidatorsRequest {
     delegator_address: Bech32String
     constructor(delegator_address: Bech32String) {
@@ -606,8 +557,7 @@ export class QueryDelegatorValidatorsRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDelegatorValidatorsResponse {
     validators: Bech32String[]
     constructor(validators: Bech32String[]) {
@@ -615,8 +565,7 @@ export class QueryDelegatorValidatorsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDelegatorWithdrawAddressRequest {
     delegator_address: Bech32String
     constructor(delegator_address: Bech32String) {
@@ -624,8 +573,7 @@ export class QueryDelegatorWithdrawAddressRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDelegatorWithdrawAddressResponse {
     withdraw_address: Bech32String
     constructor(withdraw_address: Bech32String) {
@@ -633,14 +581,12 @@ export class QueryDelegatorWithdrawAddressResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryCommunityPoolRequest {
     constructor() {}
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryCommunityPoolResponse {
     pool: DecCoin[]
     constructor(pool: DecCoin[]) {

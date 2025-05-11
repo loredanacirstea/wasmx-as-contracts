@@ -1,14 +1,12 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { KvDeleteRequest, KvGetRequest, KvHasRequest, KvIteratorRequest, KvSetRequest, MsgCloseRequest, MsgConnectRequest } from "wasmx-env-kvdb/assembly/types";
 import { MsgNestedCall } from "./types";
 
-// @ts-ignore
-@serializable
+@json
 export class MsgEmpty {}
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     Connect: MsgConnectRequest | null = null;
     Close: MsgCloseRequest | null = null;

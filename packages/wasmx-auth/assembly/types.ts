@@ -1,19 +1,14 @@
-import { JSON } from "json-as/assembly";
-import { Base64String, Bech32String, Coin, PublicKey } from 'wasmx-env/assembly/types';
-import { BigInt } from "wasmx-env/assembly/bn"
-import { stringToBase64 } from "wasmx-utils/assembly/utils";
+import { JSON } from "json-as";
+import { Base64String, Bech32String, PublicKey } from 'wasmx-env/assembly/types';
 import { AnyWrap } from "wasmx-env/assembly/wasmx_types";
 
 export const MODULE_NAME = "auth"
-
 export const ModuleAccountTypeName = "ModuleAccount"
 export const BaseAccountTypeName = "BaseAccount"
-
 export const TypeUrl_BaseAccount = "/mythos.cosmosmod.v1.BaseAccount"
 export const TypeUrl_ModuleAccount = "/mythos.cosmosmod.v1.ModuleAccount"
 
-// @ts-ignore
-@serializable
+@json
 export class GenesisState {
     params: Params
     accounts: AnyWrap[] = []
@@ -27,8 +22,7 @@ export class GenesisState {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class BaseAccount {
     address: Bech32String
     pub_key: PublicKey | null = null
@@ -46,8 +40,7 @@ export class BaseAccount {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ModuleAccount {
     base_account: BaseAccount
     name: string = ""
@@ -59,8 +52,7 @@ export class ModuleAccount {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ModuleCredential {
     module_name: string = ""
     derivation_keys: Base64String[] = []
@@ -70,8 +62,7 @@ export class ModuleCredential {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Params {
     max_memo_characters: u64 = 0
     tx_sig_limit: u64 = 0
@@ -87,8 +78,7 @@ export class Params {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgUpdateParams {
     authority: string = ""
     params: Params
@@ -98,12 +88,10 @@ export class MsgUpdateParams {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgUpdateParamsResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSetAccount {
     account: AnyWrap
     constructor(account: AnyWrap) {
@@ -111,8 +99,7 @@ export class MsgSetAccount {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgNewBaseAccount {
     address: Bech32String = ""
     constructor(address: Bech32String) {
@@ -120,8 +107,7 @@ export class MsgNewBaseAccount {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgNewModuleccount {
     address: Bech32String = ""
     name: string = ""
@@ -133,8 +119,7 @@ export class MsgNewModuleccount {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class PageRequest {
     key: u8 = 0
     offset: u64 = 0
@@ -150,8 +135,7 @@ export class PageRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class PageResponse {
     // next_key: Base64String
     total: u64 = 0
@@ -161,8 +145,7 @@ export class PageResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryAccountsRequest {
     pagination: PageRequest
     constructor(pagination: PageRequest) {
@@ -170,8 +153,7 @@ export class QueryAccountsRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryAccountsResponse {
     accounts: AnyWrap[] = []
     pagination: PageResponse
@@ -181,8 +163,7 @@ export class QueryAccountsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryAccountRequest {
     address: string = ""
     constructor(address: string) {
@@ -190,8 +171,7 @@ export class QueryAccountRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryAccountResponse {
     account: AnyWrap | null = null
     constructor(account: AnyWrap | null) {
@@ -199,8 +179,7 @@ export class QueryAccountResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryHasAccountResponse {
     found: bool = false
     constructor(found: bool) {
@@ -208,8 +187,7 @@ export class QueryHasAccountResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryAccountAddressByIDRequest {
     id: i64 = 0
     account_id: u64 = 0
@@ -219,8 +197,7 @@ export class QueryAccountAddressByIDRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryAccountAddressByIDResponse {
     account_address: string = ""
     constructor(account_address: string) {
@@ -228,12 +205,10 @@ export class QueryAccountAddressByIDResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryParamsRequest {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryParamsResponse {
     params: Params
     constructor(params: Params) {
@@ -241,12 +216,10 @@ export class QueryParamsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryModuleAccountsRequest {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryModuleAccountsResponse {
     accounts: AnyWrap[] = []
     constructor(accounts: AnyWrap[]) {
@@ -254,8 +227,7 @@ export class QueryModuleAccountsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryModuleAccountByNameRequest {
     name: string = ""
     constructor(name: string) {
@@ -263,8 +235,7 @@ export class QueryModuleAccountByNameRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryModuleAccountByNameResponse {
     account: AnyWrap | null = null
     constructor(account: AnyWrap | null) {
@@ -272,12 +243,10 @@ export class QueryModuleAccountByNameResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Bech32PrefixRequest {}
 
-// @ts-ignore
-@serializable
+@json
 export class Bech32PrefixResponse {
     bech32_prefix: string = ""
     constructor(bech32_prefix: string) {
@@ -285,8 +254,7 @@ export class Bech32PrefixResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class AddressBytesToStringRequest {
     address_bytes: Base64String = ""
     constructor(address_bytes: Base64String) {
@@ -294,8 +262,7 @@ export class AddressBytesToStringRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class AddressBytesToStringResponse {
     address_string: string = ""
     constructor(address_string: string) {
@@ -303,8 +270,7 @@ export class AddressBytesToStringResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class AddressStringToBytesRequest {
     address_string: string = ""
     constructor(address_string: string) {
@@ -312,8 +278,7 @@ export class AddressStringToBytesRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class AddressStringToBytesResponse {
     address_bytes: Base64String = ""
     constructor(address_bytes: Base64String) {
@@ -321,8 +286,7 @@ export class AddressStringToBytesResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryAccountInfoRequest {
     address: string = ""
     constructor(address: string) {
@@ -330,8 +294,7 @@ export class QueryAccountInfoRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryAccountInfoResponse {
     info: BaseAccount
     constructor(info: BaseAccount) {

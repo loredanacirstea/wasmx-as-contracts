@@ -1,9 +1,8 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String, Bech32String } from "wasmx-env/assembly/types";
 import { TableIndentifier } from "./types";
 
-// @ts-ignore
-@serializable
+@json
 export class Token {
     id: i64 = 0;
     value_type: string = "";
@@ -56,8 +55,7 @@ export class Token {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class TokenExtended {
     id: i64 = 0;
     value_type: string = "";
@@ -110,8 +108,7 @@ export class TokenExtended {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Owned {
     id: i64 = 0;
     table_id: i64 = 0;
@@ -148,8 +145,7 @@ export class Owned {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class OwnedExtended {
     id: i64 = 0;
     table_id: i64 = 0;
@@ -186,8 +182,7 @@ export class OwnedExtended {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class AddRequest {
     identifier: TableIndentifier
     fieldName: string = ""
@@ -206,8 +201,7 @@ export class AddRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SubRequest {
     identifier: TableIndentifier
     fieldName: string = ""
@@ -226,8 +220,7 @@ export class SubRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MoveRequest {
     identifier: TableIndentifier
     fieldName: string = ""

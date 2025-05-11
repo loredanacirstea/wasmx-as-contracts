@@ -1,9 +1,8 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as roles from "./roles";
 import { Base64String } from "./types";
 
-// @ts-ignore
-@serializable
+@json
 export class HookCalld {
     data: Base64String = ""
 }
@@ -35,8 +34,7 @@ export const BeforeValidatorSlashed         = "BeforeValidatorSlashed"
 
 
 
-// @ts-ignore
-@serializable
+@json
 export class Hook {
     name: string
     sourceModules: string[]

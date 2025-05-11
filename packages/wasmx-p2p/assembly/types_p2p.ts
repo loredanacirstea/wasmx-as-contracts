@@ -1,9 +1,8 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String } from "wasmx-env/assembly/types";
 
 
-// @ts-ignore
-@serializable
+@json
 export class Peer {
   id: string // base64
   host: string
@@ -15,8 +14,7 @@ export class Peer {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MessageReceivedFromPeer {
     data: Base64String
     peer: Peer

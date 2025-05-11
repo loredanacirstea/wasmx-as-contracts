@@ -1,14 +1,12 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { MsgCloseRequest, MsgConnectRequest, MsgExecuteBatchRequest, MsgExecuteRequest, MsgPingRequest, MsgQueryRequest } from "wasmx-env-sql/assembly/types";
 import { MsgNestedCall } from "./types";
 
-// @ts-ignore
-@serializable
+@json
 export class MsgEmpty {}
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     Connect: MsgConnectRequest | null = null;
     Close: MsgCloseRequest | null = null;

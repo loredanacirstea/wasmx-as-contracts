@@ -1,10 +1,9 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { MsgExecuteRequest, MsgQueryRequest } from "wasmx-env-sql/assembly/types";
 
 export const MODULE_NAME = "test-sql"
 
-// @ts-ignore
-@serializable
+@json
 export class MsgNestedCall {
     execute: MsgExecuteRequest[]
     query: MsgQueryRequest[]

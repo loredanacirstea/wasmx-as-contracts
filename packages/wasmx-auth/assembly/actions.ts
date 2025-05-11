@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { AddressBytesToStringRequest, AddressStringToBytesRequest, BaseAccount, Bech32PrefixRequest, GenesisState, MsgNewBaseAccount, MsgNewModuleccount, MsgSetAccount, MsgUpdateParams, QueryAccountAddressByIDRequest, QueryAccountInfoRequest, QueryAccountRequest, QueryAccountResponse, QueryAccountsRequest, QueryHasAccountResponse, QueryModuleAccountByNameRequest, QueryModuleAccountsRequest, QueryParamsRequest, QueryParamsResponse, NewBaseAccount } from "./types";
 import { getAccountAddrById, getAccountByAddr, getParams, getTypeUrlBase, getTypeUrlModule, setAccount, setParams, setTypeUrlBase, setTypeUrlModule } from "./storage";
 

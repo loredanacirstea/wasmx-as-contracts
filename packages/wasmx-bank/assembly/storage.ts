@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import { DenomUnit_, DenomUnit, Params, DenomInfo } from "./types";
 import { Bech32String } from "wasmx-env/assembly/types";

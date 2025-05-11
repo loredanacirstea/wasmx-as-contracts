@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { CallData, getCallDataWrap } from './calldata';
 import { CommunityPool, CommunityPoolSpend, DelegationRewards, DelegationTotalRewards, DelegatorValidators, DelegatorWithdrawAddress, DepositValidatorRewardsPool, FundCommunityPool, InitGenesis, Params, SetWithdrawAddress, UpdateParams, ValidatorCommission, ValidatorDistributionInfo, ValidatorOutstandingRewards, ValidatorSlashes, WithdrawDelegatorReward, WithdrawValidatorCommission, EndBlock as EndBlockInternal } from "./actions";

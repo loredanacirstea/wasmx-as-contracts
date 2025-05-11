@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getName, getSymbol, getDecimals, totalSupply, balanceOf, transfer, transferFrom, approve, allowance } from "wasmx-erc20/assembly/actions";
 import { CallData, getCallDataWrap } from './calldata';

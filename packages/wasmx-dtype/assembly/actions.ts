@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { JSON as JSONDyn } from "assemblyscript-json/assembly";
 import * as sqlw from "wasmx-env-sql/assembly/sql_wrap";
 import { base64ToString, stringToBase64, stringToBytes } from "wasmx-utils/assembly/utils";

@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String, Bech32String, Role, RoleChanged } from "wasmx-env/assembly/types";
 
 export const MODULE_NAME = "roles"
@@ -10,8 +10,7 @@ export const AttributeKeyRoleStorageType = "storage_type";
 // the old contract may need to still perform actions even after EndBlock (e.g. consensus contract needs to call Commit) and it needs authorization, so for now, we just assign a previous role
 export var ROLE_PREVIOUS = "previous_"
 
-// @ts-ignore
-@serializable
+@json
 export class RolesChangedHook {
     role: Role | null
     role_changed: RoleChanged | null
@@ -21,8 +20,7 @@ export class RolesChangedHook {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SetRoleRequest {
     role: Role
     constructor(role: Role) {
@@ -30,8 +28,7 @@ export class SetRoleRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GetRoleByRoleNameRequest {
     role: string = ""
     constructor(role: string) {
@@ -39,8 +36,7 @@ export class GetRoleByRoleNameRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GetAddressOrRoleRequest {
     addressOrRole: string
     constructor(addressOrRole: string) {
@@ -48,8 +44,7 @@ export class GetAddressOrRoleRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GetRoleNameByAddressRequest {
     address: string
     constructor(address: string) {
@@ -57,8 +52,7 @@ export class GetRoleNameByAddressRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GetRoleLabelByContractRequest {
     address: Bech32String
     constructor(address: Bech32String) {
@@ -66,8 +60,7 @@ export class GetRoleLabelByContractRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GetRoleByLabelRequest {
     label: string
     constructor(label: string) {
@@ -75,12 +68,10 @@ export class GetRoleByLabelRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GetRolesRequest {}
 
-// @ts-ignore
-@serializable
+@json
 export class MsgRunHook {
     hook: string
     data: Base64String

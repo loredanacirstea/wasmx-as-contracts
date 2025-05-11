@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap } from "wasmx-raft/assembly/calldata";
 import * as actions from "wasmx-raft/assembly/actions";

@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Bech32String } from "wasmx-env/assembly/types";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { DepositVote, Params, Proposal } from "wasmx-gov-continuous/assembly/types";

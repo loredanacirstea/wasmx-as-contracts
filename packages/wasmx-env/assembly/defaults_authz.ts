@@ -1,13 +1,11 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 
-// @ts-ignore
-@serializable
+@json
 export class GrantAuthorization {
     // TODO
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GenesisState {
     authorization: GrantAuthorization[]
     constructor(authorization: GrantAuthorization[]) {

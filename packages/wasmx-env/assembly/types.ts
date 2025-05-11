@@ -1,26 +1,20 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as base64 from "as-base64/assembly";
 import { BigInt } from "./bn";
 import { AnyWrap } from "./wasmx_types";
 
-// @ts-ignore
-@serializable
+@json
 export type HexString = string;
-// @ts-ignore
-@serializable
+@json
 export type Base64String = string;
-// @ts-ignore
-@serializable
+@json
 export type Bech32String = string;
-// @ts-ignore
-@serializable
+@json
 export type ConsensusAddressString = string;
-// @ts-ignore
-@serializable
+@json
 export type ValidatorAddressString = string;
 
-// @ts-ignore
-@serializable
+@json
 export enum RoleChangedActionType {
     Replace = 0,
     Add = 1,
@@ -45,8 +39,7 @@ RoleChangedActionTypeByEnum.set(RoleChangedActionType.Add, RoleChangedAction_Add
 RoleChangedActionTypeByEnum.set(RoleChangedActionType.Remove, RoleChangedAction_Remove);
 RoleChangedActionTypeByEnum.set(RoleChangedActionType.NoOp, RoleChangedAction_NoOp);
 
-// @ts-ignore
-@serializable
+@json
 export class RoleChanged {
     role: string = ""
     label: string = ""
@@ -60,8 +53,7 @@ export class RoleChanged {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Role {
     role: string = ""
     storage_type: ContractStorageType = ContractStorageType.CoreConsensus
@@ -88,8 +80,7 @@ export class Role {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class RolesGenesis {
     roles: Role[] = []
     // contracts handle their own migration
@@ -100,8 +91,7 @@ export class RolesGenesis {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Account {
     address: Bech32String;
     pubKey: Base64String;
@@ -115,8 +105,7 @@ export class Account {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallRequest {
   to: string;
   calldata: string;
@@ -132,8 +121,7 @@ export class CallRequest {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallResponse {
   success: i32;
   data: string;
@@ -143,8 +131,7 @@ export class CallResponse {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Coin {
     denom: string
     amount: BigInt
@@ -154,8 +141,7 @@ export class Coin {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DecCoin {
     denom: string
     amount: BigInt
@@ -165,8 +151,7 @@ export class DecCoin {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CreateAccountRequest {
     code_id: u64
 	msg: Base64String
@@ -181,8 +166,7 @@ export class CreateAccountRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Create2AccountRequest {
     code_id: u64
 	msg: Base64String
@@ -199,8 +183,7 @@ export class Create2AccountRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CreateAccountResponse {
     address: Bech32String
     constructor(address: Bech32String) {
@@ -208,8 +191,7 @@ export class CreateAccountResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Create2AccountResponse {
     address: Bech32String
     constructor(address: Bech32String) {
@@ -217,8 +199,7 @@ export class Create2AccountResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class WasmxLog {
     type: string = 'fsmvm';
     data: Uint8Array;
@@ -229,8 +210,7 @@ export class WasmxLog {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MerkleSlices {
 	slices: string[] // base64 encoded
     constructor(slices: string[]) {
@@ -238,8 +218,7 @@ export class MerkleSlices {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class LoggerLog {
 	msg: string
 	parts: string[]
@@ -249,8 +228,7 @@ export class LoggerLog {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class EventAttribute {
     key: string = ""
 	value: Base64String = ""
@@ -262,8 +240,7 @@ export class EventAttribute {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Event {
     type: string = ""
 	attributes: EventAttribute[] = []
@@ -273,8 +250,7 @@ export class Event {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class StorageRange {
 	start_key: Base64String = ""
 	end_key: Base64String = ""
@@ -286,8 +262,7 @@ export class StorageRange {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class StorageDeleteRange {
 	start_key: Base64String = ""
 	end_key: Base64String = ""
@@ -297,8 +272,7 @@ export class StorageDeleteRange {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class StoragePair {
 	key: Base64String = ""
 	value: Base64String = ""
@@ -308,8 +282,7 @@ export class StoragePair {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class StoragePairs {
 	values: StoragePair[] = []
     constructor(values: StoragePair[]) {
@@ -317,8 +290,7 @@ export class StoragePairs {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ed25519PubKey {
     key: Base64String
     constructor(key: Base64String) {
@@ -329,8 +301,7 @@ export class ed25519PubKey {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class secp256k1PubKey {
     key: Base64String
     constructor(key: Base64String) {
@@ -341,8 +312,7 @@ export class secp256k1PubKey {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class defaultPubKey {
     key: Base64String
     constructor(key: Base64String) {
@@ -350,8 +320,7 @@ export class defaultPubKey {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class PublicKey { // extends AnyWrap // we cannot extend in as-json
     type_url: string = ""
     value: Base64String = ""
@@ -369,8 +338,7 @@ export class PublicKey { // extends AnyWrap // we cannot extend in as-json
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export enum SignMode {
     SIGN_MODE_UNSPECIFIED = 0,
     SIGN_MODE_DIRECT = 1,
@@ -403,8 +371,7 @@ SignModeByName.set(SIGN_MODE_DIRECT_AUX, SignMode.SIGN_MODE_DIRECT_AUX);
 SignModeByName.set(SIGN_MODE_LEGACY_AMINO_JSON, SignMode.SIGN_MODE_LEGACY_AMINO_JSON);
 SignModeByName.set(SIGN_MODE_EIP_191, SignMode.SIGN_MODE_EIP_191);
 
-// @ts-ignore
-@serializable
+@json
 export class ModeInfoSingle {
     mode: string
     constructor(mode: string) {
@@ -412,8 +379,7 @@ export class ModeInfoSingle {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ModeInfoMulti {
     mode_infos: ModeInfo[]
     constructor(mode_infos: ModeInfo[]) {
@@ -421,8 +387,7 @@ export class ModeInfoMulti {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ModeInfo {
     single: ModeInfoSingle | null
     multi: ModeInfoMulti | null
@@ -432,8 +397,7 @@ export class ModeInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class WasmxExecutionMessage {
     data: Base64String
     constructor(data: Base64String) {
@@ -441,8 +405,7 @@ export class WasmxExecutionMessage {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class TxMessage {
     type_url: string
     value: Base64String
@@ -452,8 +415,7 @@ export class TxMessage {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class TxBody {
     messages: TxMessage[]
     memo: string
@@ -469,8 +431,7 @@ export class TxBody {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SignerInfo {
     public_key: PublicKey  | null = null
     mode_info: ModeInfo
@@ -482,8 +443,7 @@ export class SignerInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Fee {
     amount: Coin[]
     gas_limit: u64
@@ -497,8 +457,7 @@ export class Fee {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Tip { // deprecated
     amount: Coin[]
     tipper: Bech32String
@@ -508,8 +467,7 @@ export class Tip { // deprecated
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class AuthInfo {
     signer_infos: SignerInfo[]
     fee: Fee | null
@@ -521,8 +479,7 @@ export class AuthInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SignedTransaction { // Tx // cosmos/tx/v1beta1/tx.proto
     body: TxBody
     auth_info: AuthInfo
@@ -535,8 +492,7 @@ export class SignedTransaction { // Tx // cosmos/tx/v1beta1/tx.proto
 }
 
 
-// @ts-ignore
-@serializable
+@json
 export class PageRequest {
     key: u8
     offset: u64
@@ -552,8 +508,7 @@ export class PageRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class PageResponse {
     // next_key: Base64String
     total: u64
@@ -563,8 +518,7 @@ export class PageResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class VerifyCosmosTxResponse {
     valid: bool
     error: string
@@ -574,8 +528,7 @@ export class VerifyCosmosTxResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class BlockInfo {
     height: BigInt;
     timestamp: BigInt;
@@ -593,8 +546,7 @@ export class BlockInfo {
 }
 
 
-// @ts-ignore
-@serializable
+@json
 export class MsgCrossChainCallRequest {
     from: string = ""
     to: string = ""
@@ -626,8 +578,7 @@ export class MsgCrossChainCallRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgCrossChainCallResponse {
     error: string
     data: Base64String
@@ -637,8 +588,7 @@ export class MsgCrossChainCallResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgIsAtomicTxInExecutionRequest {
     sub_chain_id: string = ""
     tx_hash: Base64String = ""
@@ -648,8 +598,7 @@ export class MsgIsAtomicTxInExecutionRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgIsAtomicTxInExecutionResponse {
     is_in_execution: boolean = false
     constructor(is_in_execution: boolean = false) {
@@ -657,8 +606,7 @@ export class MsgIsAtomicTxInExecutionResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CodeInfo {
     code_hash: Base64String = ""
     creator: Bech32String  = ""
@@ -692,8 +640,7 @@ export class CodeInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CodeOrigin {
     chain_id: string
     address: Bech32String
@@ -703,8 +650,7 @@ export class CodeOrigin {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ContractStorage {
     key: HexString
     value: Base64String
@@ -714,8 +660,7 @@ export class ContractStorage {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CodeMetadata {
     name: string = ""
     categ: string[] = []
@@ -750,8 +695,7 @@ export class CodeMetadata {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SystemContract {
     address: string
     label: string
@@ -791,8 +735,7 @@ export class SystemContract {
 }
 
 
-// @ts-ignore
-@serializable
+@json
 export class ContractInfo {
     code_id: u64
     creator: Bech32String
@@ -821,8 +764,7 @@ export class ContractInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSetup {
     previous_address: Bech32String
     constructor(previous_address: Bech32String) {
@@ -830,8 +772,7 @@ export class MsgSetup {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export enum ContractStorageType {
     CoreConsensus = 0,
     MetaConsensus = 1,

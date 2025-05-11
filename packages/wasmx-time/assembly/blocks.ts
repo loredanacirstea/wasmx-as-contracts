@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as sha256 from "@ark-us/as-sha256/assembly/index";
 import * as base64 from "as-base64/assembly";
 import { Base64String } from "wasmx-env/assembly/types";

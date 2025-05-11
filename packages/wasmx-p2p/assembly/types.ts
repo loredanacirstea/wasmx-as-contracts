@@ -1,11 +1,10 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String, Bech32String } from 'wasmx-env/assembly/types';
 
 export const MODULE_NAME = "p2p"
 
 
-// @ts-ignore
-@serializable
+@json
 export class NetworkNode {
   id: Base64String // p2p id
   host: string
@@ -19,8 +18,7 @@ export class NetworkNode {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class NodeInfo {
     // validator operator address taken from node identifier (memo)
     address: Bech32String
@@ -33,8 +31,7 @@ export class NodeInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class StartNodeRequest {
     port: string
     protocolId: string
@@ -44,8 +41,7 @@ export class StartNodeRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class WasmxResponse {
     data: string
     error: string
@@ -55,8 +51,7 @@ export class WasmxResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class StartNodeWithIdentityRequest {
     port: string
     protocolId: string
@@ -68,8 +63,7 @@ export class StartNodeWithIdentityRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SendMessageRequest {
     contract: Bech32String
     msg: Base64String
@@ -81,8 +75,7 @@ export class SendMessageRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SendMessageToPeersRequest {
     contract: Bech32String
     sender: Bech32String
@@ -98,8 +91,7 @@ export class SendMessageToPeersRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ConnectPeerRequest {
     protocolId: string
     peer: string
@@ -109,12 +101,10 @@ export class ConnectPeerRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ConnectPeerResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class DisconnectPeerRequest {
     protocolId: string
     peer: string
@@ -124,12 +114,10 @@ export class DisconnectPeerRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DisconnectPeerResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class ConnectChatRoomRequest {
     protocolId: string
     topic: string
@@ -139,8 +127,7 @@ export class ConnectChatRoomRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ConnectChatRoomResponse {
     error: string
     constructor(error: string) {
@@ -148,8 +135,7 @@ export class ConnectChatRoomResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DisconnectChatRoomRequest {
     protocolId: string
     topic: string
@@ -159,12 +145,10 @@ export class DisconnectChatRoomRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DisconnectChatRoomResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class SendMessageToChatRoomRequest {
     contract: Bech32String
     sender: Bech32String
@@ -180,8 +164,7 @@ export class SendMessageToChatRoomRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SendMessageToChatRoomResponse {
     error: string
     constructor(error: string) {
@@ -189,8 +172,7 @@ export class SendMessageToChatRoomResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class P2PMessage {
     roomId: string
     message:   Base64String
@@ -204,8 +186,7 @@ export class P2PMessage {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class StartStateSyncReqRequest {
     start_height: i64
     trust_height: i64
@@ -233,8 +214,7 @@ export class StartStateSyncReqRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class StartStateSyncReqResponse {
     error: string = ""
     constructor(error: string) {
@@ -242,8 +222,7 @@ export class StartStateSyncReqResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class StartStateSyncResRequest {
     peer_address: string
     protocol_id: string
@@ -256,8 +235,7 @@ export class StartStateSyncResRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class StartStateSyncResResponse {
     error: string = ""
     constructor(error: string) {
@@ -265,8 +243,7 @@ export class StartStateSyncResResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class NodeInfoResponse {
     node_info: NodeInfo | null = null
     error: string = ""

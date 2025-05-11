@@ -1,37 +1,31 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 
-// @ts-ignore
-@serializable
+@json
 export class GroupInfo {
     // TODO
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GroupMember {
     // TODO
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GroupPolicyInfo {
     // TODO
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Proposal {
     // TODO
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Vote {
     // TODO
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GenesisState {
     group_seq: u64
     groups: GroupInfo[]

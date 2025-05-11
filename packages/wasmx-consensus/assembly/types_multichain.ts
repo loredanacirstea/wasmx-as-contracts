@@ -1,19 +1,16 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { revert } from "wasmx-env/assembly/wasmx_wrap";
 import * as constypes from "./types_tendermint"
 import { Bech32String } from "wasmx-env/assembly/types";
 
 const START_EVM_ID = 1000;
 
-// @ts-ignore
-@serializable
+@json
 export type HexString = string;
-// @ts-ignore
-@serializable
+@json
 export type Base64String = string;
 
-// @ts-ignore
-@serializable
+@json
 export class ChainConfig {
     Bech32PrefixAccAddr: string = ""
 	Bech32PrefixAccPub: string = ""
@@ -59,8 +56,7 @@ export class ChainConfig {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class InitSubChainDeterministicRequest {
     init_chain_request: constypes.RequestInitChain
     chain_config: ChainConfig
@@ -76,12 +72,10 @@ export class InitSubChainDeterministicRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export type GenesisState = Map<string,Base64String>
 
-// @ts-ignore
-@serializable
+@json
 export class GenutilGenesis {
     gen_txs: Base64String[]
     constructor(gen_txs: Base64String[]) {
@@ -89,8 +83,7 @@ export class GenutilGenesis {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class InitSubChainMsg {
     init_chain_request: constypes.RequestInitChain
     chain_config: ChainConfig
@@ -121,8 +114,7 @@ export class InitSubChainMsg {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class NewSubChainDeterministicData {
     init_chain_request: constypes.RequestInitChain
     chain_config: ChainConfig
@@ -135,8 +127,7 @@ export class NewSubChainDeterministicData {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class StartSubChainMsg {
     chain_id: string
     chain_config: ChainConfig
@@ -148,14 +139,12 @@ export class StartSubChainMsg {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class StartSubChainResponse {
     error: string = ""
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ChainId {
     full: string = ""
     base_name: string = ""
@@ -211,8 +200,7 @@ export class ChainId {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class NodePorts {
     cosmos_rest_api: i32 = 1330 // 1317 // -> 1417
     cosmos_grpc: i32 = 9100 // 9090 // -> 9190
@@ -266,8 +254,7 @@ export class NodePorts {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class StateSyncConfig {
     enable: bool = true
     // Temporary directory for state sync snapshot chunks, defaults to the OS tempdir (typically /tmp).
@@ -303,8 +290,7 @@ export class StateSyncConfig {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class StartStateSyncRequest {
     protocol_id: string
     peer_address: string
@@ -344,8 +330,7 @@ export class StartStateSyncRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class StartStateSyncResponse {
     error: string
     constructor(error: string) {

@@ -1,21 +1,18 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { BlockCommit, BlockID, ValidatorSet } from "wasmx-consensus/assembly/types_tendermint";
 import { Base64String, HexString } from "wasmx-env/assembly/types";
 
 export const MODULE_NAME = "level0"
 
-// @ts-ignore
-@serializable
+@json
 export class EmptyRequest {}
 
 
-// @ts-ignore
-@serializable
+@json
 export class MsgInitialize {
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgNewTransaction {
     transaction: Base64String
     constructor(transaction: Base64String) {
@@ -23,8 +20,7 @@ export class MsgNewTransaction {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgNewTransactionResponse {
     transactionHash: Base64String
     blockHash: Base64String
@@ -34,8 +30,7 @@ export class MsgNewTransactionResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class VerifyCommitLightRequest {
     chain_id: string
     block_id: BlockID
@@ -57,8 +52,7 @@ export class VerifyCommitLightRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class VerifyCommitLightResponse {
     valid: boolean = false
     error: string = ""

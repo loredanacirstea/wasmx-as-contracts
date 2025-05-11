@@ -1,11 +1,10 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as base64 from "as-base64/assembly";
 import { Base64String, Bech32String, Coin, WasmxExecutionMessage } from "./types";
 
 export const TypeUrl_MsgExecuteContract = "/mythos.wasmx.v1.MsgExecuteContract"
 
-// @ts-ignore
-@serializable
+@json
 export class AnyWrap {
     type_url: string = ""
     value: Base64String = ""
@@ -19,8 +18,7 @@ export class AnyWrap {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgExecuteContract {
     sender: Bech32String
     contract: Bech32String
@@ -39,8 +37,7 @@ export class MsgExecuteContract {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class PrefixedAddress {
     bz: Base64String = ""
     prefix: string = ""

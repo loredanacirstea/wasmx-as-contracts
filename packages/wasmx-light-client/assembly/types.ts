@@ -1,8 +1,7 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String, Bech32String } from "wasmx-env/assembly/types";
 
-// @ts-ignore
-@serializable
+@json
 export class Config {
     chainId: string;
     constructor(chainId: string) {

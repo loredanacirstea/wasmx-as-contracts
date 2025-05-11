@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String, Bech32String, HexString } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn";
 import { Coin } from "wasmx-env/assembly/types"
@@ -7,8 +7,7 @@ export const MODULE_NAME = "bank"
 
 export type CoinMap = Map<string,BigInt>
 
-// @ts-ignore
-@serializable
+@json
 export class DenomUnit_ {
     denom: string
     value: BigInt // 10^exponent
@@ -18,8 +17,7 @@ export class DenomUnit_ {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DenomInfo {
     denom: string
     value: BigInt // 10^exponent
@@ -31,8 +29,7 @@ export class DenomInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Input {
     address: string
     coins: Coin[]
@@ -42,8 +39,7 @@ export class Input {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Output {
     address: string
     coins: Coin[]
@@ -53,8 +49,7 @@ export class Output {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSend {
     from_address: Bech32String
     to_address: Bech32String
@@ -66,12 +61,10 @@ export class MsgSend {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSendResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class MsgMultiSend {
     // Inputs, despite being `repeated`, only allows one sender input.
     // input coins must be = to sum of output coins
@@ -84,12 +77,10 @@ export class MsgMultiSend {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgMultiSendResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class MsgUpdateParams {
     authority: string
     params: Params
@@ -99,12 +90,10 @@ export class MsgUpdateParams {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgUpdateParamsResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSetSendEnabled {
     authority: string
     send_enabled: SendEnabled[]
@@ -116,12 +105,10 @@ export class MsgSetSendEnabled {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSetSendEnabledResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class SendEnabled {
     denom: string
     enabled: bool
@@ -131,8 +118,7 @@ export class SendEnabled {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Balance {
     address: Bech32String
     coins: Coin[]
@@ -142,8 +128,7 @@ export class Balance {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Params {
     default_send_enabled: bool
     send_enabled: SendEnabled[]
@@ -153,8 +138,7 @@ export class Params {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DenomUnit {
     denom: string
     exponent: u32
@@ -166,8 +150,7 @@ export class DenomUnit {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Metadata {
     description: string
     denom_units: DenomUnit[]
@@ -189,8 +172,7 @@ export class Metadata {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GenesisState {
     // params defines all the parameters of related to deposit.
     params: Params
@@ -207,8 +189,7 @@ export class GenesisState {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DenomDeploymentInfo {
     metadata: Metadata
     code_id: u64
@@ -226,8 +207,7 @@ export class DenomDeploymentInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgRegisterDenom {
     contract: Bech32String
     metadata: Metadata
@@ -237,8 +217,7 @@ export class MsgRegisterDenom {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgMintCoins {
     address: Bech32String
     coins: Coin[]
@@ -248,8 +227,7 @@ export class MsgMintCoins {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataInstantiate {
     authorities: string[]
     constructor(authorities: string[]) {
@@ -257,8 +235,7 @@ export class CallDataInstantiate {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryBalanceRequest {
     address: string
     denom: string
@@ -268,8 +245,7 @@ export class QueryBalanceRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class PageRequest {
     key: u8
     offset: u64
@@ -285,8 +261,7 @@ export class PageRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class PageResponse {
     // next_key: Base64String
     total: u64
@@ -296,8 +271,7 @@ export class PageResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryBalanceResponse {
     balance: Coin
     constructor(balance: Coin) {
@@ -305,8 +279,7 @@ export class QueryBalanceResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryAllBalancesRequest {
     address: string
     pagination: PageRequest
@@ -318,8 +291,7 @@ export class QueryAllBalancesRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryAllBalancesResponse {
     balances: Coin[]
     pagination: PageResponse
@@ -329,24 +301,19 @@ export class QueryAllBalancesResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QuerySpendableBalancesRequest {}
 
-// @ts-ignore
-@serializable
+@json
 export class QuerySpendableBalancesResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class QuerySpendableBalanceByDenomRequest {}
 
-// @ts-ignore
-@serializable
+@json
 export class QuerySpendableBalanceByDenomResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryTotalSupplyRequest {
     pagination: PageRequest
     constructor(pagination: PageRequest) {
@@ -354,8 +321,7 @@ export class QueryTotalSupplyRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryTotalSupplyResponse {
     supply: Coin[]
     pagination: PageResponse
@@ -365,8 +331,7 @@ export class QueryTotalSupplyResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QuerySupplyOfRequest {
     denom: string
     constructor(denom: string) {
@@ -374,8 +339,7 @@ export class QuerySupplyOfRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QuerySupplyOfResponse {
     amount: Coin
     constructor(amount: Coin) {
@@ -383,56 +347,43 @@ export class QuerySupplyOfResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryParamsRequest {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryParamsResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDenomMetadataRequest {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDenomMetadataResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDenomMetadataByQueryStringRequest {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDenomMetadataByQueryStringResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDenomsMetadataRequest {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDenomsMetadataResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDenomOwnersRequest {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDenomOwnersResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class QuerySendEnabledRequest {}
 
-// @ts-ignore
-@serializable
+@json
 export class QuerySendEnabledResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryAddressByDenom {
     denom: string
     constructor(denom: string) {
@@ -440,8 +391,7 @@ export class QueryAddressByDenom {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryAddressByDenomResponse {
     address: Bech32String
     constructor(address: Bech32String) {

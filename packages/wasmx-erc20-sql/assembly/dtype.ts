@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { Base64String, Bech32String } from 'wasmx-env/assembly/types';
 import { CountRequest, CountResponse, InsertRequest, ReadFieldRequest, ReadRequest, TableIndentifier, UpdateRequest } from "wasmx-dtype/assembly/types";

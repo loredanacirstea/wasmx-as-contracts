@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { encode as encodeBase64, decode as decodeBase64, encode } from "as-base64/assembly";
 import { Base64String, Bech32String } from 'wasmx-env/assembly/types';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
@@ -10,8 +10,7 @@ import {
     addHeader,
 } from './registration';
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataInstantiate {
     chainId: string;
     constructor(chainId: string) {
@@ -19,15 +18,13 @@ export class CallDataInstantiate {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     addHeader: CallDataAddHeader | null = null;
     getHeader: CallDataGetHeader | null = null;
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataAddHeader {
     header: Base64String;
     validators: Bech32String[];
@@ -39,8 +36,7 @@ export class CallDataAddHeader {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataGetHeader {
     index: i64;
     constructor(index: i64) {

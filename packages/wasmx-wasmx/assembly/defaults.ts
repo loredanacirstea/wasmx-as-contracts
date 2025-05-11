@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as roles from "wasmx-env/assembly/roles";
 import * as hooks from "wasmx-env/assembly/hooks";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";

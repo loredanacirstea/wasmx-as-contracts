@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String, Bech32String, Coin } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn"
 
@@ -6,8 +6,7 @@ export const MODULE_NAME = "gov"
 
 export const MaxMetadataLen = 255
 
-// @ts-ignore
-@serializable
+@json
 export class PageRequest {
     key: u8
     offset: u64
@@ -23,8 +22,7 @@ export class PageRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class PageResponse {
     // next_key: Base64String
     total: u64
@@ -34,8 +32,7 @@ export class PageResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Fraction {
     num: u64
     denom: u64
@@ -45,8 +42,7 @@ export class Fraction {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export type VoteOption = i32
 // VOTE_OPTION_UNSPECIFIED defines a no-op vote option.
 export const VOTE_OPTION_UNSPECIFIED = 0;
@@ -59,8 +55,7 @@ export const VOTE_OPTION_NO = 3;
 // VOTE_OPTION_NO_WITH_VETO defines a no with veto vote option.
 export const VOTE_OPTION_NO_WITH_VETO = 4;
 
-// @ts-ignore
-@serializable
+@json
 export type VoteOptionString = string
 export const OptionUnspecified = "VOTE_OPTION_UNSPECIFIED";
 export const OptionYes = "VOTE_OPTION_YES";
@@ -76,8 +71,7 @@ VoteOptionMap.set(OptionNo, VOTE_OPTION_NO)
 VoteOptionMap.set(OptionNoVeto, VOTE_OPTION_NO_WITH_VETO)
 
 // ProposalStatus enumerates the valid statuses of a proposal.
-// @ts-ignore
-@serializable
+@json
 export type ProposalStatus = i32
 // PROPOSAL_STATUS_UNSPECIFIED defines the default proposal status.
 export const PROPOSAL_STATUS_UNSPECIFIED = 0 // StatusNil
@@ -112,8 +106,7 @@ ProposalStatusMap.set(ProposalStatusPassed, PROPOSAL_STATUS_PASSED)
 ProposalStatusMap.set(ProposalStatusRejected, PROPOSAL_STATUS_REJECTED)
 ProposalStatusMap.set(ProposalStatusFailed, PROPOSAL_STATUS_FAILED)
 
-// @ts-ignore
-@serializable
+@json
 export class WeightedVoteOption {
     option: VoteOption
     weight: string
@@ -123,8 +116,7 @@ export class WeightedVoteOption {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Vote {
     proposal_id: u64
     voter: Bech32String
@@ -140,8 +132,7 @@ export class Vote {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Proposal {
     id: u64
     messages: Base64String[]
@@ -209,8 +200,7 @@ export class Proposal {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class TallyResult {
     // yes_count is the number of yes votes on a proposal.
     yes_count: BigInt
@@ -228,8 +218,7 @@ export class TallyResult {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class TextProposal {
     title: string
     description: string
@@ -239,8 +228,7 @@ export class TextProposal {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DepositParams { // deprecated
     min_deposit: Coin[]
     max_deposit_period: i64
@@ -250,8 +238,7 @@ export class DepositParams { // deprecated
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class VotingParams { // deprecated
     voting_period: i64
     constructor(voting_period: i64) {
@@ -259,8 +246,7 @@ export class VotingParams { // deprecated
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class TallyParams { // deprecated
     // Minimum percentage of total stake needed to vote for a result to
     // be considered valid.
@@ -279,8 +265,7 @@ export class TallyParams { // deprecated
 
 // Params defines the parameters for the x/gov module.
 // Since: cosmos-sdk 0.47
-// @ts-ignore
-@serializable
+@json
 export class Params {
     // Minimum deposit for a proposal to enter voting period.
     min_deposit: Coin[]
@@ -374,8 +359,7 @@ export class Params {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Deposit {
     proposal_id: u64
     depositor: Bech32String
@@ -387,8 +371,7 @@ export class Deposit {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GenesisState {
     starting_proposal_id: u64
     deposits: Deposit[]
@@ -406,8 +389,7 @@ export class GenesisState {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSubmitProposal {
     messages: Base64String[]
     initial_deposit: Coin[]
@@ -427,8 +409,7 @@ export class MsgSubmitProposal {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSubmitProposalResponse {
     proposal_id: u64
     constructor(proposal_id: u64) {
@@ -437,8 +418,7 @@ export class MsgSubmitProposalResponse {
 }
 
 // MsgExecLegacyContent is used to wrap the legacy content field into a message.
-// @ts-ignore
-@serializable
+@json
 export class MsgExecLegacyContent {
     content: Base64String
     authority: string // gov
@@ -448,12 +428,10 @@ export class MsgExecLegacyContent {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgExecLegacyContentResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class MsgVote {
     proposal_id: u64
     voter: Bech32String
@@ -468,12 +446,10 @@ export class MsgVote {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgVoteResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class MsgVoteWeighted {
     proposal_id: u64
     voter: Bech32String
@@ -487,12 +463,10 @@ export class MsgVoteWeighted {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgVoteWeightedResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class MsgDeposit {
     proposal_id: u64
     depositor: Bech32String
@@ -504,12 +478,10 @@ export class MsgDeposit {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgDepositResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class MsgUpdateParams {
     authority: string
     params: Params
@@ -519,12 +491,10 @@ export class MsgUpdateParams {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgUpdateParamsResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class MsgCancelProposal {
     proposal_id: u64
     proposer: Bech32String
@@ -534,8 +504,7 @@ export class MsgCancelProposal {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgCancelProposalResponse {
     proposal_id: u64
     canceled_time: Date
@@ -547,8 +516,7 @@ export class MsgCancelProposalResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryProposalRequest {
     proposal_id: u64
     constructor(proposal_id: u64) {
@@ -556,8 +524,7 @@ export class QueryProposalRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryProposalResponse {
     proposal: Proposal
     constructor(proposal: Proposal) {
@@ -565,8 +532,7 @@ export class QueryProposalResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryProposalsRequest {
     proposal_status: string
     voter: Bech32String
@@ -580,8 +546,7 @@ export class QueryProposalsRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryProposalsResponse {
     proposals: Proposal[]
     pagination: PageResponse
@@ -591,8 +556,7 @@ export class QueryProposalsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryVoteRequest {
     proposal_id: u64
     voter: Bech32String
@@ -602,8 +566,7 @@ export class QueryVoteRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryVoteResponse {
     vote: Vote
     constructor(vote: Vote) {
@@ -611,8 +574,7 @@ export class QueryVoteResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryVotesRequest {
     proposal_id: u64
     pagination: PageRequest
@@ -622,8 +584,7 @@ export class QueryVotesRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryVotesResponse {
     votes: Vote[]
     pagination: PageResponse
@@ -633,8 +594,7 @@ export class QueryVotesResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryParamsRequest {
     params_type: string
     constructor(params_type: string) {
@@ -642,8 +602,7 @@ export class QueryParamsRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryParamsResponse {
     params: Params
     constructor(params: Params) {
@@ -651,8 +610,7 @@ export class QueryParamsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDepositRequest {
     proposal_id: u64
     depositor: Bech32String
@@ -662,8 +620,7 @@ export class QueryDepositRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDepositResponse {
     deposit: Deposit
     constructor(deposit: Deposit) {
@@ -671,8 +628,7 @@ export class QueryDepositResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDepositsRequest {
     proposal_id: u64
     pagination: PageRequest
@@ -682,8 +638,7 @@ export class QueryDepositsRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryDepositsResponse {
     deposits: Deposit[]
     pagination: PageResponse
@@ -693,8 +648,7 @@ export class QueryDepositsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryTallyResultRequest {
     proposal_id: u64
     constructor(proposal_id: u64) {
@@ -702,8 +656,7 @@ export class QueryTallyResultRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryTallyResultResponse {
     tally: TallyResult
     constructor(tally: TallyResult) {
@@ -711,8 +664,7 @@ export class QueryTallyResultResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgEndBlock {
     data: Base64String
     constructor(data: Base64String) {
@@ -720,8 +672,7 @@ export class MsgEndBlock {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Response {
     success: bool
     data: string

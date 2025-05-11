@@ -1,11 +1,10 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String, Bech32String, PageRequest } from "wasmx-env/assembly/types";
 import { ChatBlock } from "wasmx-chat/assembly/types"
 
 export const MODULE_NAME = "chat"
 
-// @ts-ignore
-@serializable
+@json
 export class MsgStoreConversation {
     blocks: ChatBlock[]
     constructor(blocks: ChatBlock[]) {
@@ -13,8 +12,7 @@ export class MsgStoreConversation {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryVerifyConversation {
     blocks: ChatBlock[]
     constructor(blocks: ChatBlock[]) {

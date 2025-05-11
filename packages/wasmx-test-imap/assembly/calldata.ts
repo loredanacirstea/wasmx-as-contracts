@@ -1,13 +1,11 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { ImapCloseRequest, ImapConnectionOauth2Request, ImapConnectionSimpleRequest, ImapCreateFolderRequest, ImapFetchRequest, ImapListenRequest } from "wasmx-env-imap/assembly/types";
 
-// @ts-ignore
-@serializable
+@json
 export class MsgEmpty {}
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     ConnectWithPassword: ImapConnectionSimpleRequest | null = null;
     ConnectOAuth2: ImapConnectionOauth2Request | null = null;

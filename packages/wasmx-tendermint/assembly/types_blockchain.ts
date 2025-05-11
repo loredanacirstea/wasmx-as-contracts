@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as consw from "wasmx-env/assembly/crosschain_wrap";
 import {HexString, Base64String, Bech32String, MsgIsAtomicTxInExecutionRequest} from 'wasmx-env/assembly/types';
@@ -6,8 +6,7 @@ import { Version, BlockID, CommitSig, BlockIDFlag } from 'wasmx-consensus/assemb
 import { BigInt } from "wasmx-env/assembly/bn";
 import { LoggerDebug } from "./utils";
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorQueueEntry {
     address: Bech32String // operator_address
     index: i32
@@ -19,8 +18,7 @@ export class ValidatorQueueEntry {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GetProposerResponse {
     proposerQueue: ValidatorQueueEntry[]
     proposerIndex: i32
@@ -30,8 +28,7 @@ export class GetProposerResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CurrentState {
     chain_id: string = ""
     unique_p2p_id: string = "" // temporary fix for level0 unique chat rooms; TODO unique chain ids for level0
@@ -98,8 +95,7 @@ export class CurrentState {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 class MempoolBatch {
     txs: Base64String[];
     cummulatedGas: i64;
@@ -115,8 +111,7 @@ class MempoolBatch {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MempoolTx {
     tx: Base64String
     gas: u64
@@ -132,8 +127,7 @@ export class MempoolTx {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Mempool {
     map: Map<Base64String,MempoolTx>
     temp: Map<Base64String,bool>

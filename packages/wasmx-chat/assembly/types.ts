@@ -1,12 +1,11 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String, Bech32String, PageRequest } from "wasmx-env/assembly/types";
 import { NetworkNode } from "wasmx-p2p/assembly/types";
 
 export const MODULE_NAME = "chat"
 export const PROTOCOL_ID = "chatv001"
 
-// @ts-ignore
-@serializable
+@json
 export class NodeInfo {
     address: Bech32String
     node: NetworkNode
@@ -16,8 +15,7 @@ export class NodeInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ChatRoom {
     roomId: string
     peers: NodeInfo[]
@@ -31,8 +29,7 @@ export class ChatRoom {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ChatMessage {
     roomId: string
     message: string
@@ -46,8 +43,7 @@ export class ChatMessage {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgJoinRoom {
     roomId: string
     constructor(roomId: string) {
@@ -55,8 +51,7 @@ export class MsgJoinRoom {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSendMessage {
     roomId: string
     message: string
@@ -66,8 +61,7 @@ export class MsgSendMessage {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class  MsgReceiveMessage {
     roomId: string
     message: string
@@ -81,12 +75,10 @@ export class  MsgReceiveMessage {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryGetRooms {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryGetMessages {
     roomId: string
     pagination: PageRequest | null
@@ -96,8 +88,7 @@ export class QueryGetMessages {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryGetMessage {
     roomId: string
     index: i64
@@ -107,8 +98,7 @@ export class QueryGetMessage {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryGetBlocks {
     roomId: string
     pagination: PageRequest
@@ -118,8 +108,7 @@ export class QueryGetBlocks {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryGetBlock {
     roomId: string
     index: i64
@@ -129,8 +118,7 @@ export class QueryGetBlock {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ChatHeader {
     height: i64
     time: Date
@@ -144,8 +132,7 @@ export class ChatHeader {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ChatBlock {
     header: ChatHeader
     data: Base64String // transaction

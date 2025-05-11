@@ -1,10 +1,9 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String } from "wasmx-env/assembly/types";
 
 export const MODULE_NAME = "wasmx-env-kvdb"
 
-// @ts-ignore
-@serializable
+@json
 export class MsgConnectRequest {
     driver: string
     dir: string
@@ -23,8 +22,7 @@ export class MsgConnectRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgConnectResponse {
     error: string
     constructor(error: string) {
@@ -32,8 +30,7 @@ export class MsgConnectResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgCloseRequest {
     id: string
     constructor(
@@ -43,8 +40,7 @@ export class MsgCloseRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgCloseResponse {
     error: string
     constructor(error: string) {
@@ -52,8 +48,7 @@ export class MsgCloseResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class KvGetRequest {
     id: string = ""
     key: Base64String = ""
@@ -66,8 +61,7 @@ export class KvGetRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class KvGetResponse {
     error: string = ""
     value: Base64String = ""
@@ -80,8 +74,7 @@ export class KvGetResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class KvHasRequest {
     id: string = ""
     key: Base64String = ""
@@ -94,8 +87,7 @@ export class KvHasRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class KvHasResponse {
     error: string = ""
     found: boolean = false
@@ -108,8 +100,7 @@ export class KvHasResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class KvSetRequest {
     id: string = ""
     key: Base64String = ""
@@ -125,8 +116,7 @@ export class KvSetRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class KvSetResponse {
     error: string = ""
     constructor(
@@ -136,8 +126,7 @@ export class KvSetResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class KvDeleteRequest {
     id: string = ""
     key: Base64String = ""
@@ -150,8 +139,7 @@ export class KvDeleteRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class KvDeleteResponse {
     error: string = ""
     constructor(
@@ -161,8 +149,7 @@ export class KvDeleteResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class KvIteratorRequest {
     id: string = ""
     start: Base64String = ""
@@ -178,8 +165,7 @@ export class KvIteratorRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class KvIteratorResponse {
     error: string = ""
     values: Base64String[] = []
@@ -192,8 +178,7 @@ export class KvIteratorResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class KvNewBatchRequest {
     id: string = ""
     size: i32 = 0
@@ -206,8 +191,7 @@ export class KvNewBatchRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class KvNewBatchResponse {
     error: string = ""
     constructor(
@@ -217,8 +201,7 @@ export class KvNewBatchResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class KvStatsRequest {
     id: string = ""
     constructor(

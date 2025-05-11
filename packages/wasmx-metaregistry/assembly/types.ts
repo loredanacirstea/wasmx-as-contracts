@@ -1,12 +1,11 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { ChainConfig, ChainId } from "wasmx-consensus/assembly/types_multichain";
 
 export const MODULE_NAME = "metaregistry"
 
 export const CROSS_CHAIN_TIMEOUT_MS = 120000 // 2 min
 
-// @ts-ignore
-@serializable
+@json
 export class Params {
     current_level: i32 = 0
     constructor(current_level: i32) {
@@ -14,8 +13,7 @@ export class Params {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ChainConfigData {
     config: ChainConfig
     chain_id: ChainId
@@ -25,8 +23,7 @@ export class ChainConfigData {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgInitialize {
     params: Params
     constructor(params: Params) {
@@ -34,8 +31,7 @@ export class MsgInitialize {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSetChainDataRequest {
     data: ChainConfigData
     constructor(data: ChainConfigData) {
@@ -43,12 +39,10 @@ export class MsgSetChainDataRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSetChainDataResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryGetChainDataRequest {
     chain_id: string
     constructor(chain_id: string) {
@@ -56,8 +50,7 @@ export class QueryGetChainDataRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryGetChainDataResponse {
     data: ChainConfigData
     constructor(data: ChainConfigData) {
@@ -65,8 +58,7 @@ export class QueryGetChainDataResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryGetSubChainRequest {
     chainId: string
     constructor(chainId: string) {
@@ -74,8 +66,7 @@ export class QueryGetSubChainRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryGetSubChainsByIdsRequest {
     ids: string[]
     constructor(ids: string[]) {
@@ -83,8 +74,7 @@ export class QueryGetSubChainsByIdsRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QuerySubChainConfigByIdsRequest {
     ids: string[]
     constructor(ids: string[]) {

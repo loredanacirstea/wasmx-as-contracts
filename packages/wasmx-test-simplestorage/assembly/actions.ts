@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmxt from "wasmx-env/assembly/types";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap"
 import { MODULE_NAME, MsgGet, MsgSet } from "./types";

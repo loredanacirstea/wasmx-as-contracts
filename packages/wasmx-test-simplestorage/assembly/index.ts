@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as base64 from "as-base64/assembly"
 import { CallData, getCallDataCrossChain, getCallDataInitialize, getCallDataWrap } from "./calldata";

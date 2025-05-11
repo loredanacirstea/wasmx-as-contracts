@@ -1,12 +1,11 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import { Base64String, Bech32String} from 'wasmx-env/assembly/types';
 import { BlockIDFlag } from 'wasmx-consensus/assembly/types_tendermint';
 import * as staking from "wasmx-stake/assembly/types";
 import { ValidatorQueueEntry } from "wasmx-tendermint/assembly/types_blockchain";
 
-// @ts-ignore
-@serializable
+@json
 export class GetProposerResponse {
     proposerQueue: ValidatorQueueEntry[]
     proposerIndex: i32
@@ -16,8 +15,7 @@ export class GetProposerResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 class MempoolBatch {
     txs: Base64String[];
     cummulatedGas: i64;
@@ -27,8 +25,7 @@ class MempoolBatch {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Mempool {
     txs: Base64String[];
     gas: i32[];
@@ -67,8 +64,7 @@ export class Mempool {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export enum SignedMsgType {
     SIGNED_MSG_TYPE_UNKNOWN = 0,
     SIGNED_MSG_TYPE_PREVOTE = 1,
@@ -76,8 +72,7 @@ export enum SignedMsgType {
     SIGNED_MSG_TYPE_PROPOSAL = 3
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorProposalVote {
     type: SignedMsgType
     termId: i64
@@ -99,8 +94,7 @@ export class ValidatorProposalVote {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorProposalVoteMap {
     nodeCount: i32
     map: Map<i64,ValidatorProposalVote[]> = new Map<i64,ValidatorProposalVote[]>()
@@ -145,8 +139,7 @@ export class ValidatorProposalVoteMap {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorCommitVote {
     vote: ValidatorProposalVote
     block_id_flag: BlockIDFlag
@@ -158,8 +151,7 @@ export class ValidatorCommitVote {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorCommitVoteMap {
     nodeCount: i32
     map: Map<i64,ValidatorCommitVote[]> = new Map<i64,ValidatorCommitVote[]>()
@@ -203,8 +195,7 @@ export class ValidatorCommitVoteMap {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Commit {
     index: i64
     termId: i64

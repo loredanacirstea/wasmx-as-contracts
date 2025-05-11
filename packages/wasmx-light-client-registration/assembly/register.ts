@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
 import * as wasmxwrap from "wasmx-env/assembly/wasmx_wrap";

@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { InitSubChainDeterministicRequest } from "wasmx-consensus/assembly/types_multichain";
 import { Base64String, Bech32String, Coin, ContractStorage, PublicKey } from "wasmx-env/assembly/types";
 import * as authtypes from "wasmx-auth/assembly/types";
@@ -19,8 +19,7 @@ export const DEFAULT_INITIAL_BALANCE = "10000000000000000000"
 
 export const CROSS_CHAIN_TIMEOUT_MS = 120000 // 2 min
 
-// @ts-ignore
-@serializable
+@json
 export class MsgInitialize {
     params: Params
     constructor(params: Params) {
@@ -28,8 +27,7 @@ export class MsgInitialize {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Params {
     min_validators_count: i32
     enable_eid_check: boolean
@@ -45,8 +43,7 @@ export class Params {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SubChainData {
     data: InitSubChainDeterministicRequest
     genTxs: Base64String[] // json format!!
@@ -64,12 +61,10 @@ export class SubChainData {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryGetSubChainsRequest {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryGetSubChainsByIdsRequest {
     ids: string[]
     constructor(ids: string[]) {
@@ -77,8 +72,7 @@ export class QueryGetSubChainsByIdsRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QuerySubChainConfigByIdsRequest {
     ids: string[]
     constructor(ids: string[]) {
@@ -86,12 +80,10 @@ export class QuerySubChainConfigByIdsRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryGetSubChainIdsRequest {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryGetSubChainRequest {
     chainId: string
     constructor(chainId: string) {
@@ -99,8 +91,7 @@ export class QueryGetSubChainRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryGetSubChainIdsByLevelRequest {
     level: i32
     constructor(level: i32) {
@@ -108,12 +99,10 @@ export class QueryGetSubChainIdsByLevelRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryGetCurrentLevelRequest {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryGetCurrentLevelResponse {
     level: i32
     constructor(level: i32) {
@@ -121,8 +110,7 @@ export class QueryGetCurrentLevelResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryGetSubChainIdsByValidatorRequest {
     validator_address: Bech32String
     constructor(validator_address: Bech32String) {
@@ -130,8 +118,7 @@ export class QueryGetSubChainIdsByValidatorRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryGetValidatorsByChainIdRequest {
     chainId: string
     constructor(chainId: string) {
@@ -139,8 +126,7 @@ export class QueryGetValidatorsByChainIdRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryValidatorAddressesByChainIdRequest {
     chainId: string
     constructor(chainId: string) {
@@ -148,8 +134,7 @@ export class QueryValidatorAddressesByChainIdRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryConvertAddressByChainIdRequest {
     chainId: string = ""
     prefix: string = ""
@@ -163,8 +148,7 @@ export class QueryConvertAddressByChainIdRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class RegisterDefaultSubChainRequest {
     denom_unit: string
     base_denom_unit: u32
@@ -189,8 +173,7 @@ export class RegisterDefaultSubChainRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class RegisterSubChainRequest {
     data: InitSubChainDeterministicRequest
     genTxs: Base64String[]
@@ -202,8 +185,7 @@ export class RegisterSubChainRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class RemoveSubChainRequest {
     chainId: string
     constructor(chainId: string) {
@@ -211,8 +193,7 @@ export class RemoveSubChainRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class RegisterSubChainValidatorRequest {
     chainId: string
     genTx: Base64String
@@ -222,8 +203,7 @@ export class RegisterSubChainValidatorRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class InitSubChainRequest {
     chainId: string
     constructor(chainId: string) {
@@ -231,8 +211,7 @@ export class InitSubChainRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CosmosmodGenesisState {
     staking: stakingtypes.GenesisState
     bank: banktypes.GenesisState
@@ -257,8 +236,7 @@ export class CosmosmodGenesisState {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorInfo {
     validator: stakingtypes.Validator
     operator_pubkey: PublicKey | null = null

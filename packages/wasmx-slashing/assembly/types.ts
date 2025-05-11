@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String, Bech32String, ConsensusAddressString, PageRequest, PageResponse } from "wasmx-env/assembly/types";
 
 export const MODULE_NAME = "slashing"
@@ -24,8 +24,7 @@ export const MissedBlockBitmapChunkSize: i32 = 1024 // 2^10 bits
 
 export const ValidatorUpdateDelay: i64 = 1
 
-// @ts-ignore
-@serializable
+@json
 export enum Infraction {
     // UNSPECIFIED defines an empty infraction.
     INFRACTION_UNSPECIFIED = 0,
@@ -49,8 +48,7 @@ InfractionByEnum.set(Infraction.INFRACTION_UNSPECIFIED, Infraction_INFRACTION_UN
 InfractionByEnum.set(Infraction.INFRACTION_DOUBLE_SIGN, Infraction_INFRACTION_DOUBLE_SIGN);
 InfractionByEnum.set(Infraction.INFRACTION_DOWNTIME, Infraction_INFRACTION_DOWNTIME);
 
-// @ts-ignore
-@serializable
+@json
 export class GenesisState {
     params: Params
     signing_infos: SigningInfo[]
@@ -63,8 +61,7 @@ export class GenesisState {
 }
 // {"params":{"signed_blocks_window":"0","min_signed_per_window":"0.000000000000000000","downtime_jail_duration":"0s","slash_fraction_double_sign":"0.000000000000000000","slash_fraction_downtime":"0.000000000000000000"},"signing_infos":[],"missed_blocks":[]}
 
-// @ts-ignore
-@serializable
+@json
 export class SigningInfo {
     //  e.g. mythosvalcons1....
     address: ConsensusAddressString // same as ValidatorSigningInfo.address
@@ -75,8 +72,7 @@ export class SigningInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorSigningInfo {
     //  e.g. mythosvalcons1....
     address: ConsensusAddressString
@@ -96,8 +92,7 @@ export class ValidatorSigningInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorMissedBlocks {
     address: ConsensusAddressString
     missed_blocks: MissedBlock[]
@@ -107,8 +102,7 @@ export class ValidatorMissedBlocks {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MissedBlock {
     index: i64
     missed: bool
@@ -118,8 +112,7 @@ export class MissedBlock {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Params {
     signed_blocks_window: i64
     min_signed_per_window: string
@@ -135,8 +128,7 @@ export class Params {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QuerySigningInfoRequest {
     // cons_address is the address to query signing info of
     cons_address: string
@@ -145,8 +137,7 @@ export class QuerySigningInfoRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QuerySigningInfoResponse {
     // val_signing_info is the signing info of requested val cons address
     valSigningInfo: ValidatorSigningInfo
@@ -155,8 +146,7 @@ export class QuerySigningInfoResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QuerySigningInfosRequest {
     pagination: PageRequest
     constructor(pagination: PageRequest) {
@@ -164,12 +154,10 @@ export class QuerySigningInfosRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryParamsRequest {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryMissedBlockBitmapRequest {
     cons_address: string
     constructor(cons_address: string) {
@@ -177,8 +165,7 @@ export class QueryMissedBlockBitmapRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryMissedBlockBitmapResponse {
     chunks: Base64String[]
     constructor(chunks: Base64String[]) {
@@ -186,8 +173,7 @@ export class QueryMissedBlockBitmapResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryParamsResponse {
     params: Params
     constructor(params: Params) {
@@ -196,8 +182,7 @@ export class QueryParamsResponse {
 }
 
 
-// @ts-ignore
-@serializable
+@json
 export class QuerySigningInfosResponse {
     info: ValidatorSigningInfo[]
     pagination: PageResponse
@@ -207,8 +192,7 @@ export class QuerySigningInfosResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgRunHook {
     hook: string
     data: Base64String

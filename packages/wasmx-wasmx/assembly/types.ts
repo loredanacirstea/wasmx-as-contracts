@@ -1,12 +1,10 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String, Bech32String, CodeInfo, ContractInfo, ContractStorage, HexString, SystemContract } from "wasmx-env/assembly/types";
 
-// @ts-ignore
-@serializable
+@json
 export class Params {}
 
-// @ts-ignore
-@serializable
+@json
 export class Code {
     code_id: u64
     code_info: CodeInfo
@@ -22,8 +20,7 @@ export class Code {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Contract {
     contract_address: Bech32String
     contract_info: ContractInfo
@@ -39,8 +36,7 @@ export class Contract {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Sequence {
     id_key: Base64String
     value: u64
@@ -50,8 +46,7 @@ export class Sequence {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GenesisState {
     params: Params
     bootstrap_account_address: Bech32String
@@ -79,8 +74,7 @@ export class GenesisState {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export enum ContractStorageType {
     CoreConsensus = 0,
     MetaConsensus = 1,

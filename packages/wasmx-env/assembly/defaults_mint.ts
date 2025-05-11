@@ -1,8 +1,7 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { AnyWrap } from "./wasmx_types";
 
-// @ts-ignore
-@serializable
+@json
 export class  Minter {
     inflation: string
     annual_provisions: string
@@ -12,8 +11,7 @@ export class  Minter {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class  Params {
     mint_denom: string
     inflation_rate_change: string
@@ -38,8 +36,7 @@ export class  Params {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GenesisState {
     minter: Minter
     params: Params

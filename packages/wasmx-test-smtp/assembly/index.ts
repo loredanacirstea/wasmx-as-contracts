@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap } from './calldata';
 import { Close, Quit, ConnectOAuth2, ConnectWithPassword, Extension, MaxMessageSize, Noop, SendMail, SupportsAuth, Verify, BuildMail } from "./actions";

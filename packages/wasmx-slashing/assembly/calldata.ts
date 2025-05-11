@@ -1,10 +1,9 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as stakingtypes from "wasmx-stake/assembly/types"
 import { GenesisState, MsgRunHook, QueryMissedBlockBitmapRequest, QueryParamsRequest, QuerySigningInfoRequest, QuerySigningInfosRequest } from './types';
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     InitGenesis: GenesisState | null = null;
 

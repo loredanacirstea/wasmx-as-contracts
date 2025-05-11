@@ -1,10 +1,9 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Bech32String, CodeInfo, ContractInfo } from "wasmx-env/assembly/types";
 
 export const MODULE_NAME = "codes-registry"
 
-// @ts-ignore
-@serializable
+@json
 export class GenesisState {
     code_infos: CodeInfo[]
     contract_infos: MsgSetContractInfoRequest[]
@@ -14,8 +13,7 @@ export class GenesisState {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSetNewCodeInfoRequest {
     code_info: CodeInfo
     constructor(code_info: CodeInfo) {
@@ -23,8 +21,7 @@ export class MsgSetNewCodeInfoRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSetCodeInfoRequest {
     code_id: u64
     code_info: CodeInfo
@@ -34,8 +31,7 @@ export class MsgSetCodeInfoRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSetContractInfoRequest {
     address: Bech32String
     contract_info: ContractInfo
@@ -45,8 +41,7 @@ export class MsgSetContractInfoRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryLastCodeIdResponse {
     code_id: u64
     constructor(code_id: u64) {
@@ -54,8 +49,7 @@ export class QueryLastCodeIdResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryCodeInfoRequest {
     code_id: u64
     constructor(code_id: u64) {
@@ -63,8 +57,7 @@ export class QueryCodeInfoRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryCodeInfoResponse {
     code_info: CodeInfo | null
     constructor(code_info: CodeInfo | null) {
@@ -72,8 +65,7 @@ export class QueryCodeInfoResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryContractInfoRequest {
     address: Bech32String
     constructor(address: Bech32String) {
@@ -81,8 +73,7 @@ export class QueryContractInfoRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryContractInfoResponse {
     contract_info: ContractInfo | null
     constructor(contract_info: ContractInfo | null) {
@@ -90,8 +81,7 @@ export class QueryContractInfoResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryContractInstanceRequest {
     address: Bech32String
     constructor(address: Bech32String) {
@@ -99,8 +89,7 @@ export class QueryContractInstanceRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryContractInstanceResponse {
     code_info: CodeInfo | null
     contract_info: ContractInfo | null

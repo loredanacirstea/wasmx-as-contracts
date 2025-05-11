@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String, Bech32String } from "wasmx-env/assembly/types";
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import { getConfig, addHeader as setHeader } from "./storage";

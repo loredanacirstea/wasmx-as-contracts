@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { LoggerDebugExtended } from "wasmx-env/assembly/wasmx_wrap"
 import * as imap from './imap';
 import { Email, ImapCloseRequest, ImapCloseResponse, ImapConnectionOauth2Request, ImapConnectionResponse, ImapConnectionSimpleRequest, ImapCreateFolderRequest, ImapCreateFolderResponse, ImapFetchRequest, ImapFetchResponse, ImapListenRequest, ImapListenResponse, MODULE_NAME } from "./types";

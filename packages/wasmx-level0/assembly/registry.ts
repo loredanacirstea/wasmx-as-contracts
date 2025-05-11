@@ -1,8 +1,7 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String } from "wasmx-env/assembly/types";
 
-// @ts-ignore
-@serializable
+@json
 export class AddressBook {
     transactionHash: Base64String
     blockHash: Base64String
@@ -12,8 +11,7 @@ export class AddressBook {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Params {
     max_level: i64
     current_level: i64
@@ -25,8 +23,7 @@ export class Params {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class LayerInvite {
     level: i64
     constructor(level: i64) {
@@ -34,8 +31,7 @@ export class LayerInvite {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ReceiveLayerInvite {
     invite: LayerInvite
     signature: Base64String

@@ -1,9 +1,8 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import {HexString, Base64String, Bech32String} from 'wasmx-env/assembly/types';
 import { Version, BlockID } from 'wasmx-consensus/assembly/types_tendermint';
 
-// @ts-ignore
-@serializable
+@json
 export class CurrentState {
     chain_id: string
     version: Version
@@ -31,8 +30,7 @@ export class CurrentState {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 class MempoolBatch {
     txs: Base64String[];
     cummulatedGas: i64;
@@ -42,8 +40,7 @@ class MempoolBatch {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Mempool {
     // TODO index on hash, so we dont add multiple times
     txs: Base64String[];

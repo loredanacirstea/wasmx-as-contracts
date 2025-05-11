@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataInitialize, getCallDataWrap } from './calldata';
 import { revert } from "./utils";

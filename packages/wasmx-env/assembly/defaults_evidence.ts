@@ -1,8 +1,7 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { AnyWrap } from "./wasmx_types";
 
-// @ts-ignore
-@serializable
+@json
 export class GenesisState {
     evidence: AnyWrap[]
     constructor(evidence: AnyWrap[]) {

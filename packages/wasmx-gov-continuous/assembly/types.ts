@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String, Bech32String, Coin } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn"
 import * as gov from "wasmx-gov/assembly/types"
@@ -18,8 +18,7 @@ export enum Coefs {
     proposalRatioY
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Proposal {
     id: u64
     // TODO have multiple messages in a Proposal
@@ -102,8 +101,7 @@ export class Proposal {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ProposalOption {
     proposer: Bech32String
     messages: Base64String[]
@@ -132,8 +130,7 @@ export const VOTE_STATUS_Y: VoteStatus = 2; // y won
 export const VOTE_STATUS_Xu: VoteStatus = 3; // x undecided
 export const VOTE_STATUS_Yu: VoteStatus = 4; // y undecided
 
-// @ts-ignore
-@serializable
+@json
 export class ProposalVoteStatus {
     // vote status based on xi, yi
     status: VoteStatus
@@ -151,8 +148,7 @@ export class ProposalVoteStatus {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ProposalVoteStatusExtended {
     status: VoteStatus
     // the option index with the highest weight at current time
@@ -172,8 +168,7 @@ export class ProposalVoteStatusExtended {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CoefProposal {
     key: BigInt
     value: BigInt
@@ -183,8 +178,7 @@ export class CoefProposal {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgInitGenesis {
     starting_proposal_id: u64
     deposits: gov.Deposit[]
@@ -202,8 +196,7 @@ export class MsgInitGenesis {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Params {
     arbitrationDenom: string
     // coefs: BigInt[]
@@ -218,8 +211,7 @@ export class Params {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSubmitProposalExtended {
 // export class MsgSubmitProposalExtended extends gov.MsgSubmitProposal {
     // gov.MsgSubmitProposal
@@ -255,8 +247,7 @@ export class MsgSubmitProposalExtended {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgAddProposalOption {
     proposal_id: i64
     option: ProposalOption
@@ -266,8 +257,7 @@ export class MsgAddProposalOption {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DepositVote {
     proposal_id: i64
     option_id: i32
@@ -285,8 +275,7 @@ export class DepositVote {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryProposalExtendedResponse {
     proposal: Proposal
     constructor(proposal: Proposal) {
@@ -294,8 +283,7 @@ export class QueryProposalExtendedResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryProposalsExtendedResponse {
     proposals: Proposal[]
     pagination: gov.PageResponse
@@ -305,8 +293,7 @@ export class QueryProposalsExtendedResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryNextWinnerThreshold {
     proposal_id: i64
     constructor(proposal_id: i64) {
@@ -314,8 +301,7 @@ export class QueryNextWinnerThreshold {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryNextWinnerThresholdResponse {
     weight: BigInt
     constructor(weight: BigInt) {

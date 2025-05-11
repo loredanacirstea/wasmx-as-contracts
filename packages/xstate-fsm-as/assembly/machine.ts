@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxcorew from 'wasmx-env-core/assembly/wasmxcore_wrap';
@@ -498,8 +498,7 @@ export class Service implements StateMachine.Service {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ServiceExternal {
   machine: MachineExternal
   status: InterpreterStatus
@@ -770,8 +769,7 @@ function processActions(actions: ActionObject[], event: EventObject): ActionObje
 }
 
 
-// @ts-ignore
-@serializable
+@json
 export class MachineExternal {
   id: string;
   library: Bech32String;

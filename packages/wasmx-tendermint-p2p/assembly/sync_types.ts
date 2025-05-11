@@ -1,10 +1,9 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String, Bech32String } from "wasmx-env/assembly/types";
 import { LogEntryAggregate } from "./types";
 import { NodeInfo } from "wasmx-p2p/assembly/types";
 
-// @ts-ignore
-@serializable
+@json
 export class StateSyncRequest {
   start_index: i64
   peer_address: string
@@ -14,8 +13,7 @@ export class StateSyncRequest {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class StateSyncResponse {
   start_batch_index: i64
   last_batch_index: i64
@@ -37,8 +35,7 @@ export class StateSyncResponse {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class NodesSyncResponse {
   nodes: Array<NodeInfo>
   constructor(nodes: Array<NodeInfo>) {

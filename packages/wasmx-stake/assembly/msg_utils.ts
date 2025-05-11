@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as base64 from "as-base64/assembly";
 import { SignedTransaction } from "wasmx-env/assembly/types";
 import { MsgCreateValidator, TypeUrl_MsgCreateValidator } from "./types";

@@ -1,11 +1,10 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as base64 from "as-base64/assembly";
 import { Base64String, ContractStorageType } from "wasmx-env/assembly/types";
 
 export const MODULE_NAME = "wasmx-core-env"
 
-// @ts-ignore
-@serializable
+@json
 export class StartBackgroundProcessRequest {
     contract: string
     args: Base64String
@@ -18,8 +17,7 @@ export class StartBackgroundProcessRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class StartBackgroundProcessResponse {
     error: string
     data: Base64String
@@ -32,8 +30,7 @@ export class StartBackgroundProcessResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class WriteToBackgroundProcessRequest {
     contract: string // role or address
     data: Base64String
@@ -49,8 +46,7 @@ export class WriteToBackgroundProcessRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class WriteToBackgroundProcessResponse {
     error: string
     constructor(error: string) {
@@ -58,8 +54,7 @@ export class WriteToBackgroundProcessResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ReadFromBackgroundProcessRequest {
     contract: string // role or address
     ptrFunc: string
@@ -75,8 +70,7 @@ export class ReadFromBackgroundProcessRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ReadFromBackgroundProcessResponse {
     error: string
     data: Base64String
@@ -86,8 +80,7 @@ export class ReadFromBackgroundProcessResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GrpcResponse {
     data: string // base64
     error: string
@@ -97,8 +90,7 @@ export class GrpcResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class StartTimeoutRequest {
     id: string
 	contract: string
@@ -112,8 +104,7 @@ export class StartTimeoutRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CancelTimeoutRequest {
     id: string
     constructor(id: string) {
@@ -121,8 +112,7 @@ export class CancelTimeoutRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MigrateContractStateByStorageRequest {
     contract_address: string
     source_storage_type: string
@@ -134,8 +124,7 @@ export class MigrateContractStateByStorageRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MigrateContractStateByAddressRequest {
     source_contract_address: string
     target_contract_address: string
@@ -149,8 +138,7 @@ export class MigrateContractStateByAddressRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GlobalStorageStoreRequest {
     store_key: string
     key: Base64String
@@ -162,8 +150,7 @@ export class GlobalStorageStoreRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GlobalStorageLoadRequest {
     store_key: string
     key: Base64String
@@ -173,8 +160,7 @@ export class GlobalStorageLoadRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GlobalStorageResetRequest {
     store_key: string
     constructor(store_key: string) {
@@ -182,8 +168,7 @@ export class GlobalStorageResetRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GlobalStorageResetResponse {
     error: string
     constructor(error: string) {

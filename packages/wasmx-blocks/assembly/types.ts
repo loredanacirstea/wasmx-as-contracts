@@ -1,10 +1,9 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import {Base64String, Bech32String } from 'wasmx-env/assembly/types';
 
 export const MODULE_NAME = "blocks"
 
-// @ts-ignore
-@serializable
+@json
 export class BlockEntry {
     index: i64;
     // TODO hash: string
@@ -32,8 +31,7 @@ export class BlockEntry {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class IndexedTransaction {
     height: i64
 	index: u32
@@ -43,8 +41,7 @@ export class IndexedTransaction {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ConsensusParamsInfo {
     height: i64
     last_height_changed: i64

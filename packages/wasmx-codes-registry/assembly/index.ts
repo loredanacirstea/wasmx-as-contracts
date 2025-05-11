@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataInstantiate, getCallDataWrap } from "./calldata";
 import { SetCodeInfo, SetContractInfo, GetCodeInfo, GetContractInfo, GetContractInstance, InitGenesis, NewCodeInfo, GetLastCodeId, GetCodeInfoPrefix, GetContractInfoPrefix, setup } from "./actions";

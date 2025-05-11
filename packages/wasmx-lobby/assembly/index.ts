@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 // import * as tnd2 from "wasmx-tendermint-p2p/assembly/actions";
 import { getCallDataWrap } from './calldata';

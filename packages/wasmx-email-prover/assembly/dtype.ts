@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { JSON as JSONDyn } from "assemblyscript-json/assembly";
 import { CreateTableRequest, InsertRequest, MsgExecuteBatchResponse, ReadFieldRequest, ReadRequest, MsgQueryResponse, GetRecordsByRelationTypeRequest, UpdateRequest } from "wasmx-dtype/assembly/types";
 import { getDTypeIdentifier, rowsArrToObjArr } from "wasmx-dtype/assembly/helpers";

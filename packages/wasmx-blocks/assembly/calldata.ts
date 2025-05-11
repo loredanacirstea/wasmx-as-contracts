@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as base64 from "as-base64/assembly";
 import { encode as encodeBase64, decode as decodeBase64, encode } from "as-base64/assembly";
 import { ConsensusParamsInfo, IndexedTransaction } from "./types";
@@ -22,8 +22,7 @@ import {
   } from './storage';
 import { revert } from "./utils";
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     setIndexedData: CallDataSetIndexedData | null = null;
     setBlock: CallDataSetBlock | null = null;
@@ -41,8 +40,7 @@ export class CallData {
     getContextValue: CallDataGetContextValue | null = null;
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataGetContextValue {
     key: string;
     constructor(key: string) {
@@ -50,8 +48,7 @@ export class CallDataGetContextValue {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataInstantiate {
     initialBlockIndex: i64
     constructor(initialBlockIndex: i64) {
@@ -59,8 +56,7 @@ export class CallDataInstantiate {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataSetIndexedData {
     key: string
     value: string
@@ -70,8 +66,7 @@ export class CallDataSetIndexedData {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataGetIndexedData {
     key: string
     constructor(key: string) {
@@ -79,14 +74,12 @@ export class CallDataGetIndexedData {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataGetLastBlockIndex {
     constructor() {}
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataGetBlockByIndex {
     index: i64;
     constructor(index: i64) {
@@ -94,8 +87,7 @@ export class CallDataGetBlockByIndex {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataGetBlockByHash {
     hash: Base64String;
     constructor(hash: Base64String) {
@@ -103,8 +95,7 @@ export class CallDataGetBlockByHash {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataGetIndexedTransactionByHash {
     hash: Base64String;
     constructor(hash: Base64String) {
@@ -112,8 +103,7 @@ export class CallDataGetIndexedTransactionByHash {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataGetConsensusParams {
     height: i64 = 0
     constructor(height: i64) {
@@ -121,8 +111,7 @@ export class CallDataGetConsensusParams {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class IndexedTopic {
     topic: string
     values: string[]
@@ -132,8 +121,7 @@ export class IndexedTopic {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataSetBlock {
     value: Base64String
     hash: string
@@ -147,8 +135,7 @@ export class CallDataSetBlock {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataSetConsensusParams {
     height: i64 = 0
     params: Base64String = ""
@@ -158,8 +145,7 @@ export class CallDataSetConsensusParams {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataSetIndexedTransactionByHash {
     hash: Base64String;
     data: IndexedTransaction;
@@ -169,8 +155,7 @@ export class CallDataSetIndexedTransactionByHash {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class LastBlockIndexResult {
     index: i64
     constructor(index: i64) {
@@ -178,8 +163,7 @@ export class LastBlockIndexResult {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataBootstrap {
     last_block_height: i64
     last_height_changed: i64

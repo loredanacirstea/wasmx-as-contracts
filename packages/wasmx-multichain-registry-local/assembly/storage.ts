@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import { NodePorts } from "wasmx-consensus/assembly/types_multichain"
 

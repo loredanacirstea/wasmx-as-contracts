@@ -1,11 +1,10 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String, Bech32String, Coin, HexString, PageResponse } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn";
 
 export const MODULE_NAME = "derc20"
 
-// @ts-ignore
-@serializable
+@json
 export class MsgDelegate {
     delegator: Bech32String
     validator: Bech32String
@@ -17,8 +16,7 @@ export class MsgDelegate {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgRedelegate {
     delegator: Bech32String
     validatorSource: Bech32String
@@ -32,8 +30,7 @@ export class MsgRedelegate {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgUndelegate {
     delegator: Bech32String
     validator: Bech32String
@@ -45,12 +42,10 @@ export class MsgUndelegate {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgGetAllSDKDelegations {}
 
-// @ts-ignore
-@serializable
+@json
 export class MsgGetAllSDKDelegationsResponse {
     delegations: SDKDelegation[]
     constructor(delegations: SDKDelegation[]) {
@@ -58,8 +53,7 @@ export class MsgGetAllSDKDelegationsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SDKDelegation {
     delegator_address: Bech32String
     validator_address: Bech32String
@@ -71,8 +65,7 @@ export class SDKDelegation {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DelegatorValidatorsResponse {
     validators: Bech32String[]
     pagination: PageResponse

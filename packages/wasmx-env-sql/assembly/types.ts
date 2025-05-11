@@ -1,11 +1,10 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 
 export const MODULE_NAME = "wasmx-env-sql"
 
 type Base64String = string;
 
-// @ts-ignore
-@serializable
+@json
 export class MsgConnectRequest {
     driver: string
     connection: string
@@ -21,8 +20,7 @@ export class MsgConnectRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgConnectResponse {
     error: string
     constructor(error: string) {
@@ -30,8 +28,7 @@ export class MsgConnectResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgCloseRequest {
     id: string
     constructor(
@@ -41,8 +38,7 @@ export class MsgCloseRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgCloseResponse {
     error: string
     constructor(error: string) {
@@ -50,8 +46,7 @@ export class MsgCloseResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgExecuteRequest {
     id: string = ""
     query: string = ""
@@ -67,8 +62,7 @@ export class MsgExecuteRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SqlExecuteCommand {
     query: string = ""
     params: Base64String[] = []
@@ -81,8 +75,7 @@ export class SqlExecuteCommand {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgExecuteBatchRequest {
     id: string = ""
     commands: SqlExecuteCommand[] = []
@@ -95,8 +88,7 @@ export class MsgExecuteBatchRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgExecuteBatchResponse {
     error: string = ""
     responses: MsgExecuteResponse[] = []
@@ -106,8 +98,7 @@ export class MsgExecuteBatchResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgExecuteResponse {
     error: string
     last_insert_id: i64
@@ -129,8 +120,7 @@ export class MsgExecuteResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgQueryRequest {
     id: string = ""
     query: string = ""
@@ -147,8 +137,7 @@ export class MsgQueryRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgQueryResponse {
     error: string
     data: string
@@ -158,8 +147,7 @@ export class MsgQueryResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgPingRequest {
     id: string = ""
     constructor(
@@ -169,8 +157,7 @@ export class MsgPingRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgPingResponse {
     error: string
     constructor(error: string) {

@@ -1,11 +1,10 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { SeqSetRange, UidSetRange } from "wasmx-env-imap/assembly/types";
 import { Base64String } from "wasmx-env/assembly/types";
 
 export const MODULE_NAME = "email-prover"
 
-// @ts-ignore
-@serializable
+@json
 export class TableIds {
     provider: i64 = 0
     thread: i64 = 0
@@ -17,8 +16,7 @@ export class TableIds {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class RelationTypeIds {
     contains: i64 = 0
     constructor(contains: i64) {
@@ -26,8 +24,7 @@ export class RelationTypeIds {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgInitializeRequest {
     providers: Provider[] = []
     constructor(providers: Provider[]) {
@@ -35,8 +32,7 @@ export class MsgInitializeRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgInitializeResponse {
     error: string = ""
     constructor(error: string) {
@@ -44,8 +40,7 @@ export class MsgInitializeResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgRegisterProviderRequest {
     provider: Provider;
     constructor(provider: Provider) {
@@ -53,8 +48,7 @@ export class MsgRegisterProviderRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgRegisterProviderResponse {
     error: string = ""
     constructor(error: string) {
@@ -62,8 +56,7 @@ export class MsgRegisterProviderResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgConnectUserRequest {
     username: string = ""
     secret: string = ""
@@ -75,8 +68,7 @@ export class MsgConnectUserRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgConnectUserResponse {
     error: string = ""
     constructor(error: string) {
@@ -84,8 +76,7 @@ export class MsgConnectUserResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgCacheEmailRequest {
     user_id: i64 = 0
     username: string = ""
@@ -101,8 +92,7 @@ export class MsgCacheEmailRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgCacheEmailResponse {
     error: string = ""
     constructor(error: string) {
@@ -110,8 +100,7 @@ export class MsgCacheEmailResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgListenEmailRequest {
     user_id: i64 = 0
     username: string = ""
@@ -123,8 +112,7 @@ export class MsgListenEmailRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgListenEmailResponse {
     error: string = ""
     constructor(error: string) {
@@ -132,8 +120,7 @@ export class MsgListenEmailResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSendEmailRequest {
     user_id: i64 = 0
     username: string = ""
@@ -161,8 +148,7 @@ export class MsgSendEmailRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSendEmailResponse {
     error: string = ""
     constructor(error: string) {
@@ -170,8 +156,7 @@ export class MsgSendEmailResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Provider {
     name: string = "";
     domain: string = "";
@@ -187,8 +172,7 @@ export class Provider {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class EmailToWrite {
     uid: i64 = 0
     owner: string = ""
@@ -234,8 +218,7 @@ export class EmailToWrite {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ThreadToWrite {
     name: string = ""
     last_email_message_id: string = ""
@@ -257,8 +240,7 @@ export class ThreadToWrite {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ResponseStringWithError {
     constructor(
         public error: string,
@@ -266,8 +248,7 @@ export class ResponseStringWithError {
     ) {}
 }
 
-// @ts-ignore
-@serializable
+@json
 export class LastKnownReferenceResult {
     constructor(
         public id: i64,

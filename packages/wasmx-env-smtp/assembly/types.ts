@@ -1,10 +1,9 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String } from "wasmx-env/assembly/types";
 
 export const MODULE_NAME = "wasmx-env-smtp"
 
-// @ts-ignore
-@serializable
+@json
 export class SmtpConnectionSimpleRequest {
     id: string = "";
     smtp_server_url_starttls: string = "";
@@ -21,8 +20,7 @@ export class SmtpConnectionSimpleRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SmtpConnectionOauth2Request {
     id: string = "";
     smtp_server_url_starttls: string = "";
@@ -39,8 +37,7 @@ export class SmtpConnectionOauth2Request {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SmtpConnectionResponse {
     error: string = "";
 
@@ -49,8 +46,7 @@ export class SmtpConnectionResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SmtpCloseRequest {
     id: string = "";
 
@@ -59,8 +55,7 @@ export class SmtpCloseRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SmtpCloseResponse {
     error: string = "";
 
@@ -69,8 +64,7 @@ export class SmtpCloseResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SmtpQuitRequest {
     id: string = "";
 
@@ -79,8 +73,7 @@ export class SmtpQuitRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SmtpQuitResponse {
     error: string = "";
 
@@ -89,8 +82,7 @@ export class SmtpQuitResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SmtpSendMailRequest {
     id: string = "";
     from: string = "";
@@ -105,8 +97,7 @@ export class SmtpSendMailRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SmtpSendMailResponse {
     error: string = "";
 
@@ -115,8 +106,7 @@ export class SmtpSendMailResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SmtpVerifyRequest {
     id: string = "";
     address: string = "";
@@ -127,8 +117,7 @@ export class SmtpVerifyRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SmtpVerifyResponse {
     error: string = "";
 
@@ -137,8 +126,7 @@ export class SmtpVerifyResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SmtpNoopRequest {
     id: string = "";
 
@@ -147,8 +135,7 @@ export class SmtpNoopRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SmtpNoopResponse {
     error: string = "";
 
@@ -157,8 +144,7 @@ export class SmtpNoopResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SmtpExtensionRequest {
     id: string = "";
     name: string = "";
@@ -169,8 +155,7 @@ export class SmtpExtensionRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SmtpExtensionResponse {
     error: string = "";
     found: bool = false;
@@ -183,8 +168,7 @@ export class SmtpExtensionResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SmtpMaxMessageSizeRequest {
     id: string = "";
 
@@ -193,8 +177,7 @@ export class SmtpMaxMessageSizeRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SmtpMaxMessageSizeResponse {
     error: string = "";
     size: i64 = 0;
@@ -207,8 +190,7 @@ export class SmtpMaxMessageSizeResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SmtpSupportsAuthRequest {
     id: string = "";
     mechanism: string = "";
@@ -219,8 +201,7 @@ export class SmtpSupportsAuthRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SmtpSupportsAuthResponse {
     error: string = "";
     found: bool = false;
@@ -231,8 +212,7 @@ export class SmtpSupportsAuthResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Attachment {
     filename: string = "";
     content_type: string = "";
@@ -247,7 +227,7 @@ export class Attachment {
 
 export type Flag = string;
 
-@serializable
+@json
 export class Address {
     Name: string = "";
     Mailbox: string = "";
@@ -263,8 +243,7 @@ export class Address {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Envelope {
     Date: Date = new Date(0);
     Subject: string = "";
@@ -302,8 +281,7 @@ export class Envelope {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Email {
     envelope: Envelope | null = null;
     header: Map<string, Array<string>> = new Map<string, Array<string>>();
@@ -322,8 +300,7 @@ export class Email {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SmtpBuildMailRequest {
     email: Email;
     constructor(email: Email) {
@@ -331,8 +308,7 @@ export class SmtpBuildMailRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SmtpBuildMailResponse {
     error: string = "";
     data: Base64String = "";

@@ -1,11 +1,10 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { Base64String, Bech32String, Coin } from "wasmx-env/assembly/types";
 
 export const MODULE_NAME = "erc20rollup"
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataInstantiate {
     admins: Bech32String[]
     minters: Bech32String[]
@@ -25,12 +24,10 @@ export class CallDataInstantiate {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgTotalSupplyCrossChain {}
 
-// @ts-ignore
-@serializable
+@json
 export class CoinPerChain {
     chain_id: string = ""
     value: BigInt = BigInt.zero()
@@ -40,8 +37,7 @@ export class CoinPerChain {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgTotalSupplyCrossChainResponse {
     supply: Coin
     chains: CoinPerChain[]
@@ -51,8 +47,7 @@ export class MsgTotalSupplyCrossChainResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgBalanceOfCrossChain {
     owner: Bech32String
     constructor(owner: Bech32String) {
@@ -60,8 +55,7 @@ export class MsgBalanceOfCrossChain {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgBalanceOfCrossChainResponse {
     balance: Coin
     chains: CoinPerChain[]
@@ -71,8 +65,7 @@ export class MsgBalanceOfCrossChainResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgTransferCrossChain {
     to: Bech32String
     to_chain: string
@@ -84,12 +77,10 @@ export class MsgTransferCrossChain {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgTransferCrossChainResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class MsgTransferFromCrossChain {
     from: Bech32String
     to: Bech32String
@@ -103,6 +94,5 @@ export class MsgTransferFromCrossChain {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgTransferFromCrossChainResponse {}

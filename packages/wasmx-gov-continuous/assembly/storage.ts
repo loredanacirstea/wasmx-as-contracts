@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { DepositVote, Params, Proposal } from "./types";
 import { PARAM_KEY, PROPOSAL_KEY, getProposalIdCount, getProposalIdLast, getProposalVoteCount, getProposalVoteKey, setProposalIdCount, setProposalIdLast } from "wasmx-gov/assembly/storage";

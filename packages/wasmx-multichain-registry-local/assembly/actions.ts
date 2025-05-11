@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as base64 from "as-base64/assembly";
 import * as roles from "wasmx-env/assembly/roles";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
@@ -270,8 +270,7 @@ export function convertAddress(sourceAddr: wasmxt.Bech32String, prefix: string):
     return wasmxw.addr_humanize_mc(base64.decode(addr.bz).buffer, prefix);
 }
 
-// @ts-ignore
-@serializable
+@json
 export class NetworkNode {
   id: wasmxt.Base64String // p2p id
   host: string
@@ -285,8 +284,7 @@ export class NetworkNode {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class NodeInfo {
     // validator operator address taken from node identifier (memo)
     address: wasmxt.Bech32String

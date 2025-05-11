@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String, Bech32String } from "wasmx-env/assembly/types";
 import { LogEntryAggregate } from "wasmx-raft/assembly/types_raft";
 
@@ -6,8 +6,7 @@ export const MODULE_NAME = "raftp2p"
 
 export const PROTOCOL_ID = "raftp2p_1"
 
-// @ts-ignore
-@serializable
+@json
 export class StateSyncRequest {
   start_index: i64
   constructor(start_index: i64) {
@@ -15,8 +14,7 @@ export class StateSyncRequest {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class StateSyncResponse {
   start_batch_index: i64
   last_batch_index: i64

@@ -1,10 +1,9 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String, Bech32String } from "wasmx-env/assembly/types";
 
 export const MODULE_NAME = "fsm"
 
-// @ts-ignore
-@serializable
+@json
 export enum InterpreterStatus {
   NotStarted = 0,
   Running = 1,
@@ -16,8 +15,7 @@ StatusMap.set("0", InterpreterStatus.NotStarted);
 StatusMap.set("1", InterpreterStatus.Running);
 StatusMap.set("2", InterpreterStatus.Stopped);
 
-// @ts-ignore
-@serializable
+@json
 export class EventObject {
   type: string;
   params: ActionParam[];
@@ -117,8 +115,7 @@ export interface UnsubscribeReturnValue {
   unsubscribe: () => void;
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ActionParam {
   key: string;
   value: string;
@@ -129,8 +126,7 @@ export class ActionParam {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ActionObject {
   type: string;
   params: Array<ActionParam>
@@ -149,8 +145,7 @@ export class ActionObject {
 
 export const RaiseActionType = "xstate.raise";
 
-// @ts-ignore
-@serializable
+@json
 export class RaiseAction extends ActionObject{
   type: string = RaiseActionType;
   params: Array<ActionParam> = [];
@@ -181,8 +176,7 @@ export class State {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class StateClassExternal {
   value: string;
   actions: Array<ActionObject>;
@@ -226,8 +220,7 @@ export class StateClassExternal {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class AssignActionObject extends ActionObject {
   type: AssignAction;
    // assignment: PropertyAssigner<ContextGeneralString> | null;
@@ -247,8 +240,7 @@ export class AssignActionObject extends ActionObject {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ActionClass {
   value: string;
   action: ActionObject | null = null;
@@ -268,8 +260,7 @@ export class ActionClass {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Transition {
   target: string;
   actions: Array<ActionObject>;
@@ -289,8 +280,7 @@ export class Transition {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class TransitionExternal {
   name: string;
   transitions: Transition[];
@@ -332,8 +322,7 @@ export class StateInfoClass implements StateInfo {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class StateInfoClassExternal {
   name: string;
   always: Array<TransitionExternal>;
@@ -471,8 +460,7 @@ export class StateInfoClassExternal {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ContextParam {
   key: string;
   value: string;
@@ -493,8 +481,7 @@ export class ContextParamRaw {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class TimerArgs {
   delay: string;
   state: string;
@@ -506,8 +493,7 @@ export class TimerArgs {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ExternalActionCallData {
     method: string;
     params: ActionParam[]

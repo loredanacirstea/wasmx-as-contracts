@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { BigInt } from "./bn";
 import * as wasmx from './wasmx';
 import {

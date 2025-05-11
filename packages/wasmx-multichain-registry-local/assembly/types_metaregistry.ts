@@ -1,8 +1,7 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { ChainConfig, ChainId } from "wasmx-consensus/assembly/types_multichain";
 
-// @ts-ignore
-@serializable
+@json
 export class ChainConfigData {
     config: ChainConfig
     chain_id: ChainId

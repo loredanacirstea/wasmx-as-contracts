@@ -1,14 +1,12 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { MsgCrossChainCallRequest } from "wasmx-env/assembly/types";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { MsgInitialize } from "./types";
 
-// @ts-ignore
-@serializable
+@json
 export class MsgEmpty {}
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     CrossChain: MsgCrossChainCallRequest | null = null;
     CrossChainQuery: MsgCrossChainCallRequest | null = null;

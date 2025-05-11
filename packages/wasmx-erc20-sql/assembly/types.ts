@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String, Bech32String, Coin, HexString } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn";
 
@@ -7,8 +7,7 @@ export const MODULE_NAME = "erc20"
 export const ZERO_ADDRESS = "mythos1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqvvnu6d"
 export const ZERO_ADDRESS_HEX = "0x0000000000000000000000000000000000000000"
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataInstantiate {
     name: string
     symbol: string
@@ -24,12 +23,10 @@ export class CallDataInstantiate {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgName {}
 
-// @ts-ignore
-@serializable
+@json
 export class MsgNameResponse {
     name: string
     constructor(name: string) {
@@ -37,12 +34,10 @@ export class MsgNameResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSymbol {}
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSymbolResponse {
     symbol: string
     constructor(symbol: string) {
@@ -50,12 +45,10 @@ export class MsgSymbolResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgDecimals {}
 
-// @ts-ignore
-@serializable
+@json
 export class MsgDecimalsResponse {
     decimals: i32
     constructor(decimals: i32) {
@@ -63,12 +56,10 @@ export class MsgDecimalsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgTotalSupply {}
 
-// @ts-ignore
-@serializable
+@json
 export class MsgTotalSupplyResponse {
     supply: Coin
     constructor(supply: Coin) {
@@ -76,8 +67,7 @@ export class MsgTotalSupplyResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgBalanceOf {
     owner: Bech32String
     constructor(owner: Bech32String) {
@@ -85,8 +75,7 @@ export class MsgBalanceOf {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgBalanceOfResponse {
     balance: Coin
     constructor(balance: Coin) {
@@ -94,8 +83,7 @@ export class MsgBalanceOfResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgTransfer {
     to: Bech32String = ""
     value: BigInt = BigInt.zero()
@@ -105,12 +93,10 @@ export class MsgTransfer {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgTransferResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class MsgTransferFrom {
     from: Bech32String = ""
     to: Bech32String = ""
@@ -122,12 +108,10 @@ export class MsgTransferFrom {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgTransferFromResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class MsgApprove {
     spender: Bech32String = ""
     value: BigInt = BigInt.zero()
@@ -137,8 +121,7 @@ export class MsgApprove {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgApproveResponse {
     success: bool = false
     constructor(success: bool) {
@@ -146,8 +129,7 @@ export class MsgApproveResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgAllowance {
     owner: Bech32String
     spender: Bech32String
@@ -157,8 +139,7 @@ export class MsgAllowance {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgAllowanceResponse {
     remaining: BigInt
     constructor(remaining: BigInt) {
@@ -166,8 +147,7 @@ export class MsgAllowanceResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class TokenInfo {
     name: string
     symbol: string

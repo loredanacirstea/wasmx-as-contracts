@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import { CurrentChainSetup, MsgNewChainGenesisData, MsgNewChainRequest, MsgNewChainResponse, Params } from "./types";
 import { ChainId } from "wasmx-consensus/assembly/types_multichain";

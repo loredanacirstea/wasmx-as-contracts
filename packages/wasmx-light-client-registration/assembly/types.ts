@@ -1,8 +1,7 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String, Bech32String } from "wasmx-env/assembly/types";
 
-// @ts-ignore
-@serializable
+@json
 export class Chains {
     chainsIds: string[];
     constructor(chainsIds: string[]) {
@@ -10,8 +9,7 @@ export class Chains {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Config {
     min_validators: i32;
     constructor(min_validators: i32) {
@@ -19,8 +17,7 @@ export class Config {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ChainInfo {
     validators: Bech32String[];
     lightClient: Bech32String;
@@ -30,8 +27,7 @@ export class ChainInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgHeader {
     chainId: string;
     header: Base64String;

@@ -1,9 +1,8 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { AddressBytesToStringRequest, AddressStringToBytesRequest, Bech32PrefixRequest, GenesisState, MsgNewBaseAccount, MsgNewModuleccount, MsgSetAccount, MsgUpdateParams, QueryAccountAddressByIDRequest, QueryAccountInfoRequest, QueryAccountRequest, QueryAccountsRequest, QueryModuleAccountByNameRequest, QueryModuleAccountsRequest, QueryParamsRequest } from './types';
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     InitGenesis: GenesisState | null = null;
 

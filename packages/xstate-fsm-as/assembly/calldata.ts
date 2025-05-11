@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { HookCalld } from 'wasmx-env/assembly/hooks'
@@ -22,8 +22,7 @@ export class InterpreterCallData {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     setup: string | null = null;
     instantiate: CallDataInstantiate | null = null;
@@ -37,8 +36,7 @@ export class CallData {
     SetupNode: HookCalld | null = null;
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataInstantiate {
     initialState: string;
     context: Array<ContextParam>;
@@ -48,12 +46,10 @@ export class CallDataInstantiate {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataGetCurrentState {}
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataGetContextValue {
     key: string;
     constructor(key: string) {
@@ -61,8 +57,7 @@ export class CallDataGetContextValue {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataRun {
     event: EventObject;
     constructor(event: EventObject) {
@@ -70,8 +65,7 @@ export class CallDataRun {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataExecuteAction {
     action: ActionObject
     constructor(action: ActionObject) {
@@ -79,8 +73,7 @@ export class CallDataExecuteAction {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class WasmxLog {
     type: string = 'fsmvm';
     data: Uint8Array;
@@ -127,8 +120,7 @@ export function intToString(value: i32): string {
     return vstr.substring(0, vstr.length - 2);
 }
 
-// @ts-ignore
-@serializable
+@json
 class GrpcResponse {
     data: string // base64
     error: string
@@ -170,8 +162,7 @@ export function sha256(base64Data: string): string {
 }
 
 
-// @ts-ignore
-@serializable
+@json
 class MerkleSlices {
 	slices: string[] // base64 encoded
     constructor(slices: string[]) {

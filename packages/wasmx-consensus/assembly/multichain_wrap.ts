@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as base64 from "as-base64/assembly";
 import * as constypes from "./types_tendermint"
 import * as mc from "./multichain";

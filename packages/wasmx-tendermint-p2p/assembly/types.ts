@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wblocks from "wasmx-blocks/assembly/types";
 import * as stakingtypes from "wasmx-stake/assembly/types";
 import { Base64String, Bech32String, Coin } from "wasmx-env/assembly/types";
@@ -6,8 +6,7 @@ import { NodeInfo } from "wasmx-p2p/assembly/types";
 import { ValidatorQueueEntry } from "wasmx-tendermint/assembly/types_blockchain";
 import { GetProposerResponse } from "./types_blockchain";
 
-// @ts-ignore
-@serializable
+@json
 export class LogEntry {
     // this is also the block height
     index: i64;
@@ -22,8 +21,7 @@ export class LogEntry {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class LogEntryAggregate {
     // this is also the block height
     index: i64;
@@ -38,8 +36,7 @@ export class LogEntryAggregate {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Transaction {
     from: string;
     to: string;
@@ -57,8 +54,7 @@ export class Transaction {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class TransactionResponse {
     termId: i64;
     leaderId: i32;
@@ -70,8 +66,7 @@ export class TransactionResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class AppendEntry {
     // leader’s term
     termId: i64;
@@ -89,8 +84,7 @@ export class AppendEntry {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class AppendEntryResponse {
     // currentTerm, for leader to update itself
     termId: i64;
@@ -104,8 +98,7 @@ export class AppendEntryResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class UpdateNodeRequest {
     peer_address: string
     constructor(peer_address: string) {
@@ -113,8 +106,7 @@ export class UpdateNodeRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class NodeInfoRequest {
     peer_address: string
     constructor(peer_address: string) {
@@ -122,8 +114,7 @@ export class NodeInfoRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryBuildGenTxRequest {
     chainId: string
     msg: stakingtypes.MsgCreateValidator
@@ -133,8 +124,7 @@ export class QueryBuildGenTxRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class IsNodeValidator {
     isvalidator: boolean
     nodeIndex: i32
@@ -144,8 +134,7 @@ export class IsNodeValidator {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CosmosmodGenesisState {
     staking: stakingtypes.GenesisState
     constructor(staking: stakingtypes.GenesisState) {
@@ -153,8 +142,7 @@ export class CosmosmodGenesisState {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class UpdateNodeResponse {
     nodes: NodeInfo[]
     sync_node_id: i32
@@ -179,8 +167,7 @@ export class UpdateNodeResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ProcessBlockResponse {
     processed: boolean
     error: string

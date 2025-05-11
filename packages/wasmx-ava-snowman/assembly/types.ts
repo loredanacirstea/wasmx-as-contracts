@@ -1,11 +1,10 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wblocks from "wasmx-blocks/assembly/types";
 import { Base64String, Bech32String } from "wasmx-env/assembly/types";
 
 export const MODULE_NAME = "avasnow"
 
-// @ts-ignore
-@serializable
+@json
 export class LogEntry {
     // this is also the block height
     index: i64;
@@ -20,8 +19,7 @@ export class LogEntry {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class LogEntryAggregate {
     // this is also the block height
     index: i64;
@@ -36,8 +34,7 @@ export class LogEntryAggregate {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class AppendEntry {
     // leader’s term
     termId: i32;
@@ -56,8 +53,7 @@ export class AppendEntry {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class AppendEntryResponse {
     // currentTerm, for leader to update itself
     termId: i32;
@@ -69,8 +65,7 @@ export class AppendEntryResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class NodeUpdate {
     node: NodeInfo;
     index: i32;
@@ -82,8 +77,7 @@ export class NodeUpdate {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class UpdateNodeResponse {
   nodeIPs: NodeInfo[]
   nodeId: i32
@@ -95,8 +89,7 @@ export class UpdateNodeResponse {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class TransactionResponse {
     termId: i32;
     leaderId: i32;
@@ -108,8 +101,7 @@ export class TransactionResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Precommit {
     // leader’s term
     termId: i32;
@@ -124,8 +116,7 @@ export class Precommit {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class TempBlock {
     block: Base64String
     header: Base64String
@@ -137,8 +128,7 @@ export class TempBlock {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryResponse {
     block: Base64String
     header: Base64String
@@ -148,8 +138,7 @@ export class QueryResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class NodeInfo {
     address: Bech32String
     ip: string

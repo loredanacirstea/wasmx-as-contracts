@@ -1,15 +1,13 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String } from "wasmx-env/assembly/types";
 export { MsgExecuteBatchResponse, MsgQueryResponse } from "wasmx-env-sql/assembly/types";
 
 export const MODULE_NAME = "dtype"
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataInitializeTokens {}
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataInstantiate {
     dir: string = ""
     driver: string = ""
@@ -19,8 +17,7 @@ export class CallDataInstantiate {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CreateTableRequest {
     table_id: i64
     constructor(table_id: i64) {
@@ -28,8 +25,7 @@ export class CreateTableRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class TableIndex {
     fields: string[] = []
     isunique: boolean = false
@@ -39,8 +35,7 @@ export class TableIndex {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CreateIndexesRequest {
     identifier: TableIndentifier
     indexes: TableIndex[]
@@ -50,8 +45,7 @@ export class CreateIndexesRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CreateIndexResponse {
     names: string[] = []
     constructor(names: string[]) {
@@ -59,8 +53,7 @@ export class CreateIndexResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DeleteIndexesRequest {
     identifier: TableIndentifier
     names: string[] = []
@@ -70,12 +63,10 @@ export class DeleteIndexesRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DeleteIndexResponse {}
 
-// @ts-ignore
-@serializable
+@json
 export class TableIndentifier {
     db_connection_id: i64 = 0
     db_id: i64 = 0
@@ -100,8 +91,7 @@ export class TableIndentifier {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class TableIndentifierRequired {
     db_id: i64 = 0
     table_id: i64 = 0
@@ -123,8 +113,7 @@ export class TableIndentifierRequired {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class InsertRequest {
     identifier: TableIndentifier
     data: Base64String = ""
@@ -137,8 +126,7 @@ export class InsertRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class UpdateRequest {
     identifier: TableIndentifier
     condition: Base64String
@@ -154,8 +142,7 @@ export class UpdateRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ReadRequest {
     identifier: TableIndentifier
     data: Base64String
@@ -168,8 +155,7 @@ export class ReadRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CountRequest {
     identifier: TableIndentifier
     data: Base64String
@@ -182,8 +168,7 @@ export class CountRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CountResponse {
     error: string = ""
     count: i64 = 0
@@ -193,8 +178,7 @@ export class CountResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ReadFieldRequest {
     identifier: TableIndentifier
     fieldId: i64 = 0
@@ -213,8 +197,7 @@ export class ReadFieldRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class GetRecordsByRelationTypeRequest {
     relationTypeId: i64
     relationType: string
@@ -236,8 +219,7 @@ export class GetRecordsByRelationTypeRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DeleteRequest {
     identifier: TableIndentifier
     condition: Base64String
@@ -250,8 +232,7 @@ export class DeleteRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DTypeDbConnection {
     id: i64 = 0
     connection: string = ""
@@ -267,8 +248,7 @@ export class DTypeDbConnection {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DTypeDb {
     id: i64 = 0
     connection_id: i64 = 0
@@ -282,8 +262,7 @@ export class DTypeDb {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class DTypeTable {
     id: i64 = 0
     db_id: i64 = 0
@@ -303,8 +282,7 @@ export class DTypeTable {
 // or
 // user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
 
-// @ts-ignore
-@serializable
+@json
 export class DTypeField {
     id: i64 = 0
     table_id: i64 = 0
@@ -339,8 +317,7 @@ export class DTypeField {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ConnectRequest {
     id: i64 = 0
     name: string = ""
@@ -350,8 +327,7 @@ export class ConnectRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CloseRequest {
     id: i64 = 0
     name: string = ""
@@ -361,8 +337,7 @@ export class CloseRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class BuildSchemaRequest {
     identifier: TableIndentifier
     constructor(
@@ -372,8 +347,7 @@ export class BuildSchemaRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class BuildSchemaResponse {
     data: Base64String
     constructor(

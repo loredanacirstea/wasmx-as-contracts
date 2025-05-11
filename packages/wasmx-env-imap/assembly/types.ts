@@ -1,27 +1,27 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { Base64String } from "wasmx-env/assembly/types";
 
 export const MODULE_NAME = "wasmx-env-imap"
 
 // Placeholder IMAP types
-@serializable
+@json
 export class SearchCriteria {
     // define search logic here
 }
 
-@serializable
+@json
 export class FetchOptions {
     // flags, headers, etc.
 }
 
-@serializable
+@json
 export class FetchItemBodySection {
     section: string = "";
 }
 
 type MailboxAttr = string
 
-@serializable
+@json
 export class CreateOptions {
     // IMAP create options
     SpecialUse: MailboxAttr[] = []
@@ -30,8 +30,7 @@ export class CreateOptions {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ImapConnectionSimpleRequest {
     id: string = "";
     imap_server_url: string = "";
@@ -46,8 +45,7 @@ export class ImapConnectionSimpleRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ImapConnectionOauth2Request {
     id: string = "";
     imap_server_url: string = "";
@@ -62,8 +60,7 @@ export class ImapConnectionOauth2Request {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ImapConnectionResponse {
     error: string = "";
 
@@ -72,8 +69,7 @@ export class ImapConnectionResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ImapCloseRequest {
     id: string = "";
 
@@ -82,8 +78,7 @@ export class ImapCloseRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ImapCloseResponse {
     error: string = "";
 
@@ -92,8 +87,7 @@ export class ImapCloseResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ImapListenRequest {
     id: string = "";
     folder: string = "";
@@ -104,8 +98,7 @@ export class ImapListenRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ImapListenResponse {
     error: string = "";
 
@@ -114,8 +107,7 @@ export class ImapListenResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class FetchFilter {
     limit: u32 = 0;
     start: u32 = 0;
@@ -144,8 +136,7 @@ export class FetchFilter {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class SeqSetRange {
     Start: u32 = 0;
     Stop: u32 = 0;
@@ -155,8 +146,7 @@ export class SeqSetRange {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class UidSetRange {
     Start: u32 = 0;
     Stop: u32 = 0;
@@ -166,8 +156,7 @@ export class UidSetRange {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ImapFetchRequest {
     id: string = "";
     folder: string = "";
@@ -199,8 +188,7 @@ export class ImapFetchRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ImapFetchResponse {
     error: string = "";
     data: Array<Email> = [];
@@ -213,8 +201,7 @@ export class ImapFetchResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ImapCreateFolderRequest {
     id: string = "";
     path: string = "";
@@ -227,8 +214,7 @@ export class ImapCreateFolderRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ImapCreateFolderResponse {
     error: string = "";
 
@@ -237,8 +223,7 @@ export class ImapCreateFolderResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class UserInfo {
     email: string = "";
     name: string = "";
@@ -267,8 +252,7 @@ export class UserInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Attachment {
     filename: string = "";
     content_type: string = "";
@@ -283,7 +267,7 @@ export class Attachment {
 
 export type Flag = string;
 
-@serializable
+@json
 export class Address {
     Name: string = "";
     Mailbox: string = "";
@@ -299,8 +283,7 @@ export class Address {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Envelope {
     Date: Date = new Date(0);
     Subject: string = "";
@@ -338,8 +321,7 @@ export class Envelope {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Email {
     uid: u32 = 0;
     flags: Array<Flag> = [];
@@ -377,8 +359,7 @@ export class Email {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class EmailPartial {
     id: string = "";
     title: string = "";

@@ -1,10 +1,9 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as erc20 from "wasmx-erc20/assembly/types"
 import { MsgBalanceOfCrossChain, MsgTotalSupplyCrossChain, MsgTransferCrossChain, MsgTransferFromCrossChain } from "./types";
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     // erc20
     name: erc20.MsgName | null = null;

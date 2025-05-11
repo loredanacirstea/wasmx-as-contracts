@@ -1,12 +1,11 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { BigInt } from "./bn";
 import { getAccountInfo } from "./evm";
 
 // TODO typecheck for each
 export type Bytes32 = Array<u8>;
 
-// @ts-ignore
-@serializable
+@json
 export class ChainInfo {
     denom: string;
     chainId: BigInt;
@@ -18,8 +17,7 @@ export class ChainInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class BlockInfo {
     height: BigInt;
     timestamp: BigInt;
@@ -36,8 +34,7 @@ export class BlockInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class TransactionInfo {
     index: u32;
     gasPrice: BigInt;
@@ -47,8 +44,7 @@ export class TransactionInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class AccountInfo {
     address: BigInt;
     codeHash: BigInt;
@@ -60,8 +56,7 @@ export class AccountInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class EvmLog {
     type: string = 'ewasm';
     data: Uint8Array;
@@ -72,8 +67,7 @@ export class EvmLog {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CurrentCallInfo {
     origin: BigInt;
     sender: BigInt;
@@ -91,8 +85,7 @@ export class CurrentCallInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Env {
     chain: ChainInfo;
     block: BlockInfo;
@@ -125,8 +118,7 @@ export class Env {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallRequest {
     to: BigInt; // storage changes
     from: BigInt;
@@ -148,8 +140,7 @@ export class CallRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallResponse {
     success: u8;  // 0 = success, 1 = revert; 2 = internal error;
     data: Uint8Array;
@@ -159,8 +150,7 @@ export class CallResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CreateAccountRequest {
     bytecode: Uint8Array;
     balance: BigInt;
@@ -171,8 +161,7 @@ export class CreateAccountRequest {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Create2AccountRequest {
     bytecode: Uint8Array;
     balance: BigInt;

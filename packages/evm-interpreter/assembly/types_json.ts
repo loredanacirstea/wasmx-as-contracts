@@ -1,15 +1,13 @@
-// import { JSON } from "json-as/assembly";
+// import { JSON } from "json-as";
 
-// // @ts-ignore
-// @serializable
+// @json
 // export class ChainInfoJson {
 //     denom!: string;
 //     chainId!: i32[];
 //     chainIdFull!: string;
 // }
 
-// // @ts-ignore
-// @serializable
+// @json
 // export class BlockInfoJson {
 //     height!: i32[];
 //     timestamp!: i32[];
@@ -18,15 +16,13 @@
 //     proposer!: i32[];
 // }
 
-// // @ts-ignore
-// @serializable
+// @json
 // export class TransactionInfoJson {
 //     index!: i32;
 //     gasPrice!: i32[];
 // }
 
-// // @ts-ignore
-// @serializable
+// @json
 // export class AccountInfoJson {
 //     address!: i32[];
 //     codeHash!: i32[];
@@ -38,8 +34,7 @@
 //     }
 // }
 
-// // @ts-ignore
-// @serializable
+// @json
 // export class CurrentCallInfoJson {
 //     origin!: i32[];
 //     sender!: i32[];
@@ -48,8 +43,7 @@
 //     callData!: i32[];
 // }
 
-// // @ts-ignore
-// @serializable
+// @json
 // export class EnvJson {
 //     chain!: ChainInfoJson;
 //     block!: BlockInfoJson;
@@ -58,8 +52,7 @@
 //     currentCall!: CurrentCallInfoJson;
 // }
 
-// // @ts-ignore
-// @serializable
+// @json
 // export class CallRequestJson {
 //     to: i32[];
 //     from: i32[];
@@ -81,8 +74,7 @@
 //     }
 // }
 
-// // @ts-ignore
-// @serializable
+// @json
 // export class CallResponseJson {
 //     success: i32; // 0 = success, 1 = revert; 2 = internal error;
 //     data: i32[];
@@ -92,8 +84,7 @@
 //     }
 // }
 
-// // @ts-ignore
-// @serializable
+// @json
 // export class CreateAccountRequestJson {
 //     bytecode: i32[];
 //     balance: i32[];
@@ -104,8 +95,7 @@
 //     }
 // }
 
-// // @ts-ignore
-// @serializable
+// @json
 // export class Create2AccountRequestJson {
 //     bytecode: i32[];
 //     balance: i32[];
@@ -118,8 +108,7 @@
 //     }
 // }
 
-// // @ts-ignore
-// @serializable
+// @json
 // export class EvmLogJson {
 //     type: string = 'ewasm';
 //     data: i32[];

@@ -1,9 +1,8 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { MsgSetHook, MsgRunHook, QueryHookModulesRequest, QueryHooksRequest, MsgInitialize } from './types';
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     SetHook: MsgSetHook | null = null;
     RunHook: MsgRunHook | null = null;

@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { LoggerDebugExtended } from "wasmx-env/assembly/wasmx_wrap"
 import * as smtp from './smtp';
 import { SmtpCloseRequest, SmtpCloseResponse, SmtpConnectionOauth2Request, SmtpConnectionResponse, SmtpConnectionSimpleRequest, MODULE_NAME, SmtpQuitRequest, SmtpQuitResponse, SmtpExtensionRequest, SmtpExtensionResponse, SmtpNoopRequest, SmtpNoopResponse, SmtpSendMailRequest, SmtpSendMailResponse, SmtpVerifyRequest, SmtpVerifyResponse, SmtpSupportsAuthRequest, SmtpSupportsAuthResponse, SmtpMaxMessageSizeRequest, SmtpMaxMessageSizeResponse, SmtpBuildMailRequest, SmtpBuildMailResponse } from "./types";

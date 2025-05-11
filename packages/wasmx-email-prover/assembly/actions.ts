@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { JSON as JSONDyn } from "assemblyscript-json/assembly";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as imapw from "wasmx-env-imap/assembly/imap_wrap";

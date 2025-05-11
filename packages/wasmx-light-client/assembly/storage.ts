@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmxwrap from "wasmx-env/assembly/wasmx_wrap";
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import { Config } from "./types";

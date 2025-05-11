@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as base64 from "as-base64/assembly";
 import { DEFAULT_GAS_TX } from "./const";
 import * as wasmx from "./wasmx";

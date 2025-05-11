@@ -1,9 +1,8 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { MsgName, MsgSymbol, MsgDecimals, MsgTotalSupply, MsgBalanceOf, MsgTransfer, MsgTransferFrom, MsgApprove, MsgAllowance, CallDataInstantiate } from './types';
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     instantiate: CallDataInstantiate | null = null; // TODO remove
     name: MsgName | null = null;

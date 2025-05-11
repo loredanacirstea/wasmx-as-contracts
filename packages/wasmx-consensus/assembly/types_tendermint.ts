@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as base64 from "as-base64/assembly/index";
 import {HexString, Base64String, Bech32String, Event, PublicKey, MsgCrossChainCallRequest} from 'wasmx-env/assembly/types';
 import { AnyWrap } from "wasmx-env/assembly/wasmx_types";
@@ -18,8 +18,7 @@ export const TypeUrl_ExtensionOptionEthereumTx         = "/mythos.wasmx.v1.Exten
 export const TypeUrl_ExtensionOptionAtomicMultiChainTx = "/mythos.network.v1.ExtensionOptionAtomicMultiChainTx"
 export const TypeUrl_ExtensionOptionMultiChainTx       = "/mythos.network.v1.ExtensionOptionMultiChainTx"
 
-// @ts-ignore
-@serializable
+@json
 export class ResponseWrap {
     error: string
     data: Base64String
@@ -29,8 +28,7 @@ export class ResponseWrap {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class VersionConsensus {
     block: u64
     app: u64
@@ -40,8 +38,7 @@ export class VersionConsensus {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Version {
 	consensus: VersionConsensus
 	software: string
@@ -51,8 +48,7 @@ export class Version {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class PartSetHeader {
     total: u32
     hash: HexString
@@ -62,8 +58,7 @@ export class PartSetHeader {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class BlockID {
     // block hash
     hash: HexString
@@ -77,8 +72,7 @@ export class BlockID {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class BlockIDProto {
     // block hash
     hash: Base64String
@@ -89,8 +83,7 @@ export class BlockIDProto {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Header {
     // basic block info
     version: VersionConsensus
@@ -143,8 +136,7 @@ export class Header {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ExtendedVoteInfo {
 	// The validator that sent the vote.
 	validator: Validator;
@@ -162,8 +154,7 @@ export class ExtendedVoteInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ExtendedCommitInfo {
     // The round at which the block proposer decided in the previous height.
 	round: i64;
@@ -176,8 +167,7 @@ export class ExtendedCommitInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CommitSig {
     block_id_flag: BlockIDFlag
     validator_address: HexString
@@ -191,8 +181,7 @@ export class CommitSig {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class BlockCommit {
     // NOTE: The signatures are in order of address to preserve the bonded
     // ValidatorSet order.
@@ -210,8 +199,7 @@ export class BlockCommit {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CanonicalVote {
     type: i32 = 0 // SignedMsgType
     height: i64 = 0
@@ -236,8 +224,7 @@ export class CanonicalVote {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class VoteTendermint {
     type: i32 = 0 // SignedMsgType
     height: i64 = 0
@@ -265,14 +252,12 @@ export class VoteTendermint {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Misbehavior {
     // TODO
 }
 
-// @ts-ignore
-@serializable
+@json
 export class EvidenceData {
     evidence: Evidence[]
     constructor(evidence: Evidence[]) {
@@ -280,14 +265,12 @@ export class EvidenceData {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Evidence {
     // TODO
 }
 
-// @ts-ignore
-@serializable
+@json
 export class RequestPrepareProposal {
     // the modified transactions cannot exceed this size.
 	max_tx_bytes: i64;
@@ -310,8 +293,7 @@ export class RequestPrepareProposal {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ResponsePrepareProposal {
     txs: Array<Base64String>
     constructor(txs: Array<Base64String>) {
@@ -319,8 +301,7 @@ export class ResponsePrepareProposal {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export enum BlockIDFlag {
     Unknown = 0,
     Absent = 1,
@@ -328,8 +309,7 @@ export enum BlockIDFlag {
     Nil = 3
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Validator {
 	address: Base64String
 	power: i64
@@ -339,8 +319,7 @@ export class Validator {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class VoteInfo {
 	validator:   Validator
 	block_id_flag: BlockIDFlag
@@ -350,8 +329,7 @@ export class VoteInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CommitInfo {
 	round: i64
 	votes: VoteInfo[]
@@ -361,8 +339,7 @@ export class CommitInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class RequestProcessProposal {
     txs: Array<Base64String>
 	proposed_last_commit: CommitInfo
@@ -387,16 +364,14 @@ export class RequestProcessProposal {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export enum ProposalStatus {
     UNKNOWN = 0,
     ACCEPT = 1,
     REJECT = 2
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ResponseProcessProposal {
     status: ProposalStatus = 0;
     constructor(status: ProposalStatus) {
@@ -404,8 +379,7 @@ export class ResponseProcessProposal {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ResponseOptimisticExecution {
     metainfo: Map<string,Base64String> = new Map<string,Base64String>()
     constructor(metainfo: Map<string,Base64String>) {
@@ -413,8 +387,7 @@ export class ResponseOptimisticExecution {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class RequestFinalizeBlock {
     txs: Array<Base64String>
 	decided_last_commit: CommitInfo
@@ -436,8 +409,7 @@ export class RequestFinalizeBlock {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class WrapRequestFinalizeBlock {
     request: RequestFinalizeBlock
     metainfo: Map<string, Base64String>
@@ -447,8 +419,7 @@ export class WrapRequestFinalizeBlock {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class RequestProcessProposalWithMetaInfo {
     request: RequestProcessProposal // same content as RequestFinalizeBloc
     optimistic_execution: boolean
@@ -460,8 +431,7 @@ export class RequestProcessProposalWithMetaInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ExecTxResult { // same as ResponseCheckTx
     code: u32
 	data: Base64String
@@ -483,8 +453,7 @@ export class ExecTxResult { // same as ResponseCheckTx
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ExtensionOptionMultiChainTx {
     // option (gogoproto.goproto_getters) = false;
     chain_id: string
@@ -497,8 +466,7 @@ export class ExtensionOptionMultiChainTx {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class  ExtensionOptionAtomicMultiChainTx {
     leader_chain_id: string;
     chain_ids: string[];
@@ -512,12 +480,10 @@ export class  ExtensionOptionAtomicMultiChainTx {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class  ExtensionOptionEthereumTx {}
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorUpdate {
     pub_key: PublicKey | null = null
 	power: i64
@@ -527,8 +493,7 @@ export class ValidatorUpdate {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorInfo {
     address: HexString
     pub_key: Base64String // crypto.PubKey
@@ -542,8 +507,7 @@ export class ValidatorInfo {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class TendermintValidator {
     operator_address: Bech32String
     hex_address: HexString // // hex-format address derived from consensus public key
@@ -559,8 +523,7 @@ export class TendermintValidator {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class TendermintValidators {
     validators: TendermintValidator[] = []
     constructor(validators: TendermintValidator[]) {
@@ -569,8 +532,7 @@ export class TendermintValidators {
 }
 
 
-// @ts-ignore
-@serializable
+@json
 export class BlockParams {
     // Max block size, in bytes.
 	// Note: must be greater than 0
@@ -584,8 +546,7 @@ export class BlockParams {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class EvidenceParams {
     // Max age of evidence, in blocks.
 	//
@@ -609,8 +570,7 @@ export class EvidenceParams {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorParams {
     pub_key_types: string[]
     constructor(pub_key_types: string[]) {
@@ -618,8 +578,7 @@ export class ValidatorParams {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class VersionParams {
     app: u64
     constructor(app: u64) {
@@ -627,8 +586,7 @@ export class VersionParams {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ABCIParams {
     vote_extensions_enable_height: i64
     constructor(vote_extensions_enable_height: i64) {
@@ -636,8 +594,7 @@ export class ABCIParams {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ConsensusParams {
     block: BlockParams
 	evidence: EvidenceParams
@@ -653,8 +610,7 @@ export class ConsensusParams {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ResponseFinalizeBlock {
 	events: Event[] = []
 	tx_results: ExecTxResult[] = []
@@ -670,8 +626,7 @@ export class ResponseFinalizeBlock {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ResponseFinalizeBlockWrap {
     error: string
     data: ResponseFinalizeBlock | null
@@ -681,8 +636,7 @@ export class ResponseFinalizeBlockWrap {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ResponseBeginBlock {
 	events: Event[]
     constructor(events: Event[]) {
@@ -690,8 +644,7 @@ export class ResponseBeginBlock {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ResponseBeginBlockWrap {
     error: string
     data: ResponseBeginBlock | null
@@ -701,8 +654,7 @@ export class ResponseBeginBlockWrap {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ResponseCommit {
 	retainHeight: i64;
     constructor(retainHeight: i64) {
@@ -710,15 +662,13 @@ export class ResponseCommit {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export enum CheckTxType {
     New = 0,
 	Recheck = 1,
 }
 
-// @ts-ignore
-@serializable
+@json
 export class RequestCheckTx {
     tx: Base64String;
 	type: CheckTxType
@@ -728,8 +678,7 @@ export class RequestCheckTx {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export enum CodeType {
     Ok = 0,
     EncodingError = 1,
@@ -746,8 +695,7 @@ export enum CodeType {
 // CodeTypeUnauthorized    uint32 = 3
 // CodeTypeExecuted        uint32 = 5
 
-// @ts-ignore
-@serializable
+@json
 export class ResponseCheckTx { // extends ExecTxResult {}// same as ResponseCheckTx
     code: u32 = 0
 	data: Base64String = ""
@@ -769,8 +717,7 @@ export class ResponseCheckTx { // extends ExecTxResult {}// same as ResponseChec
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Transaction {
     gas: i32;
     constructor(gas: i32) {
@@ -778,8 +725,7 @@ export class Transaction {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class TxResult {
 	height: i64
 	index: u32
@@ -793,8 +739,7 @@ export class TxResult {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class RequestInitChain {
 	time: string
 	chain_id: string
@@ -812,8 +757,7 @@ export class RequestInitChain {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class ResponseInitChain {
 	consensus_params: ConsensusParams
 	validators: ValidatorUpdate[]
@@ -825,8 +769,7 @@ export class ResponseInitChain {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class InitChainSetup {
     chain_id: string
     version: Version
@@ -854,40 +797,31 @@ export class InitChainSetup {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class RequestApplySnapshotChunk {}
 
-// @ts-ignore
-@serializable
+@json
 export class ResponseApplySnapshotChunk {}
 
-// @ts-ignore
-@serializable
+@json
 export class RequestLoadSnapshotChunk {}
 
-// @ts-ignore
-@serializable
+@json
 export class ResponseLoadSnapshotChunk {}
 
-// @ts-ignore
-@serializable
+@json
 export class RequestOfferSnapshot {}
 
-// @ts-ignore
-@serializable
+@json
 export class ResponseOfferSnapshot {}
 
-// @ts-ignore
-@serializable
+@json
 export class RequestListSnapshots {}
 
-// @ts-ignore
-@serializable
+@json
 export class ResponseListSnapshots {}
 
-// @ts-ignore
-@serializable
+@json
 export class ValidatorSet {
     validators: TendermintValidator[]
     proposer: TendermintValidator
@@ -897,8 +831,7 @@ export class ValidatorSet {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class State {
     Version: Version
     ChainID: string

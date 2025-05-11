@@ -1,11 +1,10 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { HookCalld } from 'wasmx-env/assembly/hooks';
 import { MsgJoinRoom, MsgSendMessage, QueryGetBlock, QueryGetBlocks, QueryGetMessage, QueryGetMessages, QueryGetRooms } from './types';
 import { Base64String } from "wasmx-env/assembly/types";
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     HandleTx: Base64String | null = null;
 
@@ -20,8 +19,7 @@ export class CallData {
     StartNode: HookCalld | null = null;
 }
 
-// @ts-ignore
-@serializable
+@json
 export class CallDataInternal {
     JoinRoom: MsgJoinRoom | null = null;
     SendMessage: MsgSendMessage | null = null;

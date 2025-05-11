@@ -1,15 +1,13 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { MsgDeposit, MsgEndBlock, MsgSubmitProposal, MsgVote, MsgVoteWeighted, QueryDepositRequest, QueryDepositsRequest, QueryParamsRequest, QueryProposalRequest, QueryProposalsRequest, QueryTallyResultRequest, QueryVoteRequest, QueryVotesRequest } from 'wasmx-gov/assembly/types';
 import { MsgInitGenesis, Params, MsgSubmitProposalExtended, MsgAddProposalOption, DepositVote, QueryNextWinnerThreshold } from "./types"
 import { BigInt } from "wasmx-env/assembly/bn";
 
-// @ts-ignore
-@serializable
+@json
 export class MsgEmpty {}
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     InitGenesis: MsgInitGenesis | null = null;
     SubmitProposal: MsgSubmitProposal | null = null;

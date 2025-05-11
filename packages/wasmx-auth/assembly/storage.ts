@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { BaseAccount, BaseAccountTypeName, ModuleAccount, ModuleAccountTypeName, Params } from "./types";
 import { parseInt64, base64ToString, stringToBase64 } from "wasmx-utils/assembly/utils";

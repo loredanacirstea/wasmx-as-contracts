@@ -1,10 +1,9 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxt from "wasmx-env/assembly/types";
 import { InitSubChainRequest, MsgInitialize, QueryConvertAddressByChainIdRequest, QueryGetCurrentLevelRequest, QueryGetSubChainIdsByLevelRequest, QueryGetSubChainIdsByValidatorRequest, QueryGetSubChainIdsRequest, QueryGetSubChainRequest, QueryGetSubChainsByIdsRequest, QueryGetSubChainsRequest, QueryGetValidatorsByChainIdRequest, QuerySubChainConfigByIdsRequest, QueryValidatorAddressesByChainIdRequest, RegisterDefaultSubChainRequest, RegisterSubChainRequest, RegisterSubChainValidatorRequest, RemoveSubChainRequest } from "./types";
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     RegisterSubChain: RegisterSubChainRequest | null = null;
     RegisterDefaultSubChain: RegisterDefaultSubChainRequest | null = null;

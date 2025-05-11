@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import {
   eventual as _eventual,
   instantiate as _instantiate,
@@ -144,8 +144,7 @@ export function p2pmsg(): void {
   result = wasmx.getFinishData();
 }
 
-// @ts-ignore
-@serializable
+@json
 export class NetworkNode {
   id: Base64String // p2p id
   host: string
@@ -159,8 +158,7 @@ export class NetworkNode {
   }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class P2PMessage {
     roomId: string
     message:   Base64String

@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as kvdb from './kvdb';
 import { KvDeleteRequest, KvDeleteResponse, KvGetRequest, KvGetResponse, KvHasRequest, KvHasResponse, KvIteratorRequest, KvIteratorResponse, KvSetRequest, KvSetResponse, MODULE_NAME, MsgCloseRequest, MsgCloseResponse, MsgConnectRequest, MsgConnectResponse } from "./types";
 

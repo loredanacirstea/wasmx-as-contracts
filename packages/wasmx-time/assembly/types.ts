@@ -1,10 +1,9 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import {Base64String} from 'wasmx-env/assembly/types';
 
 export const MODULE_NAME = "time"
 
-// @ts-ignore
-@serializable
+@json
 export class Header {
     index: i64
     time: Date
@@ -28,8 +27,7 @@ export class Header {
 }
 
 
-// @ts-ignore
-@serializable
+@json
 export class Block {
     header: Header
     hash: Base64String
@@ -42,8 +40,7 @@ export class Block {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class Params {
     chain_id: string
     interval_ms: i64
@@ -53,8 +50,7 @@ export class Params {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgInitialize {
     params: Params
     constructor(params: Params) {
@@ -62,16 +58,13 @@ export class MsgInitialize {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgStart {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryLastBlockRequest {}
 
-// @ts-ignore
-@serializable
+@json
 export class QueryBlockRequest {
     time: Date
     constructor(time: Date) {

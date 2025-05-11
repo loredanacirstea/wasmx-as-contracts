@@ -1,7 +1,6 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 
-// @ts-ignore
-@serializable
+@json
 export class GenesisState {}
 
 export function getDefaultGenesis(): GenesisState {

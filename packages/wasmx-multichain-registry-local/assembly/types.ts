@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import { ChainConfig, NodePorts, StateSyncConfig } from "wasmx-consensus/assembly/types_multichain"
 import { Bech32String } from "wasmx-env/assembly/types";
 
@@ -6,8 +6,7 @@ export const MODULE_NAME = "multichain_registry_local"
 
 export const CROSS_CHAIN_TIMEOUT_MS = 120000 // 2 min
 
-// @ts-ignore
-@serializable
+@json
 export class MsgInitialize {
     ids: string[]
     initialPorts: NodePorts
@@ -17,8 +16,7 @@ export class MsgInitialize {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgAddSubChainId {
     id: string
     constructor(id: string) {
@@ -26,8 +24,7 @@ export class MsgAddSubChainId {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgSetInitialPorts {
     initialPorts: NodePorts
     constructor(initialPorts: NodePorts) {
@@ -35,12 +32,10 @@ export class MsgSetInitialPorts {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QuerySubChainIds {}
 
-// @ts-ignore
-@serializable
+@json
 export class QuerySubChainIdsResponse {
     ids: string[]
     constructor(ids: string[]) {
@@ -48,8 +43,7 @@ export class QuerySubChainIdsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryNodePortsPerChainId {
     chain_id: string
     constructor(chain_id: string) {
@@ -57,8 +51,7 @@ export class QueryNodePortsPerChainId {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QueryNodePortsPerChainIdResponse {
     ports: NodePorts
     constructor(ports: NodePorts) {
@@ -66,12 +59,10 @@ export class QueryNodePortsPerChainIdResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class QuerySubChainIdsWithPorts {}
 
-// @ts-ignore
-@serializable
+@json
 export class QuerySubChainIdsWithPortsResponse {
     ids: string[]
     ports: NodePorts[]
@@ -81,8 +72,7 @@ export class QuerySubChainIdsWithPortsResponse {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgStartStateSync {
     chain_id: string
     peer_address: string // addr@p2p_addr
@@ -100,8 +90,7 @@ export class MsgStartStateSync {
     }
 }
 
-// @ts-ignore
-@serializable
+@json
 export class MsgRegisterNewChain {
     chain_id: string
     chain_config: ChainConfig

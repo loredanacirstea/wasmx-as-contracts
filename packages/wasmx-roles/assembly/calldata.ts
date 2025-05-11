@@ -1,14 +1,12 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { GetAddressOrRoleRequest, GetRoleByLabelRequest, GetRoleLabelByContractRequest, GetRolesRequest, SetRoleRequest, MsgRunHook, GetRoleByRoleNameRequest, GetRoleNameByAddressRequest } from './types';
 import { MsgSetup, RoleChanged } from "wasmx-env/assembly/types";
 
-// @ts-ignore
-@serializable
+@json
 export class EmptyRequest {}
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     // system
     setup: MsgSetup | null = null;

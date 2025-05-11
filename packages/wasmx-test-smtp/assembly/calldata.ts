@@ -1,13 +1,11 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { SmtpBuildMailRequest, SmtpCloseRequest, SmtpConnectionOauth2Request, SmtpConnectionSimpleRequest, SmtpExtensionRequest, SmtpMaxMessageSizeRequest, SmtpNoopRequest, SmtpQuitRequest, SmtpSendMailRequest, SmtpSupportsAuthRequest, SmtpVerifyRequest } from "wasmx-env-smtp/assembly/types";
 
-// @ts-ignore
-@serializable
+@json
 export class MsgEmpty {}
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     ConnectWithPassword: SmtpConnectionSimpleRequest | null = null;
     ConnectOAuth2: SmtpConnectionOauth2Request | null = null;

@@ -1,4 +1,4 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap, getCallDataInstantiateWrap } from './calldata';
 import { add, BuildSchema, Close, Connect, Count, CreateTable, Delete, InitializeIdentity, Insert, InsertOrReplace, InstantiateDType, InitializeTokens, move, Read, ReadField, sub, Update, GetRecordsByRelationType } from "./actions";

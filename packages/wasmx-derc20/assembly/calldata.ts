@@ -1,11 +1,10 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { MsgName, MsgSymbol, MsgDecimals, MsgTotalSupply, MsgBalanceOf, MsgTransfer, MsgTransferFrom, MsgApprove, MsgAllowance, MsgMint } from 'wasmx-erc20/assembly/types';
 import { QueryDelegationRequest, QueryValidatorDelegationsRequest } from "wasmx-stake/assembly/types";
 import { MsgDelegate, MsgUndelegate, MsgRedelegate, MsgGetAllSDKDelegations } from "./types";
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     name: MsgName | null = null;
     symbol: MsgSymbol | null = null;

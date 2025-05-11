@@ -1,9 +1,8 @@
-import { JSON } from "json-as/assembly";
+import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { MsgInitialize, MsgStart, QueryBlockRequest, QueryLastBlockRequest } from "./types";
 
-// @ts-ignore
-@serializable
+@json
 export class CallData {
     StartNode: MsgStart | null = null;
     start: MsgStart | null = null;
