@@ -1,8 +1,10 @@
+import { JSON } from "json-as";
 const MAX32: u64 = u64(Math.pow(2, 32));
 const MAX16: u32 = u32(Math.pow(2, 16));
 
+@json
 export class tally {
-    buf: ArrayBuffer;
+    buf: ArrayBuffer = new ArrayBuffer(0);
     // a64: Uint64Array;
     a32: Uint32Array;
     a16: Uint16Array;
@@ -19,17 +21,17 @@ export class tally {
         }
     }
 
-    // @serializer
-    // serializer(self: tally): string {
-    //     return `"${self.toString(16)}"`;
-    // }
+    @serializer
+    serializer(self: tally): string {
+        return `"${self.toString(16)}"`;
+    }
 
-    // @deserializer
-    // deserializer(data: string): tally {
-    //     const base = data.slice(0, 2) == "0x" ? 16 : 10
-    //     return tally.fromString(data, base);
+    @deserializer
+    deserializer(data: string): tally {
+        const base = data.slice(0, 2) == "0x" ? 16 : 10
+        return tally.fromString(data, base);
 
-    // }
+    }
 
     @operator('+')
     static __add(a: tally, b: tally): tally  {

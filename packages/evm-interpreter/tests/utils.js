@@ -1,5 +1,5 @@
 import { getExports } from "./debug.js";
-import { wasmx } from './wasmx.js';
+import { wasmx } from './wasmx/index.js';
 
 export const LOG = {
     error: 0,

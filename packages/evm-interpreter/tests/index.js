@@ -1,6 +1,6 @@
 import assert from "assert";
 import { benchmark, runf, LOG, u8ArrayToHex, paddLeft } from './utils.js';
-import { hexToUint8Array } from './wasmx.js';
+import { hexToUint8Array } from './wasmx/index.js';
 import * as curveBytecode from './data/curve.js';
 import * as fibBytecode from './data/fib.js';
 import * as allopsBytecode from './data/allops.js';

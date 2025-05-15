@@ -26,6 +26,9 @@
   "devDependencies": {
     "assemblyscript": "0.27.36"
   },
+  "dependencies": {
+    "json-as": "github:loredanacirstea/as-json#nested-custom-serializer-fix"
+  },
   "type": "module",
   "exports": {
     ".": {

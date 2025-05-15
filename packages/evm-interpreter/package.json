@@ -21,10 +21,10 @@
   },
   "devDependencies": {
     "assemblyscript": "^0.25.0",
-    "wasmx": "file:tests/wasmx"
+    "wasmx": "file:./tests/wasmx"
   },
   "dependencies": {
     "as-tally": "file:../as-tally",
-    "json-as": "^1.0.4"
+    "json-as": "github:loredanacirstea/as-json#nested-custom-serializer-fix"
   }
 }

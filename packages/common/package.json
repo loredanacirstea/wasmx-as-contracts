@@ -24,6 +24,6 @@
   },
   "dependencies": {
     "as-bignum": "0.3.1",
-    "json-as": "^1.0.4"
+    "json-as": "github:loredanacirstea/as-json#nested-custom-serializer-fix"
   }
 }

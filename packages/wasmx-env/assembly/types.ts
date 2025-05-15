@@ -3,18 +3,11 @@ import * as base64 from "as-base64/assembly";
 import { BigInt } from "./bn";
 import { AnyWrap } from "./wasmx_types";
 
-@json
 export type HexString = string;
-@json
 export type Base64String = string;
-@json
 export type Bech32String = string;
-@json
 export type ConsensusAddressString = string;
-@json
 export type ValidatorAddressString = string;
-
-@json
 export enum RoleChangedActionType {
     Replace = 0,
     Add = 1,
@@ -338,7 +331,6 @@ export class PublicKey { // extends AnyWrap // we cannot extend in as-json
     }
 }
 
-@json
 export enum SignMode {
     SIGN_MODE_UNSPECIFIED = 0,
     SIGN_MODE_DIRECT = 1,
@@ -772,7 +764,6 @@ export class MsgSetup {
     }
 }
 
-@json
 export enum ContractStorageType {
     CoreConsensus = 0,
     MetaConsensus = 1,
