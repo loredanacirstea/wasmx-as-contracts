@@ -10,7 +10,6 @@ import { EmailTables, getEmailFields, getProviderFields, getThreadFields, TableP
 import { ImapConnectionOauth2Request, ImapConnectionSimpleRequest, ImapFetchRequest, SeqSetRange, UidSetRange } from "wasmx-env-imap/assembly/types";
 import { revert } from "./utils";
 import { SmtpConnectionOauth2Request, SmtpConnectionSimpleRequest } from "wasmx-env-smtp/assembly/types";
-import { base64ToString } from "wasmx-utils/assembly/utils";
 import { saveEmail } from "./helpers";
 
 export function Initialize(req: MsgInitializeRequest): ArrayBuffer {
@@ -42,14 +41,6 @@ export function Initialize(req: MsgInitializeRequest): ArrayBuffer {
 export function RegisterProvider(req: MsgRegisterProviderRequest): ArrayBuffer {
     RegisterProviderInternal([req.provider])
     return new ArrayBuffer(0)
-}
-
-export function RegisterProviderInternal(providers: Provider[]): void {
-    const ids = getTableIds()
-    for (let i = 0 ; i < providers.length; i++) {
-        const data = JSON.stringify<Provider>(providers[i])
-        insertDTypeValues(ids.provider, TableProviderName, data)
-    }
 }
 
 export function ConnectUser(req: MsgConnectUserRequest): ArrayBuffer {
@@ -107,6 +98,14 @@ export function ListenEmail(req: MsgListenEmailRequest): ArrayBuffer {
 
 export function SendEmail(req: MsgSendEmailRequest): ArrayBuffer {
     return new ArrayBuffer(0)
+}
+
+export function RegisterProviderInternal(providers: Provider[]): void {
+    const ids = getTableIds()
+    for (let i = 0 ; i < providers.length; i++) {
+        const data = JSON.stringify<Provider>(providers[i])
+        insertDTypeValues(ids.provider, TableProviderName, data)
+    }
 }
 
 function getConnectionId(username: string): string {

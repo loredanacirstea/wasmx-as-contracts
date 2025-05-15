@@ -81,9 +81,9 @@ export class MsgCacheEmailRequest {
     user_id: i64 = 0
     username: string = ""
     email_folder: string = ""
-    uid_range: UidSetRange[] = []
-    seq_range: SeqSetRange[] = []
-    constructor(user_id: i64, username: string, email_folder: string, uid_range: UidSetRange[], seq_range: SeqSetRange[]) {
+    uid_range: UidSetRange[] | null = null
+    seq_range: SeqSetRange[] | null = null
+    constructor(user_id: i64, username: string, email_folder: string, uid_range: UidSetRange[] | null, seq_range: SeqSetRange[] | null) {
         this.user_id = user_id
         this.username = username
         this.email_folder = email_folder
@@ -221,13 +221,13 @@ export class EmailToWrite {
 @json
 export class ThreadToWrite {
     name: string = ""
-    last_email_message_id: string = ""
+    last_email_message_id: i64 = 0
     owner_account: string = ""
     email_message_ids: string = ""
     missing_refs: string = ""
     constructor(
         name: string,
-        last_email_message_id: string,
+        last_email_message_id: i64,
         owner_account: string,
         email_message_ids: string,
         missing_refs: string,
@@ -236,6 +236,41 @@ export class ThreadToWrite {
         this.last_email_message_id = last_email_message_id
         this.owner_account = owner_account
         this.email_message_ids = email_message_ids
+        this.missing_refs = missing_refs
+    }
+}
+
+@json
+export class ThreadToRead {
+    id: i64 = 0
+    name: string = ""
+    last_email_message_id: i64 = 0
+    owner_account: string = ""
+    email_message_ids: string = ""
+    missing_refs: string = ""
+    constructor(
+        id: i64,
+        name: string,
+        last_email_message_id: i64,
+        owner_account: string,
+        email_message_ids: string,
+        missing_refs: string,
+    ) {
+        this.id = id
+        this.name = name
+        this.last_email_message_id = last_email_message_id
+        this.owner_account = owner_account
+        this.email_message_ids = email_message_ids
+        this.missing_refs = missing_refs
+    }
+}
+
+@json
+export class MissingRefsWrap {
+    missing_refs: string = ""
+    constructor(
+        missing_refs: string,
+    ) {
         this.missing_refs = missing_refs
     }
 }

@@ -160,8 +160,8 @@ export class UidSetRange {
 export class ImapFetchRequest {
     id: string = "";
     folder: string = "";
-    seq_set: SeqSetRange[] = [];
-    uid_set: UidSetRange[] = [];
+    seq_set: SeqSetRange[] | null = null
+    uid_set: UidSetRange[] | null = null
     fetch_filter: FetchFilter | null = null;
     options: FetchOptions | null = null;
     bodySection: FetchItemBodySection  | null = null;
@@ -170,8 +170,8 @@ export class ImapFetchRequest {
     constructor(
         id: string,
         folder: string,
-        seq_set: SeqSetRange[],
-        uid_set: UidSetRange[],
+        seq_set: SeqSetRange[] | null,
+        uid_set: UidSetRange[] | null,
         fetch_filter: FetchFilter | null,
         options: FetchOptions | null,
         bodySection: FetchItemBodySection | null,

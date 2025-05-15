@@ -156,6 +156,22 @@ export class ReadRequest {
 }
 
 @json
+export class ReadRawRequest {
+    identifier: TableIndentifier
+    query: string
+    params: Base64String[]
+    constructor(
+        identifier: TableIndentifier,
+        query: string,
+        params: Base64String[],
+    ) {
+        this.identifier = identifier
+        this.query = query
+        this.params = params
+    }
+}
+
+@json
 export class CountRequest {
     identifier: TableIndentifier
     data: Base64String
@@ -354,5 +370,15 @@ export class BuildSchemaResponse {
         data: Base64String,
     ) {
         this.data = data
+    }
+}
+
+@json
+export class QueryParams {
+    keys: string[] = []
+    values: Base64String[] = []
+    constructor(keys: string[],  values: Base64String[]) {
+        this.keys = keys
+        this.values = values
     }
 }

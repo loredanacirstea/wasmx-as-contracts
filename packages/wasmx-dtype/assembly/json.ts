@@ -1,17 +1,10 @@
 import { JSON } from "assemblyscript-json/assembly";
 import { Base64String } from "wasmx-env/assembly/types";
 import { stringToBase64 } from "wasmx-utils/assembly/utils";
-import { DTypeField } from "./types";
+import { DTypeField, QueryParams } from "./types";
 import { revert } from "./utils";
 
-export class QueryParams {
-    keys: string[] = []
-    values: Base64String[] = []
-    constructor(keys: string[],  values: Base64String[]) {
-        this.keys = keys
-        this.values = values
-    }
-}
+
 
 export function jsonToQueryParams(value: string, fields: DTypeField[]): QueryParams[] {
     // could be object or array

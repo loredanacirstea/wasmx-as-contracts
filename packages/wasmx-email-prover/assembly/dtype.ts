@@ -1,12 +1,33 @@
 import { JSON } from "json-as";
 import { JSON as JSONDyn } from "assemblyscript-json/assembly";
-import { CreateTableRequest, InsertRequest, MsgExecuteBatchResponse, ReadFieldRequest, ReadRequest, MsgQueryResponse, GetRecordsByRelationTypeRequest, UpdateRequest } from "wasmx-dtype/assembly/types";
+import { CreateTableRequest, InsertRequest, MsgExecuteBatchResponse, ReadFieldRequest, ReadRequest, MsgQueryResponse, GetRecordsByRelationTypeRequest, UpdateRequest, ReadRawRequest } from "wasmx-dtype/assembly/types";
 import { getDTypeIdentifier, rowsArrToObjArr } from "wasmx-dtype/assembly/helpers";
 import { base64ToString, stringToBase64 } from "wasmx-utils/assembly/utils";
 import { callContract } from "wasmx-env/assembly/utils";
 import { ROLE_DTYPE } from "wasmx-env/assembly/roles";
 import { MODULE_NAME, ResponseStringWithError } from "./types";
 import { revert } from "./utils";
+
+export function getDTypeReadRaw(tableId: i64, tableName: string, query: string, params_: string[]): string {
+    const params = new Array<string>(params_.length)
+    for (let i = 0; i < params_.length; i++) {
+        params[i] = stringToBase64(params_[i])
+    }
+    const calld = JSON.stringify<ReadRawRequest>(new ReadRawRequest(
+        getDTypeIdentifier(tableId, tableName),
+        query,
+        params,
+    ))
+    const resp = callContract(ROLE_DTYPE, `{"ReadRaw":${calld}}`, true, MODULE_NAME)
+    if (resp.success > 0) {
+        revert(`getDTypeReadRaw failed for table ${tableName}: ${query}, ${resp.data}`)
+    }
+    const result = JSON.parse<MsgQueryResponse>(resp.data)
+    if (result.error != "") {
+        revert(`getDTypeReadRaw failed for table ${tableName}: ${query}: ${result.error}`)
+    }
+    return base64ToString(result.data);
+}
 
 export function getRecordsByRelationType(relationTypeId: i64, relationType: string, tableId: i64, recordId: i64, nodeType: string): JSONDyn.Obj[] {
     const calld = JSON.stringify<GetRecordsByRelationTypeRequest>(new GetRecordsByRelationTypeRequest(relationTypeId, relationType, tableId, recordId, nodeType))

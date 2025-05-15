@@ -1,7 +1,6 @@
 import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { SmtpBuildMailRequest, SmtpCloseRequest, SmtpConnectionOauth2Request, SmtpConnectionSimpleRequest, SmtpExtensionRequest, SmtpMaxMessageSizeRequest, SmtpNoopRequest, SmtpQuitRequest, SmtpSendMailRequest, SmtpSupportsAuthRequest, SmtpVerifyRequest } from "wasmx-env-smtp/assembly/types";
-import { MsgCacheEmailRequest, MsgInitializeRequest, MsgInitializeResponse, MsgListenEmailRequest, MsgRegisterProviderRequest, MsgSendEmailRequest, MsgConnectUserRequest } from "./types";
+import { MsgCacheEmailRequest, MsgInitializeRequest, MsgListenEmailRequest, MsgRegisterProviderRequest, MsgSendEmailRequest, MsgConnectUserRequest } from "./types";
 
 @json
 export class MsgEmpty {}

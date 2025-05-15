@@ -3,9 +3,9 @@ import { JSON as JSONDyn } from "assemblyscript-json/assembly";
 import * as sqlw from "wasmx-env-sql/assembly/sql_wrap";
 import { base64ToString, stringToBase64, stringToBytes } from "wasmx-utils/assembly/utils";
 import { MsgCloseRequest, MsgCloseResponse, MsgConnectRequest, MsgConnectResponse, MsgExecuteBatchRequest, MsgExecuteBatchResponse, MsgExecuteRequest, MsgExecuteResponse, MsgQueryRequest, MsgQueryResponse, SqlExecuteCommand } from "wasmx-env-sql/assembly/types";
-import { BuildSchemaRequest, BuildSchemaResponse, CallDataInstantiate, CallDataInitializeTokens, CloseRequest, ConnectRequest, CountRequest, CountResponse, CreateTableRequest, DeleteRequest, DTypeDb, DTypeDbConnection, DTypeField, DTypeTable, InsertRequest, MODULE_NAME, ReadFieldRequest, ReadRequest, TableIndentifier, TableIndentifierRequired, UpdateRequest, CreateIndexesRequest, DeleteIndexesRequest, TableIndex, CreateIndexResponse, DeleteIndexResponse, GetRecordsByRelationTypeRequest } from "./types";
+import { BuildSchemaRequest, BuildSchemaResponse, CallDataInstantiate, CallDataInitializeTokens, CloseRequest, ConnectRequest, CountRequest, CountResponse, CreateTableRequest, DeleteRequest, DTypeDb, DTypeDbConnection, DTypeField, DTypeTable, InsertRequest, MODULE_NAME, ReadFieldRequest, ReadRequest, TableIndentifier, TableIndentifierRequired, UpdateRequest, CreateIndexesRequest, DeleteIndexesRequest, TableIndex, CreateIndexResponse, DeleteIndexResponse, GetRecordsByRelationTypeRequest, ReadRawRequest } from "./types";
 import { revert } from "./utils";
-import { jsonToQueryParams, QueryParams } from "./json";
+import { jsonToQueryParams } from "./json";
 import { generateJsonSchema } from "./schema";
 import { DTypeConnection, DTypeDbConnName, DTypeDbName, DTypeFieldName, DTypeNodeName, DTypeRelationName, DTypeRelationTypeName, DTypeTableName, OwnedTable, OwnedTableId, AllowanceTable, AllowanceTableId, tableDbConnId, tableDbId, tableFieldsId, tableNodeId, tableRelationId, tableRelationTypeId, tableTableId, TokensTable, TokensTableId, IdentityTableId, FullNameTableId, EmailTableId, tableTableIndexId, DTypeTableIndexName } from "./config";
 import { AddRequest, MoveRequest, SubRequest } from "./types_tokens";
@@ -416,6 +416,11 @@ export function ReadField(req: ReadFieldRequest): ArrayBuffer {
     return String.UTF8.encode(JSON.stringify<MsgQueryResponse>(resp))
 }
 
+export function ReadRaw(req: ReadRawRequest): ArrayBuffer {
+    const resp = ReadRawInternal(req.identifier, req.query, req.params)
+    return String.UTF8.encode(JSON.stringify<MsgQueryResponse>(resp))
+}
+
 export function GetRecordsByRelationType(req: GetRecordsByRelationTypeRequest): ArrayBuffer {
     const resp = GetRecordsByRelationTypeInternal(req.relationTypeId, req.relationType, req.tableId, req.recordId, req.nodeType)
     return String.UTF8.encode(JSON.stringify<MsgQueryResponse>(resp))
@@ -729,6 +734,11 @@ export function ReadInternal(identifier: TableIndentifier, data: Base64String): 
 
     const query = `SELECT * FROM ${identif.table_name} WHERE ${cond};`;
     return sqlw.Query(new MsgQueryRequest(identif.db_connection_name, query, param.values))
+}
+
+export function ReadRawInternal(identifier: TableIndentifier, query: string, params: Base64String[]): MsgQueryResponse {
+    const identif = getIdentifier(identifier);
+    return sqlw.Query(new MsgQueryRequest(identif.db_connection_name, query, params))
 }
 
 export function GetRecordsByRelationTypeInternal(reltypeId: i64, reltype: string, tableId: i64, recordId: i64, nodeType: string): MsgQueryResponse {
