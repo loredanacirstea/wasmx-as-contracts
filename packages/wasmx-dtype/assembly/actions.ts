@@ -384,9 +384,7 @@ export function CreateTableInternal(req: CreateTableRequest): MsgExecuteBatchRes
 }
 
 export function Insert(req: InsertRequest): ArrayBuffer {
-    console.log("---dtype.Insert--")
     const identif = getIdentifier(req.identifier);
-    console.log("---dtype.Insert--" + identif.table_name)
     const resp = InsertInternal(identif, base64ToString(req.data))
     return String.UTF8.encode(JSON.stringify<MsgExecuteBatchResponse>(resp))
 }
@@ -570,11 +568,9 @@ export function move(req: MoveRequest): ArrayBuffer {
 }
 
 export function InsertInternal(identif: TableIndentifierRequired, data: string): MsgExecuteBatchResponse {
-    console.log("---dtype.InsertInternal--" + data)
     const fields = getTableFields(identif.table_id);
     if (fields.length == 0) revert(`table with no fields`)
     const params = jsonToQueryParams(data, fields)
-    console.log("---dtype.InsertInternal post jsonToQueryParams--" + params.length.toString())
     if (params.length == 0) return new MsgExecuteBatchResponse("", [])
 
     const queries: SqlExecuteCommand[] = []
