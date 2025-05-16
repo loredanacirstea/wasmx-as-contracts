@@ -1,5 +1,6 @@
 import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import { RolesChangedHook } from "wasmx-roles/assembly/types";
 import { MsgCacheEmailRequest, MsgInitializeRequest, MsgListenEmailRequest, MsgRegisterProviderRequest, MsgSendEmailRequest, MsgConnectUserRequest, MsgIncomingEmail, MsgExpunge, MsgMetadata } from "./types";
 
 @json
@@ -7,7 +8,7 @@ export class MsgEmpty {}
 
 @json
 export class CallData {
-    Initialize: MsgInitializeRequest | null = null;
+    RoleChanged: RolesChangedHook | null = null;
     RegisterProvider: MsgRegisterProviderRequest | null = null;
     ConnectUser: MsgConnectUserRequest | null = null;
     CacheEmail: MsgCacheEmailRequest | null = null;
@@ -26,6 +27,16 @@ export function getCallDataWrap(): CallData {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)
     return JSON.parse<CallData>(calldstr);
+}
+
+export function getCallDataWrapInitialize(): MsgInitializeRequest {
+    const calldraw = wasmx.getCallData();
+    return JSON.parse<MsgInitializeRequest>(String.UTF8.decode(calldraw));
+}
+
+export function getCallDataWrapRoleChanged(): RolesChangedHook {
+    const calldraw = wasmx.getCallData();
+    return JSON.parse<RolesChangedHook>(String.UTF8.decode(calldraw));
 }
 
 export function getCallDataWrapReentry(): ReentryCalldata {

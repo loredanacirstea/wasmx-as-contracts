@@ -1,6 +1,6 @@
 import { JSON } from "json-as";
 import * as base64 from "as-base64/assembly";
-import { Base64String, Bech32String, ContractInfo, ContractStorageType, ContractStorageTypeByEnum, ContractStorageTypeByString, Event, EventAttribute, MsgSetup, Role, RoleChanged, RoleChangedActionType, RoleChangedActionTypeByEnum, RoleChangedActionTypeByString, RolesGenesis } from "wasmx-env/assembly/types";
+import { Base64String, Bech32String, ContractInfo, ContractStorageType, ContractStorageTypeByEnum, ContractStorageTypeByString, Event, EventAttribute, MsgSetup, Role, RoleChangeRequest, RoleChanged, RoleChangedActionType, RoleChangedActionTypeByEnum, RoleChangedActionTypeByString, RolesGenesis } from "wasmx-env/assembly/types";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as roles from "wasmx-env/assembly/roles";
 import * as hooks from "wasmx-env/assembly/hooks";
@@ -11,7 +11,7 @@ import * as blocktypes from "wasmx-blocks/assembly/types"
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as codesregt from "wasmx-codes-registry/assembly/types";
 import * as st from "./storage";
-import { AttributeKeyRoleMultipleLabels, AttributeKeyRoleStorageType, GetAddressOrRoleRequest, GetRoleByLabelRequest, GetRoleByRoleNameRequest, GetRoleLabelByContractRequest, GetRoleNameByAddressRequest, MODULE_NAME, MsgRunHook, ROLE_PREVIOUS, RolesChangedHook, SetRoleRequest } from "./types";
+import { AttributeKeyRoleMultipleLabels, AttributeKeyRoleStorageType, ENTRY_POINT_ROLE_CHANGED, GetAddressOrRoleRequest, GetRoleByLabelRequest, GetRoleByRoleNameRequest, GetRoleLabelByContractRequest, GetRoleNameByAddressRequest, MODULE_NAME, MsgRunHook, ROLE_PREVIOUS, RolesChangedCalldata, RolesChangedHook, SetRoleRequest } from "./types";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
 import { callContract } from "wasmx-env/assembly/utils";
 
@@ -118,7 +118,7 @@ export function EndBlock(req: MsgRunHook): void {
 
                 LoggerInfo("found new role change", ["role", roleName, "address", addr, "label", label, "action", action]);
                 if (role != null) {
-                    registerRole(role, roleName, label, addr, actionType)
+                    registerRoleEndBlock(role, roleName, label, addr, actionType, prevAddress)
                 } else {
                     LoggerError(`previous role not found`, ["role", roleName]);
                 }
@@ -151,7 +151,7 @@ export function SetRole(req: SetRoleRequest): ArrayBuffer {
 }
 
 // we just emit an event here! and do the storage changes on EndBlock event
-export function SetContractForRole(req: RoleChanged): ArrayBuffer {
+export function SetContractForRole(req: RoleChangeRequest): ArrayBuffer {
     setContractForRole(req);
     return new ArrayBuffer(0);
 }
@@ -217,12 +217,19 @@ export function registerNewRole(role: Role): void {
         revert(`cannot register role: labels count different than addresses count`)
     }
     registerRoleInternalWithEvent(role)
-    callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<RolesChangedHook>(new RolesChangedHook(role, null)))
+    const msg = new RolesChangedHook(role, null)
+    for (let i = 0; i < role.addresses.length; i++) {
+        const errMsg = callTargetContractIfHasActivate(role.addresses[i], msg)
+        if (errMsg != "") {
+            revert(`cannot activate contract ${role.addresses[i]} for role ${role.role}`);
+        }
+    }
+    callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<RolesChangedHook>(msg))
 }
 
 // do storage changes only for action Add, Remove
 // for Replace, we just emit an event here! and do the storage changes on EndBlock event
-export function setContractForRole(roleChanged: RoleChanged): void {
+export function setContractForRole(roleChanged: RoleChangeRequest): void {
     const roleName = roleChanged.role
     const label = roleChanged.label
     const addr = roleChanged.contract_address
@@ -256,10 +263,12 @@ export function setContractForRole(roleChanged: RoleChanged): void {
 
     registerRoleEvent(role, label, addr, action);
 
+    const msg = new RolesChangedHook(null, new RoleChanged(roleChanged.role, roleChanged.label, roleChanged.contract_address, roleChanged.action_type, ""))
+
     if (action == RoleChangedActionType.Remove) {
         const foundlabel = st.removeRoleContract(role, addr)
         LoggerInfo("remove contract from role", ["role", roleName, "label", foundlabel, "contract_address", addr])
-        callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<RolesChangedHook>(new RolesChangedHook(null, roleChanged)))
+        callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<RolesChangedHook>(msg))
         return;
     }
     if (action == RoleChangedActionType.Add) {
@@ -268,27 +277,41 @@ export function setContractForRole(roleChanged: RoleChanged): void {
 
         LoggerInfo("register contract for role", ["role", roleName, "label", label, "contract_address", addr])
 
+        const errMsg = callTargetContractIfHasActivate(addr, msg)
+        if (errMsg != "") {
+            revert(`cannot activate contract ${addr} for role ${roleName}`);
+        }
+
         // we also call the hooks contract
-        callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<RolesChangedHook>(new RolesChangedHook(null, roleChanged)))
+        callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<RolesChangedHook>(msg))
     }
 }
 
 // Replace action: must be ran in EndBlock. don't revert
-export function registerRole(role: Role, roleName: string, label: string, addr: Bech32String, action: RoleChangedActionType): void {
-    const roleChanged = new RoleChanged(roleName, label, addr, action)
+export function registerRoleEndBlock(role: Role, roleName: string, label: string, addr: Bech32String, action: RoleChangedActionType, prevAddress: string): void {
     if (action != RoleChangedActionType.Replace) {
         return;
     }
+    const roleChanged = new RoleChanged(roleName, label, addr, action, prevAddress)
 
     st.addRoleContract(role, label, addr)
 
     LoggerInfo("register contract for role", ["role", roleName, "label", label, "contract_address", addr, "storage_type", ContractStorageTypeByEnum.get(role.storage_type)])
 
     // either we replace or add a contract
+    // TODO role migration for sql/kv
     registerRoleMigration(ContractStorageTypeByEnum.get(role.storage_type), addr);
 
+    const msg = new RolesChangedHook(null, roleChanged)
+
+    const errMsg = callTargetContractIfHasActivate(addr, msg)
+    if (errMsg != "") {
+        LoggerError(`cannot activate contract ${addr} for role ${roleName}`, []);
+        // TODO we should revert the replace here! and return to previous contract
+    }
+
     // we also call the hooks contract
-    callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<RolesChangedHook>(new RolesChangedHook(null, roleChanged)))
+    callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<RolesChangedHook>(msg))
 }
 
 export function registerRoleMigration(storageType: string, addr: Bech32String): void {
@@ -387,6 +410,24 @@ export function callHookContractInternal(contractRole: string, hookName: string,
         // we do not fail, we want the chain to continue
         LoggerError(`hooks failed`, ["error", resp.data])
     }
+}
+
+export function callTargetContractIfHasActivate(addr: Bech32String, data: RolesChangedHook): string {
+    const errMsg = callTargetContract(addr, data)
+    // TODO make this a general error
+    if (errMsg.includes("invalid function call")) {
+        return ""
+    }
+    return errMsg;
+}
+
+export function callTargetContract(addr: Bech32String, data: RolesChangedHook): string {
+    const calld = new RolesChangedCalldata(data)
+    const resp = callContract(addr, JSON.stringify<RolesChangedCalldata>(calld), false, MODULE_NAME)
+    if (resp.success > 0) {
+        return `target contract failed to activate: ${resp.data}`
+    }
+    return "";
 }
 
 export function getContractInfo(addr: Bech32String): ContractInfo | null {

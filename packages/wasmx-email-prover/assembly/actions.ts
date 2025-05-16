@@ -11,6 +11,7 @@ import { ImapConnectionOauth2Request, ImapConnectionSimpleRequest, ImapFetchRequ
 import { revert } from "./utils";
 import { SmtpConnectionOauth2Request, SmtpConnectionSimpleRequest } from "wasmx-env-smtp/assembly/types";
 import { saveEmail } from "./helpers";
+import { getRelationTypes, getTableIds, setRelationTypes, setTableIds } from "./storage";
 
 export function Initialize(req: MsgInitializeRequest): ArrayBuffer {
     const ids = insertDTypeValues(config.tableTableId, config.DTypeTableName, EmailTables)
@@ -136,20 +137,4 @@ export function CacheEmailInternal(
 
 function getConnectionId(username: string): string {
     return "conn_" + username
-}
-
-function setTableIds(ids: TableIds): void {
-    wasmxw.sstore("tableids", JSON.stringify<TableIds>(ids))
-}
-
-function getTableIds(): TableIds {
-    return JSON.parse<TableIds>(wasmxw.sload("tableids"))
-}
-
-function setRelationTypes(ids: RelationTypeIds): void {
-    wasmxw.sstore("relationtypeids", JSON.stringify<RelationTypeIds>(ids))
-}
-
-function getRelationTypes(): RelationTypeIds {
-    return JSON.parse<RelationTypeIds>(wasmxw.sload("relationtypeids"))
 }

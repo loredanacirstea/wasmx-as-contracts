@@ -1,26 +1,36 @@
 import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { getCallDataWrap, getCallDataWrapReentry } from './calldata';
+import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
+import * as roles from "wasmx-env/assembly/roles";
+import { getCallDataWrap, getCallDataWrapReentry, getCallDataWrapInitialize, getCallDataWrapRoleChanged } from './calldata';
 import { revert } from "./utils";
 import { CacheEmail, Initialize, ListenEmail, RegisterProvider, SendEmail, ConnectUser, IncomingEmail, Expunge, Metadata } from "./actions";
+import { getInitializeData, setInitializeData } from "./storage";
+import { RolesChangedHook } from "wasmx-roles/assembly/types";
+import { RoleChangedActionType } from "wasmx-env/assembly/types";
+import { MODULE_NAME } from "./types";
+import { onlyRole } from "wasmx-env/assembly/utils";
 
 export function wasmx_env_2(): void {}
-
 export function wasmx_sql_1(): void {}
 export function wasmx_imap_1(): void {}
 export function wasmx_smtp_1(): void {}
 
 export function instantiate(): void {
-  // const calld = getCallDataInstantiateWrap()
-  // Initialize(calld)
+  const calld = getCallDataWrapInitialize()
+  setInitializeData(calld)
 }
+
+// export function role_changed(): void {
+//   const calld = getCallDataWrapRoleChanged()
+//   console.log("--role_changed--" + JSON.stringify<RolesChangedHook>(calld))
+//   roleChanged(calld);
+// }
 
 export function main(): void {
   let result: ArrayBuffer = new ArrayBuffer(0)
   const calld = getCallDataWrap();
-  if (calld.Initialize !== null) {
-    result = Initialize(calld.Initialize!);
-  } else if (calld.RegisterProvider !== null) {
+  if (calld.RegisterProvider !== null) {
     result = RegisterProvider(calld.RegisterProvider!);
   } else if (calld.ConnectUser !== null) {
     result = ConnectUser(calld.ConnectUser!);
@@ -30,6 +40,9 @@ export function main(): void {
     result = ListenEmail(calld.ListenEmail!);
   } else if (calld.SendEmail !== null) {
     result = SendEmail(calld.SendEmail!);
+  } else if (calld.RoleChanged !== null) {
+    onlyRole(MODULE_NAME, roles.ROLE_ROLES, "RoleChanged")
+    roleChanged(calld.RoleChanged!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)
@@ -50,5 +63,24 @@ export function imap_update(): void {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)
     revert(`imap_update: invalid function call data: ${calldstr}`);
+  }
+}
+
+function roleChanged(data: RolesChangedHook): void {
+  if (data.role != null) {
+    Initialize(getInitializeData())
+    return;
+  };
+  const roleChanged = data.role_changed;
+  if (roleChanged == null) {
+    return
+  }
+  if (roleChanged.action_type == RoleChangedActionType.Add) {
+    Initialize(getInitializeData())
+    return;
+  }
+  if (roleChanged.action_type == RoleChangedActionType.Replace && roleChanged.contract_address == wasmxw.getAddress()) {
+    Initialize(getInitializeData())
+    return;
   }
 }

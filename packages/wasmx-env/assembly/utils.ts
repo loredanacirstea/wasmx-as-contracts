@@ -63,18 +63,45 @@ export function callerHasRole(moduleName: string): bool {
     return false;
 }
 
+export function hasRole(addr: Bech32String, moduleName: string): boolean {
+    const role = getRoleName(moduleName, addr)
+    return (role.length > 0);
+}
+
+// check if caller is a host module
+export function isGoCoreModule(addr: ArrayBuffer): boolean {
+    const callerhex = uint8ArrayToHex(Uint8Array.wrap(addr))
+    if(GOCORE_MODULE_ADDRESSES.has(callerhex)) return true;
+    return false;
+}
+
+export function isInternalContract(moduleName: string, addr: Bech32String): boolean {
+    if (hasRole(addr, moduleName)) return true;
+    if (isGoCoreModule(wasmxw.addr_canonicalize(addr))) return true;
+    return false;
+}
+
+export function onlyRole(moduleName: string, roleName: string, message: string): void {
+    // 32 bytes
+    const callerBz = wasmx.getCaller()
+    const caller = wasmxw.addr_humanize(callerBz)
+    const role = getRoleName(moduleName, caller);
+    if (role == roleName) return;
+
+    // caller does not have system role, we revert
+    const msg = `unauthorized caller: ${caller}, expected role ${roleName}: ${message}`
+    wasmxw.LoggerDebug(moduleName, "revert", ["err", msg, "module", moduleName])
+    wasmx.revert(String.UTF8.encode(msg));
+    throw new Error(msg);
+}
+
 // used to restrict EOA calls to internal/core contract functions
 export function onlyInternal(moduleName: string, message: string): void {
     // 32 bytes
     const callerBz = wasmx.getCaller()
     const caller = wasmxw.addr_humanize(callerBz)
-    const role = getRoleName(moduleName, caller)
-    if (role.length > 0) return;
-
-    // check if caller is a host module
-    // left-padded with 0 to 32 bytes
-    const callerhex = uint8ArrayToHex(Uint8Array.wrap(callerBz))
-    if (GOCORE_MODULE_ADDRESSES.has(callerhex)) return;
+    if (hasRole(caller, moduleName)) return;
+    if (isGoCoreModule(callerBz)) return;
 
     // caller does not have system role, we revert
     const msg = `unauthorized caller: ${caller}: ${message}`

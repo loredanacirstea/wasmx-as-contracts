@@ -3,6 +3,8 @@ import { Base64String, Bech32String, Role, RoleChanged } from "wasmx-env/assembl
 
 export const MODULE_NAME = "roles"
 
+export const ENTRY_POINT_ROLE_CHANGED = "role_changed"
+
 export const AttributeKeyRoleMultipleLabels = "multiple_labels";
 export const AttributeKeyRoleStorageType = "storage_type";
 
@@ -17,6 +19,14 @@ export class RolesChangedHook {
     constructor(role: Role | null, role_changed: RoleChanged | null) {
         this.role = role
         this.role_changed = role_changed
+    }
+}
+
+@json
+export class RolesChangedCalldata {
+    RoleChanged: RolesChangedHook
+    constructor(RoleChanged: RolesChangedHook) {
+        this.RoleChanged = RoleChanged
     }
 }
 

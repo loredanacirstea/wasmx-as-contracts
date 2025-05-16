@@ -1,7 +1,7 @@
 import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { GetAddressOrRoleRequest, GetRoleByLabelRequest, GetRoleLabelByContractRequest, GetRolesRequest, SetRoleRequest, MsgRunHook, GetRoleByRoleNameRequest, GetRoleNameByAddressRequest } from './types';
-import { MsgSetup, RoleChanged } from "wasmx-env/assembly/types";
+import { MsgSetup, RoleChangeRequest } from "wasmx-env/assembly/types";
 
 @json
 export class EmptyRequest {}
@@ -16,7 +16,7 @@ export class CallData {
 
     // tx
     SetRole: SetRoleRequest | null = null;
-    SetContractForRole: RoleChanged | null = null;
+    SetContractForRole: RoleChangeRequest | null = null;
 
     // query
     GetRoleNameByAddress: GetRoleNameByAddressRequest | null = null;

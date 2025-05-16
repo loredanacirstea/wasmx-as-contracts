@@ -33,7 +33,7 @@ RoleChangedActionTypeByEnum.set(RoleChangedActionType.Remove, RoleChangedAction_
 RoleChangedActionTypeByEnum.set(RoleChangedActionType.NoOp, RoleChangedAction_NoOp);
 
 @json
-export class RoleChanged {
+export class RoleChangeRequest {
     role: string = ""
     label: string = ""
     contract_address: string = ""
@@ -43,6 +43,22 @@ export class RoleChanged {
         this.label = label
         this.contract_address = contract_address
         this.action_type = action_type
+    }
+}
+
+@json
+export class RoleChanged {
+    role: string = ""
+    label: string = ""
+    contract_address: Bech32String = ""
+    action_type: RoleChangedActionType = RoleChangedActionType.Replace
+    previous_address: Bech32String = ""
+    constructor(role: string, label: string,  contract_address: Bech32String, action_type: RoleChangedActionType, previous_address: Bech32String) {
+        this.role = role
+        this.label = label
+        this.contract_address = contract_address
+        this.action_type = action_type
+        this.previous_address = previous_address
     }
 }
 

@@ -30,6 +30,7 @@
     "wasmx-utils": "file:../wasmx-utils",
     "wasmx-dtype": "file:../wasmx-dtype",
     "wasmx-env-imap": "file:../wasmx-env-imap",
-    "wasmx-env-smtp": "file:../wasmx-env-smtp"
+    "wasmx-env-smtp": "file:../wasmx-env-smtp",
+    "wasmx-roles": "file:../wasmx-roles"
   }
 }
