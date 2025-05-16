@@ -1,6 +1,6 @@
 import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { MsgCacheEmailRequest, MsgInitializeRequest, MsgListenEmailRequest, MsgRegisterProviderRequest, MsgSendEmailRequest, MsgConnectUserRequest } from "./types";
+import { MsgCacheEmailRequest, MsgInitializeRequest, MsgListenEmailRequest, MsgRegisterProviderRequest, MsgSendEmailRequest, MsgConnectUserRequest, MsgIncomingEmail, MsgExpunge, MsgMetadata } from "./types";
 
 @json
 export class MsgEmpty {}
@@ -15,9 +15,20 @@ export class CallData {
     SendEmail: MsgSendEmailRequest | null = null;
 }
 
+@json
+export class ReentryCalldata {
+    IncomingEmail: MsgIncomingEmail | null = null;
+    Expunge: MsgExpunge | null = null;
+    Metadata: MsgMetadata | null = null;
+}
+
 export function getCallDataWrap(): CallData {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)
     return JSON.parse<CallData>(calldstr);
 }
 
+export function getCallDataWrapReentry(): ReentryCalldata {
+    const calldraw = wasmx.getCallData();
+    return JSON.parse<ReentryCalldata>(String.UTF8.decode(calldraw));
+}

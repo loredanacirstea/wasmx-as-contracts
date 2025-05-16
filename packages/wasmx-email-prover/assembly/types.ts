@@ -290,3 +290,54 @@ export class LastKnownReferenceResult {
         public missingRefs: Array<string>,
     ) {}
 }
+
+@json
+export class MsgIncomingEmail {
+    folder: string = ""
+    owner: string = ""
+    uid: u32 = 0
+    seq_num: u32 = 0
+    constructor(
+        folder: string,
+        owner: string,
+        uid: u32,
+        seq_num: u32,
+    ) {
+        this.folder = folder
+        this.owner = owner
+        this.uid = uid
+        this.seq_num = seq_num
+    }
+}
+
+@json
+export class MsgExpunge {
+    folder: string = ""
+    owner: string = ""
+    seq_num: u32 = 0
+    constructor(
+        folder: string,
+        owner: string,
+        seq_num: u32,
+    ) {
+        this.folder = folder
+        this.owner = owner
+        this.seq_num = seq_num
+    }
+}
+
+@json
+export class MsgMetadata {
+    folder: string = ""
+    owner: string = ""
+    entries: string[] = []
+    constructor(
+        folder: string,
+        owner: string,
+        entries: string[],
+    ) {
+        this.folder = folder
+        this.owner = owner
+        this.entries = entries
+    }
+}

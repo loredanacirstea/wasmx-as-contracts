@@ -4,10 +4,10 @@ import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as imapw from "wasmx-env-imap/assembly/imap_wrap";
 import * as smtpw from "wasmx-env-smtp/assembly/smtp_wrap";
 import * as config from "wasmx-dtype/assembly/config";
-import { MsgCacheEmailRequest, MsgInitializeRequest, MsgListenEmailRequest, MsgRegisterProviderRequest, MsgSendEmailRequest, MsgConnectUserRequest, TableIds, MODULE_NAME, Provider, RelationTypeIds } from "./types";
+import { MsgCacheEmailRequest, MsgInitializeRequest, MsgListenEmailRequest, MsgRegisterProviderRequest, MsgSendEmailRequest, MsgConnectUserRequest, TableIds, MODULE_NAME, Provider, RelationTypeIds, MsgIncomingEmail, MsgExpunge, MsgMetadata } from "./types";
 import { createTable, getDTypeFieldValue, insertDTypeValues } from "./dtype";
 import { EmailTables, getEmailFields, getProviderFields, getThreadFields, TableProviderName } from "./defs";
-import { ImapConnectionOauth2Request, ImapConnectionSimpleRequest, ImapFetchRequest, SeqSetRange, UidSetRange } from "wasmx-env-imap/assembly/types";
+import { ImapConnectionOauth2Request, ImapConnectionSimpleRequest, ImapFetchRequest, ImapListenRequest, SeqSetRange, UidSetRange } from "wasmx-env-imap/assembly/types";
 import { revert } from "./utils";
 import { SmtpConnectionOauth2Request, SmtpConnectionSimpleRequest } from "wasmx-env-smtp/assembly/types";
 import { saveEmail } from "./helpers";
@@ -68,15 +68,58 @@ export function ConnectUser(req: MsgConnectUserRequest): ArrayBuffer {
 }
 
 export function CacheEmail(req: MsgCacheEmailRequest): ArrayBuffer {
-    if (req.username == "") revert(`empty username`);
+    CacheEmailInternal(req.username, req.email_folder, req.seq_range, req.uid_range)
+    return new ArrayBuffer(0)
+}
+
+export function ListenEmail(req: MsgListenEmailRequest): ArrayBuffer {
+    const connId = getConnectionId(req.username)
+    const resp = imapw.Listen(new ImapListenRequest(connId, req.email_folder))
+    if (resp.error != "") {
+        revert(`cannot listen on IMAP: ${resp.error}`)
+    }
+    return new ArrayBuffer(0)
+}
+
+export function SendEmail(req: MsgSendEmailRequest): ArrayBuffer {
+    return new ArrayBuffer(0)
+}
+
+export function IncomingEmail(req: MsgIncomingEmail): void {
+    console.log("-email_prover.IncomingEmail-" + JSON.stringify<MsgIncomingEmail>(req))
+}
+
+export function Expunge(req: MsgExpunge): void {
+    console.log("-email_prover.Expunge-" + JSON.stringify<MsgExpunge>(req))
+}
+
+export function Metadata(req: MsgMetadata): void {
+    console.log("-email_prover.Metadata-" + JSON.stringify<MsgMetadata>(req))
+}
+
+export function RegisterProviderInternal(providers: Provider[]): void {
+    const ids = getTableIds()
+    for (let i = 0 ; i < providers.length; i++) {
+        const data = JSON.stringify<Provider>(providers[i])
+        insertDTypeValues(ids.provider, TableProviderName, data)
+    }
+}
+
+export function CacheEmailInternal(
+    username: string,
+    email_folder: string,
+    seq_range: SeqSetRange[] | null,
+    uid_range: UidSetRange[] | null,
+): void {
+    if (username == "") revert(`empty username`);
     const ids = getTableIds()
     const relationTypeIds = getRelationTypes();
-    const connId = getConnectionId(req.username)
+    const connId = getConnectionId(username)
     const fetchReq = new ImapFetchRequest(
         connId,
-        req.email_folder,
-        req.seq_range,
-        req.uid_range,
+        email_folder,
+        seq_range,
+        uid_range,
         null, null, null, false,
     )
     const resp = imapw.Fetch(fetchReq, MODULE_NAME)
@@ -87,24 +130,7 @@ export function CacheEmail(req: MsgCacheEmailRequest): ArrayBuffer {
         revert(`Fetch email response empty`)
     }
     for (let i = 0; i < resp.data.length; i++) {
-        saveEmail(ids, relationTypeIds, req.username, resp.data[i]);
-    }
-    return new ArrayBuffer(0)
-}
-
-export function ListenEmail(req: MsgListenEmailRequest): ArrayBuffer {
-    return new ArrayBuffer(0)
-}
-
-export function SendEmail(req: MsgSendEmailRequest): ArrayBuffer {
-    return new ArrayBuffer(0)
-}
-
-export function RegisterProviderInternal(providers: Provider[]): void {
-    const ids = getTableIds()
-    for (let i = 0 ; i < providers.length; i++) {
-        const data = JSON.stringify<Provider>(providers[i])
-        insertDTypeValues(ids.provider, TableProviderName, data)
+        saveEmail(ids, relationTypeIds, username, resp.data[i]);
     }
 }
 
