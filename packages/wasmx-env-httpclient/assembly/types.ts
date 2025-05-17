@@ -1,7 +1,7 @@
 import { JSON } from "json-as";
 import { Base64String } from "wasmx-env/assembly/types";
 
-export const MODULE_NAME = "wasmx-env-http"
+export const MODULE_NAME = "wasmx-env-httpclient"
 
 @json
 export class HttpRequest {

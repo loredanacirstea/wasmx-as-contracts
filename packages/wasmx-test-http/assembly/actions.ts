@@ -1,6 +1,6 @@
 import { JSON } from "json-as";
-import * as httpw from "wasmx-env-http/assembly/http_wrap";
-import { HttpRequestWrap, HttpResponseWrap } from "wasmx-env-http/assembly/types";
+import * as httpw from "wasmx-env-httpclient/assembly/httpclient_wrap";
+import { HttpRequestWrap, HttpResponseWrap } from "wasmx-env-httpclient/assembly/types";
 
 export function HttpRequest(req: HttpRequestWrap): ArrayBuffer {
     const resp = httpw.Request(req)

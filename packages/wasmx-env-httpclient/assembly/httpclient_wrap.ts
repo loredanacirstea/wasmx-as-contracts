@@ -1,6 +1,6 @@
 import { JSON } from "json-as";
 import { LoggerDebugExtended } from "wasmx-env/assembly/wasmx_wrap"
-import * as http from './http';
+import * as http from './httpclient';
 import { HttpRequestWrap, HttpResponseWrap, MODULE_NAME } from "./types";
 
 export function Request(req: HttpRequestWrap, moduleName: string = ""): HttpResponseWrap {

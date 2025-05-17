@@ -26,7 +26,7 @@
     "as-base64": "^0.2.0",
     "json-as": "github:loredanacirstea/as-json#nested-custom-serializer-fix",
     "wasmx-env": "file:../wasmx-env",
-    "wasmx-env-http": "file:../wasmx-env-http",
+    "wasmx-env-httpclient": "file:../wasmx-env-httpclient",
     "wasmx-utils": "file:../wasmx-utils"
   }
 }

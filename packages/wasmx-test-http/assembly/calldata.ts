@@ -1,6 +1,6 @@
 import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { HttpRequestWrap } from "wasmx-env-http/assembly/types";
+import { HttpRequestWrap } from "wasmx-env-httpclient/assembly/types";
 
 @json
 export class MsgEmpty {}
