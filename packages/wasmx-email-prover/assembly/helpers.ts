@@ -10,12 +10,11 @@ import { DTypeNodeName, DTypeRelationName, tableNodeId, tableRelationId } from "
 
 // TODO store attachments
 export function saveEmail(ids: TableIds, reltypeIds: RelationTypeIds, owner: string, email: Email): string | null {
-    console.log("--saveEmail--")
     const envelope = email.envelope
     if (envelope == null) {
         return "failed to convert email, empty envelope";
     }
-    console.log("* save email " + JSON.stringify<Address[]>(envelope.From) + "--" + envelope.Subject);
+    // console.log("* save email " + JSON.stringify<Address[]>(envelope.From) + "--" + envelope.Subject);
 
     let dbemail = EmailRecordfromEmail(email, owner);
     if (dbemail == null) return "failed to convert email";
@@ -212,7 +211,7 @@ export function saveThreadWithNode(threadTableId: i64, dbthread: ThreadToWrite):
 
 export function saveEmailWithNode(emailTableId: i64, dbemail: EmailToWrite): i64[] {
     const emailIds = insertDTypeValues(emailTableId, TableEmailName, JSON.stringify<EmailToWrite>(dbemail))
-    console.log("* save email emailIds " + JSON.stringify<i64[]>(emailIds));
+    // console.log("* save email emailIds " + JSON.stringify<i64[]>(emailIds));
     if (emailIds.length == 0) revert("failed to save email");
     const emailId = emailIds[0]
 
