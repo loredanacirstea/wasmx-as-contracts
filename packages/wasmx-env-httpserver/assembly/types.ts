@@ -131,3 +131,41 @@ export class CloseResponse {
         this.error = error;
     }
 }
+
+
+@json
+export class HttpResponse {
+    status: string = "";
+    status_code: i32 = 0;
+    content_length: i64 = 0;
+    uncompressed: bool = false;
+    header: Map<string, string[]> | null = null;
+    data: Base64String = "";
+
+    constructor(
+        status: string,
+        status_code: i32,
+        content_length: i64,
+        uncompressed: bool,
+        header: Map<string, string[]> | null,
+        data: Base64String
+    ) {
+        this.status = status;
+        this.status_code = status_code;
+        this.content_length = content_length;
+        this.uncompressed = uncompressed;
+        this.header = header;
+        this.data = data;
+    }
+}
+
+@json
+export class HttpResponseWrap {
+    error: string = "";
+    data: HttpResponse = new HttpResponse("", 0, 0, false, null, "");
+
+    constructor(error: string, data: HttpResponse) {
+        this.error = error;
+        this.data = data;
+    }
+}
