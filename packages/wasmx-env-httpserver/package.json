@@ -1,5 +1,5 @@
 {
-  "name": "wasmx-test-http",
+  "name": "wasmx-env-httpserver",
   "version": "0.0.1",
   "main": "index.js",
   "scripts": {
@@ -26,8 +26,6 @@
     "as-base64": "^0.2.0",
     "json-as": "github:loredanacirstea/as-json#nested-custom-serializer-fix",
     "wasmx-env": "file:../wasmx-env",
-    "wasmx-env-httpclient": "file:../wasmx-env-httpclient",
-    "wasmx-env-httpserver": "file:../wasmx-env-httpserver",
     "wasmx-utils": "file:../wasmx-utils"
   }
 }
