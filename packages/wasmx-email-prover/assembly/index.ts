@@ -7,6 +7,7 @@ import { revert } from "./utils";
 import { CacheEmail, Initialize, ListenEmail, RegisterProvider, SendEmail, ConnectUser, IncomingEmail, Expunge, Metadata } from "./actions";
 import { getInitializeData, setInitializeData } from "./storage";
 import { RolesChangedHook } from "wasmx-roles/assembly/types";
+import { shouldActivate } from "wasmx-roles/assembly/sdk";
 import { RoleChangedActionType } from "wasmx-env/assembly/types";
 import { MODULE_NAME } from "./types";
 import { onlyRole } from "wasmx-env/assembly/utils";
@@ -67,20 +68,8 @@ export function imap_update(): void {
 }
 
 function roleChanged(data: RolesChangedHook): void {
-  if (data.role != null) {
+  const activ = shouldActivate(data, wasmxw.getAddress())
+  if (activ) {
     Initialize(getInitializeData())
-    return;
   };
-  const roleChanged = data.role_changed;
-  if (roleChanged == null) {
-    return
-  }
-  if (roleChanged.action_type == RoleChangedActionType.Add) {
-    Initialize(getInitializeData())
-    return;
-  }
-  if (roleChanged.action_type == RoleChangedActionType.Replace && roleChanged.contract_address == wasmxw.getAddress()) {
-    Initialize(getInitializeData())
-    return;
-  }
 }

@@ -11,7 +11,7 @@ export class WebsrvConfig {
     cors_allowed_methods: Array<string> = new Array<string>();
     cors_allowed_headers: Array<string> = new Array<string>();
     max_open_connections: i32 = 0;
-    route_to_contract_address: Map<string, string> = new Map();
+    route_to_contract_address: Map<string, string> | null = null;
     request_body_max_size: i64 = 0;
 
     constructor(
@@ -21,7 +21,7 @@ export class WebsrvConfig {
         cors_allowed_methods: Array<string>,
         cors_allowed_headers: Array<string>,
         max_open_connections: i32,
-        route_to_contract_address: Map<string, string>,
+        route_to_contract_address: Map<string, string> | null,
         request_body_max_size: i64
     ) {
         this.enable_oauth = enable_oauth;
@@ -37,7 +37,7 @@ export class WebsrvConfig {
 
 @json
 export class StartWebServerRequest {
-    config: WebsrvConfig = new WebsrvConfig(false, "", new Array(), new Array(), new Array(), 0, new Map(), 0);
+    config: WebsrvConfig = new WebsrvConfig(false, "", new Array(), new Array(), new Array(), 0, null, 0);
 
     constructor(config: WebsrvConfig) {
         this.config = config;
@@ -137,23 +137,17 @@ export class CloseResponse {
 export class HttpResponse {
     status: string = "";
     status_code: i32 = 0;
-    content_length: i64 = 0;
-    uncompressed: bool = false;
     header: Map<string, string[]> | null = null;
     data: Base64String = "";
 
     constructor(
         status: string,
         status_code: i32,
-        content_length: i64,
-        uncompressed: bool,
         header: Map<string, string[]> | null,
         data: Base64String
     ) {
         this.status = status;
         this.status_code = status_code;
-        this.content_length = content_length;
-        this.uncompressed = uncompressed;
         this.header = header;
         this.data = data;
     }
@@ -162,7 +156,7 @@ export class HttpResponse {
 @json
 export class HttpResponseWrap {
     error: string = "";
-    data: HttpResponse = new HttpResponse("", 0, 0, false, null, "");
+    data: HttpResponse = new HttpResponse("", 0, null, "");
 
     constructor(error: string, data: HttpResponse) {
         this.error = error;
