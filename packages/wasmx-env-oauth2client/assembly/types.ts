@@ -129,23 +129,10 @@ export class RefreshTokenResponse {
 }
 
 @json
-export class Oauth2ClientConnectRequest {
-  constructor(
-    public connection_id: string = "",
-    public config: OAuth2Config = new OAuth2Config(),
-    public token: Token = new Token()
-  ) {}
-}
-
-@json
-export class Oauth2ClientConnectResponse {
-  constructor(public error: string = "") {}
-}
-
-@json
 export class Oauth2ClientGetRequest {
   constructor(
-    public connection_id: string = "",
+    public config: OAuth2Config = new OAuth2Config(),
+    public token: Token = new Token(),
     public request_uri: string = ""
   ) {}
 }
@@ -171,7 +158,8 @@ export class HttpRequest {
 @json
 export class Oauth2ClientDoRequest {
   constructor(
-    public connection_id: string = "",
+    public config: OAuth2Config = new OAuth2Config(),
+    public token: Token = new Token(),
     public request: HttpRequest = new HttpRequest(),
     public response_handler: ResponseHandler = new ResponseHandler(0, "")
   ) {}
@@ -180,7 +168,8 @@ export class Oauth2ClientDoRequest {
 @json
 export class Oauth2ClientPostRequest {
   constructor(
-    public connection_id: string = "",
+    public config: OAuth2Config = new OAuth2Config(),
+    public token: Token = new Token(),
     public request_uri: string = "",
     public content_type: string = "",
     public data: Base64String = "",

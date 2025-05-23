@@ -1,6 +1,7 @@
 import { JSON } from "json-as";
 import { SeqSetRange, UidSetRange } from "wasmx-env-imap/assembly/types";
 import { Base64String } from "wasmx-env/assembly/types";
+import { EndpointToWrite, OAuth2ConfigToWrite } from "wasmx-httpserver-registry/assembly/types_oauth2";
 
 export const MODULE_NAME = "email-prover"
 
@@ -27,8 +28,12 @@ export class RelationTypeIds {
 @json
 export class MsgInitializeRequest {
     providers: Provider[] = []
-    constructor(providers: Provider[]) {
+    endpoints: EndpointToWrite[] = [];
+    outh2_configs: OAuth2ConfigToWrite[] = []
+    constructor(providers: Provider[], endpoints: EndpointToWrite[], outh2_configs: OAuth2ConfigToWrite[]) {
         this.providers = providers;
+        this.endpoints = endpoints
+        this.outh2_configs = outh2_configs
     }
 }
 
@@ -41,10 +46,20 @@ export class MsgInitializeResponse {
 }
 
 @json
+export class RegisterOauth2ConfigsRequest {
+    outh2_configs: OAuth2ConfigToWrite[] = []
+    constructor(outh2_configs: OAuth2ConfigToWrite[]) {
+        this.outh2_configs = outh2_configs
+    }
+}
+
+@json
 export class MsgRegisterProviderRequest {
-    provider: Provider;
-    constructor(provider: Provider) {
-        this.provider = provider
+    providers: Provider[] = [];
+    endpoints: EndpointToWrite[] = [];
+    constructor(providers: Provider[], endpoints: EndpointToWrite[]) {
+        this.providers = providers
+        this.endpoints = endpoints
     }
 }
 
@@ -273,14 +288,6 @@ export class MissingRefsWrap {
     ) {
         this.missing_refs = missing_refs
     }
-}
-
-@json
-export class ResponseStringWithError {
-    constructor(
-        public error: string,
-        public data: string,
-    ) {}
 }
 
 @json

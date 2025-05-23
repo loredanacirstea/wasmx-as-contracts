@@ -26,6 +26,5 @@ export function getCallDataWrap(): CallData {
 export function getCallDataWrapIncomingRequest(): HttpRequestIncoming {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)
-    console.log("-getCallDataWrapIncomingRequest-" + calldstr)
     return JSON.parse<HttpRequestIncoming>(calldstr);
 }

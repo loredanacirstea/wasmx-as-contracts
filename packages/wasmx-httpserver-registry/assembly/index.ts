@@ -13,6 +13,7 @@ import { MODULE_NAME } from "./types";
 export function wasmx_env_2(): void {}
 export function wasmx_httpserver_1(): void {}
 export function wasmx_sql_1(): void {}
+export function wasmx_oauth2client_1(): void {}
 
 export function instantiate(): void {}
 

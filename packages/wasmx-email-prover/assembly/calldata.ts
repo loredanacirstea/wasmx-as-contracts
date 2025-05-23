@@ -2,6 +2,7 @@ import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { RolesChangedHook } from "wasmx-roles/assembly/types";
 import { MsgCacheEmailRequest, MsgInitializeRequest, MsgListenEmailRequest, MsgRegisterProviderRequest, MsgSendEmailRequest, MsgConnectUserRequest, MsgIncomingEmail, MsgExpunge, MsgMetadata } from "./types";
+import { HttpRequestIncoming } from "wasmx-env-httpserver/assembly/types";
 
 @json
 export class MsgEmpty {}
@@ -9,11 +10,13 @@ export class MsgEmpty {}
 @json
 export class CallData {
     RoleChanged: RolesChangedHook | null = null;
-    RegisterProvider: MsgRegisterProviderRequest | null = null;
+    RegisterProviders: MsgRegisterProviderRequest | null = null;
     ConnectUser: MsgConnectUserRequest | null = null;
     CacheEmail: MsgCacheEmailRequest | null = null;
     ListenEmail: MsgListenEmailRequest | null = null;
     SendEmail: MsgSendEmailRequest | null = null;
+
+    HttpRequestHandler: HttpRequestIncoming | null = null;
 }
 
 @json
@@ -42,4 +45,10 @@ export function getCallDataWrapRoleChanged(): RolesChangedHook {
 export function getCallDataWrapReentry(): ReentryCalldata {
     const calldraw = wasmx.getCallData();
     return JSON.parse<ReentryCalldata>(String.UTF8.decode(calldraw));
+}
+
+export function getCallDataWrapIncomingRequest(): HttpRequestIncoming {
+    const calldraw = wasmx.getCallData();
+    let calldstr = String.UTF8.decode(calldraw)
+    return JSON.parse<HttpRequestIncoming>(calldstr);
 }

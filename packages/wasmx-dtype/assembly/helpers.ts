@@ -4,7 +4,7 @@ import { TableIndentifier } from "./types";
 import { revert } from "./utils";
 
 export function getDTypeIdentifier(table_id: i64, table_name: string): TableIndentifier {
-    return new TableIndentifier(config.tableDbConnId, config.tableDbId, table_id, config.DTypeConnection, config.DTypeDbName, table_name)
+    return new TableIndentifier(config.tableDbConnId, config.dtypeDbRecordId, table_id, config.DTypeConnection, config.DTypeDbName, table_name)
 }
 
 export function rowsArrToObjArr(rowstr: string): JSONDyn.Obj[] {

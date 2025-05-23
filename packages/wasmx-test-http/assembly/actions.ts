@@ -38,6 +38,7 @@ export function HttpRequestHandler(req: HttpRequestIncoming): ArrayBuffer {
         200,
         headers,
         stringToBase64(`{"b":2}`),
+        "",
     ))
     return String.UTF8.encode(JSON.stringify<HttpResponseWrap>(resp))
 }

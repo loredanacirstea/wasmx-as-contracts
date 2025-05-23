@@ -1,6 +1,8 @@
 import * as wasmxwrap from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import { DTypeSdk } from "wasmx-dtype/assembly/sdk";
 import { MODULE_NAME } from './types';
+import { HttpServerRegistrySdk } from 'wasmx-httpserver-registry/assembly/sdk';
 
 export function LoggerInfo(msg: string, parts: string[]): void {
     wasmxwrap.LoggerInfo(MODULE_NAME, msg, parts)
@@ -22,4 +24,12 @@ export function revert(message: string): void {
     LoggerDebug("revert", ["err", message, "module", MODULE_NAME])
     wasmx.revert(String.UTF8.encode(message));
     throw new Error(message);
+}
+
+export function getDtypeSdk(): DTypeSdk {
+    return new DTypeSdk(MODULE_NAME, revert, LoggerInfo, LoggerError, LoggerDebug, LoggerDebugExtended);
+}
+
+export function getHttpServerSdk(): HttpServerRegistrySdk {
+    return new HttpServerRegistrySdk(MODULE_NAME, revert, LoggerInfo, LoggerError, LoggerDebug, LoggerDebugExtended);
 }

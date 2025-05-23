@@ -1,57 +1,70 @@
 import { JSON } from "json-as";
-import { JSON as JSONDyn } from "assemblyscript-json/assembly";
-import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as imapw from "wasmx-env-imap/assembly/imap_wrap";
 import * as smtpw from "wasmx-env-smtp/assembly/smtp_wrap";
 import * as config from "wasmx-dtype/assembly/config";
-import { MsgCacheEmailRequest, MsgInitializeRequest, MsgListenEmailRequest, MsgRegisterProviderRequest, MsgSendEmailRequest, MsgConnectUserRequest, TableIds, MODULE_NAME, Provider, RelationTypeIds, MsgIncomingEmail, MsgExpunge, MsgMetadata } from "./types";
-import { createTable, getDTypeFieldValue, insertDTypeValues } from "./dtype";
+import { DTypeSdk } from "wasmx-dtype/assembly/sdk";
+import { MsgCacheEmailRequest, MsgInitializeRequest, MsgListenEmailRequest, MsgRegisterProviderRequest, MsgSendEmailRequest, MsgConnectUserRequest, TableIds, MODULE_NAME, Provider, RelationTypeIds, MsgIncomingEmail, MsgExpunge, MsgMetadata, RegisterOauth2ConfigsRequest } from "./types";
 import { EmailTables, getEmailFields, getProviderFields, getThreadFields, TableProviderName } from "./defs";
 import { ImapConnectionOauth2Request, ImapConnectionSimpleRequest, ImapFetchRequest, ImapListenRequest, SeqSetRange, UidSetRange } from "wasmx-env-imap/assembly/types";
-import { revert } from "./utils";
+import { getHttpServerSdk, LoggerDebug, LoggerDebugExtended, LoggerError, LoggerInfo, revert } from "./utils";
 import { SmtpConnectionOauth2Request, SmtpConnectionSimpleRequest } from "wasmx-env-smtp/assembly/types";
 import { saveEmail } from "./helpers";
 import { getRelationTypes, getTableIds, setRelationTypes, setTableIds } from "./storage";
+import { registerOAuth2 } from "./http";
+import { EndpointToWrite, OAuth2ConfigToWrite } from "wasmx-httpserver-registry/assembly/types_oauth2";
+import { TableNameOauth2Endpoint, TableNameOauth2Providers } from "wasmx-httpserver-registry/assembly/defs_oauth2";
 
 export function Initialize(req: MsgInitializeRequest): ArrayBuffer {
-    const ids = insertDTypeValues(config.tableTableId, config.DTypeTableName, EmailTables)
+    const dtype = getDtypeSdk();
+    const ids = dtype.Insert(config.tableTableId, config.DTypeTableName, EmailTables)
     const tableIds = new TableIds(ids[0], ids[1], ids[2])
     setTableIds(tableIds)
     const fieldsProvider = getProviderFields(tableIds.provider)
     const fieldsThread = getThreadFields(tableIds.thread)
     const fieldsEmail = getEmailFields(tableIds.email)
-    insertDTypeValues(config.tableFieldsId, config.DTypeFieldName, fieldsProvider)
-    insertDTypeValues(config.tableFieldsId, config.DTypeFieldName, fieldsThread)
-    insertDTypeValues(config.tableFieldsId, config.DTypeFieldName, fieldsEmail)
-    createTable(tableIds.provider)
-    createTable(tableIds.thread)
-    createTable(tableIds.email)
+    dtype.Insert(config.tableFieldsId, config.DTypeFieldName, fieldsProvider)
+    dtype.Insert(config.tableFieldsId, config.DTypeFieldName, fieldsThread)
+    dtype.Insert(config.tableFieldsId, config.DTypeFieldName, fieldsEmail)
+    dtype.CreateTable(tableIds.provider)
+    dtype.CreateTable(tableIds.thread)
+    dtype.CreateTable(tableIds.email)
 
     if (req.providers.length > 0) {
         RegisterProviderInternal(req.providers)
+        RegisterOAuth2EndpointInternal(req.endpoints)
+        RegisterOauth2ConfigsInternal(req.outh2_configs)
     }
 
     // create relation type
     const reltypeObj =  `{"name":"contains","reverse_name":"containedIn","reversable":true}`
-    const relIds = insertDTypeValues(config.tableRelationTypeId, config.DTypeRelationTypeName, reltypeObj)
+    const relIds = dtype.Insert(config.tableRelationTypeId, config.DTypeRelationTypeName, reltypeObj)
     setRelationTypes(new RelationTypeIds(relIds[0]))
+
+    registerOAuth2(getHttpServerSdk(), dtype)
 
     return new ArrayBuffer(0)
 }
 
-export function RegisterProvider(req: MsgRegisterProviderRequest): ArrayBuffer {
-    RegisterProviderInternal([req.provider])
+export function RegisterProviders(req: MsgRegisterProviderRequest): ArrayBuffer {
+    RegisterProviderInternal(req.providers)
+    RegisterOAuth2EndpointInternal(req.endpoints)
+    return new ArrayBuffer(0)
+}
+
+export function RegisterOauth2Configs(req: RegisterOauth2ConfigsRequest): ArrayBuffer {
+    RegisterOauth2ConfigsInternal(req.outh2_configs)
     return new ArrayBuffer(0)
 }
 
 export function ConnectUser(req: MsgConnectUserRequest): ArrayBuffer {
+    const dtype = getDtypeSdk();
     const ids = getTableIds()
     const connId = getConnectionId(req.username)
     if (!req.username.includes("@")) revert("invalid username");
 
     const domain = req.username.split("@")[1]
-    const imapUrl = getDTypeFieldValue(ids.provider, TableProviderName, "imap_server_url", `{"domain":"${domain}"}`)
-    const smtpUrl = getDTypeFieldValue(ids.provider, TableProviderName, "smtp_server_url_starttls", `{"domain":"${domain}"}`)
+    const imapUrl = dtype.ReadField(ids.provider, TableProviderName, "imap_server_url", `{"domain":"${domain}"}`)
+    const smtpUrl = dtype.ReadField(ids.provider, TableProviderName, "smtp_server_url_starttls", `{"domain":"${domain}"}`)
     if (req.secret_type == "password") {
         const resp = imapw.ConnectWithPassword(new ImapConnectionSimpleRequest(connId, imapUrl, req.username, req.secret))
         if (resp.error != "") revert(resp.error);
@@ -99,11 +112,22 @@ export function Metadata(req: MsgMetadata): void {
 }
 
 export function RegisterProviderInternal(providers: Provider[]): void {
+    const dtype = getDtypeSdk();
     const ids = getTableIds()
-    for (let i = 0 ; i < providers.length; i++) {
-        const data = JSON.stringify<Provider>(providers[i])
-        insertDTypeValues(ids.provider, TableProviderName, data)
-    }
+    const data = JSON.stringify<Provider[]>(providers)
+    dtype.Insert(ids.provider, TableProviderName, data)
+}
+
+export function RegisterOAuth2EndpointInternal(endpoints: EndpointToWrite[]): void {
+    const dtype = getDtypeSdk();
+    const data = JSON.stringify<EndpointToWrite[]>(endpoints)
+    dtype.Insert(0, TableNameOauth2Endpoint, data)
+}
+
+export function RegisterOauth2ConfigsInternal(configs: OAuth2ConfigToWrite[]): void {
+    const dtype = getDtypeSdk();
+    const data = JSON.stringify<OAuth2ConfigToWrite[]>(configs)
+    dtype.Insert(0, TableNameOauth2Providers, data)
 }
 
 export function CacheEmailInternal(
@@ -113,6 +137,7 @@ export function CacheEmailInternal(
     uid_range: UidSetRange[] | null,
 ): void {
     if (username == "") revert(`empty username`);
+    const dtype = getDtypeSdk();
     const ids = getTableIds()
     const relationTypeIds = getRelationTypes();
     const connId = getConnectionId(username)
@@ -131,10 +156,14 @@ export function CacheEmailInternal(
         revert(`Fetch email response empty`)
     }
     for (let i = 0; i < resp.data.length; i++) {
-        saveEmail(ids, relationTypeIds, username, resp.data[i]);
+        saveEmail(dtype, ids, relationTypeIds, username, resp.data[i]);
     }
 }
 
 function getConnectionId(username: string): string {
     return "conn_" + username
+}
+
+function getDtypeSdk(): DTypeSdk {
+    return new DTypeSdk(MODULE_NAME, revert, LoggerInfo, LoggerError, LoggerDebug, LoggerDebugExtended);
 }

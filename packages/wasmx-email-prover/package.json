@@ -31,6 +31,8 @@
     "wasmx-dtype": "file:../wasmx-dtype",
     "wasmx-env-imap": "file:../wasmx-env-imap",
     "wasmx-env-smtp": "file:../wasmx-env-smtp",
+    "wasmx-env-oauth2client": "file:../wasmx-env-oauth2client",
+    "wasmx-httpserver-registry": "file:../wasmx-httpserver-registry",
     "wasmx-roles": "file:../wasmx-roles"
   }
 }

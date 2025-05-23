@@ -1,5 +1,6 @@
 import { JSON } from "json-as";
 import { JSON as JSONDyn } from "assemblyscript-json/assembly";
+import { SDK } from "wasmx-env/assembly/sdk";
 import { CreateTableRequest, InsertRequest, MsgExecuteBatchResponse, ReadFieldRequest, ReadRequest, MsgQueryResponse, GetRecordsByRelationTypeRequest, UpdateRequest, ReadRawRequest, DeleteRequest } from "wasmx-dtype/assembly/types";
 import { getDTypeIdentifier, rowsArrToObjArr } from "wasmx-dtype/assembly/helpers";
 import { base64ToString, stringToBase64 } from "wasmx-utils/assembly/utils";
@@ -15,68 +16,6 @@ export class ResponseStringWithError {
     ) {}
 }
 
-
-export class SDK {
-    role: string = ""
-    caller_module_name: string = ""
-    revert: (message: string) => void
-    LoggerInfo: (msg: string, parts: string[]) => void
-    LoggerError: (msg: string, parts: string[]) => void
-    LoggerDebug: (msg: string, parts: string[]) => void
-    LoggerDebugExtended: (msg: string, parts: string[]) => void
-    constructor(
-        caller_module_name: string,
-        revert: (message: string) => void,
-        LoggerInfo: (msg: string, parts: string[]) => void,
-        LoggerError: (msg: string, parts: string[]) => void,
-        LoggerDebug: (msg: string, parts: string[]) => void,
-        LoggerDebugExtended: (msg: string, parts: string[]) => void,
-    ) {
-        this.caller_module_name = caller_module_name
-        this.revert = revert
-        this.LoggerInfo = LoggerInfo
-        this.LoggerError = LoggerError
-        this.LoggerDebug = LoggerDebug
-        this.LoggerDebugExtended = LoggerDebugExtended
-    }
-
-    call(calld: string, isQuery: boolean): CallResponse {
-        return callContract(this.role, calld, isQuery, this.caller_module_name)
-    }
-
-    query(calld: string): CallResponse {
-        return this.call(calld, true)
-    }
-
-    execute(calld: string): CallResponse {
-        return this.call(calld, false)
-    }
-
-    callSafe(calld: string, isQuery: boolean): string {
-        const resp = this.call(calld, isQuery)
-        if (resp.success > 0) {
-            this.revert(`call to ${this.role} failed: ${resp.data}`)
-        }
-        return resp.data
-    }
-
-    querySafe(calld: string): string {
-        const resp = this.query(calld)
-        if (resp.success > 0) {
-            this.revert(`query call to ${this.role} failed: ${resp.data}`)
-        }
-        return resp.data
-    }
-
-    executeSafe(calld: string): string {
-        const resp = this.execute(calld)
-        if (resp.success > 0) {
-            this.revert(`execute call to ${this.role} failed: ${resp.data}`)
-        }
-        return resp.data
-    }
-}
-
 export class DTypeSdk extends SDK {
     constructor(
         caller_module_name: string,
@@ -87,7 +26,7 @@ export class DTypeSdk extends SDK {
         LoggerDebugExtended: (msg: string, parts: string[]) => void,
     ) {
         super(caller_module_name, revert, LoggerInfo, LoggerError, LoggerDebug, LoggerDebugExtended);
-        this.role = ROLE_DTYPE;
+        this.roleOrAddress = ROLE_DTYPE;
     }
     ReadRaw(tableId: i64, tableName: string, query: string, params_: string[]): string {
         const params = new Array<string>(params_.length)
@@ -160,6 +99,7 @@ export class DTypeSdk extends SDK {
     }
 
     Update(tableId: i64, tableName: string, obj: string, cond: string): void {
+        this.LoggerDebugExtended("dtype.Update", ["tableId", tableId.toString(), "tableName", tableName, "cond", cond, "data", obj])
         const calld = JSON.stringify<UpdateRequest>(new UpdateRequest(
             getDTypeIdentifier(tableId, tableName),
             stringToBase64(cond),
@@ -173,6 +113,7 @@ export class DTypeSdk extends SDK {
     }
 
     Delete(tableId: i64, tableName: string, cond: string): void {
+        this.LoggerDebugExtended("dtype.Delete", ["tableId", tableId.toString(), "tableName", tableName, "cond", cond])
         const calld = JSON.stringify<DeleteRequest>(new DeleteRequest(
             getDTypeIdentifier(tableId, tableName),
             stringToBase64(cond),
@@ -185,6 +126,7 @@ export class DTypeSdk extends SDK {
     }
 
     Insert(tableId: i64, tableName: string, obj: string): i64[] {
+        this.LoggerDebugExtended("dtype.Insert", ["tableId", tableId.toString(), "tableName", tableName, "data", obj])
         const calld = JSON.stringify<InsertRequest>(new InsertRequest(
             getDTypeIdentifier(tableId, tableName),
             stringToBase64(obj),
@@ -203,6 +145,7 @@ export class DTypeSdk extends SDK {
     }
 
     CreateTable(tableId: i64): void {
+        this.LoggerDebug("dtype.CreateTable", ["tableId", tableId.toString()])
         const calld = JSON.stringify<CreateTableRequest>(new CreateTableRequest(tableId))
         const data = this.executeSafe(`{"CreateTable":${calld}}`)
         const response = JSON.parse<MsgExecuteBatchResponse>(data)

@@ -17,6 +17,8 @@ export const IdentityTable = "identity"
 export const FullNameTable = "identity_full_name"
 export const EmailTable = "identity_email"
 
+// records in the table of tables
+export const dtypeDbRecordId = 1; // first db in the db table
 export const tableDbConnId = 1;
 export const tableDbId = 2;
 export const tableTableId = 3;

@@ -27,6 +27,7 @@
     "json-as": "github:loredanacirstea/as-json#nested-custom-serializer-fix",
     "wasmx-env": "file:../wasmx-env",
     "wasmx-env-httpserver": "file:../wasmx-env-httpserver",
+    "wasmx-env-oauth2client": "file:../wasmx-env-oauth2client",
     "wasmx-utils": "file:../wasmx-utils"
   }
 }

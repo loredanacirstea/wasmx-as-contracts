@@ -2,23 +2,37 @@ import { JSON } from "json-as";
 import * as config from "wasmx-dtype/assembly/config";
 import { DTypeSdk } from "wasmx-dtype/assembly/sdk";
 import * as httpsw from "wasmx-env-httpserver/assembly/httpserver_wrap";
-import { GetRouteRequest, GetRouteResponse, GetRoutesRequest, GetRoutesResponse, MODULE_NAME, RemoveRouteRequest, RouteToRead, SetRouteRequest, TableIds } from "./types";
+import { GetRouteRequest, GetRoutesRequest, GetRoutesResponse, MODULE_NAME, RemoveRouteRequest, ROLE, RouteToRead, SetRouteRequest, TableIds } from "./types";
 import { LoggerDebug, LoggerDebugExtended, LoggerError, LoggerInfo, revert } from "./utils";
 import { getTableFieldsRegistry, TableNameRegistry, Tables } from "./defs";
+import * as oauth2d from "./defs_oauth2";
 import { getTableIds, setTableIds } from "./storage";
 import { CloseResponse, HttpRequestIncoming, HttpResponse, HttpResponseWrap, RemoveRouteHandlerRequest, SetRouteHandlerRequest, StartWebServerRequest, StartWebServerResponse, WebsrvConfig } from "wasmx-env-httpserver/assembly/types";
 import { stringToBase64 } from "wasmx-utils/assembly/utils";
 import { callContract } from "wasmx-env/assembly/utils";
 
+// TODO enable/disable the webserver
 export function Initialize(): ArrayBuffer {
     const dtype = getDtypeSdk();
     const ids = dtype.Insert(config.tableTableId, config.DTypeTableName, Tables)
-    const tableIds = new TableIds(ids[0])
+    const oauth2ids = dtype.Insert(config.tableTableId, config.DTypeTableName, oauth2d.Tables)
+    const tableIds = new TableIds(ids[0], oauth2ids[0], oauth2ids[1], oauth2ids[2], oauth2ids[3])
     setTableIds(tableIds)
-    const fields = getTableFieldsRegistry(tableIds.registry)
-    dtype.Insert(config.tableFieldsId, config.DTypeFieldName, fields)
+    const fieldsRegistry = getTableFieldsRegistry(tableIds.registry)
+    const fieldsProvider = oauth2d.getTableFieldsOauth2Provider(tableIds.oauth2_provider)
+    const fieldsEndpoint = oauth2d.getTableFieldsOAuth2Endpoint(tableIds.oauth2_endpoint)
+    const fieldsUserInfo = oauth2d.getTableFieldsOAuth2UserInfo(tableIds.oauth2_userinfo)
+    const fieldsSession = oauth2d.getTableFieldsOAuth2Session(tableIds.oauth2_session)
+    dtype.Insert(config.tableFieldsId, config.DTypeFieldName, fieldsRegistry)
+    dtype.Insert(config.tableFieldsId, config.DTypeFieldName, fieldsProvider)
+    dtype.Insert(config.tableFieldsId, config.DTypeFieldName, fieldsEndpoint)
+    dtype.Insert(config.tableFieldsId, config.DTypeFieldName, fieldsUserInfo)
+    dtype.Insert(config.tableFieldsId, config.DTypeFieldName, fieldsSession)
     dtype.CreateTable(tableIds.registry)
-
+    dtype.CreateTable(tableIds.oauth2_provider)
+    dtype.CreateTable(tableIds.oauth2_endpoint)
+    dtype.CreateTable(tableIds.oauth2_userinfo)
+    dtype.CreateTable(tableIds.oauth2_session)
     return new ArrayBuffer(0)
 }
 
@@ -40,11 +54,7 @@ export function Close(): ArrayBuffer {
 
 export function GetRoutes(req: GetRoutesRequest): ArrayBuffer {
     const resp = getRoutesInternal()
-    const r = new Map<string,string>()
-    for (let i = 0; i < resp.length; i++) {
-        r.set(resp[i].route, resp[i].contract_address)
-    }
-    return String.UTF8.encode(JSON.stringify<GetRoutesResponse>(new GetRoutesResponse(r)))
+    return String.UTF8.encode(JSON.stringify<GetRoutesResponse>(new GetRoutesResponse(resp)))
 }
 
 export function GetRoute(req: GetRouteRequest): ArrayBuffer {
@@ -52,15 +62,18 @@ export function GetRoute(req: GetRouteRequest): ArrayBuffer {
     const ids = getTableIds();
     const cond = `{"route":"${req.route}"}`;
     const resp = dtype.Read(ids.registry, TableNameRegistry, cond);
-    return String.UTF8.encode(resp)
+    return String.UTF8.encode(resp) // RouteToRead[]
 }
 
 export function SetRoute(req: SetRouteRequest): ArrayBuffer {
+    LoggerDebug("set route", ["role", ROLE, "route", req.route, "contract_address", req.contract_address])
     const dtype = getDtypeSdk();
     const ids = getTableIds();
     const data = JSON.stringify<SetRouteRequest>(req)
     dtype.Insert(ids.registry, TableNameRegistry, data);
-    httpsw.SetRouteHandler(new SetRouteHandlerRequest(req.route, req.contract_address))
+    if (!req.authorization) {
+        httpsw.SetRouteHandler(new SetRouteHandlerRequest(req.route, req.contract_address))
+    }
     return new ArrayBuffer(0)
 }
 
@@ -77,18 +90,18 @@ export function HttpRequestHandler(req: HttpRequestIncoming): ArrayBuffer {
     const url = req.url.split("?")[0];
     const routes = getCompatibleRoutes(url);
     let maxlen = 0;
-    let contractAddr = "";
+    let route: RouteToRead | null = null;
     for (let i = 0; i < routes.length; i++) {
         if (routes[i].route.length > maxlen) {
             maxlen = routes[i].route.length;
-            contractAddr = routes[i].contract_address;
+            route = routes[i];
         }
     }
-    if (contractAddr == "") return defaultResponse();
+    if (route == null) return defaultResponse();
     const calld = `{"HttpRequestHandler":${JSON.stringify<HttpRequestIncoming>(req)}}`
-    const resp = callContract(contractAddr, calld, true, MODULE_NAME)
+    const resp = callContract(route.contract_address, calld, false, MODULE_NAME)
     if (resp.success > 0) {
-        revert(`call to ${contractAddr} failed: ${resp.data}`)
+        revert(`call to ${route.contract_address} failed: ${resp.data}`)
     }
     return String.UTF8.encode(resp.data)
 }
@@ -110,6 +123,7 @@ export function defaultResponse(): ArrayBuffer {
         200,
         headers,
         stringToBase64(`{"a":1}`),
+        "",
     ))
     return String.UTF8.encode(JSON.stringify<HttpResponseWrap>(resp))
 }
@@ -121,7 +135,6 @@ export function getRoutesInternal(): RouteToRead[] {
     const resp = dtype.Read(ids.registry, TableNameRegistry, cond);
     return JSON.parse<RouteToRead[]>(resp)
 }
-
 
 function getDtypeSdk(): DTypeSdk {
     return new DTypeSdk(MODULE_NAME, revert, LoggerInfo, LoggerError, LoggerDebug, LoggerDebugExtended);

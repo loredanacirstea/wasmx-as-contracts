@@ -2,24 +2,44 @@ import { JSON } from "json-as";
 import { WebsrvConfig } from "wasmx-env-httpserver/assembly/types";
 
 export const MODULE_NAME = "httpserver-registry"
+export const ROLE = "httpserver_registry"
 
 @json
 export class TableIds {
     registry: i64 = 0
-    constructor(registry: i64) {
+    oauth2_provider: i64 = 0
+    oauth2_endpoint: i64 = 0
+    oauth2_session: i64 = 0
+    oauth2_userinfo: i64 = 0
+    constructor(registry: i64, oauth2_provider: i64, oauth2_endpoint: i64, oauth2_userinfo: i64, oauth2_session: i64) {
         this.registry = registry
+        this.oauth2_provider = oauth2_provider
+        this.oauth2_endpoint = oauth2_endpoint
+        this.oauth2_userinfo = oauth2_userinfo
+        this.oauth2_session = oauth2_session
     }
 }
 
 @json
-export class RouteToRead {
-    id: i64 = 0
+export class RouteToWrite {
     route: string = ""
     contract_address: string = ""
-    constructor(id: i64, route: string, contract_address: string) {
-        this.id = id
+    authorization: boolean = false
+    authorization_type: string = "" // "Bearer" | "mac" | "basic"
+    constructor(route: string, contract_address: string, authorization: boolean, authorization_type: string) {
         this.route = route
         this.contract_address = contract_address
+        this.authorization = authorization
+        this.authorization_type = authorization_type
+    }
+}
+
+@json
+export class RouteToRead extends RouteToWrite {
+    id: i64 = 0
+    constructor(id: i64, route: string, contract_address: string, authorization: boolean, authorization_type: string) {
+        super(route, contract_address, authorization, authorization_type);
+        this.id = id
     }
 }
 
@@ -43,9 +63,13 @@ export class InitializationRequest {
 export class SetRouteRequest {
     route: string = ""
     contract_address: string = ""
-    constructor(route: string, contract_address: string) {
+    authorization: boolean = false
+    authorization_type: string = "" // "Bearer" | "mac" | "basic"
+    constructor(route: string, contract_address: string, authorization: boolean, authorization_type: string) {
         this.route = route
         this.contract_address = contract_address
+        this.authorization = authorization
+        this.authorization_type = authorization_type
     }
 }
 
@@ -70,18 +94,8 @@ export class GetRouteRequest {
 
 @json
 export class GetRoutesResponse {
-    routes: Map<string,string> = new Map<string,string>()
-    constructor(routes: Map<string,string>) {
+    routes: RouteToRead[] = []
+    constructor(routes: RouteToRead[]) {
         this.routes = routes
-    }
-}
-
-@json
-export class GetRouteResponse {
-    route: string = ""
-    contract_address: string = ""
-    constructor(route: string, contract_address: string) {
-        this.route = route
-        this.contract_address = contract_address
     }
 }

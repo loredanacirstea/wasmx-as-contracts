@@ -56,10 +56,10 @@ export class StartWebServerResponse {
 @json
 export class HttpRequestIncoming {
     method: string = "";
-    url: string = "";
+    url: string = ""; // use this, not request_uri
     header: Map<string, string[]> = new Map();
     content_length: i64 = 0;
-    data: Array<u8> = new Array<u8>();
+    data: Base64String = "";
     remote_address: string = "";
     request_uri: string = "";
 
@@ -68,7 +68,7 @@ export class HttpRequestIncoming {
         url: string = "",
         header: Map<string, string[]> = new Map(),
         content_length: i64 = 0,
-        data: Array<u8> = new Array<u8>(),
+        data: Base64String = "",
         remote_address: string = "",
         request_uri: string = ""
     ) {
@@ -139,26 +139,29 @@ export class HttpResponse {
     status_code: i32 = 0;
     header: Map<string, string[]> | null = null;
     data: Base64String = "";
+    redirect_url: string = "";
 
     constructor(
         status: string,
         status_code: i32,
         header: Map<string, string[]> | null,
-        data: Base64String
+        data: Base64String,
+        redirect_url: string
     ) {
         this.status = status;
         this.status_code = status_code;
         this.header = header;
         this.data = data;
+        this.redirect_url = redirect_url
     }
 }
 
 @json
 export class HttpResponseWrap {
     error: string = "";
-    data: HttpResponse = new HttpResponse("", 0, null, "");
+    data: HttpResponse | null = null;
 
-    constructor(error: string, data: HttpResponse) {
+    constructor(error: string, data: HttpResponse | null) {
         this.error = error;
         this.data = data;
     }
