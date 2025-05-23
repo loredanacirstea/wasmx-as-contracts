@@ -678,7 +678,6 @@ export class RequestCheckTx {
     }
 }
 
-@json
 export enum CodeType {
     Ok = 0,
     EncodingError = 1,

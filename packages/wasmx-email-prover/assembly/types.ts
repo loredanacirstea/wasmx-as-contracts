@@ -71,12 +71,16 @@ export class MsgRegisterProviderResponse {
     }
 }
 
+export type SecretType = string
+export const SecretType_Password = "password"
+export const SecretType_OAuth2 = "oauth2"
+
 @json
 export class MsgConnectUserRequest {
     username: string = ""
     secret: string = ""
-    secret_type: string = "oauth2" // password | oauth2
-    constructor(username: string, secret: string, secret_type: string) {
+    secret_type: SecretType = SecretType_OAuth2
+    constructor(username: string, secret: string, secret_type: SecretType) {
         this.username = username
         this.secret = secret
         this.secret_type = secret_type
@@ -234,22 +238,79 @@ export class EmailToWrite {
 }
 
 @json
+export class EmailToRead extends EmailToWrite {
+    id: i64 = 0
+    constructor(
+        id: i64,
+        uid: i64,
+        owner: string,
+        raw: Base64String,
+        bh: Base64String,
+        body: Base64String,
+        timestamp: i64,
+        envelope: Base64String,
+        envelope_Subject: string,
+        envelope_MessageID: string,
+        header: Base64String,
+        header_References: string,
+        flags: string,
+        name: string,
+    ) {
+        super(
+            uid,
+            owner,
+            raw,
+            bh,
+            body,
+            timestamp,
+            envelope,
+            envelope_Subject,
+            envelope_MessageID,
+            header,
+            header_References,
+            flags,
+            name,
+        )
+        this.id = id
+    }
+
+    static fromWrite(id: i64, data: EmailToWrite): EmailToRead {
+        return new EmailToRead(
+            id,
+            data.uid,
+            data.owner,
+            data.raw,
+            data.bh,
+            data.body,
+            data.timestamp,
+            data.envelope,
+            data.envelope_Subject,
+            data.envelope_MessageID,
+            data.header,
+            data.header_References,
+            data.flags,
+            data.name,
+        )
+    }
+}
+
+@json
 export class ThreadToWrite {
     name: string = ""
     last_email_message_id: i64 = 0
-    owner_account: string = ""
+    owner: string = ""
     email_message_ids: string = ""
     missing_refs: string = ""
     constructor(
         name: string,
         last_email_message_id: i64,
-        owner_account: string,
+        owner: string,
         email_message_ids: string,
         missing_refs: string,
     ) {
         this.name = name
         this.last_email_message_id = last_email_message_id
-        this.owner_account = owner_account
+        this.owner = owner
         this.email_message_ids = email_message_ids
         this.missing_refs = missing_refs
     }
@@ -260,21 +321,21 @@ export class ThreadToRead {
     id: i64 = 0
     name: string = ""
     last_email_message_id: i64 = 0
-    owner_account: string = ""
+    owner: string = ""
     email_message_ids: string = ""
     missing_refs: string = ""
     constructor(
         id: i64,
         name: string,
         last_email_message_id: i64,
-        owner_account: string,
+        owner: string,
         email_message_ids: string,
         missing_refs: string,
     ) {
         this.id = id
         this.name = name
         this.last_email_message_id = last_email_message_id
-        this.owner_account = owner_account
+        this.owner = owner
         this.email_message_ids = email_message_ids
         this.missing_refs = missing_refs
     }
@@ -283,10 +344,26 @@ export class ThreadToRead {
 @json
 export class MissingRefsWrap {
     missing_refs: string = ""
+    email_message_ids: string = ""
     constructor(
         missing_refs: string,
+        email_message_ids: string
     ) {
         this.missing_refs = missing_refs
+        this.email_message_ids = email_message_ids
+    }
+}
+
+@json
+export class UpdateThreadAddEmail {
+    last_email_message_id: i64 = 0
+    email_message_ids: string = ""
+    constructor(
+        last_email_message_id: i64,
+        email_message_ids: string
+    ) {
+        this.last_email_message_id = last_email_message_id
+        this.email_message_ids = email_message_ids
     }
 }
 
@@ -346,5 +423,14 @@ export class MsgMetadata {
         this.folder = folder
         this.owner = owner
         this.entries = entries
+    }
+}
+
+export class SaveEmailResponse {
+    email: EmailToRead | null
+    error: string
+    constructor(email: EmailToRead | null, error: string) {
+        this.email = email
+        this.error = error
     }
 }

@@ -1,7 +1,7 @@
 import { JSON } from "json-as";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { Base64String, Bech32String } from 'wasmx-env/assembly/types';
-import { CountRequest, CountResponse, InsertRequest, ReadFieldRequest, ReadRequest, TableIndentifier, UpdateRequest } from "wasmx-dtype/assembly/types";
+import { CountRequest, CountResponse, InsertRequest, ReadFieldsRequest, ReadRequest, TableIndentifier, UpdateRequest } from "wasmx-dtype/assembly/types";
 import { AddRequest, MoveRequest, SubRequest } from "wasmx-dtype/assembly/types_tokens";
 import * as config from "wasmx-dtype/assembly/config";
 import { getDTypeIdentifier } from "wasmx-dtype/assembly/helpers";
@@ -200,12 +200,12 @@ export function insertFieldValues(tableId: i64, tableName: string, obj: string):
 }
 
 export function getFieldValue(tableId: i64, tableName: string, fieldName: string, data: Base64String): string {
-    const calld = JSON.stringify<ReadFieldRequest>(new ReadFieldRequest(
+    const calld = JSON.stringify<ReadFieldsRequest>(new ReadFieldsRequest(
         getDTypeIdentifier(tableId, tableName),
-        0, fieldName,
+        [fieldName],
         data,
     ))
-    const resp = callContract(ROLE_DTYPE, `{"ReadField":${calld}}`, true, MODULE_NAME)
+    const resp = callContract(ROLE_DTYPE, `{"ReadFields":${calld}}`, true, MODULE_NAME)
     if (resp.success > 0) {
         revert(`getFieldValue failed for table ${tableName}, field ${fieldName}: ${resp.data}`)
     }

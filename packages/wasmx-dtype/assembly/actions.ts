@@ -3,7 +3,7 @@ import { JSON as JSONDyn } from "assemblyscript-json/assembly";
 import * as sqlw from "wasmx-env-sql/assembly/sql_wrap";
 import { base64ToString, stringToBase64, stringToBytes } from "wasmx-utils/assembly/utils";
 import { MsgCloseRequest, MsgCloseResponse, MsgConnectRequest, MsgConnectResponse, MsgExecuteBatchRequest, MsgExecuteBatchResponse, MsgExecuteRequest, MsgExecuteResponse, MsgQueryRequest, MsgQueryResponse, SqlExecuteCommand } from "wasmx-env-sql/assembly/types";
-import { BuildSchemaRequest, BuildSchemaResponse, CallDataInstantiate, CallDataInitializeTokens, CloseRequest, ConnectRequest, CountRequest, CountResponse, CreateTableRequest, DeleteRequest, DTypeDb, DTypeDbConnection, DTypeField, DTypeTable, InsertRequest, MODULE_NAME, ReadFieldRequest, ReadRequest, TableIndentifier, TableIndentifierRequired, UpdateRequest, CreateIndexesRequest, DeleteIndexesRequest, TableIndex, CreateIndexResponse, DeleteIndexResponse, GetRecordsByRelationTypeRequest, ReadRawRequest } from "./types";
+import { BuildSchemaRequest, BuildSchemaResponse, CallDataInstantiate, CallDataInitializeTokens, CloseRequest, ConnectRequest, CountRequest, CountResponse, CreateTableRequest, DeleteRequest, DTypeDb, DTypeDbConnection, DTypeField, DTypeTable, InsertRequest, MODULE_NAME, ReadFieldsRequest, ReadRequest, TableIndentifier, TableIndentifierRequired, UpdateRequest, CreateIndexesRequest, DeleteIndexesRequest, TableIndex, CreateIndexResponse, DeleteIndexResponse, GetRecordsByRelationTypeRequest, ReadRawRequest } from "./types";
 import { revert } from "./utils";
 import { jsonToQueryParams } from "./json";
 import { generateJsonSchema } from "./schema";
@@ -409,8 +409,8 @@ export function Read(req: ReadRequest): ArrayBuffer {
     return String.UTF8.encode(JSON.stringify<MsgQueryResponse>(resp))
 }
 
-export function ReadField(req: ReadFieldRequest): ArrayBuffer {
-    const resp = ReadFieldInternal(req)
+export function ReadFields(req: ReadFieldsRequest): ArrayBuffer {
+    const resp = ReadFieldsInternal(req)
     return String.UTF8.encode(JSON.stringify<MsgQueryResponse>(resp))
 }
 
@@ -505,7 +505,7 @@ function buildCreateIndex(tableName: string, index: TableIndex): string {
 }
 
 export function add(req: AddRequest): ArrayBuffer {
-    const data = ReadFieldInternal(new ReadFieldRequest(req.identifier, 0, req.fieldName, req.condition))
+    const data = ReadFieldsInternal(new ReadFieldsRequest(req.identifier, [req.fieldName], req.condition))
     const amount = BigInt.fromString(req.amount)
     let value = BigInt.zero()
     if (data.data != "") {
@@ -520,7 +520,7 @@ export function add(req: AddRequest): ArrayBuffer {
 }
 
 export function sub(req: SubRequest): ArrayBuffer {
-    const data = ReadFieldInternal(new ReadFieldRequest(req.identifier, 0, req.fieldName, req.condition))
+    const data = ReadFieldsInternal(new ReadFieldsRequest(req.identifier, [req.fieldName], req.condition))
     const amount = BigInt.fromString(req.amount)
     let value = BigInt.zero()
     if (data.data != "") {
@@ -536,8 +536,8 @@ export function sub(req: SubRequest): ArrayBuffer {
 
 export function move(req: MoveRequest): ArrayBuffer {
     const amount = BigInt.fromString(req.amount)
-    const dataSource = ReadFieldInternal(new ReadFieldRequest(req.identifier, 0, req.fieldName, req.condition_source))
-    const dataTarget = ReadFieldInternal(new ReadFieldRequest(req.identifier, 0, req.fieldName, req.condition_target))
+    const dataSource = ReadFieldsInternal(new ReadFieldsRequest(req.identifier, [req.fieldName], req.condition_source))
+    const dataTarget = ReadFieldsInternal(new ReadFieldsRequest(req.identifier, [req.fieldName], req.condition_target))
 
     let valueSource = BigInt.zero()
     if (dataSource.data != "") {
@@ -759,21 +759,23 @@ export function GetRecordsByRelationTypeInternal(reltypeId: i64, reltype: string
     return sqlw.Query(new MsgQueryRequest(DTypeConnection, query, params))
 }
 
-export function ReadFieldInternal(req: ReadFieldRequest): MsgQueryResponse {
+export function ReadFieldsInternal(req: ReadFieldsRequest): MsgQueryResponse {
     const identif = getIdentifier(req.identifier);
     const fields = getTableFields(identif.table_id)
-    if (req.fieldName == "") {
+    if (req.fields.length == 0) {
         revert(`missing field name`);
     }
-    let field: DTypeField | null = null;
-    for (let i = 0; i < fields.length; i++) {
-        if (fields[i].name == req.fieldName) {
-            field = fields[i]
+    for (let i = 0; i < req.fields.length; i++) {
+        let found = false
+        for (let j = 0; j < fields.length; j++) {
+            if (fields[j].name == req.fields[i]) {
+                found = true;
+            }
         }
-    }
-    if (field == null) {
-        revert(`invalid field name`)
-        return new MsgQueryResponse("", "");
+        if (found == false) {
+            revert(`invalid field name`)
+            return new MsgQueryResponse("", "");
+        }
     }
 
     const params = jsonToQueryParams(base64ToString(req.data), fields)
@@ -791,7 +793,7 @@ export function ReadFieldInternal(req: ReadFieldRequest): MsgQueryResponse {
         cond = values.join(" AND ")
     }
 
-    const query = `SELECT ${field.name} FROM ${identif.table_name} WHERE ${cond};`;
+    const query = `SELECT ${req.fields.join(",")} FROM ${identif.table_name} WHERE ${cond};`;
     const resp = sqlw.Query(new MsgQueryRequest(identif.db_connection_name, query, param.values))
 
     if (resp.error != "") return new MsgQueryResponse(resp.error, "")
@@ -801,10 +803,18 @@ export function ReadFieldInternal(req: ReadFieldRequest): MsgQueryResponse {
         const v = jsonObj._arr.at(0)
         if (!v.isObj) revert("unexpected value")
         const value: JSONDyn.Obj = changetype<JSONDyn.Obj>(v);
-        if (value.has(req.fieldName)) {
-            const data = value.get(req.fieldName)
-            if (data != null) return new MsgQueryResponse("", stringToBase64(data.toString()))
+        const values: string[] = []
+        for (let i = 0; i < req.fields.length; i++) {
+            let v = ""
+            if (value.has(req.fields[i])) {
+                const data = value.get(req.fields[i])
+                if (data != null) {
+                    v = data.toString()
+                }
+            }
+            values.push(v)
         }
+        return new MsgQueryResponse("", stringToBase64(JSON.stringify<string[]>(values)))
     }
 
     return new MsgQueryResponse("", "")

@@ -8,9 +8,13 @@ import { OAuth2UserInfo, UserInfoToWrite } from "wasmx-httpserver-registry/assem
 import * as oauth2cw from "wasmx-env-oauth2client/assembly/oauth2client_wrap";
 import { getDtypeSdk, LoggerDebugExtended, revert } from "./utils";
 import { AuthUrlParam, Endpoint, ExchangeCodeForTokenRequest, GetRedirectUrlRequest, Oauth2ClientGetRequest, OAuth2Config, Token } from "wasmx-env-oauth2client/assembly/types";
-import { base64ToString, stringToBase64 } from "wasmx-utils/assembly/utils";
+import { base64ToString, parseInt32, parseInt64, stringToBase64 } from "wasmx-utils/assembly/utils";
 import { DTypeSdk } from "wasmx-dtype/assembly/sdk";
-import { UserInfo } from "wasmx-env-imap/assembly/types";
+import { UidSetRange, UserInfo } from "wasmx-env-imap/assembly/types";
+import { CacheEmailInternal, ConnectUserInternal } from "./actions";
+import { EmailToRead, EmailToWrite, SecretType_OAuth2, ThreadToRead } from "./types";
+import { getEmailById, getThreadById, getThreads } from "./helpers";
+import { getTableIds } from "./storage";
 
 // "/login/web/{provider}"
 const routeOAuth2Web = "/login/web"
@@ -34,8 +38,20 @@ const templateExchangeSessionId = `${routeOAuth2Web}/{id}`
 const routeUserInfo = "/email/user"
 const templateRouteUserInfo = `${routeUserInfo}/{email}`
 
-const routeCacheEmail = "/email/search"
-const templateRouteCacheEmail = routeCacheEmail
+// /email/cache/{account}?uid=&folder=&messageID=
+const routeCacheEmail = "/email/cache"
+const templateRouteCacheEmail = `${routeCacheEmail}/{account}`
+
+// /email/email/{account}?id=&folder=
+const routeEmail = `/email/email`
+const templateRouteEmail = `${routeEmail}/{account}`
+
+// /email/thread/{account}?id=
+const routeThread = "/email/thread"
+const templateRouteThread = `${routeThread}/{account}`
+
+const routeThreads = "/email/threads"
+const templateRouteThreads = `${routeThreads}/{account}`
 
 const baseRoutes: string[] = [
     routeOAuth2Web, routeOAuth2IOS,
@@ -43,8 +59,12 @@ const baseRoutes: string[] = [
     routeExchangeSessionId,
     routeUserInfo,
     routeCacheEmail,
+    routeEmail,
+    routeThread,
+    routeThreads,
 ]
 
+// TODO auth middleware with JWT tokens!!
 export function registerOAuth2(httpserver: HttpServerRegistrySdk, dtype: DTypeSdk): void {
     const addr = wasmxw.getAddress()
     httpserver.SetRoute(new SetRouteRequest(routeOAuth2Web, addr, false, ""))
@@ -56,6 +76,10 @@ export function registerOAuth2(httpserver: HttpServerRegistrySdk, dtype: DTypeSd
     // content
     httpserver.SetRoute(new SetRouteRequest(routeUserInfo, addr, false, ""))
     httpserver.SetRoute(new SetRouteRequest(routeCacheEmail, addr, false, ""))
+    httpserver.SetRoute(new SetRouteRequest(routeEmail, addr, false, ""))
+    httpserver.SetRoute(new SetRouteRequest(routeThread, addr, false, ""))
+    httpserver.SetRoute(new SetRouteRequest(routeThreads, addr, false, ""))
+
 }
 
 export function HttpRequestHandler(req: HttpRequestIncoming): ArrayBuffer {
@@ -82,6 +106,10 @@ export function handleRoute(baseUrl: string, req: HttpRequestIncoming): HttpResp
     // content
     if (baseUrl == routeUserInfo) return handleUserInfo(req);
     if (baseUrl == routeCacheEmail) return handleCacheEmail(req);
+
+    if (baseUrl == routeEmail) return handleRouteEmail(req);
+    if (baseUrl == routeThread) return handleRouteThread(req);
+    if (baseUrl == routeThreads) return handleRouteThreads(req);
 
     return notFoundResponse()
 }
@@ -242,7 +270,130 @@ export function handleUserInfo(req: HttpRequestIncoming): HttpResponseWrap {
 export function handleCacheEmail(req: HttpRequestIncoming): HttpResponseWrap {
     const url = parseUrl(req.url, templateRouteCacheEmail)
     const dtype = getDtypeSdk()
-    return simpleResponse("400 Bad Request", 400, "not implemented")
+
+    if (!url.routeParams.has("account")) {
+        return simpleResponse("400 Bad Request", 400, "email account not provided")
+    }
+    const account = url.routeParams.get("account")
+    const ui = getUserInfo(dtype, account)
+    if (ui == null) {
+        return simpleResponse("400 Bad Request", 400, "email account not found")
+    }
+
+    if (ui.token == "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, "user is not logged in")
+    }
+    const token = JSON.parse<Token>(ui.token)
+    ConnectUserInternal(ui.email, token.access_token, SecretType_OAuth2)
+
+    let uid = 0;
+    let messageId = "";
+    let folder = "INBOX"
+    if (url.queryParams.has("uid")) {
+        const uidstr = url.queryParams.get("uid")
+        if (uidstr != "") uid = parseInt32(uidstr)
+    }
+    if (url.queryParams.has("messageID")) {
+        messageId = url.queryParams.get("messageID")
+    }
+    if (url.queryParams.has("folder")) {
+        folder = url.queryParams.get("folder")
+    }
+    if (uid == 0) simpleResponse("400 Bad Request", 400, "empty UID")
+
+    const emails = CacheEmailInternal(account, folder, null, [new UidSetRange(uid, uid)])
+    let data = ""
+    if (emails.length > 0) {
+        data = JSON.stringify<EmailToRead>(emails[0])
+    }
+    return simpleResponse("200 OK", 200, data)
+}
+
+export function handleRouteEmail(req: HttpRequestIncoming): HttpResponseWrap {
+    const url = parseUrl(req.url, templateRouteEmail)
+    const dtype = getDtypeSdk()
+
+    if (!url.routeParams.has("account")) {
+        return simpleResponse("400 Bad Request", 400, "email account not provided")
+    }
+    const account = url.routeParams.get("account")
+    const ui = getUserInfo(dtype, account)
+    if (ui == null) {
+        return simpleResponse("400 Bad Request", 400, "email account not found")
+    }
+    if (ui.token == "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, "user is not logged in")
+    }
+    const token = JSON.parse<Token>(ui.token)
+    ConnectUserInternal(ui.email, token.access_token, SecretType_OAuth2)
+
+    const ids = getTableIds()
+    let id: i64 = 0;
+    if (url.queryParams.has("id")) {
+        const uidstr = url.queryParams.get("id")
+        if (uidstr != "") id = parseInt64(uidstr)
+    }
+    if (id == 0) simpleResponse("400 Bad Request", 400, "empty ID")
+    const email = getEmailById(ids, dtype, account, id);
+    if (email == null) {
+        return simpleResponse("404 NOT FOUND", 404, "not found")
+    }
+    return simpleResponse("200 OK", 200, JSON.stringify<EmailToRead>(email))
+}
+
+export function handleRouteThread(req: HttpRequestIncoming): HttpResponseWrap {
+    const url = parseUrl(req.url, templateRouteThread)
+    const dtype = getDtypeSdk()
+
+    if (!url.routeParams.has("account")) {
+        return simpleResponse("400 Bad Request", 400, "email account not provided")
+    }
+    const account = url.routeParams.get("account")
+    const ui = getUserInfo(dtype, account)
+    if (ui == null) {
+        return simpleResponse("400 Bad Request", 400, "email account not found")
+    }
+    if (ui.token == "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, "user is not logged in")
+    }
+    const token = JSON.parse<Token>(ui.token)
+    ConnectUserInternal(ui.email, token.access_token, SecretType_OAuth2)
+
+    const ids = getTableIds()
+    let id: i64 = 0;
+    if (url.queryParams.has("id")) {
+        const uidstr = url.queryParams.get("id")
+        if (uidstr != "") id = parseInt64(uidstr)
+    }
+    if (id == 0) simpleResponse("400 Bad Request", 400, "empty ID")
+    const thread = getThreadById(ids, dtype, account, id);
+    if (thread == null) {
+        return simpleResponse("404 NOT FOUND", 404, "not found")
+    }
+    return simpleResponse("200 OK", 200, JSON.stringify<ThreadToRead>(thread))
+}
+
+export function handleRouteThreads(req: HttpRequestIncoming): HttpResponseWrap {
+    const url = parseUrl(req.url, templateRouteThreads)
+    const dtype = getDtypeSdk()
+
+    if (!url.routeParams.has("account")) {
+        return simpleResponse("400 Bad Request", 400, "email account not provided")
+    }
+    const account = url.routeParams.get("account")
+    const ui = getUserInfo(dtype, account)
+    if (ui == null) {
+        return simpleResponse("400 Bad Request", 400, "email account not found")
+    }
+    if (ui.token == "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, "user is not logged in")
+    }
+    const token = JSON.parse<Token>(ui.token)
+    ConnectUserInternal(ui.email, token.access_token, SecretType_OAuth2)
+
+    const ids = getTableIds()
+    const threads = getThreads(ids, dtype, account);
+    return simpleResponse("200 OK", 200, JSON.stringify<ThreadToRead[]>(threads))
 }
 
 export function wrapResp(data: HttpResponse): HttpResponseWrap {
@@ -270,6 +421,6 @@ function notFoundResponse(): HttpResponseWrap {
         404,
         null,
         "",
-        "",
+        "route not found",
     ))
 }

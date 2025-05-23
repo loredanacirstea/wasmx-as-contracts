@@ -1,6 +1,6 @@
 import { JSON } from "json-as";
 import { Address, Email, Envelope } from "wasmx-env-imap/assembly/types";
-import { EmailToWrite, LastKnownReferenceResult, MissingRefsWrap, RelationTypeIds, TableIds, ThreadToRead, ThreadToWrite } from "./types";
+import { EmailToRead, EmailToWrite, LastKnownReferenceResult, MissingRefsWrap, RelationTypeIds, SaveEmailResponse, TableIds, ThreadToRead, ThreadToWrite, UpdateThreadAddEmail } from "./types";
 import { LoggerDebug, LoggerDebugExtended, revert } from "./utils";
 import { TableEmailName, TableThreadName } from "./defs";
 import { parseInt64, stringToBase64 } from "wasmx-utils/assembly/utils";
@@ -8,14 +8,19 @@ import { DTypeNodeName, DTypeRelationName, tableNodeId, tableRelationId } from "
 import { DTypeSdk } from "wasmx-dtype/assembly/sdk";
 
 // TODO store attachments
-export function saveEmail(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTypeIds, owner: string, email: Email): string | null {
+export function saveEmail(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTypeIds, owner: string, email: Email): SaveEmailResponse {
+    const resp = new SaveEmailResponse(null, "");
     const envelope = email.envelope
     if (envelope == null) {
-        return "failed to convert email, empty envelope";
+        resp.error = "failed to convert email, empty envelope";
+        return resp;
     }
 
     let dbemail = EmailRecordfromEmail(email, owner);
-    if (dbemail == null) return "failed to convert email";
+    if (dbemail == null)  {
+        resp.error = "failed to convert email";
+        return resp;
+    }
 
     LoggerDebugExtended("save email", ["owner", owner, "summary", dbemail.name])
 
@@ -23,6 +28,8 @@ export function saveEmail(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTy
     const emailId = _ids[0]
     const nodeIdEmail = _ids[1]
     let nodeIdThread: i64;
+
+    resp.email = EmailToRead.fromWrite(emailId, dbemail);
 
     let refs: Array<string> = JSON.parse<Array<string>>(dbemail.header_References);
     let inReplyTo = envelope.InReplyTo;
@@ -46,7 +53,7 @@ export function saveEmail(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTy
         nodeIdThread = _ids[1]
 
         saveThreadRelation(dtype, nodeIdThread, nodeIdEmail, reltypeIds.contains)
-        return null;
+        return resp;
     }
 
     // TODO subject changed => create new thread ? - remains the same thread for now
@@ -57,6 +64,8 @@ export function saveEmail(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTy
 	// update thread with current email id
     if (inReplyTo.length == 1 && refs.length >= 1) {
         let result = getLastKnownReference(dtype, ids, owner, refs);
+        let lastThread: ThreadToRead | null = null;
+
         if (result.id > 0) {
             let prevEmailId = result.id;
             let missingRefs = result.missingRefs;
@@ -66,27 +75,38 @@ export function saveEmail(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTy
                 revert(`missing thread for email id: ${prevEmailId}`)
             } else {
                 // here we just get the last thread and add the email to it.
-                let lastThreadId = threadIds[threadIds.length - 1];
-                const threadPrevEmailIdStr = dtype.ReadField(ids.thread, TableThreadName, "last_email_message_id", `{"id":${lastThreadId}},"owner":"${owner}"`)
-                const threadPrevEmailId = parseInt64(threadPrevEmailIdStr)
+                const lastThreadId = threadIds[threadIds.length - 1];
 
-                if (threadPrevEmailId == prevEmailId) {
+                const threadStr = dtype.Read(ids.thread, TableThreadName, `{"id":${lastThreadId}},"owner":"${owner}"`)
+                const threads = JSON.parse<ThreadToRead[]>(threadStr);
+                if (threads.length == 0) {
+                    revert(`missing thread for thread id: ${lastThreadId}`)
+                }
+                lastThread = threads[0]
+
+                const messageIds = JSON.parse<string[]>(lastThread.email_message_ids)
+
+                if (lastThread.last_email_message_id == prevEmailId) {
+                    messageIds.push(dbemail.envelope_MessageID)
+                    const messageIdsStr = JSON.stringify<string[]>(messageIds)
+                    const q = JSON.stringify<UpdateThreadAddEmail>(new UpdateThreadAddEmail(emailId, messageIdsStr))
                     // we expand the thread with current email
-                    dtype.Update(ids.thread, TableThreadName, `{"last_email_message_id":${emailId}}`, `{"id":${lastThreadId}},"owner":"${owner}"`)
+                    dtype.Update(ids.thread, TableThreadName, q, `{"id":${lastThreadId}},"owner":"${owner}"`)
                     addEmailThreadRelation(dtype, ids, reltypeIds, lastThreadId, nodeIdEmail)
-                    return null;
+                    return resp;
                 }
             }
         }
 
-        // TODO:
 		// if we introduce emails in reverse order
 		// search if the messageId is part of missing_refs in an existing thread
-        let existingThread = getThreadByMissingMessageId(dtype, ids, dbemail.owner, dbemail.envelope_MessageID);
-
-        if (existingThread != null) {
-            addEmailThreadRelation(dtype, ids, reltypeIds, existingThread.id, nodeIdEmail)
-            let missingRefs = JSON.parse<Array<string>>(existingThread.missing_refs);
+        if (lastThread == null) {
+            lastThread = getThreadByMissingMessageId(dtype, ids, dbemail.owner, dbemail.envelope_MessageID);
+        }
+        if (lastThread != null) {
+            addEmailThreadRelation(dtype, ids, reltypeIds, lastThread.id, nodeIdEmail)
+            let missingRefs = JSON.parse<Array<string>>(lastThread.missing_refs);
+            let messageIds = JSON.parse<Array<string>>(lastThread.email_message_ids);
             let filtered = new Array<string>();
             for (let i = 0; i < missingRefs.length; i++) {
                 if (missingRefs[i] != dbemail.envelope_MessageID) {
@@ -94,9 +114,10 @@ export function saveEmail(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTy
                 }
             }
             missingRefs = filtered;
+            messageIds.push(dbemail.envelope_MessageID);
 
-            dtype.Update(ids.thread, TableThreadName, JSON.stringify<MissingRefsWrap>(new MissingRefsWrap(JSON.stringify<string[]>(missingRefs))), `{"id":${existingThread.id}}`)
-            return null;
+            dtype.Update(ids.thread, TableThreadName, JSON.stringify<MissingRefsWrap>(new MissingRefsWrap(JSON.stringify<string[]>(messageIds), JSON.stringify<string[]>(missingRefs))), `{"id":${lastThread.id}}`)
+            return resp;
         }
 
         // Fallback: create new thread with missing refs
@@ -114,12 +135,12 @@ export function saveEmail(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTy
 
         saveThreadRelation(dtype, nodeIdThread, nodeIdEmail, reltypeIds.contains)
     }
-    return null;
+    return resp;
 }
 
 export function addEmailThreadRelation(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTypeIds, threadId: i64, nodeIdEmail: i64): void {
-    const nodeIdThreadStr = dtype.ReadField(tableNodeId, DTypeNodeName, "id", `{"table_id":${ids.thread}},"record_id":${threadId}`)
-    const nodeIdThread = parseInt64(nodeIdThreadStr)
+    const values = dtype.ReadFields(tableNodeId, DTypeNodeName, ["id"], `{"table_id":${ids.thread}},"record_id":${threadId}`)
+    const nodeIdThread = parseInt64(values[0])
     saveThreadRelation(dtype, nodeIdThread, nodeIdEmail, reltypeIds.contains)
 }
 
@@ -127,7 +148,7 @@ export function getThreadByMissingMessageId(dtype: DTypeSdk, ids: TableIds, owne
     // const values = getDTypeValues(ids.thread, TableThreadName, `{"owner":"${owner}"}`)
 
     const query = `SELECT * FROM ${TableThreadName}
-WHERE owner_account = ?
+WHERE owner = ?
     AND EXISTS (
     SELECT 1
     FROM json_each(${TableThreadName}.missing_refs)
@@ -143,7 +164,7 @@ WHERE owner_account = ?
     const threads = JSON.parse<ThreadToRead[]>(result)
     if (threads.length == 0) {
         LoggerDebugExtended("get db thread: not found", ["query", query, "params", params.join(",")])
-        console.log("get db thread: not found");
+        console.log("get db thread: not found: " + query + "--" + params.join(","));
         return null;
     }
     return threads[0];
@@ -174,9 +195,9 @@ export function getLastKnownReference(
 
     for (let i = 0; i < refs.length; i++) {
         let messageId = refs[i];
-        const resp = dtype.ReadFieldNoCheck(ids.email, TableEmailName, "id", `{"envelope_MessageID":"${messageId}","owner":"${ownerAccount}"}`)
-        if (resp.error == "" && resp.data != "") {
-            const id = parseInt64(resp.data)
+        const resp = dtype.ReadFieldsNoCheck(ids.email, TableEmailName, ["id"], `{"envelope_MessageID":"${messageId}","owner":"${ownerAccount}"}`)
+        if (resp.error == "" && resp.data.length > 0) {
+            const id = parseInt64(resp.data[0])
             return new LastKnownReferenceResult(id, missingRefs)
         }
         missingRefs.push(messageId);
@@ -218,6 +239,26 @@ export function saveEmailWithNode(dtype: DTypeSdk, emailTableId: i64, dbemail: E
     const nodeId = nodeIds[0]
 
     return [emailId, nodeId]
+}
+
+export function getEmailById(ids: TableIds, dtype: DTypeSdk, owner: string, id: i64): EmailToRead | null {
+    const resp = dtype.Read(ids.email, TableEmailName, `{"owner":"${owner}","id":${id}}`)
+    const emails = JSON.parse<EmailToRead[]>(resp)
+    if (emails.length == 0) return null;
+    return emails[0]
+}
+
+export function getThreadById(ids: TableIds, dtype: DTypeSdk, owner: string, id: i64): ThreadToRead | null {
+    const resp = dtype.Read(ids.thread, TableThreadName, `{"owner":"${owner}","id":${id}}`)
+    const data = JSON.parse<ThreadToRead[]>(resp)
+    if (data.length == 0) return null;
+    return data[0]
+}
+
+export function getThreads(ids: TableIds, dtype: DTypeSdk, owner: string): ThreadToRead[] {
+    const resp = dtype.Read(ids.thread, TableThreadName, `{"owner":"${owner}"}`)
+    const data = JSON.parse<ThreadToRead[]>(resp)
+    return data
 }
 
 export function EmailRecordfromEmail(email: Email, owner: string): EmailToWrite | null {

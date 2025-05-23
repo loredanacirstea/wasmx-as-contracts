@@ -195,20 +195,17 @@ export class CountResponse {
 }
 
 @json
-export class ReadFieldRequest {
+export class ReadFieldsRequest {
     identifier: TableIndentifier
-    fieldId: i64 = 0
-    fieldName: string = ""
+    fields: string[] = []
     data: Base64String = ""
     constructor(
         identifier: TableIndentifier,
-        fieldId: i64,
-        fieldName: string,
+        fields: string[],
         data: Base64String,
     ) {
         this.identifier = identifier
-        this.fieldId = fieldId
-        this.fieldName = fieldName
+        this.fields = fields
         this.data = data
     }
 }

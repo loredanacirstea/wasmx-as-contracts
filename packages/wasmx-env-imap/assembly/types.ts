@@ -326,7 +326,7 @@ export class Email {
     uid: u32 = 0;
     flags: Array<Flag> = [];
     internalDate: Date = new Date(0);
-    rfc822_size: i64 = 0;
+    rfc822Size: i64 = 0;
     envelope: Envelope | null = null;
     header: Map<string, Array<string>> = new Map<string, Array<string>>();
     body: string = "";
@@ -338,7 +338,7 @@ export class Email {
         uid: u32,
         flags: Array<Flag>,
         internalDate: Date,
-        rfc822_size: i64,
+        rfc822Size: i64,
         envelope: Envelope | null,
         header: Map<string, Array<string>>,
         body: string,
@@ -349,7 +349,7 @@ export class Email {
         this.uid = uid;
         this.flags = flags;
         this.internalDate = internalDate;
-        this.rfc822_size = rfc822_size;
+        this.rfc822Size = rfc822Size;
         this.envelope = envelope;
         this.header = header;
         this.body = body;

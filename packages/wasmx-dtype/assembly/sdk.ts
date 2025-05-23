@@ -1,7 +1,7 @@
 import { JSON } from "json-as";
 import { JSON as JSONDyn } from "assemblyscript-json/assembly";
 import { SDK } from "wasmx-env/assembly/sdk";
-import { CreateTableRequest, InsertRequest, MsgExecuteBatchResponse, ReadFieldRequest, ReadRequest, MsgQueryResponse, GetRecordsByRelationTypeRequest, UpdateRequest, ReadRawRequest, DeleteRequest } from "wasmx-dtype/assembly/types";
+import { CreateTableRequest, InsertRequest, MsgExecuteBatchResponse, ReadFieldsRequest, ReadRequest, MsgQueryResponse, GetRecordsByRelationTypeRequest, UpdateRequest, ReadRawRequest, DeleteRequest } from "wasmx-dtype/assembly/types";
 import { getDTypeIdentifier, rowsArrToObjArr } from "wasmx-dtype/assembly/helpers";
 import { base64ToString, stringToBase64 } from "wasmx-utils/assembly/utils";
 import { callContract } from "wasmx-env/assembly/utils";
@@ -9,10 +9,10 @@ import { ROLE_DTYPE } from "wasmx-env/assembly/roles";
 import { CallResponse } from "wasmx-env/assembly/types";
 
 @json
-export class ResponseStringWithError {
+export class ResponseStringArrayWithError {
     constructor(
         public error: string,
-        public data: string,
+        public data: string[],
     ) {}
 }
 
@@ -76,26 +76,30 @@ export class DTypeSdk extends SDK {
         return rowsArrToObjArr(data);
     }
 
-    ReadField(tableId: i64, tableName: string, fieldName: string, data: string): string {
-        const resp = this.ReadFieldNoCheck(tableId, tableName, fieldName, data);
+    ReadFields(tableId: i64, tableName: string, fields: string[], data: string): string[] {
+        const resp = this.ReadFieldsNoCheck(tableId, tableName, fields, data);
         if (resp.error != "") {
             this.revert(resp.error)
+        }
+        if (fields.length != resp.data.length) {
+            this.revert(`read fields length mismatch`)
         }
         return resp.data;
     }
 
-    ReadFieldNoCheck(tableId: i64, tableName: string, fieldName: string, data: string): ResponseStringWithError {
-        const calld = JSON.stringify<ReadFieldRequest>(new ReadFieldRequest(
+    ReadFieldsNoCheck(tableId: i64, tableName: string, fields: string[], data: string): ResponseStringArrayWithError {
+        const calld = JSON.stringify<ReadFieldsRequest>(new ReadFieldsRequest(
             getDTypeIdentifier(tableId, tableName),
-            0, fieldName,
+            fields,
             stringToBase64(data),
         ))
-        const rdata = this.querySafe(`{"ReadField":${calld}}`)
+        const rdata = this.querySafe(`{"ReadFields":${calld}}`)
         const result = JSON.parse<MsgQueryResponse>(rdata)
         if (result.error != "") {
-            return new ResponseStringWithError(`failed to decode ${data} to MsgQueryResponse: ${result.error}`, "")
+            return new ResponseStringArrayWithError(`failed to decode ${data} to MsgQueryResponse: ${result.error}`, [])
         }
-        return new ResponseStringWithError("", base64ToString(result.data))
+        const res = JSON.parse<string[]>(base64ToString(result.data))
+        return new ResponseStringArrayWithError("", res)
     }
 
     Update(tableId: i64, tableName: string, obj: string, cond: string): void {
