@@ -1,29 +1,69 @@
 import { JSON } from "json-as";
+import { RegisteredClaims } from "wasmx-env-httpserver/assembly/types";
 import { AuthStyle, Token } from "wasmx-env-oauth2client/assembly/types";
 
 @json
-export class Session {
+export class Claims {
+    constructor(
+        public claims: RegisteredClaims = new RegisteredClaims(),
+        public additional_claim: string = "",
+    ) {}
+}
+
+@json
+export class SessionToWrite {
     username: string = ""
     password: string = ""
     expires: i64 = 0
-    token: Token | null = null
+    token: string = ""
     provider: string = ""
-    jwt: string = ""
+    jwttoken: string = ""
+    claims: string = ""
 
     constructor(
         username: string,
         password: string,
         expires: i64,
-        token: Token | null,
+        token: string,
         provider: string,
-        jwt: string,
+        jwttoken: string,
+        claims: string,
     ) {
         this.username = username
         this.password = password
         this.expires = expires
         this.token = token
         this.provider = provider
-        this.jwt = jwt
+        this.jwttoken = jwttoken
+        this.claims = claims
+    }
+
+    parseToken(): Token | null {
+        if (this.token == "") return null
+        return JSON.parse<Token>(this.token)
+    }
+
+    parseClaims(): Claims | null {
+        if (this.claims == "") return null
+        return JSON.parse<Claims>(this.claims)
+    }
+}
+
+@json
+export class SessionToRead extends SessionToWrite {
+    id: i64 = 0
+    constructor(
+        id: i64,
+        username: string,
+        secret: string,
+        expires: i64,
+        token: string,
+        provider: string,
+        jwttoken: string,
+        claims: string,
+    ) {
+        super(username, secret, expires, token, provider, jwttoken, claims)
+        this.id = id
     }
 }
 
@@ -92,37 +132,6 @@ export class OAuth2ConfigToWrite {
 }
 
 @json
-export class OAuth2UserInfo {
-    email: string = ""
-    name: string = ""
-    sub: string = ""
-    given_name: string = ""
-    family_name: string = ""
-    picture: string = ""
-    provider: string = ""
-    email_verified: boolean = false
-    constructor(
-        email: string,
-        name: string,
-        sub: string,
-        given_name: string,
-        family_name: string,
-        picture: string,
-        provider: string,
-        email_verified: boolean,
-    ) {
-        this.email = email
-        this.name = name
-        this.sub = sub
-        this.given_name = given_name
-        this.family_name = family_name
-        this.picture = picture
-        this.provider = provider
-        this.email_verified = email_verified
-    }
-}
-
-@json
 export class UserInfoToWrite {
     email: string = ""
     name: string = ""
@@ -132,7 +141,6 @@ export class UserInfoToWrite {
     picture: string = ""
     provider: string = ""
     email_verified: boolean = false
-    token: string = ""
     constructor(
         email: string,
         name: string,
@@ -142,7 +150,6 @@ export class UserInfoToWrite {
         picture: string,
         provider: string,
         email_verified: boolean,
-        token: string,
     ) {
         this.email = email
         this.name = name
@@ -152,7 +159,6 @@ export class UserInfoToWrite {
         this.picture = picture
         this.provider = provider
         this.email_verified = email_verified
-        this.token = token
     }
 }
 
@@ -169,9 +175,8 @@ export class UserInfoToRead extends UserInfoToWrite {
         picture: string,
         provider: string,
         email_verified: boolean,
-        token: string,
     ) {
-        super(email, name, sub, given_name, family_name, picture, provider, email_verified, token)
+        super(email, name, sub, given_name, family_name, picture, provider, email_verified)
         this.id = id
     }
 }

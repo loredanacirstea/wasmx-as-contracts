@@ -18,6 +18,8 @@ export function wasmx_sql_1(): void {}
 export function wasmx_imap_1(): void {}
 export function wasmx_smtp_1(): void {}
 export function wasmx_oauth2client_1(): void {}
+// TODO remove, we need this for temporary JWT functions
+export function wasmx_httpserver_1(): void {}
 
 export function instantiate(): void {
   const calld = getCallDataWrapInitialize()

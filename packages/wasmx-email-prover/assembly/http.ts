@@ -1,10 +1,11 @@
 import { JSON } from "json-as";
 import { HttpRequestIncoming, HttpResponse, HttpResponseWrap } from "wasmx-env-httpserver/assembly/types";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
-import { getProvider, getEndpoint, HttpServerRegistrySdk, setUserInfo, getUserInfo } from "wasmx-httpserver-registry/assembly/sdk";
+import { getProvider, getEndpoint, HttpServerRegistrySdk, setUserInfo, getUserInfo, setSession, getSession } from "wasmx-httpserver-registry/assembly/sdk";
 import { SetRouteRequest } from "wasmx-httpserver-registry/assembly/types";
 import { ParsedUrl, parseUrl } from "wasmx-httpserver-registry/assembly/url";
-import { OAuth2UserInfo, UserInfoToWrite } from "wasmx-httpserver-registry/assembly/types_oauth2";
+import { SessionToRead, SessionToWrite, UserInfoToWrite } from "wasmx-httpserver-registry/assembly/types_oauth2";
+import { createSession, GenerateToken, NewExpirationTime, VerifyJWT } from "wasmx-httpserver-registry/assembly/session";
 import * as oauth2cw from "wasmx-env-oauth2client/assembly/oauth2client_wrap";
 import { getDtypeSdk, LoggerDebugExtended, revert } from "./utils";
 import { AuthUrlParam, Endpoint, ExchangeCodeForTokenRequest, GetRedirectUrlRequest, Oauth2ClientGetRequest, OAuth2Config, Token } from "wasmx-env-oauth2client/assembly/types";
@@ -12,9 +13,10 @@ import { base64ToString, parseInt32, parseInt64, stringToBase64 } from "wasmx-ut
 import { DTypeSdk } from "wasmx-dtype/assembly/sdk";
 import { UidSetRange, UserInfo } from "wasmx-env-imap/assembly/types";
 import { CacheEmailInternal, ConnectUserInternal } from "./actions";
-import { EmailToRead, EmailToWrite, SecretType_OAuth2, ThreadToRead } from "./types";
+import { EmailToRead, EmailToWrite, SecretType_OAuth2, SecretType_Password, ThreadToRead } from "./types";
 import { getEmailById, getThreadById, getThreads } from "./helpers";
-import { getTableIds } from "./storage";
+import { getConfig, getTableIds } from "./storage";
+import { TableNameOAuth2Session } from "wasmx-httpserver-registry/assembly/defs_oauth2";
 
 // "/login/web/{provider}"
 const routeOAuth2Web = "/login/web"
@@ -36,22 +38,22 @@ const templateExchangeSessionId = `${routeOAuth2Web}/{id}`
 
 // content paths
 const routeUserInfo = "/email/user"
-const templateRouteUserInfo = `${routeUserInfo}/{email}`
+const templateRouteUserInfo = `${routeUserInfo}`
 
 // /email/cache/{account}?uid=&folder=&messageID=
 const routeCacheEmail = "/email/cache"
-const templateRouteCacheEmail = `${routeCacheEmail}/{account}`
+const templateRouteCacheEmail = `${routeCacheEmail}`
 
 // /email/email/{account}?id=&folder=
 const routeEmail = `/email/email`
-const templateRouteEmail = `${routeEmail}/{account}`
+const templateRouteEmail = `${routeEmail}`
 
 // /email/thread/{account}?id=
 const routeThread = "/email/thread"
-const templateRouteThread = `${routeThread}/{account}`
+const templateRouteThread = `${routeThread}`
 
 const routeThreads = "/email/threads"
-const templateRouteThreads = `${routeThreads}/{account}`
+const templateRouteThreads = `${routeThreads}`
 
 const baseRoutes: string[] = [
     routeOAuth2Web, routeOAuth2IOS,
@@ -112,6 +114,69 @@ export function handleRoute(baseUrl: string, req: HttpRequestIncoming): HttpResp
     if (baseUrl == routeThreads) return handleRouteThreads(req);
 
     return notFoundResponse()
+}
+
+export function validateSession(session: SessionToRead | null): string {
+    if (session == null) return `unauthorized: session not found`;
+    const cfg = getConfig()
+    const claims = session.parseClaims()
+    if (claims == null) return `unauthorized: claims not found`;
+    const resp = VerifyJWT(cfg.jwt_secret, session.jwttoken, claims)
+    if (resp.error != "") return `unauthorized: ${resp.error}`;
+    if (resp.valid == false) return `unauthorized: JWT invalid`;
+    return ""
+}
+
+export function validateSessionOAuth2(session: SessionToRead | null): string {
+    let haserr = validateSession(session)
+    if (haserr != "") return haserr
+    if (session!.token == "") return "user is not logged in"
+    if (session!.claims == "") return "claims not found"
+    return ""
+}
+
+export function validateSessionPassw(session: SessionToRead | null): string {
+    let haserr = validateSession(session)
+    if (haserr != "") return haserr
+    if (session!.password == "") return "user is not logged in"
+    return ""
+}
+
+export function getAuthSession(dtype: DTypeSdk, req: HttpRequestIncoming): SessionToRead | null {
+    let jwttoken = getAuthJWT(req)
+    if (jwttoken == "") {
+        // TODO disable this in production; used only for testing
+        jwttoken = getAuthJWTFromUrl(req)
+    }
+    if (jwttoken == "") return null;
+    return getSession(dtype, jwttoken)
+}
+
+export function getAuthJWT(req: HttpRequestIncoming): string {
+    if (!req.header.has("Authorization")) {
+        return ""
+    }
+    const authh = req.header.get("Authorization")
+    if (authh.length > 0) return ""
+    for (let i = 0; i < authh.length; i++) {
+        const token = extractBearerToken(authh[i])
+        if (token != "") return token;
+    }
+    return ""
+}
+
+export function getAuthJWTFromUrl(req: HttpRequestIncoming): string {
+    const url = parseUrl(req.url, "/")
+    if (!url.queryParams.has("token")) return ""
+    return url.queryParams.get("token")
+}
+
+function extractBearerToken(authHeader: string): string {
+    const prefix = "Bearer ";
+    if (authHeader.startsWith(prefix)) {
+      return authHeader.substr(prefix.length);
+    }
+    return "";
 }
 
 export function handleOAuth2Web(req: HttpRequestIncoming): HttpResponseWrap {
@@ -229,37 +294,45 @@ export function handleOAuth2Callback(req: HttpRequestIncoming, clientType: strin
     if (resp.error != "") {
         return simpleResponse("401 HTTP Unauthorized", 500, resp.error)
     }
-    // console.log("--ExchangeCodeForToken access_token--" + resp.token.access_token)
-    // console.log("--ExchangeCodeForToken refresh_token--" + resp.token.refresh_token)
-    // console.log("--ExchangeCodeForToken token_type--" + resp.token.token_type)
-    // console.log("--ExchangeCodeForToken expiry--" + resp.token.expiry)
 
     const getresp = oauth2cw.Get(new Oauth2ClientGetRequest(configWithEndpoint, resp.token, endpoint.user_info_url))
     if (getresp.error != "") {
         revert(`could not get user info`)
     }
 
-    const info = JSON.parse<OAuth2UserInfo>(base64ToString(getresp.data))
-    const userInfo = new UserInfoToWrite(info.email, info.name, info.sub, info.given_name, info.family_name, info.picture, provider, info.email_verified, JSON.stringify<Token>(resp.token));
-
+    // store user info
+    const info = JSON.parse<UserInfoToWrite>(base64ToString(getresp.data))
+    const userInfo = new UserInfoToWrite(info.email, info.name, info.sub, info.given_name, info.family_name, info.picture, provider, info.email_verified);
     setUserInfo(dtype, userInfo);
 
-    return simpleResponse("200 OK", 200, `logged in: ${userInfo.email}`)
+    // create session
+    const cfg = getConfig()
+    const session = createSession(cfg.jwt_secret, cfg.session_expiration_ms, provider, info.email, "", resp.token)
+    setSession(dtype, session)
+
+    return simpleResponse("200 OK", 200, `logged in: ${userInfo.email}\nJWT: ${session.jwttoken}`)
 }
 
 export function handleExchangeSessionId(req: HttpRequestIncoming): HttpResponseWrap {
     // const url = parseUrl(req.url, templateExchangeSessionId)
+    const dtype = getDtypeSdk()
+    const session = getAuthSession(dtype, req)
+    const haserr = validateSession(session)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
+    }
     return notFoundResponse();
 }
 
 export function handleUserInfo(req: HttpRequestIncoming): HttpResponseWrap {
     const url = parseUrl(req.url, templateRouteUserInfo)
     const dtype = getDtypeSdk()
-    if (!url.routeParams.has("email")) {
-        return simpleResponse("400 Bad Request", 400, "email account not provided")
+    const session = getAuthSession(dtype, req)
+    const haserr = validateSession(session)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
     }
-    const account = url.routeParams.get("email")
-    const ui = getUserInfo(dtype, account)
+    const ui = getUserInfo(dtype, session!.username)
     if (ui == null) {
         return simpleResponse("400 Bad Request", 400, "email account not found")
     }
@@ -270,21 +343,16 @@ export function handleUserInfo(req: HttpRequestIncoming): HttpResponseWrap {
 export function handleCacheEmail(req: HttpRequestIncoming): HttpResponseWrap {
     const url = parseUrl(req.url, templateRouteCacheEmail)
     const dtype = getDtypeSdk()
-
-    if (!url.routeParams.has("account")) {
-        return simpleResponse("400 Bad Request", 400, "email account not provided")
+    const session = getAuthSession(dtype, req)
+    let haserr = validateSession(session)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
     }
-    const account = url.routeParams.get("account")
-    const ui = getUserInfo(dtype, account)
-    if (ui == null) {
-        return simpleResponse("400 Bad Request", 400, "email account not found")
+    const account = session!.username
+    haserr = connectUser(session!)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
     }
-
-    if (ui.token == "") {
-        return simpleResponse("401 HTTP Unauthorized", 401, "user is not logged in")
-    }
-    const token = JSON.parse<Token>(ui.token)
-    ConnectUserInternal(ui.email, token.access_token, SecretType_OAuth2)
 
     let uid = 0;
     let messageId = "";
@@ -312,20 +380,16 @@ export function handleCacheEmail(req: HttpRequestIncoming): HttpResponseWrap {
 export function handleRouteEmail(req: HttpRequestIncoming): HttpResponseWrap {
     const url = parseUrl(req.url, templateRouteEmail)
     const dtype = getDtypeSdk()
-
-    if (!url.routeParams.has("account")) {
-        return simpleResponse("400 Bad Request", 400, "email account not provided")
+    const session = getAuthSession(dtype, req)
+    let haserr = validateSession(session)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
     }
-    const account = url.routeParams.get("account")
-    const ui = getUserInfo(dtype, account)
-    if (ui == null) {
-        return simpleResponse("400 Bad Request", 400, "email account not found")
+    const account = session!.username
+    haserr = connectUser(session!)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
     }
-    if (ui.token == "") {
-        return simpleResponse("401 HTTP Unauthorized", 401, "user is not logged in")
-    }
-    const token = JSON.parse<Token>(ui.token)
-    ConnectUserInternal(ui.email, token.access_token, SecretType_OAuth2)
 
     const ids = getTableIds()
     let id: i64 = 0;
@@ -345,19 +409,16 @@ export function handleRouteThread(req: HttpRequestIncoming): HttpResponseWrap {
     const url = parseUrl(req.url, templateRouteThread)
     const dtype = getDtypeSdk()
 
-    if (!url.routeParams.has("account")) {
-        return simpleResponse("400 Bad Request", 400, "email account not provided")
+    const session = getAuthSession(dtype, req)
+    let haserr = validateSession(session)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
     }
-    const account = url.routeParams.get("account")
-    const ui = getUserInfo(dtype, account)
-    if (ui == null) {
-        return simpleResponse("400 Bad Request", 400, "email account not found")
+    const account = session!.username
+    haserr = connectUser(session!)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
     }
-    if (ui.token == "") {
-        return simpleResponse("401 HTTP Unauthorized", 401, "user is not logged in")
-    }
-    const token = JSON.parse<Token>(ui.token)
-    ConnectUserInternal(ui.email, token.access_token, SecretType_OAuth2)
 
     const ids = getTableIds()
     let id: i64 = 0;
@@ -377,23 +438,32 @@ export function handleRouteThreads(req: HttpRequestIncoming): HttpResponseWrap {
     const url = parseUrl(req.url, templateRouteThreads)
     const dtype = getDtypeSdk()
 
-    if (!url.routeParams.has("account")) {
-        return simpleResponse("400 Bad Request", 400, "email account not provided")
+    const session = getAuthSession(dtype, req)
+    let haserr = validateSession(session)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
     }
-    const account = url.routeParams.get("account")
-    const ui = getUserInfo(dtype, account)
-    if (ui == null) {
-        return simpleResponse("400 Bad Request", 400, "email account not found")
+    const account = session!.username
+    haserr = connectUser(session!)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
     }
-    if (ui.token == "") {
-        return simpleResponse("401 HTTP Unauthorized", 401, "user is not logged in")
-    }
-    const token = JSON.parse<Token>(ui.token)
-    ConnectUserInternal(ui.email, token.access_token, SecretType_OAuth2)
 
     const ids = getTableIds()
     const threads = getThreads(ids, dtype, account);
     return simpleResponse("200 OK", 200, JSON.stringify<ThreadToRead[]>(threads))
+}
+
+export function connectUser(session: SessionToRead): string {
+    if (session.token != "") {
+        const token = session.parseToken()
+        ConnectUserInternal(session.username, token!.access_token, SecretType_OAuth2)
+        return ""
+    } else if (session.password != "") {
+        ConnectUserInternal(session.username, session.password, SecretType_Password)
+        return ""
+    }
+    return "unauthorized: user is not logged in"
 }
 
 export function wrapResp(data: HttpResponse): HttpResponseWrap {

@@ -166,3 +166,60 @@ export class HttpResponseWrap {
         this.data = data;
     }
 }
+
+@json
+export class RegisteredClaims {
+    constructor(
+        public issuer: string = "",
+        public subject: string = "",
+        public audience: Array<string> = [],
+        public expires_at: i64 = 0,
+        public not_before: i64 = 0,
+        public issued_at: i64 = 0,
+        public id: string = ""
+    ) {}
+}
+
+@json
+export class Claims {
+    constructor(
+        public additional: string = "",
+        public registered: RegisteredClaims = new RegisteredClaims()
+    ) {}
+}
+
+@json
+export class GenerateJWTRequest {
+    constructor(
+        public secret: Base64String = "",
+        public claims: RegisteredClaims = new RegisteredClaims(),
+        public additional_claim: string = "",
+        public signing_method: string = "HS256"
+    ) {}
+}
+
+@json
+export class GenerateJWTResponse {
+    constructor(
+        public token: string = "",
+        public error: string = ""
+    ) {}
+}
+
+@json
+export class VerifyJWTRequest {
+    constructor(
+        public secret: string = "",
+        public token: string = "",
+        public claims: RegisteredClaims = new RegisteredClaims(),
+        public additional_claim: string = ""
+    ) {}
+}
+
+@json
+export class VerifyJWTResponse {
+    constructor(
+        public valid: bool = false,
+        public error: string = ""
+    ) {}
+}

@@ -2,9 +2,9 @@ import { JSON } from "json-as";
 import { SDK } from "wasmx-env/assembly/sdk";
 import { Endpoint, OAuth2ConfigToRead } from "wasmx-env-oauth2client/assembly/types";
 import { GetRoutesResponse, RemoveRouteRequest, ROLE, RouteToRead, SetRouteRequest } from "./types";
-import { TableNameOauth2Endpoint, TableNameOauth2Providers, TableNameOAuth2UserInfo } from "./defs_oauth2";
+import { TableNameOauth2Endpoint, TableNameOauth2Providers, TableNameOAuth2Session, TableNameOAuth2UserInfo } from "./defs_oauth2";
 import { DTypeSdk } from "wasmx-dtype/assembly/sdk";
-import { EndpointToRead, UserInfoToWrite } from "./types_oauth2";
+import { EndpointToRead, SessionToRead, SessionToWrite, UserInfoToRead, UserInfoToWrite } from "./types_oauth2";
 
 export class HttpServerRegistrySdk extends SDK {
     constructor(
@@ -59,15 +59,28 @@ export function getEndpoint(dtype: DTypeSdk, provider: string): EndpointToRead |
     return response[0]
 }
 
-export function getUserInfo(dtype: DTypeSdk, email: string): UserInfoToWrite | null {
+export function getUserInfo(dtype: DTypeSdk, email: string): UserInfoToRead | null {
     const resp = dtype.Read(0, TableNameOAuth2UserInfo, `{"email":"${email}"}`)
-    const response = JSON.parse<UserInfoToWrite[]>(resp)
+    const response = JSON.parse<UserInfoToRead[]>(resp)
     if (response.length == 0) return null;
     return response[0]
 }
 
 export function setUserInfo(dtype: DTypeSdk, info: UserInfoToWrite): i64 {
     const ids = dtype.Insert(0, TableNameOAuth2UserInfo, JSON.stringify<UserInfoToWrite>(info))
+    if (ids.length == 0) return 0;
+    return ids[0]
+}
+
+export function getSession(dtype: DTypeSdk, jwttoken: string): SessionToRead | null {
+    const resp = dtype.Read(0, TableNameOAuth2Session, `{"jwttoken":"${jwttoken}"}`)
+    const response = JSON.parse<SessionToRead[]>(resp)
+    if (response.length == 0) return null;
+    return response[0]
+}
+
+export function setSession(dtype: DTypeSdk, info: SessionToWrite): i64 {
+    const ids = dtype.Insert(0, TableNameOAuth2Session, JSON.stringify<SessionToWrite>(info))
     if (ids.length == 0) return 0;
     return ids[0]
 }

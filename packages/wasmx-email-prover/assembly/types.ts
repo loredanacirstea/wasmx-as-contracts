@@ -26,11 +26,23 @@ export class RelationTypeIds {
 }
 
 @json
+export class Config {
+    session_expiration_ms: i64 = 0
+    jwt_secret: Base64String = ""
+    constructor(session_expiration_ms: i64, jwt_secret: Base64String) {
+        this.session_expiration_ms = session_expiration_ms
+        this.jwt_secret = jwt_secret
+    }
+}
+
+@json
 export class MsgInitializeRequest {
+    config: Config = new Config(0, "")
     providers: Provider[] = []
     endpoints: EndpointToWrite[] = [];
     outh2_configs: OAuth2ConfigToWrite[] = []
-    constructor(providers: Provider[], endpoints: EndpointToWrite[], outh2_configs: OAuth2ConfigToWrite[]) {
+    constructor(config: Config, providers: Provider[], endpoints: EndpointToWrite[], outh2_configs: OAuth2ConfigToWrite[]) {
+        this.config = config
         this.providers = providers;
         this.endpoints = endpoints
         this.outh2_configs = outh2_configs

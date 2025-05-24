@@ -9,12 +9,13 @@ import { ImapConnectionOauth2Request, ImapConnectionSimpleRequest, ImapFetchRequ
 import { getHttpServerSdk, LoggerDebug, LoggerDebugExtended, LoggerError, LoggerInfo, revert } from "./utils";
 import { SmtpConnectionOauth2Request, SmtpConnectionSimpleRequest } from "wasmx-env-smtp/assembly/types";
 import { saveEmail } from "./helpers";
-import { getRelationTypes, getTableIds, setRelationTypes, setTableIds } from "./storage";
+import { getRelationTypes, getTableIds, setConfig, setRelationTypes, setTableIds } from "./storage";
 import { registerOAuth2 } from "./http";
 import { EndpointToWrite, OAuth2ConfigToWrite } from "wasmx-httpserver-registry/assembly/types_oauth2";
 import { TableNameOauth2Endpoint, TableNameOauth2Providers } from "wasmx-httpserver-registry/assembly/defs_oauth2";
 
 export function Initialize(req: MsgInitializeRequest): ArrayBuffer {
+    setConfig(req.config)
     const dtype = getDtypeSdk();
     const ids = dtype.Insert(config.tableTableId, config.DTypeTableName, EmailTables)
     const tableIds = new TableIds(ids[0], ids[1], ids[2])

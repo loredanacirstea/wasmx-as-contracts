@@ -1,6 +1,14 @@
 import { JSON } from "json-as";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
-import { MsgInitializeRequest, RelationTypeIds, TableIds } from "./types";
+import { Config, MsgInitializeRequest, RelationTypeIds, TableIds } from "./types";
+
+export function setConfig(data: Config): void {
+    wasmxw.sstore("config", JSON.stringify<Config>(data))
+}
+
+export function getConfig(): Config {
+    return JSON.parse<Config>(wasmxw.sload("config"))
+}
 
 export function setTableIds(ids: TableIds): void {
     wasmxw.sstore("tableids", JSON.stringify<TableIds>(ids))
