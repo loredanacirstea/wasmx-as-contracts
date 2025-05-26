@@ -1,7 +1,7 @@
 import { JSON } from "json-as";
 import { JSON as JSONDyn } from "assemblyscript-json/assembly";
 import * as sqlw from "wasmx-env-sql/assembly/sql_wrap";
-import { base64ToString, stringToBase64, stringToBytes } from "wasmx-utils/assembly/utils";
+import { base64ToString, parseInt64, stringToBase64, stringToBytes } from "wasmx-utils/assembly/utils";
 import { MsgCloseRequest, MsgCloseResponse, MsgConnectRequest, MsgConnectResponse, MsgExecuteBatchRequest, MsgExecuteBatchResponse, MsgExecuteRequest, MsgExecuteResponse, MsgQueryRequest, MsgQueryResponse, SqlExecuteCommand } from "wasmx-env-sql/assembly/types";
 import { BuildSchemaRequest, BuildSchemaResponse, CallDataInstantiate, CallDataInitializeTokens, CloseRequest, ConnectRequest, CountRequest, CountResponse, CreateTableRequest, DeleteRequest, DTypeDb, DTypeDbConnection, DTypeField, DTypeTable, InsertRequest, MODULE_NAME, ReadFieldsRequest, ReadRequest, TableIndentifier, TableIndentifierRequired, UpdateRequest, CreateIndexesRequest, DeleteIndexesRequest, TableIndex, CreateIndexResponse, DeleteIndexResponse, GetRecordsByRelationTypeRequest, ReadRawRequest } from "./types";
 import { revert } from "./utils";
@@ -13,6 +13,7 @@ import { BigInt } from "wasmx-env/assembly/bn";
 import { Base64String } from "wasmx-env/assembly/types";
 import { AssetTables, OwnedFields, AllowanceFields, SqlCreateIndexDb1, SqlCreateIndexDb2, SqlCreateIndexDbConn1, SqlCreateIndexDbConn2, SqlCreateIndexField1, SqlCreateIndexField2, SqlCreateIndexField3, SqlCreateIndexRelation1, SqlCreateIndexRelation2, SqlCreateIndexTable1, SqlCreateIndexTable2, SqlCreateNode, SqlCreateRelation, SqlCreateRelationType, SqlCreateTableDb, SqlCreateTableDbConn, SqlCreateTableField, SqlCreateTableTable, TokenFields, IdentityTableFields, FullNameTableFields, EmailTableFields, IdentityTables, SqlCreateIndexTable, AllowanceIndexes } from "./defs";
 import { QueryRecordsByRelationTypeAndSource, QueryRecordsByRelationTypeAndTarget } from "./queries";
+import { rowsArrToObjArr } from "./helpers";
 
 export function InstantiateDType(req: CallDataInstantiate): ArrayBuffer {
     const dbfile = "dtype.db"
@@ -405,7 +406,7 @@ export function Delete(req: DeleteRequest): ArrayBuffer {
 }
 
 export function Read(req: ReadRequest): ArrayBuffer {
-    const resp = ReadInternal(req.identifier, req.data)
+    const resp = ReadInternal(req.identifier, base64ToString(req.data))
     return String.UTF8.encode(JSON.stringify<MsgQueryResponse>(resp))
 }
 
@@ -424,8 +425,54 @@ export function GetRecordsByRelationType(req: GetRecordsByRelationTypeRequest): 
     return String.UTF8.encode(JSON.stringify<MsgQueryResponse>(resp))
 }
 
+export function GetFullRecordsByRelationType(req: GetRecordsByRelationTypeRequest): ArrayBuffer {
+    const resp = GetRecordsByRelationTypeInternal(req.relationTypeId, req.relationType, req.tableId, req.recordId, req.nodeType)
+    if (resp.error != "") {
+        return String.UTF8.encode(JSON.stringify<MsgQueryResponse>(resp))
+    }
+
+    let arr = rowsArrToObjArr(base64ToString(resp.data));
+    let field = "target_record_id"
+    let fieldTableName = "target_table_name"
+    let fieldTableId = "target_table_id"
+    if (req.nodeType == "target") {
+        field = "source_record_id"
+        fieldTableName = "source_table_name"
+        fieldTableId = "source_table_id"
+    }
+    let tableName = ""
+    let tableId: i64 = 0
+    const vals: string[] = []
+    const params: string[] = []
+    for (let i = 0; i < arr.length; i ++) {
+        const idstr = arr[i].get(field)
+        if (idstr == null) {
+            revert(`result does not contain ${field}`)
+            return new ArrayBuffer(0);
+        }
+        const id = parseInt64(idstr.toString())
+        vals.push("?")
+        params.push(stringToBase64(`{"type":"INTEGER","value":${id}}`))
+        if (arr[i].get(fieldTableName) != null) {
+            tableName = arr[i].get(fieldTableName)!.toString()
+        }
+        if (arr[i].get(fieldTableId) != null) {
+            const id = arr[i].get(fieldTableId)!.toString()
+            tableId = parseInt64(id)
+        }
+    }
+    const identifier = new TableIndentifier(0, 0, tableId, "", "", tableName)
+
+    const q = `SELECT * FROM ${tableName} WHERE id IN (${vals.join(",")})`
+    console.log("--GetFullRecordsByRelationType query--" +q + "--" + params.join(","))
+    const response = ReadRawInternal(identifier, q, params)
+    console.log("--GetFullRecordsByRelationType resp.error--" + response.error)
+    console.log("--GetFullRecordsByRelationType resp.data--" + response.data)
+    return String.UTF8.encode(JSON.stringify<MsgQueryResponse>(response))
+}
+
 export function Count(req: CountRequest): ArrayBuffer {
-    const resp = ReadInternal(req.identifier, req.data)
+    const resp = ReadInternal(req.identifier, base64ToString(req.data))
     if (resp.error != "") {
         return String.UTF8.encode(JSON.stringify<CountResponse>(new CountResponse(resp.error, 0)))
     }
@@ -708,11 +755,11 @@ export function DeleteInternal(req: DeleteRequest): MsgExecuteBatchResponse {
 }
 
 // TODO batch reads
-export function ReadInternal(identifier: TableIndentifier, data: Base64String): MsgQueryResponse {
+export function ReadInternal(identifier: TableIndentifier, data: string): MsgQueryResponse {
     const identif = getIdentifier(identifier);
     const fields = getTableFields(identif.table_id);
     if (fields.length == 0) revert(`table with no fields`)
-    const params = jsonToQueryParams(base64ToString(data), fields)
+    const params = jsonToQueryParams(data, fields)
     if (params.length == 0) return new MsgQueryResponse("", "")
     const param = params[0]
 
@@ -848,11 +895,15 @@ function getIdentifier(identif: TableIndentifier): TableIndentifierRequired {
     let db_id = identif.db_id;
     let table_name = identif.table_name;
     let table_id = identif.table_id;
+
+    let dbrow: DTypeDb | null = null;
+    let tablerow: DTypeTable | null = null;
+
     if (conn_name == "") {
         if (identif.db_connection_id > 0) {
             conn_name = getDbConnectionName(identif.db_connection_id);
         } else if (identif.db_id) {
-            const dbrow = getDb(identif.db_id);
+            dbrow = getDb(identif.db_id);
             conn_name = getDbConnectionName(dbrow.connection_id);
             if (db_name == "") {
                 db_name = dbrow.name;
@@ -862,7 +913,7 @@ function getIdentifier(identif: TableIndentifier): TableIndentifierRequired {
     }
     if (db_name == "") {
         if (identif.db_id > 0) {
-            const dbrow = getDb(identif.db_id);
+            dbrow = getDb(identif.db_id);
             db_name = dbrow.name;
             if (conn_name == "") {
                 conn_name = getDbConnectionName(dbrow.connection_id);
@@ -871,10 +922,10 @@ function getIdentifier(identif: TableIndentifier): TableIndentifierRequired {
     }
     if (table_name == "") {
         if (identif.table_id > 0) {
-            const tablerow = getTable(identif.table_id);
+            tablerow = getTable(identif.table_id);
             table_name = tablerow.name;
             if (db_name == "") {
-                const dbrow = getDb(tablerow.db_id);
+                dbrow = getDb(tablerow.db_id);
                 db_name = dbrow.name;
                 db_id = dbrow.id;
                 if (conn_name == "") {
@@ -884,12 +935,31 @@ function getIdentifier(identif: TableIndentifier): TableIndentifierRequired {
         }
     }
     if (db_id == 0 && db_name != "") {
-        const dbrow = getDbByName(db_name)
+        dbrow = getDbByName(db_name)
         db_id = dbrow.id;
+        if (conn_name == "") {
+            conn_name = getDbConnectionName(dbrow.connection_id);
+        }
     }
     if (table_id == 0 && table_name != "" && db_id > 0) {
-        const tablerow = getTableByName(identif.table_name, db_id);
+        tablerow = getTableByName(identif.table_name, db_id);
         table_id = tablerow.id
+    }
+
+    if (db_id == 0 && table_id != 0) {
+        if (tablerow == null) {
+            tablerow = getTable(table_id)
+        }
+        db_id = tablerow.db_id;
+        if (db_name == "") {
+            dbrow = getDb(db_id)
+            db_name = dbrow.name
+        }
+        if (conn_name == "") {
+            if (dbrow != null) {
+                conn_name = getDbConnectionName(dbrow.connection_id);
+            }
+        }
     }
 
     if (conn_name == "") revert(`could not determine connection name`)

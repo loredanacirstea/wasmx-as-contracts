@@ -58,6 +58,17 @@ export class DTypeSdk extends SDK {
         return arr;
     }
 
+    GetFullRecordsByRelationType(relationTypeId: i64, relationType: string, tableId: i64, recordId: i64, nodeType: string): string {
+        const calld = JSON.stringify<GetRecordsByRelationTypeRequest>(new GetRecordsByRelationTypeRequest(relationTypeId, relationType, tableId, recordId, nodeType))
+
+        const data = this.querySafe(`{"GetFullRecordsByRelationType":${calld}}`)
+        const result = JSON.parse<MsgQueryResponse>(data)
+        if (result.error != "") {
+            this.revert(`failed to decode ${data} to MsgQueryResponse: ${result.error}`)
+        }
+        return base64ToString(result.data);
+    }
+
     Read(tableId: i64, tableName: string, cond: string): string {
         const calld = JSON.stringify<ReadRequest>(new ReadRequest(
             getDTypeIdentifier(tableId, tableName),
@@ -136,6 +147,25 @@ export class DTypeSdk extends SDK {
             stringToBase64(obj),
         ))
         const data = this.executeSafe(`{"Insert":${calld}}`)
+        const response = JSON.parse<MsgExecuteBatchResponse>(data)
+        if (response.error != "") {
+            this.revert(response.error)
+        }
+        if (response.responses.length == 0) this.revert(`no insert performed`)
+        let ids: i64[] = []
+        for (let i = 0; i < response.responses.length; i++) {
+            ids.push(response.responses[i].last_insert_id)
+        }
+        return ids
+    }
+
+    InsertOrReplace(tableId: i64, tableName: string, obj: string): i64[] {
+        this.LoggerDebugExtended("dtype.InsertOrReplace", ["tableId", tableId.toString(), "tableName", tableName, "data", obj])
+        const calld = JSON.stringify<InsertRequest>(new InsertRequest(
+            getDTypeIdentifier(tableId, tableName),
+            stringToBase64(obj),
+        ))
+        const data = this.executeSafe(`{"InsertOrReplace":${calld}}`)
         const response = JSON.parse<MsgExecuteBatchResponse>(data)
         if (response.error != "") {
             this.revert(response.error)

@@ -1,5 +1,6 @@
 export const QueryRecordsByRelationTypeAndSource = function(field: string): string {
     return `SELECT
+  t_target.id AS target_table_id,
   t_target.name AS target_table_name,
   n_target.record_id AS target_record_id,
   n_target.name AS target_node_name
@@ -18,6 +19,7 @@ WHERE
 
 export const QueryRecordsByRelationTypeAndTarget = function(field: string): string {
     return `SELECT
+  t_source.id AS source_table_id,
   t_source.name AS source_table_name,
   n_source.record_id AS source_record_id,
   n_source.name AS source_node_name

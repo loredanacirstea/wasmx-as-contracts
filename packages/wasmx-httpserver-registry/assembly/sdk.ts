@@ -67,7 +67,7 @@ export function getUserInfo(dtype: DTypeSdk, email: string): UserInfoToRead | nu
 }
 
 export function setUserInfo(dtype: DTypeSdk, info: UserInfoToWrite): i64 {
-    const ids = dtype.Insert(0, TableNameOAuth2UserInfo, JSON.stringify<UserInfoToWrite>(info))
+    const ids = dtype.InsertOrReplace(0, TableNameOAuth2UserInfo, JSON.stringify<UserInfoToWrite>(info))
     if (ids.length == 0) return 0;
     return ids[0]
 }
@@ -80,7 +80,7 @@ export function getSession(dtype: DTypeSdk, jwttoken: string): SessionToRead | n
 }
 
 export function setSession(dtype: DTypeSdk, info: SessionToWrite): i64 {
-    const ids = dtype.Insert(0, TableNameOAuth2Session, JSON.stringify<SessionToWrite>(info))
+    const ids = dtype.InsertOrReplace(0, TableNameOAuth2Session, JSON.stringify<SessionToWrite>(info))
     if (ids.length == 0) return 0;
     return ids[0]
 }

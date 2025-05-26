@@ -108,6 +108,26 @@ export class ImapListenResponse {
 }
 
 @json
+export class ImapCountRequest {
+    id: string = "";
+    folder: string = "";
+    constructor(id: string, folder: string) {
+        this.id = id;
+        this.folder = folder;
+    }
+}
+
+@json
+export class ImapCountResponse {
+    error: string = "";
+    count: i64 = 0
+    constructor(error: string, count: i64) {
+        this.error = error;
+        this.count = count;
+    }
+}
+
+@json
 export class FetchFilter {
     limit: u32 = 0;
     start: u32 = 0;

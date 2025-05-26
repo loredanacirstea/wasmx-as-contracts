@@ -1,11 +1,15 @@
 import { JSON } from "json-as";
 import { Address, Email, Envelope } from "wasmx-env-imap/assembly/types";
-import { EmailToRead, EmailToWrite, LastKnownReferenceResult, MissingRefsWrap, RelationTypeIds, SaveEmailResponse, TableIds, ThreadToRead, ThreadToWrite, UpdateThreadAddEmail } from "./types";
+import { EmailToRead, EmailToWrite, LastKnownReferenceResult, MissingRefsWrap, RelationTypeIds, SaveEmailResponse, TableIds, ThreadToRead, ThreadToWrite, ThreadWithEmails, UpdateThreadAddEmail } from "./types";
 import { LoggerDebug, LoggerDebugExtended, revert } from "./utils";
 import { TableEmailName, TableThreadName } from "./defs";
 import { parseInt64, stringToBase64 } from "wasmx-utils/assembly/utils";
 import { DTypeNodeName, DTypeRelationName, tableNodeId, tableRelationId } from "wasmx-dtype/assembly/config";
 import { DTypeSdk } from "wasmx-dtype/assembly/sdk";
+
+export function getConnectionId(username: string): string {
+    return "conn_" + username
+}
 
 // TODO store attachments
 export function saveEmail(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTypeIds, owner: string, email: Email): SaveEmailResponse {
@@ -184,6 +188,16 @@ export function getEmailThreadIds(dtype: DTypeSdk, ids: TableIds, reltypeIds: Re
     return threadIds;
 }
 
+export function getThreadEmails(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTypeIds, threadId: i64): Email[] {
+    const response = dtype.GetFullRecordsByRelationType(reltypeIds.contains, "", ids.thread, threadId, "source")
+    const emailsRead = JSON.parse<EmailToRead[]>(response)
+    const emails: Email[] = [];
+    for (let i = 0; i < emailsRead.length; i ++) {
+        emails.push(emailsRead[i].toEmail())
+    }
+    return emails;
+}
+
 export function getLastKnownReference(
     dtype: DTypeSdk,
     ids: TableIds,
@@ -248,6 +262,23 @@ export function getEmailById(ids: TableIds, dtype: DTypeSdk, owner: string, id: 
     return emails[0]
 }
 
+export function getThreadWithEmailsById(ids: TableIds, dtype: DTypeSdk, reltypeIds: RelationTypeIds, owner: string, id: i64): ThreadWithEmails | null {
+    const thread = getThreadById(ids, dtype, owner, id)
+    if (thread == null) return null;
+
+    const resp = getThreadEmails(dtype, ids, reltypeIds, id)
+
+    return new ThreadWithEmails(
+        thread.id,
+        thread.name,
+        thread.last_email_message_id,
+        thread.owner,
+        thread.email_message_ids,
+        thread.missing_refs,
+        resp,
+    )
+}
+
 export function getThreadById(ids: TableIds, dtype: DTypeSdk, owner: string, id: i64): ThreadToRead | null {
     const resp = dtype.Read(ids.thread, TableThreadName, `{"owner":"${owner}","id":${id}}`)
     const data = JSON.parse<ThreadToRead[]>(resp)
@@ -301,6 +332,7 @@ export function EmailRecordfromEmail(email: Email, owner: string): EmailToWrite 
         header_References,
         JSON.stringify<string[]>(email.flags),
         getEmailSummary(email),
+        email.rfc822Size,
     )
 }
 

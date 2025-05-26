@@ -24,6 +24,7 @@ export class CallData {
     ReadFields: ReadFieldsRequest | null = null;
     ReadRaw: ReadRawRequest | null = null;
     GetRecordsByRelationType: GetRecordsByRelationTypeRequest | null = null;
+    GetFullRecordsByRelationType: GetRecordsByRelationTypeRequest | null = null;
     Count: CountRequest | null = null;
     BuildSchema: BuildSchemaRequest | null = null;
     Add: AddRequest | null = null;

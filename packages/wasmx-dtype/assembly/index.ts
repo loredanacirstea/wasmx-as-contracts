@@ -1,7 +1,7 @@
 import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap, getCallDataInstantiateWrap } from './calldata';
-import { add, BuildSchema, Close, Connect, Count, CreateTable, Delete, InitializeIdentity, Insert, InsertOrReplace, InstantiateDType, InitializeTokens, move, Read, ReadFields, sub, Update, GetRecordsByRelationType, ReadRaw } from "./actions";
+import { add, BuildSchema, Close, Connect, Count, CreateTable, Delete, InitializeIdentity, Insert, InsertOrReplace, InstantiateDType, InitializeTokens, move, Read, ReadFields, sub, Update, GetRecordsByRelationType, ReadRaw, GetFullRecordsByRelationType } from "./actions";
 import { revert } from "./utils";
 
 export function wasmx_env_2(): void {}
@@ -36,6 +36,8 @@ export function main(): void {
     result = ReadFields(calld.ReadFields!);
   } else if (calld.GetRecordsByRelationType !== null) {
     result = GetRecordsByRelationType(calld.GetRecordsByRelationType!);
+  } else if (calld.GetFullRecordsByRelationType !== null) {
+    result = GetFullRecordsByRelationType(calld.GetFullRecordsByRelationType!);
   } else if (calld.BuildSchema !== null) {
     result = BuildSchema(calld.BuildSchema!);
   } else if (calld.Connect !== null) {

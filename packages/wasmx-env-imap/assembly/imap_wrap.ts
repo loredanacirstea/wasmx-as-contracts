@@ -1,7 +1,7 @@
 import { JSON } from "json-as";
 import { LoggerDebugExtended } from "wasmx-env/assembly/wasmx_wrap"
 import * as imap from './imap';
-import { Email, ImapCloseRequest, ImapCloseResponse, ImapConnectionOauth2Request, ImapConnectionResponse, ImapConnectionSimpleRequest, ImapCreateFolderRequest, ImapCreateFolderResponse, ImapFetchRequest, ImapFetchResponse, ImapListenRequest, ImapListenResponse, MODULE_NAME } from "./types";
+import { Email, ImapCloseRequest, ImapCloseResponse, ImapConnectionOauth2Request, ImapConnectionResponse, ImapConnectionSimpleRequest, ImapCountRequest, ImapCountResponse, ImapCreateFolderRequest, ImapCreateFolderResponse, ImapFetchRequest, ImapFetchResponse, ImapListenRequest, ImapListenResponse, MODULE_NAME } from "./types";
 
 export function ConnectWithPassword(req: ImapConnectionSimpleRequest, moduleName: string = ""): ImapConnectionResponse {
     const requestStr = JSON.stringify<ImapConnectionSimpleRequest>(req);
@@ -24,6 +24,14 @@ export function Close(req: ImapCloseRequest, moduleName: string = ""): ImapClose
     LoggerDebugExtended(`${MODULE_NAME}:${moduleName}`, "Close", ["request", requestStr])
     const responsebz = imap.Close(String.UTF8.encode(requestStr));
     const resp = JSON.parse<ImapCloseResponse>(String.UTF8.decode(responsebz));
+    return resp
+}
+
+export function Count(req: ImapCountRequest, moduleName: string = ""): ImapCountResponse {
+    const requestStr = JSON.stringify<ImapCountRequest>(req);
+    LoggerDebugExtended(`${MODULE_NAME}:${moduleName}`, "Count", ["request", requestStr])
+    const responsebz = imap.Count(String.UTF8.encode(requestStr));
+    const resp = JSON.parse<ImapCountResponse>(String.UTF8.decode(responsebz));
     return resp
 }
 

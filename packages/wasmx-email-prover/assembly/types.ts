@@ -1,7 +1,10 @@
 import { JSON } from "json-as";
-import { SeqSetRange, UidSetRange } from "wasmx-env-imap/assembly/types";
+import { Email, Envelope, SeqSetRange, UidSetRange } from "wasmx-env-imap/assembly/types";
 import { Base64String } from "wasmx-env/assembly/types";
 import { EndpointToWrite, OAuth2ConfigToWrite } from "wasmx-httpserver-registry/assembly/types_oauth2";
+import { HttpResponseWrap } from "wasmx-env-httpserver/assembly/types";
+import { SessionToWrite } from "wasmx-httpserver-registry/assembly/types_oauth2";
+import { base64ToString } from "wasmx-utils/assembly/utils";
 
 export const MODULE_NAME = "email-prover"
 
@@ -218,6 +221,7 @@ export class EmailToWrite {
     header_References: string = ""
     flags: string = ""
     name: string = ""
+    rfc822_size: i64 = 0
     constructor(
         uid: i64,
         owner: string,
@@ -232,6 +236,7 @@ export class EmailToWrite {
         header_References: string,
         flags: string,
         name: string,
+        rfc822_size: i64,
     ) {
         this.uid = uid
         this.owner = owner
@@ -246,6 +251,7 @@ export class EmailToWrite {
         this.header_References = header_References
         this.flags = flags
         this.name = name
+        this.rfc822_size = rfc822_size
     }
 }
 
@@ -267,6 +273,7 @@ export class EmailToRead extends EmailToWrite {
         header_References: string,
         flags: string,
         name: string,
+        rfc822_size: i64,
     ) {
         super(
             uid,
@@ -282,6 +289,7 @@ export class EmailToRead extends EmailToWrite {
             header_References,
             flags,
             name,
+            rfc822_size,
         )
         this.id = id
     }
@@ -302,6 +310,22 @@ export class EmailToRead extends EmailToWrite {
             data.header_References,
             data.flags,
             data.name,
+            data.rfc822_size,
+        )
+    }
+
+    toEmail(): Email {
+        return new Email(
+            u32(this.uid),
+            JSON.parse<string[]>(this.flags),
+            new Date(this.timestamp),
+            this.rfc822_size,
+            JSON.parse<Envelope>(this.envelope),
+            JSON.parse<Map<string, string[]>>(this.header),
+            this.body,
+            [], // TODO attachments
+            base64ToString(this.raw),
+            this.bh,
         )
     }
 }
@@ -350,6 +374,29 @@ export class ThreadToRead {
         this.owner = owner
         this.email_message_ids = email_message_ids
         this.missing_refs = missing_refs
+    }
+}
+
+@json
+export class ThreadWithEmails extends ThreadToRead {
+    id: i64 = 0
+    name: string = ""
+    last_email_message_id: i64 = 0
+    owner: string = ""
+    email_message_ids: string = ""
+    missing_refs: string = ""
+    children: Email[] = []
+    constructor(
+        id: i64,
+        name: string,
+        last_email_message_id: i64,
+        owner: string,
+        email_message_ids: string,
+        missing_refs: string,
+        children: Email[],
+    ) {
+        super(id, name, last_email_message_id, owner, email_message_ids, missing_refs)
+        this.children = children
     }
 }
 
@@ -438,11 +485,34 @@ export class MsgMetadata {
     }
 }
 
+@json
 export class SaveEmailResponse {
     email: EmailToRead | null
     error: string
     constructor(email: EmailToRead | null, error: string) {
         this.email = email
         this.error = error
+    }
+}
+
+@json
+export class HandleOAuth2CallbackResponse {
+    error: HttpResponseWrap | null = null
+    session: SessionToWrite | null = null
+    constructor(error: HttpResponseWrap | null, session: SessionToWrite | null) {
+        this.error = error
+        this.session = session
+    }
+}
+
+@json
+export class ExtendedResponse {
+    data: JSON.Raw | null = null
+    menu: string = ""
+    template: string = ""
+    constructor(data: JSON.Raw | null = null, menu: string = "", template: string = "") {
+        this.data = data
+        this.menu = menu
+        this.template = template
     }
 }

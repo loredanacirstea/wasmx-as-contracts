@@ -6,9 +6,9 @@ import { DTypeSdk } from "wasmx-dtype/assembly/sdk";
 import { MsgCacheEmailRequest, MsgInitializeRequest, MsgListenEmailRequest, MsgRegisterProviderRequest, MsgSendEmailRequest, MsgConnectUserRequest, TableIds, MODULE_NAME, Provider, RelationTypeIds, MsgIncomingEmail, MsgExpunge, MsgMetadata, RegisterOauth2ConfigsRequest, EmailToWrite, EmailToRead } from "./types";
 import { EmailTables, getEmailFields, getProviderFields, getThreadFields, TableProviderName } from "./defs";
 import { ImapConnectionOauth2Request, ImapConnectionSimpleRequest, ImapFetchRequest, ImapListenRequest, SeqSetRange, UidSetRange } from "wasmx-env-imap/assembly/types";
-import { getHttpServerSdk, LoggerDebug, LoggerDebugExtended, LoggerError, LoggerInfo, revert } from "./utils";
+import { getDtypeSdk, getHttpServerSdk, LoggerDebug, LoggerDebugExtended, LoggerError, LoggerInfo, revert } from "./utils";
 import { SmtpConnectionOauth2Request, SmtpConnectionSimpleRequest } from "wasmx-env-smtp/assembly/types";
-import { saveEmail } from "./helpers";
+import { getConnectionId, saveEmail } from "./helpers";
 import { getRelationTypes, getTableIds, setConfig, setRelationTypes, setTableIds } from "./storage";
 import { registerOAuth2 } from "./http";
 import { EndpointToWrite, OAuth2ConfigToWrite } from "wasmx-httpserver-registry/assembly/types_oauth2";
@@ -177,12 +177,4 @@ export function CacheEmailInternal(
         emails.push(respsave.email!);
     }
     return emails;
-}
-
-function getConnectionId(username: string): string {
-    return "conn_" + username
-}
-
-function getDtypeSdk(): DTypeSdk {
-    return new DTypeSdk(MODULE_NAME, revert, LoggerInfo, LoggerError, LoggerDebug, LoggerDebugExtended);
 }
