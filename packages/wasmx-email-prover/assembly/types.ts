@@ -155,25 +155,19 @@ export class MsgListenEmailResponse {
 }
 
 @json
-export class MsgSendEmailRequest {
-    user_id: i64 = 0
-    username: string = ""
+export class HttpEmailNewRequest {
     subject: string = ""
     body: string = ""
     to: string[] = []
-    cc: string[] = []
-    bcc: string[] = []
+    cc: string[] | null = null
+    bcc: string[] | null = null
     constructor(
-        user_id: i64,
-        username: string,
         subject: string,
         body: string,
         to: string[],
-        cc: string[],
-        bcc: string[],
+        cc: string[] | null,
+        bcc: string[] | null,
     ) {
-        this.user_id = user_id
-        this.username = username
         this.subject = subject
         this.body = body
         this.to = to
@@ -181,6 +175,22 @@ export class MsgSendEmailRequest {
         this.bcc = bcc
     }
 }
+
+@json
+export class HttpEmailForwardRequest {
+    additionalSubject: string = ""
+    to: string[] = []
+    constructor(
+        additionalSubject: string,
+        to: string[],
+    ) {
+        this.additionalSubject = additionalSubject
+        this.to = to
+    }
+}
+
+@json
+export class MsgSendEmailRequest extends HttpEmailNewRequest {}
 
 @json
 export class MsgSendEmailResponse {
@@ -516,3 +526,4 @@ export class ExtendedResponse {
         this.template = template
     }
 }
+

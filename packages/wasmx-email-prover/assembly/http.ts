@@ -2,6 +2,9 @@ import { JSON } from "json-as";
 import { HttpRequestIncoming, HttpResponse, HttpResponseWrap } from "wasmx-env-httpserver/assembly/types";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as imapw from "wasmx-env-imap/assembly/imap_wrap";
+import * as smtpw from "wasmx-env-smtp/assembly/smtp_wrap";
+import { Address, Envelope } from "wasmx-env-imap/assembly/types";
+import { EmailToSend, SmtpBuildMailRequest, SmtpSendMailRequest } from "wasmx-env-smtp/assembly/types";
 import { getProvider, getEndpoint, HttpServerRegistrySdk, setUserInfo, getUserInfo, setSession, getSession } from "wasmx-httpserver-registry/assembly/sdk";
 import { SetRouteRequest } from "wasmx-httpserver-registry/assembly/types";
 import { ParsedUrl, parseUrl } from "wasmx-httpserver-registry/assembly/url";
@@ -14,7 +17,7 @@ import { base64ToString, parseInt32, parseInt64, stringToBase64 } from "wasmx-ut
 import { DTypeSdk } from "wasmx-dtype/assembly/sdk";
 import { ImapCountRequest, UidSetRange, UserInfo } from "wasmx-env-imap/assembly/types";
 import { CacheEmailInternal, ConnectUserInternal } from "./actions";
-import { EmailToRead, EmailToWrite, SecretType_OAuth2, SecretType_Password, ThreadToRead, HandleOAuth2CallbackResponse, ExtendedResponse, ThreadWithEmails } from "./types";
+import { EmailToRead, EmailToWrite, SecretType_OAuth2, SecretType_Password, ThreadToRead, HandleOAuth2CallbackResponse, ExtendedResponse, ThreadWithEmails, HttpEmailNewRequest, HttpEmailForwardRequest } from "./types";
 import { getConnectionId, getEmailById, getThreadById, getThreads, getThreadWithEmailsById } from "./helpers";
 import { getConfig, getRelationTypes, getTableIds } from "./storage";
 import { LoggedMenu } from "./menu/logged";
@@ -62,6 +65,11 @@ const templateCount = `${routeCount}/{folder}`
 const routeThreadWithMenu = `/email/thread-with-menu`
 const templateThreadWithMenu = `${routeThreadWithMenu}/{id}`
 
+const routeEmailNew = "/email/new"
+const routeEmailForward = `/email/forward`
+const templateEmailForward = `${routeEmailForward}/{id}`
+// /email/{id}/forward
+
 // const routeEmails = "/emails"
 // const routeEmailWithMenu = `/email/email-with-menu`
 // const routeDbThreads = `/email/db/threads`
@@ -84,6 +92,8 @@ const baseRoutes: string[] = [
     routeThreads,
     routeThread, // last
 
+    routeEmailNew,
+    routeEmailForward,
 
     // routeDbThreads,
     // routeDbThread,
@@ -107,6 +117,9 @@ export function registerOAuth2(httpserver: HttpServerRegistrySdk, dtype: DTypeSd
 
     httpserver.SetRoute(new SetRouteRequest(routeCount, addr, false, ""))
     httpserver.SetRoute(new SetRouteRequest(routeThreadWithMenu, addr, false, ""))
+
+    httpserver.SetRoute(new SetRouteRequest(routeEmailNew, addr, false, ""))
+    httpserver.SetRoute(new SetRouteRequest(routeEmailForward, addr, false, ""))
 }
 
 export function HttpRequestHandler(req: HttpRequestIncoming): ArrayBuffer {
@@ -140,6 +153,10 @@ export function handleRoute(baseUrl: string, req: HttpRequestIncoming): HttpResp
     if (baseUrl == routeThreads) return handleRouteThreads(req);
     if (baseUrl == routeThreadWithMenu) return handleRouteThreadWithMenu(req);
     if (baseUrl == routeThread) return handleRouteThread(req);
+
+    if (baseUrl == routeEmailNew) return handleEmailNew(req);
+    if (baseUrl == routeEmailForward) return handleEmailForward(req);
+
     return notFoundResponse()
 }
 
@@ -573,6 +590,145 @@ export function handleRouteThreadWithMenu(req: HttpRequestIncoming): HttpRespons
     return jsonResponse(JSON.stringify<ExtendedResponse>(resp))
 }
 
+export function handleEmailNew(req: HttpRequestIncoming): HttpResponseWrap {
+    const dtype = getDtypeSdk()
+    const session = getAuthSession(dtype, req)
+    let haserr = validateSession(session)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
+    }
+    const username = session!.username
+    haserr = connectUser(session!)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
+    }
+    const connId = getConnectionId(username)
+    const emailPart = JSON.parse<HttpEmailNewRequest>(base64ToString(req.data))
+
+    const ui = getUserInfo(dtype, username)
+    let name = ""
+    if (ui && ui.name) {
+        name = ui.name
+    }
+
+    const to: Address[] = []
+    for (let i = 0; i < emailPart.to.length; i++) {
+        to.push(Address.fromString(emailPart.to[i], ""))
+    }
+    let cc: Address[] | null = null;
+    if (emailPart.cc != null) {
+        cc = [];
+        for (let i = 0; i < emailPart.cc!.length; i++) {
+            cc.push(Address.fromString(emailPart.cc![i], ""))
+        }
+    }
+    let bcc: Address[] | null = null;
+    if (emailPart.bcc != null) {
+        bcc = [];
+        for (let i = 0; i < emailPart.bcc!.length; i++) {
+            bcc.push(Address.fromString(emailPart.bcc![i], ""))
+        }
+    }
+
+    const envelope =  new Envelope(
+        new Date(Date.now()),
+        emailPart.subject,
+        [Address.fromString(username, name)],
+        [Address.fromString(username, name)],
+        [],
+        to,
+        cc,
+        bcc,
+        null,
+        "",
+    )
+    const header = new Map<string, Array<string>>()
+    const email = new EmailToSend(
+        envelope,
+        header,
+        emailPart.body,
+        [], // TODO attachments
+    )
+    // TODO build should be in the contract
+    const resp = smtpw.BuildMail(new SmtpBuildMailRequest(email))
+    if (resp.error != "") {
+        return simpleResponse("500 Internal Server Error", 500, resp.error)
+    }
+
+    const response = smtpw.SendMail(new SmtpSendMailRequest(connId, username, emailPart.to, resp.data))
+    if (response.error != "") {
+        return simpleResponse("500 Internal Server Error", 500, response.error)
+    }
+    return jsonResponse(`{"success":true}`)
+}
+
+export function handleEmailForward(req: HttpRequestIncoming): HttpResponseWrap {
+    const url = parseUrl(req.url, templateEmailForward)
+    const dtype = getDtypeSdk()
+    const session = getAuthSession(dtype, req)
+    let haserr = validateSession(session)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
+    }
+    const username = session!.username
+    haserr = connectUser(session!)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
+    }
+
+    if (!url.routeParams.has("id")) {
+        return simpleResponse("400 Bad Request", 400, "no id provider")
+    }
+    const idstr = url.routeParams.get("id")
+    if (idstr == "") {
+        return simpleResponse("400 Bad Request", 400, "no id provider")
+    }
+    const uid = parseInt64(idstr)
+
+    // const email = parseEmailMessage(rawEmailString);
+    // const serialized = serializeEmailMessage(email);
+
+    // const email = getEmailById
+
+    // const connId = getConnectionId(username)
+    // const emailPart = JSON.parse<HttpEmailForwardRequest>(base64ToString(req.data))
+    // const to: Address[] = []
+    // for (let i = 0; i < emailPart.to.length; i++) {
+    //     to.push(Address.fromString(emailPart.to[i]))
+    // }
+
+    // const envelope =  new EnvelopeSmtp(
+    //     new Date(Date.now()),
+    //     emailPart.subject,
+    //     [Address.fromString(username)],
+    //     [Address.fromString(username)],
+    //     [],
+    //     to,
+    //     cc,
+    //     bcc,
+    //     null,
+    //     "",
+    // )
+    // const header = new Map<string, Array<string>>()
+    // const email = new EmailSmtp(
+    //     envelope,
+    //     header,
+    //     emailPart.body,
+    //     [], // TODO attachments
+    // )
+    // // TODO build should be in the contract
+    // const resp = smtpw.BuildMail(new SmtpBuildMailRequest(email))
+    // if (resp.error != "") {
+    //     return simpleResponse("500 Internal Server Error", 500, resp.error)
+    // }
+
+    // const response = smtpw.SendMail(new SmtpSendMailRequest(connId, username, emailPart.to, resp.data))
+    // if (response.error != "") {
+    //     return simpleResponse("500 Internal Server Error", 500, response.error)
+    // }
+    return jsonResponse(`{"success":true}`)
+}
+
 export function connectUser(session: SessionToRead): string {
     if (session.token != "") {
         const token = session.parseToken()
@@ -592,6 +748,12 @@ export function wrapResp(data: HttpResponse): HttpResponseWrap {
 export function jsonResponse(data: string): HttpResponseWrap {
     const header = new Map<string,string[]>()
     header.set("Content-Type", ["application/json"])
+    return wrapResp(new HttpResponse("200 OK", 200, null, stringToBase64(data), ""))
+}
+
+export function textResponse(data: string): HttpResponseWrap {
+    const header = new Map<string,string[]>()
+    header.set("Content-Type", ["text/plain"])
     return wrapResp(new HttpResponse("200 OK", 200, null, stringToBase64(data), ""))
 }
 

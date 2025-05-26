@@ -101,7 +101,7 @@ export const LoggedMenu = `{
         "loaded": true,
         "url": "",
         "action": {
-          "url": "http://localhost:9999/email",
+          "url": "http://localhost:9999/email/new",
           "request": {
               "method": "POST",
               "headers": {

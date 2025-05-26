@@ -12,7 +12,7 @@ export const EmailMenu = `{
         "loaded": true,
         "url": "",
         "action": {
-            "url": "http://localhost:9999/email/{id}/forward",
+            "url": "http://localhost:9999/email/forward/{id}",
             "request": {
                 "method": "POST",
                 "headers": {

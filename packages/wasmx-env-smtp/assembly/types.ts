@@ -1,5 +1,6 @@
 import { JSON } from "json-as";
 import { Base64String } from "wasmx-env/assembly/types";
+import { Attachment, Envelope } from "wasmx-env-imap/assembly/types";
 
 export const MODULE_NAME = "wasmx-env-smtp"
 
@@ -213,76 +214,7 @@ export class SmtpSupportsAuthResponse {
 }
 
 @json
-export class Attachment {
-    filename: string = "";
-    content_type: string = "";
-    data: Base64String = "";
-
-    constructor(filename: string, content_type: string, data: Base64String) {
-        this.filename = filename;
-        this.content_type = content_type;
-        this.data = data;
-    }
-}
-
-export type Flag = string;
-
-@json
-export class Address {
-    Name: string = "";
-    Mailbox: string = "";
-    Host: string = "";
-    constructor(
-        name: string,
-        mailbox: string,
-        host: string,
-    ) {
-        this.Name = name
-        this.Name = mailbox
-        this.Name = host
-    }
-}
-
-@json
-export class Envelope {
-    Date: Date = new Date(0);
-    Subject: string = "";
-    From: Array<Address> = [];
-    Sender: Array<Address> = [];
-    ReplyTo: Array<Address> = [];
-    To: Array<Address> = [];
-    Cc: Array<Address> | null = null;
-    Bcc: Array<Address>| null = null;
-    InReplyTo: Array<string>| null = null;
-    MessageID: string = "";
-
-    constructor(
-        date: Date,
-        subject: string,
-        from: Array<Address>,
-        sender: Array<Address>,
-        reply_to: Array<Address>,
-        to: Array<Address>,
-        cc: Array<Address> | null,
-        bcc: Array<Address> | null,
-        in_reply_to: Array<string> | null,
-        message_id: string,
-    ) {
-        this.Date = date;
-        this.Subject = subject;
-        this.From = from;
-        this.Sender = sender;
-        this.ReplyTo = reply_to;
-        this.To = to;
-        this.Cc = cc;
-        this.Bcc = bcc;
-        this.InReplyTo = in_reply_to;
-        this.MessageID = message_id;
-    }
-}
-
-@json
-export class Email {
+export class EmailToSend {
     envelope: Envelope | null = null;
     header: Map<string, Array<string>> = new Map<string, Array<string>>();
     body: string = "";
@@ -302,8 +234,8 @@ export class Email {
 
 @json
 export class SmtpBuildMailRequest {
-    email: Email;
-    constructor(email: Email) {
+    email: EmailToSend;
+    constructor(email: EmailToSend) {
         this.email = email
     }
 }

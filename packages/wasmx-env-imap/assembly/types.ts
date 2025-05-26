@@ -283,6 +283,10 @@ export class Attachment {
         this.content_type = content_type;
         this.data = data;
     }
+
+    static empty(): Attachment {
+        return new Attachment("", "", "");
+    }
 }
 
 export type Flag = string;
@@ -298,8 +302,24 @@ export class Address {
         host: string,
     ) {
         this.Name = name
-        this.Name = mailbox
-        this.Name = host
+        this.Mailbox = mailbox
+        this.Host = host
+    }
+
+    static empty(): Address {
+        return new Address("", "", "");
+    }
+
+    static fromString(account: string, name: string): Address {
+        const parts = account.split("@")
+        return new Address(name, parts[0], parts[1])
+    }
+
+    toString(): string {
+        if (this.Name.length > 0) {
+            return `${this.Name} <${this.Mailbox}@${this.Host}>`;
+        }
+        return `${this.Mailbox}@${this.Host}`;
     }
 }
 
@@ -339,6 +359,10 @@ export class Envelope {
         this.InReplyTo = in_reply_to;
         this.MessageID = message_id;
     }
+
+    static empty(): Envelope {
+        return new Envelope(new Date(0), "", [], [], [], [], null, null, null, "");
+    }
 }
 
 @json
@@ -376,6 +400,10 @@ export class Email {
         this.attachments = attachments;
         this.raw = raw;
         this.bh = bh;
+    }
+
+    static empty(): Email {
+        return new Email(0, [], new Date(0), 0, Envelope.empty(), new Map<string, Array<string>>(), "", [], "", "");
     }
 }
 
