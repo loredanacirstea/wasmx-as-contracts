@@ -1,6 +1,6 @@
 import { JSON } from "json-as";
 import { Address, Email, Envelope } from "wasmx-env-imap/assembly/types";
-import { EmailToRead, EmailToWrite, LastKnownReferenceResult, MissingRefsWrap, RelationTypeIds, SaveEmailResponse, TableIds, ThreadToRead, ThreadToWrite, ThreadWithEmails, UpdateThreadAddEmail } from "./types";
+import { EmailToRead, EmailToWrite, LastKnownReferenceResult, MissingRefsWrap, MsgSendEmailRequest, RelationTypeIds, SaveEmailResponse, TableIds, ThreadToRead, ThreadToWrite, ThreadWithEmails, UpdateThreadAddEmail } from "./types";
 import { LoggerDebug, LoggerDebugExtended, revert } from "./utils";
 import { TableEmailName, TableThreadName } from "./defs";
 import { parseInt64, stringToBase64 } from "wasmx-utils/assembly/utils";
@@ -188,8 +188,12 @@ export function getEmailThreadIds(dtype: DTypeSdk, ids: TableIds, reltypeIds: Re
     return threadIds;
 }
 
+export function getThreadEmailsInternal(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTypeIds, threadId: i64, fields: string[] = []): string {
+    return dtype.GetFullRecordsByRelationType(reltypeIds.contains, "", ids.thread, threadId, fields, "source")
+}
+
 export function getThreadEmails(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTypeIds, threadId: i64): Email[] {
-    const response = dtype.GetFullRecordsByRelationType(reltypeIds.contains, "", ids.thread, threadId, "source")
+    const response = dtype.GetFullRecordsByRelationType(reltypeIds.contains, "", ids.thread, threadId, [], "source")
     const emailsRead = JSON.parse<EmailToRead[]>(response)
     const emails: Email[] = [];
     for (let i = 0; i < emailsRead.length; i ++) {
@@ -260,6 +264,11 @@ export function getEmailById(ids: TableIds, dtype: DTypeSdk, owner: string, id: 
     const emails = JSON.parse<EmailToRead[]>(resp)
     if (emails.length == 0) return null;
     return emails[0]
+}
+
+export function getEmails(ids: TableIds, dtype: DTypeSdk, owner: string): EmailToRead[] {
+    const resp = dtype.Read(ids.email, TableEmailName, `{"owner":"${owner}"}`)
+    return JSON.parse<EmailToRead[]>(resp)
 }
 
 export function getThreadWithEmailsById(ids: TableIds, dtype: DTypeSdk, reltypeIds: RelationTypeIds, owner: string, id: i64): ThreadWithEmails | null {

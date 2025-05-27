@@ -1,6 +1,6 @@
 import { JSON } from "json-as";
 import { Base64String } from "wasmx-env/assembly/types";
-import { Attachment, Envelope } from "wasmx-env-imap/assembly/types";
+import { Attachment, EmailExtended, Envelope } from "wasmx-env-imap/assembly/types";
 
 export const MODULE_NAME = "wasmx-env-smtp"
 
@@ -229,6 +229,12 @@ export class EmailToSend {
         this.header = header;
         this.body = body;
         this.attachments = attachments;
+    }
+
+    toEmailExtended(): EmailExtended {
+        return new EmailExtended(
+            0, [], new Date(Date.now()), 0, this.envelope, this.header, this.body, this.attachments, "", "", "", "",
+        )
     }
 }
 

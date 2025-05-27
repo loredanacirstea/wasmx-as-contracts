@@ -1,7 +1,7 @@
 import { JSON } from "json-as";
 import { JSON as JSONDyn } from "assemblyscript-json/assembly";
 import { SDK } from "wasmx-env/assembly/sdk";
-import { CreateTableRequest, InsertRequest, MsgExecuteBatchResponse, ReadFieldsRequest, ReadRequest, MsgQueryResponse, GetRecordsByRelationTypeRequest, UpdateRequest, ReadRawRequest, DeleteRequest } from "wasmx-dtype/assembly/types";
+import { CreateTableRequest, InsertRequest, MsgExecuteBatchResponse, ReadFieldsRequest, ReadRequest, MsgQueryResponse, GetRecordsByRelationTypeRequest, UpdateRequest, ReadRawRequest, DeleteRequest, GetFullRecordsByRelationTypeRequest } from "wasmx-dtype/assembly/types";
 import { getDTypeIdentifier, rowsArrToObjArr } from "wasmx-dtype/assembly/helpers";
 import { base64ToString, stringToBase64 } from "wasmx-utils/assembly/utils";
 import { callContract } from "wasmx-env/assembly/utils";
@@ -58,8 +58,8 @@ export class DTypeSdk extends SDK {
         return arr;
     }
 
-    GetFullRecordsByRelationType(relationTypeId: i64, relationType: string, tableId: i64, recordId: i64, nodeType: string): string {
-        const calld = JSON.stringify<GetRecordsByRelationTypeRequest>(new GetRecordsByRelationTypeRequest(relationTypeId, relationType, tableId, recordId, nodeType))
+    GetFullRecordsByRelationType(relationTypeId: i64, relationType: string, tableId: i64, recordId: i64, fields: string[], nodeType: string): string {
+        const calld = JSON.stringify<GetFullRecordsByRelationTypeRequest>(new GetFullRecordsByRelationTypeRequest(relationTypeId, relationType, tableId, recordId, nodeType, fields))
 
         const data = this.querySafe(`{"GetFullRecordsByRelationType":${calld}}`)
         const result = JSON.parse<MsgQueryResponse>(data)

@@ -3,10 +3,83 @@ import { Base64String } from "wasmx-env/assembly/types";
 
 export const MODULE_NAME = "wasmx-env-imap"
 
-// Placeholder IMAP types
+@json
+export class SearchCriteriaHeaderField {
+    key: string = "";
+    value: string = "";
+
+    constructor(key: string = "", value: string = "") {
+        this.key = key;
+        this.value = value;
+    }
+}
+
+@json
+export class SearchCriteriaModSeq {
+    modSeq: u64 = 0;
+    metadataName: string = "";
+    metadataType: string = SearchCriteriaMetadataType.All;
+
+    constructor(
+        modSeq: u64 = 0,
+        metadataName: string = "",
+        metadataType: string = SearchCriteriaMetadataType.All
+    ) {
+        this.modSeq = modSeq;
+        this.metadataName = metadataName;
+        this.metadataType = metadataType;
+    }
+}
+
+export namespace SearchCriteriaMetadataType {
+    export const All: string = "all";
+    export const Private: string = "priv";
+    export const Shared: string = "shared";
+}
+
 @json
 export class SearchCriteria {
-    // define search logic here
+    seqNum: SeqSetRange[] = [];
+    uid: UidSetRange[] = [];
+
+    since: string = "";
+    before: string = "";
+    sentSince: string = "";
+    sentBefore: string = "";
+
+    header: SearchCriteriaHeaderField[] = [];
+    body: string[] = [];
+    text: string[] = [];
+
+    flag: string[] = [];
+    notFlag: string[] = [];
+
+    larger: i64 = 0;
+    smaller: i64 = 0;
+
+    not: SearchCriteria[] = [];
+    or: SearchCriteria[][] = [];
+
+    modSeq: SearchCriteriaModSeq | null = null;
+
+    constructor() {
+        this.seqNum = [];
+        this.uid = [];
+        this.since = "";
+        this.before = "";
+        this.sentSince = "";
+        this.sentBefore = "";
+        this.header = [];
+        this.body = [];
+        this.text = [];
+        this.flag = [];
+        this.notFlag = [];
+        this.larger = 0;
+        this.smaller = 0;
+        this.not = [];
+        this.or = [];
+        this.modSeq = null;
+    }
 }
 
 @json
@@ -310,6 +383,7 @@ export class Address {
         return new Address("", "", "");
     }
 
+    // mailbox@host
     static fromString(account: string, name: string): Address {
         const parts = account.split("@")
         return new Address(name, parts[0], parts[1])
@@ -320,6 +394,23 @@ export class Address {
             return `${this.Name} <${this.Mailbox}@${this.Host}>`;
         }
         return `${this.Mailbox}@${this.Host}`;
+    }
+
+    // header string
+    static ArrayToString(addr: Address[]): string {
+        let parts: string[] = []
+        for (let i = 0; i < addr.length; i++) {
+            parts.push(addr[i].toString())
+        }
+        return parts.join(", ")
+    }
+
+    static toStrings(addr: Address[]): string[] {
+        let parts: string[] = []
+        for (let i = 0; i < addr.length; i++) {
+            parts.push(addr[i].toString())
+        }
+        return parts
     }
 }
 
@@ -408,11 +499,46 @@ export class Email {
 }
 
 @json
+export class EmailExtended extends Email {
+    rawBody: string = "";
+    boundary: string = "";
+
+    constructor(
+        uid: u32,
+        flags: Array<Flag>,
+        internalDate: Date,
+        rfc822Size: i64,
+        envelope: Envelope | null,
+        header: Map<string, Array<string>>,
+        body: string,
+        attachments: Array<Attachment>,
+        raw: string,
+        rawBody: string,
+        boundary: string,
+        bh: string,
+    ) {
+        super(uid, flags, internalDate, rfc822Size, envelope, header, body, attachments, raw, bh)
+        this.rawBody = rawBody;
+        this.boundary = boundary;
+    }
+
+    static empty(): EmailExtended {
+        return new EmailExtended(0, [], new Date(0), 0, Envelope.empty(), new Map<string, Array<string>>(), "", [], "", "", "", "");
+    }
+
+    static fromEmail(email: Email): EmailExtended {
+        return new EmailExtended(
+            email.uid, email.flags, email.internalDate, email.rfc822Size, email.envelope, email.header, email.body, email.attachments, email.raw, "", "", email.bh,
+        )
+    }
+}
+
+@json
 export class EmailPartial {
-    id: string = "";
+    id: i64 = 0;
     title: string = "";
 
-    constructor(id: string, title: string) {
+    constructor(id: i64, title: string) {
         this.id = id;
         this.title = title;
     }

@@ -233,6 +233,22 @@ export class GetRecordsByRelationTypeRequest {
 }
 
 @json
+export class GetFullRecordsByRelationTypeRequest extends GetRecordsByRelationTypeRequest {
+    fields: string[]
+    constructor(
+        relationTypeId: i64,
+        relationType: string,
+        tableId: i64,
+        recordId: i64,
+        nodeType: string,
+        fields: string[],
+    ) {
+        super(relationTypeId, relationType, tableId, recordId, nodeType)
+        this.fields = fields
+    }
+}
+
+@json
 export class DeleteRequest {
     identifier: TableIndentifier
     condition: Base64String

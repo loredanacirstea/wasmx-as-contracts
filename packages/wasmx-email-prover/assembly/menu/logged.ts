@@ -48,7 +48,7 @@ export const LoggedMenu = `{
         },
         "item": {
           "action": {
-            "url": "http://localhost:9999/email/email-with-menu/{id}",
+            "url": "http://localhost:9999/email/thread-email-with-menu/{id}",
             "request": {
               "method": "GET"
             },
@@ -82,12 +82,23 @@ export const LoggedMenu = `{
         },
         "item": {
           "action": {
-            "url": "http://localhost:9999/email/thread-with-menu/{id}",
+            "url": "http://localhost:9999/email/thread-emails/{id}",
             "request": {
               "method": "GET"
             },
             "itemUrlValues": {
               "{id}": "id"
+            }
+          },
+          "item": {
+            "action": {
+              "url": "http://localhost:9999/email/thread-email-with-menu/{id}",
+              "request": {
+                "method": "GET"
+              },
+              "itemUrlValues": {
+                "{id}": "id"
+              }
             }
           }
         }

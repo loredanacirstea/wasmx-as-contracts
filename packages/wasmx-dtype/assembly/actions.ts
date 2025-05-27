@@ -3,7 +3,7 @@ import { JSON as JSONDyn } from "assemblyscript-json/assembly";
 import * as sqlw from "wasmx-env-sql/assembly/sql_wrap";
 import { base64ToString, parseInt64, stringToBase64, stringToBytes } from "wasmx-utils/assembly/utils";
 import { MsgCloseRequest, MsgCloseResponse, MsgConnectRequest, MsgConnectResponse, MsgExecuteBatchRequest, MsgExecuteBatchResponse, MsgExecuteRequest, MsgExecuteResponse, MsgQueryRequest, MsgQueryResponse, SqlExecuteCommand } from "wasmx-env-sql/assembly/types";
-import { BuildSchemaRequest, BuildSchemaResponse, CallDataInstantiate, CallDataInitializeTokens, CloseRequest, ConnectRequest, CountRequest, CountResponse, CreateTableRequest, DeleteRequest, DTypeDb, DTypeDbConnection, DTypeField, DTypeTable, InsertRequest, MODULE_NAME, ReadFieldsRequest, ReadRequest, TableIndentifier, TableIndentifierRequired, UpdateRequest, CreateIndexesRequest, DeleteIndexesRequest, TableIndex, CreateIndexResponse, DeleteIndexResponse, GetRecordsByRelationTypeRequest, ReadRawRequest } from "./types";
+import { BuildSchemaRequest, BuildSchemaResponse, CallDataInstantiate, CallDataInitializeTokens, CloseRequest, ConnectRequest, CountRequest, CountResponse, CreateTableRequest, DeleteRequest, DTypeDb, DTypeDbConnection, DTypeField, DTypeTable, InsertRequest, MODULE_NAME, ReadFieldsRequest, ReadRequest, TableIndentifier, TableIndentifierRequired, UpdateRequest, CreateIndexesRequest, DeleteIndexesRequest, TableIndex, CreateIndexResponse, DeleteIndexResponse, GetRecordsByRelationTypeRequest, ReadRawRequest, GetFullRecordsByRelationTypeRequest } from "./types";
 import { revert } from "./utils";
 import { jsonToQueryParams } from "./json";
 import { generateJsonSchema } from "./schema";
@@ -425,7 +425,7 @@ export function GetRecordsByRelationType(req: GetRecordsByRelationTypeRequest): 
     return String.UTF8.encode(JSON.stringify<MsgQueryResponse>(resp))
 }
 
-export function GetFullRecordsByRelationType(req: GetRecordsByRelationTypeRequest): ArrayBuffer {
+export function GetFullRecordsByRelationType(req: GetFullRecordsByRelationTypeRequest): ArrayBuffer {
     const resp = GetRecordsByRelationTypeInternal(req.relationTypeId, req.relationType, req.tableId, req.recordId, req.nodeType)
     if (resp.error != "") {
         return String.UTF8.encode(JSON.stringify<MsgQueryResponse>(resp))
@@ -462,8 +462,12 @@ export function GetFullRecordsByRelationType(req: GetRecordsByRelationTypeReques
         }
     }
     const identifier = new TableIndentifier(0, 0, tableId, "", "", tableName)
+    let fields = "*"
+    if (req.fields.length > 0) {
+        fields = req.fields.join(",")
+    }
 
-    const q = `SELECT * FROM ${tableName} WHERE id IN (${vals.join(",")})`
+    const q = `SELECT ${fields} FROM ${tableName} WHERE id IN (${vals.join(",")})`
     console.log("--GetFullRecordsByRelationType query--" +q + "--" + params.join(","))
     const response = ReadRawInternal(identifier, q, params)
     console.log("--GetFullRecordsByRelationType resp.error--" + response.error)

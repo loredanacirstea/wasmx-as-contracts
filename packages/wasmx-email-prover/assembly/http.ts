@@ -3,7 +3,8 @@ import { HttpRequestIncoming, HttpResponse, HttpResponseWrap } from "wasmx-env-h
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as imapw from "wasmx-env-imap/assembly/imap_wrap";
 import * as smtpw from "wasmx-env-smtp/assembly/smtp_wrap";
-import { Address, Envelope } from "wasmx-env-imap/assembly/types";
+import { formatDateRFC1123Z, parseEmailMessage, serializeEmailMessage } from "wasmx-env-imap/assembly/utils";
+import { Address, Email, EmailExtended, EmailPartial, Envelope } from "wasmx-env-imap/assembly/types";
 import { EmailToSend, SmtpBuildMailRequest, SmtpSendMailRequest } from "wasmx-env-smtp/assembly/types";
 import { getProvider, getEndpoint, HttpServerRegistrySdk, setUserInfo, getUserInfo, setSession, getSession } from "wasmx-httpserver-registry/assembly/sdk";
 import { SetRouteRequest } from "wasmx-httpserver-registry/assembly/types";
@@ -18,10 +19,12 @@ import { DTypeSdk } from "wasmx-dtype/assembly/sdk";
 import { ImapCountRequest, UidSetRange, UserInfo } from "wasmx-env-imap/assembly/types";
 import { CacheEmailInternal, ConnectUserInternal } from "./actions";
 import { EmailToRead, EmailToWrite, SecretType_OAuth2, SecretType_Password, ThreadToRead, HandleOAuth2CallbackResponse, ExtendedResponse, ThreadWithEmails, HttpEmailNewRequest, HttpEmailForwardRequest } from "./types";
-import { getConnectionId, getEmailById, getThreadById, getThreads, getThreadWithEmailsById } from "./helpers";
+import { getConnectionId, getEmailById, getEmails, getThreadById, getThreadEmails, getThreadEmailsInternal, getThreads, getThreadWithEmailsById } from "./helpers";
 import { getConfig, getRelationTypes, getTableIds } from "./storage";
 import { LoggedMenu } from "./menu/logged";
 import { TemplateThread } from "./menu/template_thread";
+import { EmailMenu } from "./menu/email_menu";
+import { TemplateEmail } from "./menu/template_email";
 
 // "/login/web/{provider}"
 const routeOAuth2Web = "/login/web"
@@ -59,18 +62,21 @@ const templateRouteThread = `${routeThread}/{id}`
 
 const routeThreads = "/email/threads"
 
+
 // const routeSession = "/email/session"
 const routeCount = "/email/count"
 const templateCount = `${routeCount}/{folder}`
-const routeThreadWithMenu = `/email/thread-with-menu`
+const routeThreadWithMenu = `/email/thread-emails`
 const templateThreadWithMenu = `${routeThreadWithMenu}/{id}`
+const routeThreadEmail = `/email/thread-email-with-menu`
+const templateThreadEmail = `${routeThreadEmail}/{id}`
 
 const routeEmailNew = "/email/new"
 const routeEmailForward = `/email/forward`
 const templateEmailForward = `${routeEmailForward}/{id}`
 // /email/{id}/forward
 
-// const routeEmails = "/emails"
+const routeEmails = "/email/emails"
 // const routeEmailWithMenu = `/email/email-with-menu`
 // const routeDbThreads = `/email/db/threads`
 // const routeDbThread = `/email/db/thread-with-menu`
@@ -85,15 +91,19 @@ const baseRoutes: string[] = [
     routeExchangeSessionId,
     routeUserInfo,
     routeCacheEmail,
+
+    routeEmails,
     routeEmail,
 
     routeCount,
     routeThreadWithMenu,
+    routeThreadEmail,
     routeThreads,
     routeThread, // last
 
     routeEmailNew,
     routeEmailForward,
+
 
     // routeDbThreads,
     // routeDbThread,
@@ -111,12 +121,16 @@ export function registerOAuth2(httpserver: HttpServerRegistrySdk, dtype: DTypeSd
     // content
     httpserver.SetRoute(new SetRouteRequest(routeUserInfo, addr, false, ""))
     httpserver.SetRoute(new SetRouteRequest(routeCacheEmail, addr, false, ""))
+
+    httpserver.SetRoute(new SetRouteRequest(routeEmails, addr, false, ""))
     httpserver.SetRoute(new SetRouteRequest(routeEmail, addr, false, ""))
+
     httpserver.SetRoute(new SetRouteRequest(routeThread, addr, false, ""))
     httpserver.SetRoute(new SetRouteRequest(routeThreads, addr, false, ""))
 
     httpserver.SetRoute(new SetRouteRequest(routeCount, addr, false, ""))
     httpserver.SetRoute(new SetRouteRequest(routeThreadWithMenu, addr, false, ""))
+    httpserver.SetRoute(new SetRouteRequest(routeThreadEmail, addr, false, ""))
 
     httpserver.SetRoute(new SetRouteRequest(routeEmailNew, addr, false, ""))
     httpserver.SetRoute(new SetRouteRequest(routeEmailForward, addr, false, ""))
@@ -147,11 +161,13 @@ export function handleRoute(baseUrl: string, req: HttpRequestIncoming): HttpResp
     if (baseUrl == routeUserInfo) return handleUserInfo(req);
     if (baseUrl == routeCacheEmail) return handleCacheEmail(req);
 
+    if (baseUrl == routeEmails) return handleRouteEmails(req);
     if (baseUrl == routeEmail) return handleRouteEmail(req);
     if (baseUrl == routeCount) return handleRouteCount(req);
 
     if (baseUrl == routeThreads) return handleRouteThreads(req);
     if (baseUrl == routeThreadWithMenu) return handleRouteThreadWithMenu(req);
+    if (baseUrl == routeThreadEmail) return handleRouteThreadEmailWithMenu(req);
     if (baseUrl == routeThread) return handleRouteThread(req);
 
     if (baseUrl == routeEmailNew) return handleEmailNew(req);
@@ -580,14 +596,73 @@ export function handleRouteThreadWithMenu(req: HttpRequestIncoming): HttpRespons
     const id = parseInt64(idstr)
     const ids = getTableIds()
     const reltypeIds = getRelationTypes()
-    const data = getThreadWithEmailsById(ids, dtype, reltypeIds, username, id)
-    if (data == null) {
-        return simpleResponse("404 Bad Request", 404, "not found")
+
+    const data = getThreadEmailsInternal(dtype, ids, reltypeIds, id, ["id", "name"])
+    return jsonResponse(data)
+}
+
+export function handleRouteThreadEmailWithMenu(req: HttpRequestIncoming): HttpResponseWrap {
+    const url = parseUrl(req.url, templateThreadEmail)
+    const dtype = getDtypeSdk()
+
+    const session = getAuthSession(dtype, req)
+    let haserr = validateSession(session)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
+    }
+    const username = session!.username
+    haserr = connectUser(session!)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
+    }
+    if (!url.routeParams.has("id")) {
+        return simpleResponse("400 Bad Request", 400, "no id provider")
+    }
+    const idstr = url.routeParams.get("id")
+    if (idstr == "") {
+        return simpleResponse("400 Bad Request", 400, "no id provider")
+    }
+    const id = parseInt64(idstr)
+    const ids = getTableIds()
+
+    const email = getEmailById(ids, dtype, username, id)
+    if (email == null) {
+        return simpleResponse("404 Not Found", 404, "not found")
+    }
+    const menu = EmailMenu.replaceAll("{id}", id.toString()).replaceAll("{summary}", email.name)
+
+    const resp = new ExtendedResponse(
+        new JSON.Raw(JSON.stringify<Email>(email.toEmail())),
+        menu,
+        TemplateEmail,
+    )
+    return jsonResponse(JSON.stringify<ExtendedResponse>(resp))
+}
+
+export function handleRouteEmails(req: HttpRequestIncoming): HttpResponseWrap {
+    const url = parseUrl(req.url, routeEmails)
+    const dtype = getDtypeSdk()
+
+    const session = getAuthSession(dtype, req)
+    let haserr = validateSession(session)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
+    }
+    const username = session!.username
+    haserr = connectUser(session!)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
     }
 
-    const resp = new ExtendedResponse(new JSON.Raw(JSON.stringify<ThreadWithEmails>(data)), "", TemplateThread)
+    const ids = getTableIds()
+    // TODO pagination from url queries
 
-    return jsonResponse(JSON.stringify<ExtendedResponse>(resp))
+    const emails = getEmails(ids, dtype, username)
+    const emails_: EmailPartial[] = []
+    for (let i = 0; i < emails.length; i++) {
+        emails_.push(new EmailPartial(emails[i].id, emails[i].name))
+    }
+    return jsonResponse(JSON.stringify<EmailPartial[]>(emails_))
 }
 
 export function handleEmailNew(req: HttpRequestIncoming): HttpResponseWrap {
@@ -650,12 +725,11 @@ export function handleEmailNew(req: HttpRequestIncoming): HttpResponseWrap {
         [], // TODO attachments
     )
     // TODO build should be in the contract
-    const resp = smtpw.BuildMail(new SmtpBuildMailRequest(email))
-    if (resp.error != "") {
-        return simpleResponse("500 Internal Server Error", 500, resp.error)
-    }
 
-    const response = smtpw.SendMail(new SmtpSendMailRequest(connId, username, emailPart.to, resp.data))
+    const emailstr = serializeEmailMessage(email.toEmailExtended(), true)
+    const encoded = stringToBase64(emailstr)
+
+    const response = smtpw.SendMail(new SmtpSendMailRequest(connId, username, emailPart.to, encoded))
     if (response.error != "") {
         return simpleResponse("500 Internal Server Error", 500, response.error)
     }
@@ -683,49 +757,53 @@ export function handleEmailForward(req: HttpRequestIncoming): HttpResponseWrap {
     if (idstr == "") {
         return simpleResponse("400 Bad Request", 400, "no id provider")
     }
-    const uid = parseInt64(idstr)
+    const id = parseInt64(idstr)
 
-    // const email = parseEmailMessage(rawEmailString);
-    // const serialized = serializeEmailMessage(email);
+    const connId = getConnectionId(username)
+    const ids = getTableIds()
+    const email = getEmailById(ids, dtype, username, id)
+    if (email == null) {
+        return notFoundResponse()
+    }
 
-    // const email = getEmailById
+    const emailPart = JSON.parse<HttpEmailForwardRequest>(base64ToString(req.data))
 
-    // const connId = getConnectionId(username)
-    // const emailPart = JSON.parse<HttpEmailForwardRequest>(base64ToString(req.data))
-    // const to: Address[] = []
-    // for (let i = 0; i < emailPart.to.length; i++) {
-    //     to.push(Address.fromString(emailPart.to[i]))
-    // }
+    const ui = getUserInfo(dtype, username)
+    let name = ""
+    if (ui && ui.name) {
+        name = ui.name
+    }
 
-    // const envelope =  new EnvelopeSmtp(
-    //     new Date(Date.now()),
-    //     emailPart.subject,
-    //     [Address.fromString(username)],
-    //     [Address.fromString(username)],
-    //     [],
-    //     to,
-    //     cc,
-    //     bcc,
-    //     null,
-    //     "",
-    // )
-    // const header = new Map<string, Array<string>>()
-    // const email = new EmailSmtp(
-    //     envelope,
-    //     header,
-    //     emailPart.body,
-    //     [], // TODO attachments
-    // )
-    // // TODO build should be in the contract
-    // const resp = smtpw.BuildMail(new SmtpBuildMailRequest(email))
-    // if (resp.error != "") {
-    //     return simpleResponse("500 Internal Server Error", 500, resp.error)
-    // }
+    const to: Address[] = []
+    for (let i = 0; i < emailPart.to.length; i++) {
+        to.push(Address.fromString(emailPart.to[i], ""))
+    }
 
-    // const response = smtpw.SendMail(new SmtpSendMailRequest(connId, username, emailPart.to, resp.data))
-    // if (response.error != "") {
-    //     return simpleResponse("500 Internal Server Error", 500, response.error)
-    // }
+    const emailFull = parseEmailMessage(base64ToString(email.raw));
+    // change envelope
+    const newsubject = "Fwd: " + emailFull.envelope!.Subject + ": " + emailPart.additionalSubject
+    const fromAddress = Address.fromString(username, name)
+
+    // emailFull.envelope!.Subject = newsubject
+    // emailFull.envelope!.From = [fromAddress]
+    // emailFull.envelope!.To = to
+
+    // change headers too
+    if (emailFull.header.has("From")) {
+        emailFull.header.set("From", Address.toStrings([fromAddress]))
+    }
+    if (emailFull.header.has("To")) {
+        emailFull.header.set("To", Address.toStrings(to))
+    }
+    if (emailFull.header.has("Subject")) {
+        emailFull.header.set("Subject", [newsubject])
+    }
+    const serialized = serializeEmailMessage(emailFull, false);
+
+    const response = smtpw.SendMail(new SmtpSendMailRequest(connId, username, emailPart.to, stringToBase64(serialized)))
+    if (response.error != "") {
+        return simpleResponse("500 Internal Server Error", 500, response.error)
+    }
     return jsonResponse(`{"success":true}`)
 }
 
