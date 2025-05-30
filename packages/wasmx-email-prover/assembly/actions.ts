@@ -169,7 +169,7 @@ export function CacheEmailInternal(
     }
     const emails: EmailToRead[] = []
     for (let i = 0; i < resp.data.length; i++) {
-        const respsave = saveEmail(dtype, ids, relationTypeIds, username, resp.data[i]);
+        const respsave = saveEmail(dtype, ids, relationTypeIds, username, email_folder, resp.data[i]);
         if (respsave.error != "") {
             // revert(respsave.error);
             continue;

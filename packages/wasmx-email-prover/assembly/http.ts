@@ -4,7 +4,7 @@ import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as imapw from "wasmx-env-imap/assembly/imap_wrap";
 import * as smtpw from "wasmx-env-smtp/assembly/smtp_wrap";
 import { formatDateRFC1123Z, parseEmailMessage, serializeEmailMessage } from "wasmx-env-imap/assembly/utils";
-import { Address, Email, EmailExtended, EmailPartial, Envelope } from "wasmx-env-imap/assembly/types";
+import { Address, Email, EmailExtended, EmailPartial, Envelope, ListMailboxesRequest } from "wasmx-env-imap/assembly/types";
 import { EmailToSend, SmtpBuildMailRequest, SmtpSendMailRequest } from "wasmx-env-smtp/assembly/types";
 import { getProvider, getEndpoint, HttpServerRegistrySdk, setUserInfo, getUserInfo, setSession, getSession } from "wasmx-httpserver-registry/assembly/sdk";
 import { SetRouteRequest } from "wasmx-httpserver-registry/assembly/types";
@@ -22,9 +22,9 @@ import { EmailToRead, EmailToWrite, SecretType_OAuth2, SecretType_Password, Thre
 import { getConnectionId, getEmailById, getEmails, getThreadById, getThreadEmails, getThreadEmailsInternal, getThreads, getThreadWithEmailsById } from "./helpers";
 import { getConfig, getRelationTypes, getTableIds } from "./storage";
 import { LoggedMenu } from "./menu/logged";
-import { TemplateThread } from "./menu/template_thread";
 import { EmailMenu } from "./menu/email_menu";
 import { TemplateEmail } from "./menu/template_email";
+import { EmailFolder, EmailFoldersHead } from "./menu/email_folders";
 
 // "/login/web/{provider}"
 const routeOAuth2Web = "/login/web"
@@ -48,6 +48,9 @@ const templateExchangeSessionId = `${routeOAuth2Web}/{id}`
 const routeUserInfo = "/email/user"
 const templateRouteUserInfo = `${routeUserInfo}`
 
+const routeFolders = "/email/folders"
+const routeFoldersMenu = "/email/folders-menu"
+
 // /email/cache/{account}?uid=&folder=&messageID=
 const routeCacheEmail = "/email/cache"
 const templateRouteCacheEmail = `${routeCacheEmail}`
@@ -61,6 +64,7 @@ const routeThread = "/email/thread"
 const templateRouteThread = `${routeThread}/{id}`
 
 const routeThreads = "/email/threads"
+const templateRouteThreads = `${routeThreads}/{folder}`
 
 
 // const routeSession = "/email/session"
@@ -77,6 +81,8 @@ const templateEmailForward = `${routeEmailForward}/{id}`
 // /email/{id}/forward
 
 const routeEmails = "/email/emails"
+const templateRouteEmails = `${routeEmails}/{folder}`
+
 // const routeEmailWithMenu = `/email/email-with-menu`
 // const routeDbThreads = `/email/db/threads`
 // const routeDbThread = `/email/db/thread-with-menu`
@@ -94,6 +100,9 @@ const baseRoutes: string[] = [
 
     routeEmails,
     routeEmail,
+
+    routeFoldersMenu,
+    routeFolders,
 
     routeCount,
     routeThreadWithMenu,
@@ -119,6 +128,8 @@ export function registerOAuth2(httpserver: HttpServerRegistrySdk, dtype: DTypeSd
     httpserver.SetRoute(new SetRouteRequest(routeExchangeSessionId, addr, false, ""))
 
     // content
+    httpserver.SetRoute(new SetRouteRequest(routeFoldersMenu, addr, false, ""))
+    httpserver.SetRoute(new SetRouteRequest(routeFolders, addr, false, ""))
     httpserver.SetRoute(new SetRouteRequest(routeUserInfo, addr, false, ""))
     httpserver.SetRoute(new SetRouteRequest(routeCacheEmail, addr, false, ""))
 
@@ -158,6 +169,8 @@ export function handleRoute(baseUrl: string, req: HttpRequestIncoming): HttpResp
     if (baseUrl == routeExchangeSessionId) return handleExchangeSessionId(req);
 
     // content
+    if (baseUrl == routeFoldersMenu) return handleRouteFoldersMenu(req);
+    if (baseUrl == routeFolders) return handleRouteFolders(req);
     if (baseUrl == routeUserInfo) return handleUserInfo(req);
     if (baseUrl == routeCacheEmail) return handleCacheEmail(req);
 
@@ -457,7 +470,7 @@ export function handleCacheEmail(req: HttpRequestIncoming): HttpResponseWrap {
         messageId = url.queryParams.get("messageID")
     }
     if (url.queryParams.has("folder")) {
-        folder = url.queryParams.get("folder")
+        folder = decodeURIComponent(url.queryParams.get("folder"))
     }
     if (uid == 0) simpleResponse("400 Bad Request", 400, "empty UID")
 
@@ -527,13 +540,17 @@ export function handleRouteThread(req: HttpRequestIncoming): HttpResponseWrap {
 }
 
 export function handleRouteThreads(req: HttpRequestIncoming): HttpResponseWrap {
-    // const url = parseUrl(req.url, templateRouteThreads)
+    const url = parseUrl(req.url, templateRouteThreads)
     const dtype = getDtypeSdk()
 
     const session = getAuthSession(dtype, req)
     let haserr = validateSession(session)
     if (haserr != "") {
         return simpleResponse("401 HTTP Unauthorized", 401, haserr)
+    }
+    let folder = "INBOX"
+    if (url.routeParams.has("folder") && url.routeParams.get("folder") != "") {
+        folder = decodeURIComponent(url.routeParams.get("folder"))
     }
     const account = session!.username
     haserr = connectUser(session!)
@@ -542,8 +559,53 @@ export function handleRouteThreads(req: HttpRequestIncoming): HttpResponseWrap {
     }
 
     const ids = getTableIds()
-    const threads = getThreads(ids, dtype, account);
+    const threads = getThreads(ids, dtype, account, folder);
     return jsonResponse(JSON.stringify<ThreadToRead[]>(threads))
+}
+
+export function handleRouteFolders(req: HttpRequestIncoming): HttpResponseWrap {
+    const dtype = getDtypeSdk()
+    const session = getAuthSession(dtype, req)
+    let haserr = validateSession(session)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
+    }
+    const username = session!.username
+    haserr = connectUser(session!)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
+    }
+    const connId = getConnectionId(username)
+    const resp = imapw.ListMailboxes(new ListMailboxesRequest(connId))
+    if (resp.error != "") {
+        return simpleResponse("500 Internal Server Error", 500, resp.error)
+    }
+    return jsonResponse(JSON.stringify<string[]>(resp.mailboxes))
+}
+
+export function handleRouteFoldersMenu(req: HttpRequestIncoming): HttpResponseWrap {
+    const dtype = getDtypeSdk()
+    const session = getAuthSession(dtype, req)
+    let haserr = validateSession(session)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
+    }
+    const username = session!.username
+    haserr = connectUser(session!)
+    if (haserr != "") {
+        return simpleResponse("401 HTTP Unauthorized", 401, haserr)
+    }
+    const connId = getConnectionId(username)
+    const resp = imapw.ListMailboxes(new ListMailboxesRequest(connId))
+    if (resp.error != "") {
+        return simpleResponse("500 Internal Server Error", 500, resp.error)
+    }
+    const foldersMenu: string[] = []
+    for (let i = 0; i < resp.mailboxes.length; i++) {
+        foldersMenu.push(EmailFolder(i.toString(), resp.mailboxes[i]))
+    }
+    const menu = EmailFoldersHead(foldersMenu.join(","))
+    return jsonResponse(menu)
 }
 
 export function handleRouteCount(req: HttpRequestIncoming): HttpResponseWrap {
@@ -561,8 +623,8 @@ export function handleRouteCount(req: HttpRequestIncoming): HttpResponseWrap {
     }
     const connId = getConnectionId(username)
     let folder = "INBOX"
-    if (url.queryParams.has("folder") && url.queryParams.get("folder") != "") {
-        folder = url.queryParams.get("folder")
+    if (url.routeParams.has("folder") && url.routeParams.get("folder") != "") {
+        folder = decodeURIComponent(url.routeParams.get("folder"))
     }
 
     const resp = imapw.Count(new ImapCountRequest(connId, folder))
@@ -640,8 +702,13 @@ export function handleRouteThreadEmailWithMenu(req: HttpRequestIncoming): HttpRe
 }
 
 export function handleRouteEmails(req: HttpRequestIncoming): HttpResponseWrap {
-    const url = parseUrl(req.url, routeEmails)
+    const url = parseUrl(req.url, templateRouteEmails)
     const dtype = getDtypeSdk()
+
+    let folder = ""
+    if (url.routeParams.has("folder")) {
+        folder = decodeURIComponent(url.routeParams.get("folder"))
+    }
 
     const session = getAuthSession(dtype, req)
     let haserr = validateSession(session)
@@ -657,7 +724,7 @@ export function handleRouteEmails(req: HttpRequestIncoming): HttpResponseWrap {
     const ids = getTableIds()
     // TODO pagination from url queries
 
-    const emails = getEmails(ids, dtype, username)
+    const emails = getEmails(ids, dtype, username, folder)
     const emails_: EmailPartial[] = []
     for (let i = 0; i < emails.length; i++) {
         emails_.push(new EmailPartial(emails[i].id, emails[i].name))

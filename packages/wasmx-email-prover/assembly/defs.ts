@@ -43,7 +43,8 @@ export function getThreadFields(threadTableId: i64): string {
 {"table_id":${threadTableId},"name":"owner","order_index":3,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
 {"table_id":${threadTableId},"name":"email_message_ids","order_index":4,"value_type":"TEXT","indexed":false,"sql_options":"NOT NULL DEFAULT '[]'","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
 {"table_id":${threadTableId},"name":"missing_refs","order_index":5,"value_type":"TEXT","indexed":false,"sql_options":"NOT NULL DEFAULT '[]'","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${threadTableId},"name":"name","order_index":6,"value_type":"VARCHAR","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""}
+{"table_id":${threadTableId},"name":"name","order_index":6,"value_type":"VARCHAR","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${threadTableId},"name":"folder","order_index":7,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""}
 ]`
 }
 
@@ -63,6 +64,7 @@ export function getEmailFields(emailTableId: i64): string {
 {"table_id":${emailTableId},"name":"flags","order_index":12,"value_type":"VARCHAR","indexed":false,"sql_options":"NOT NULL DEFAULT '[]'","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
 {"table_id":${emailTableId},"name":"name","order_index":13,"value_type":"VARCHAR","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
 {"table_id":${emailTableId},"name":"owner","order_index":14,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${emailTableId},"name":"rfc822_size","order_index":15,"value_type":"INTEGER","indexed":false,"sql_options":"NOT NULL DEFAULT 0","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""}
+{"table_id":${emailTableId},"name":"rfc822_size","order_index":15,"value_type":"INTEGER","indexed":false,"sql_options":"NOT NULL DEFAULT 0","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${emailTableId},"name":"folder","order_index":16,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""}
 ]`
 }

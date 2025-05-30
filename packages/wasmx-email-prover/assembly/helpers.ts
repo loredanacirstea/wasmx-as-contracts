@@ -12,7 +12,7 @@ export function getConnectionId(username: string): string {
 }
 
 // TODO store attachments
-export function saveEmail(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTypeIds, owner: string, email: Email): SaveEmailResponse {
+export function saveEmail(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTypeIds, owner: string, folder: string, email: Email): SaveEmailResponse {
     const resp = new SaveEmailResponse(null, "");
     const envelope = email.envelope
     if (envelope == null) {
@@ -20,7 +20,7 @@ export function saveEmail(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTy
         return resp;
     }
 
-    let dbemail = EmailRecordfromEmail(email, owner);
+    let dbemail = EmailRecordfromEmail(email, owner, folder);
     if (dbemail == null)  {
         resp.error = "failed to convert email";
         return resp;
@@ -50,6 +50,7 @@ export function saveEmail(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTy
             owner,
             JSON.stringify<string[]>([envelope.MessageID]),
             `[]`,
+            folder,
         );
 
         const _ids = saveThreadWithNode(dtype, ids.thread, dbthread);
@@ -131,6 +132,7 @@ export function saveEmail(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTy
             owner,
             JSON.stringify<string[]>([envelope.MessageID]),
             JSON.stringify(refs),
+            folder,
         );
 
         const _ids = saveThreadWithNode(dtype, ids.thread, dbthread);
@@ -266,8 +268,9 @@ export function getEmailById(ids: TableIds, dtype: DTypeSdk, owner: string, id: 
     return emails[0]
 }
 
-export function getEmails(ids: TableIds, dtype: DTypeSdk, owner: string): EmailToRead[] {
-    const resp = dtype.Read(ids.email, TableEmailName, `{"owner":"${owner}"}`)
+export function getEmails(ids: TableIds, dtype: DTypeSdk, owner: string, folder: string): EmailToRead[] {
+    const q = `{"owner":"${owner}"${folder != "" ? `,"folder":"${folder}"` : ""}}`
+    const resp = dtype.Read(ids.email, TableEmailName, q)
     return JSON.parse<EmailToRead[]>(resp)
 }
 
@@ -284,6 +287,7 @@ export function getThreadWithEmailsById(ids: TableIds, dtype: DTypeSdk, reltypeI
         thread.owner,
         thread.email_message_ids,
         thread.missing_refs,
+        thread.folder,
         resp,
     )
 }
@@ -295,13 +299,13 @@ export function getThreadById(ids: TableIds, dtype: DTypeSdk, owner: string, id:
     return data[0]
 }
 
-export function getThreads(ids: TableIds, dtype: DTypeSdk, owner: string): ThreadToRead[] {
-    const resp = dtype.Read(ids.thread, TableThreadName, `{"owner":"${owner}"}`)
+export function getThreads(ids: TableIds, dtype: DTypeSdk, owner: string, folder: string): ThreadToRead[] {
+    const resp = dtype.Read(ids.thread, TableThreadName, `{"owner":"${owner}","folder":"${folder}"}`)
     const data = JSON.parse<ThreadToRead[]>(resp)
     return data
 }
 
-export function EmailRecordfromEmail(email: Email, owner: string): EmailToWrite | null {
+export function EmailRecordfromEmail(email: Email, owner: string, folder: string): EmailToWrite | null {
     let envelope = ""
     if (email.envelope == null) {
         revert(`email envelope missing`)
@@ -342,6 +346,7 @@ export function EmailRecordfromEmail(email: Email, owner: string): EmailToWrite 
         JSON.stringify<string[]>(email.flags),
         getEmailSummary(email),
         email.rfc822Size,
+        folder,
     )
 }
 

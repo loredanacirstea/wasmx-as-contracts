@@ -232,6 +232,7 @@ export class EmailToWrite {
     flags: string = ""
     name: string = ""
     rfc822_size: i64 = 0
+    folder: string = ""
     constructor(
         uid: i64,
         owner: string,
@@ -247,6 +248,7 @@ export class EmailToWrite {
         flags: string,
         name: string,
         rfc822_size: i64,
+        folder: string,
     ) {
         this.uid = uid
         this.owner = owner
@@ -262,6 +264,7 @@ export class EmailToWrite {
         this.flags = flags
         this.name = name
         this.rfc822_size = rfc822_size
+        this.folder = folder
     }
 }
 
@@ -284,6 +287,7 @@ export class EmailToRead extends EmailToWrite {
         flags: string,
         name: string,
         rfc822_size: i64,
+        folder: string,
     ) {
         super(
             uid,
@@ -300,6 +304,7 @@ export class EmailToRead extends EmailToWrite {
             flags,
             name,
             rfc822_size,
+            folder,
         )
         this.id = id
     }
@@ -321,6 +326,7 @@ export class EmailToRead extends EmailToWrite {
             data.flags,
             data.name,
             data.rfc822_size,
+            data.folder,
         )
     }
 
@@ -347,29 +353,28 @@ export class ThreadToWrite {
     owner: string = ""
     email_message_ids: string = ""
     missing_refs: string = ""
+    folder: string = ""
     constructor(
         name: string,
         last_email_message_id: i64,
         owner: string,
         email_message_ids: string,
         missing_refs: string,
+        folder: string,
     ) {
         this.name = name
         this.last_email_message_id = last_email_message_id
         this.owner = owner
         this.email_message_ids = email_message_ids
         this.missing_refs = missing_refs
+        this.folder = folder
     }
 }
 
 @json
-export class ThreadToRead {
+export class ThreadToRead extends ThreadToWrite {
     id: i64 = 0
     name: string = ""
-    last_email_message_id: i64 = 0
-    owner: string = ""
-    email_message_ids: string = ""
-    missing_refs: string = ""
     constructor(
         id: i64,
         name: string,
@@ -377,24 +382,15 @@ export class ThreadToRead {
         owner: string,
         email_message_ids: string,
         missing_refs: string,
+        folder: string,
     ) {
+        super(name, last_email_message_id, owner, email_message_ids, missing_refs, folder)
         this.id = id
-        this.name = name
-        this.last_email_message_id = last_email_message_id
-        this.owner = owner
-        this.email_message_ids = email_message_ids
-        this.missing_refs = missing_refs
     }
 }
 
 @json
 export class ThreadWithEmails extends ThreadToRead {
-    id: i64 = 0
-    name: string = ""
-    last_email_message_id: i64 = 0
-    owner: string = ""
-    email_message_ids: string = ""
-    missing_refs: string = ""
     children: Email[] = []
     constructor(
         id: i64,
@@ -403,9 +399,10 @@ export class ThreadWithEmails extends ThreadToRead {
         owner: string,
         email_message_ids: string,
         missing_refs: string,
+        folder: string,
         children: Email[],
     ) {
-        super(id, name, last_email_message_id, owner, email_message_ids, missing_refs)
+        super(id, name, last_email_message_id, owner, email_message_ids, missing_refs, folder)
         this.children = children
     }
 }
