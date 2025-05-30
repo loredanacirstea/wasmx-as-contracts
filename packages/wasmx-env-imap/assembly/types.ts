@@ -543,3 +543,21 @@ export class EmailPartial {
         this.title = title;
     }
 }
+
+@json
+export class ListMailboxesRequest {
+    id: string = "";
+    constructor(id: string) {
+        this.id = id;
+    }
+}
+
+@json
+export class ListMailboxesResponse {
+    error: string = "";
+    mailboxes: string[] = [];
+    constructor(error: string, mailboxes: string[]) {
+        this.error = error;
+        this.mailboxes = mailboxes;
+    }
+}

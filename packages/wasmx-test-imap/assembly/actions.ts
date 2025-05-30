@@ -1,6 +1,6 @@
 import { JSON } from "json-as";
 import * as imapw from "wasmx-env-imap/assembly/imap_wrap";
-import { ImapCloseRequest, ImapCloseResponse, ImapConnectionOauth2Request, ImapConnectionResponse, ImapConnectionSimpleRequest, ImapCreateFolderRequest, ImapCreateFolderResponse, ImapFetchRequest, ImapFetchResponse, ImapListenRequest, ImapListenResponse } from "wasmx-env-imap/assembly/types";
+import { ImapCloseRequest, ImapCloseResponse, ImapConnectionOauth2Request, ImapConnectionResponse, ImapConnectionSimpleRequest, ImapCountRequest, ImapCountResponse, ImapCreateFolderRequest, ImapCreateFolderResponse, ImapFetchRequest, ImapFetchResponse, ImapListenRequest, ImapListenResponse, ListMailboxesRequest, ListMailboxesResponse } from "wasmx-env-imap/assembly/types";
 
 export function ConnectWithPassword(req: ImapConnectionSimpleRequest): ArrayBuffer {
     const resp = imapw.ConnectWithPassword(req)
@@ -30,4 +30,14 @@ export function Listen(req: ImapListenRequest): ArrayBuffer {
 export function CreateFolder(req: ImapCreateFolderRequest): ArrayBuffer {
     const resp = imapw.CreateFolder(req)
     return String.UTF8.encode(JSON.stringify<ImapCreateFolderResponse>(resp))
+}
+
+export function Count(req: ImapCountRequest): ArrayBuffer {
+    const resp = imapw.Count(req)
+    return String.UTF8.encode(JSON.stringify<ImapCountResponse>(resp))
+}
+
+export function ListMailboxes(req: ListMailboxesRequest): ArrayBuffer {
+    const resp = imapw.ListMailboxes(req)
+    return String.UTF8.encode(JSON.stringify<ListMailboxesResponse>(resp))
 }

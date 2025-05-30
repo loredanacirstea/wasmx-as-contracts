@@ -1,7 +1,7 @@
 import { JSON } from "json-as";
 import { LoggerDebugExtended } from "wasmx-env/assembly/wasmx_wrap"
 import * as imap from './imap';
-import { Email, ImapCloseRequest, ImapCloseResponse, ImapConnectionOauth2Request, ImapConnectionResponse, ImapConnectionSimpleRequest, ImapCountRequest, ImapCountResponse, ImapCreateFolderRequest, ImapCreateFolderResponse, ImapFetchRequest, ImapFetchResponse, ImapListenRequest, ImapListenResponse, MODULE_NAME } from "./types";
+import { Email, ImapCloseRequest, ImapCloseResponse, ImapConnectionOauth2Request, ImapConnectionResponse, ImapConnectionSimpleRequest, ImapCountRequest, ImapCountResponse, ImapCreateFolderRequest, ImapCreateFolderResponse, ImapFetchRequest, ImapFetchResponse, ImapListenRequest, ImapListenResponse, ListMailboxesRequest, ListMailboxesResponse, MODULE_NAME } from "./types";
 
 export function ConnectWithPassword(req: ImapConnectionSimpleRequest, moduleName: string = ""): ImapConnectionResponse {
     const requestStr = JSON.stringify<ImapConnectionSimpleRequest>(req);
@@ -34,6 +34,22 @@ export function Count(req: ImapCountRequest, moduleName: string = ""): ImapCount
     const resp = JSON.parse<ImapCountResponse>(String.UTF8.decode(responsebz));
     return resp
 }
+
+export function ListMailboxes(req: ListMailboxesRequest, moduleName: string = ""): ListMailboxesResponse {
+    const requestStr = JSON.stringify<ListMailboxesRequest>(req);
+    LoggerDebugExtended(`${MODULE_NAME}:${moduleName}`, "ListMailboxes", ["request", requestStr])
+    const responsebz = imap.ListMailboxes(String.UTF8.encode(requestStr));
+    const resp = JSON.parse<ListMailboxesResponse>(String.UTF8.decode(responsebz));
+    return resp
+}
+
+// export function UIDSearch(req: UIDSearchRequest, moduleName: string = ""): UIDSearchResponse {
+//     const requestStr = JSON.stringify<UIDSearchRequest>(req);
+//     LoggerDebugExtended(`${MODULE_NAME}:${moduleName}`, "UIDSearch", ["request", requestStr])
+//     const responsebz = imap.UIDSearch(String.UTF8.encode(requestStr));
+//     const resp = JSON.parse<UIDSearchResponse>(String.UTF8.decode(responsebz));
+//     return resp
+// }
 
 export function Fetch(req: ImapFetchRequest, moduleName: string = ""): ImapFetchResponse {
     const requestStr = JSON.stringify<ImapFetchRequest>(req);

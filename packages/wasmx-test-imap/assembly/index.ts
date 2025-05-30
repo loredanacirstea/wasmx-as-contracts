@@ -1,7 +1,7 @@
 import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { getCallDataWrap } from './calldata';
-import { Close, ConnectOAuth2, ConnectWithPassword, CreateFolder, Fetch, Listen } from "./actions";
+import { Close, ConnectOAuth2, ConnectWithPassword, Count, CreateFolder, Fetch, Listen, ListMailboxes } from "./actions";
 import { revert } from "./utils";
 
 export function wasmx_env_2(): void {}
@@ -26,6 +26,10 @@ export function main(): void {
     result = Listen(calld.Listen!);
   } else if (calld.CreateFolder !== null) {
     result = CreateFolder(calld.CreateFolder!);
+  } else if (calld.Count !== null) {
+    result = Count(calld.Count!);
+  } else if (calld.ListMailboxes !== null) {
+    result = ListMailboxes(calld.ListMailboxes!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)

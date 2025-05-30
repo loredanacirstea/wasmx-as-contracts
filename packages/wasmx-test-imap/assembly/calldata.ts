@@ -1,6 +1,6 @@
 import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { ImapCloseRequest, ImapConnectionOauth2Request, ImapConnectionSimpleRequest, ImapCreateFolderRequest, ImapFetchRequest, ImapListenRequest } from "wasmx-env-imap/assembly/types";
+import { ImapCloseRequest, ImapConnectionOauth2Request, ImapConnectionSimpleRequest, ImapCountRequest, ImapCreateFolderRequest, ImapFetchRequest, ImapListenRequest, ListMailboxesRequest } from "wasmx-env-imap/assembly/types";
 
 @json
 export class MsgEmpty {}
@@ -10,6 +10,8 @@ export class CallData {
     ConnectWithPassword: ImapConnectionSimpleRequest | null = null;
     ConnectOAuth2: ImapConnectionOauth2Request | null = null;
     Close: ImapCloseRequest | null = null;
+    Count: ImapCountRequest | null = null;
+    ListMailboxes: ListMailboxesRequest | null = null;
     Fetch: ImapFetchRequest | null = null;
     Listen: ImapListenRequest | null = null;
     CreateFolder: ImapCreateFolderRequest | null = null;
