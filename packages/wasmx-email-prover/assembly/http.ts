@@ -12,7 +12,7 @@ import { ParsedUrl, parseUrl } from "wasmx-httpserver-registry/assembly/url";
 import { SessionToRead, SessionToWrite, UserInfoToWrite } from "wasmx-httpserver-registry/assembly/types_oauth2";
 import { createSession, GenerateToken, NewExpirationTime, VerifyJWT } from "wasmx-httpserver-registry/assembly/session";
 import * as oauth2cw from "wasmx-env-oauth2client/assembly/oauth2client_wrap";
-import { getDtypeSdk, LoggerDebugExtended, revert } from "./utils";
+import { getDtypeSdk, LoggerDebug, LoggerDebugExtended, revert } from "./utils";
 import { AuthUrlParam, Endpoint, ExchangeCodeForTokenRequest, GetRedirectUrlRequest, Oauth2ClientGetRequest, OAuth2Config, Token } from "wasmx-env-oauth2client/assembly/types";
 import { base64ToString, parseInt32, parseInt64, stringToBase64 } from "wasmx-utils/assembly/utils";
 import { DTypeSdk } from "wasmx-dtype/assembly/sdk";
@@ -148,6 +148,7 @@ export function registerOAuth2(httpserver: HttpServerRegistrySdk, dtype: DTypeSd
 }
 
 export function HttpRequestHandler(req: HttpRequestIncoming): ArrayBuffer {
+    LoggerDebug("http request", ["url", req.url, "method", req.method]);
     const resp = HttpRequestHandlerInternal(req)
     return String.UTF8.encode(JSON.stringify<HttpResponseWrap>(resp))
 }
@@ -792,6 +793,11 @@ export function handleEmailNew(req: HttpRequestIncoming): HttpResponseWrap {
         [], // TODO attachments
     )
     // TODO build should be in the contract
+    // const resp = smtpw.BuildMail(new SmtpBuildMailRequest(email))
+    // if (resp.error != "") {
+    //     return simpleResponse("500 Internal Server Error", 500, resp.error)
+    // }
+    // const encoded = resp.data;
 
     const emailstr = serializeEmailMessage(email.toEmailExtended(), true)
     const encoded = stringToBase64(emailstr)
