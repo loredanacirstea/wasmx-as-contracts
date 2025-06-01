@@ -18,7 +18,7 @@ import { base64ToString, parseInt32, parseInt64, stringToBase64 } from "wasmx-ut
 import { DTypeSdk } from "wasmx-dtype/assembly/sdk";
 import { ImapCountRequest, UidSetRange, UserInfo } from "wasmx-env-imap/assembly/types";
 import { CacheEmailInternal, ConnectUserInternal } from "./actions";
-import { EmailToRead, EmailToWrite, SecretType_OAuth2, SecretType_Password, ThreadToRead, HandleOAuth2CallbackResponse, ExtendedResponse, ThreadWithEmails, HttpEmailNewRequest, HttpEmailForwardRequest } from "./types";
+import { EmailToRead, EmailToWrite, SecretType_OAuth2, SecretType_Password, ThreadToRead, HandleOAuth2CallbackResponse, ExtendedResponse, ThreadWithEmails, HttpEmailNewRequest, HttpEmailForwardRequest, ThreadToDisplay } from "./types";
 import { getConnectionId, getEmailById, getEmails, getThreadById, getThreadEmails, getThreadEmailsInternal, getThreads, getThreadWithEmailsById } from "./helpers";
 import { getConfig, getRelationTypes, getTableIds } from "./storage";
 import { LoggedMenu } from "./menu/logged";
@@ -536,7 +536,7 @@ export function handleRouteThread(req: HttpRequestIncoming): HttpResponseWrap {
     if (thread == null) {
         return simpleResponse("404 NOT FOUND", 404, "not found")
     }
-    return jsonResponse(JSON.stringify<ThreadToRead>(thread))
+    return jsonResponse(JSON.stringify<ThreadToDisplay>(ThreadToDisplay.fromThreadToRead(thread)))
 }
 
 export function handleRouteThreads(req: HttpRequestIncoming): HttpResponseWrap {
@@ -560,7 +560,7 @@ export function handleRouteThreads(req: HttpRequestIncoming): HttpResponseWrap {
 
     const ids = getTableIds()
     const threads = getThreads(ids, dtype, account, folder);
-    return jsonResponse(JSON.stringify<ThreadToRead[]>(threads))
+    return jsonResponse(JSON.stringify<ThreadToDisplay[]>(ThreadToDisplay.fromThreadsToRead(threads)))
 }
 
 export function handleRouteFolders(req: HttpRequestIncoming): HttpResponseWrap {

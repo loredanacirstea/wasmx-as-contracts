@@ -354,6 +354,10 @@ export class ThreadToWrite {
     email_message_ids: string = ""
     missing_refs: string = ""
     folder: string = ""
+    timestamp_start: i64 = 0
+    timestamp_last: i64 = 0
+    summary: string = ""
+    count: i64 = 0
     constructor(
         name: string,
         last_email_message_id: i64,
@@ -361,6 +365,10 @@ export class ThreadToWrite {
         email_message_ids: string,
         missing_refs: string,
         folder: string,
+        timestamp_start: i64,
+        timestamp_last: i64,
+        summary: string,
+        count: i64,
     ) {
         this.name = name
         this.last_email_message_id = last_email_message_id
@@ -368,6 +376,10 @@ export class ThreadToWrite {
         this.email_message_ids = email_message_ids
         this.missing_refs = missing_refs
         this.folder = folder
+        this.timestamp_start = timestamp_start
+        this.timestamp_last = timestamp_last
+        this.summary = summary
+        this.count = count
     }
 }
 
@@ -383,8 +395,12 @@ export class ThreadToRead extends ThreadToWrite {
         email_message_ids: string,
         missing_refs: string,
         folder: string,
+        timestamp_start: i64,
+        timestamp_last: i64,
+        summary: string,
+        count: i64,
     ) {
-        super(name, last_email_message_id, owner, email_message_ids, missing_refs, folder)
+        super(name, last_email_message_id, owner, email_message_ids, missing_refs, folder, timestamp_start, timestamp_last, summary, count)
         this.id = id
     }
 }
@@ -400,10 +416,47 @@ export class ThreadWithEmails extends ThreadToRead {
         email_message_ids: string,
         missing_refs: string,
         folder: string,
+        timestamp_start: i64,
+        timestamp_last: i64,
+        summary: string,
+        count: i64,
         children: Email[],
     ) {
-        super(id, name, last_email_message_id, owner, email_message_ids, missing_refs, folder)
+        super(id, name, last_email_message_id, owner, email_message_ids, missing_refs, folder, timestamp_start, timestamp_last, summary, count)
         this.children = children
+    }
+}
+
+@json
+export class ThreadToDisplay extends ThreadToRead {
+    timestamp: i64
+    constructor(
+        id: i64,
+        name: string,
+        last_email_message_id: i64,
+        owner: string,
+        email_message_ids: string,
+        missing_refs: string,
+        folder: string,
+        timestamp_start: i64,
+        timestamp_last: i64,
+        summary: string,
+        count: i64,
+    ) {
+        super(id, name, last_email_message_id, owner, email_message_ids, missing_refs, folder, timestamp_start, timestamp_last, summary, count)
+        this.timestamp = timestamp_last
+    }
+
+    static fromThreadToRead(v: ThreadToRead): ThreadToDisplay {
+        return new ThreadToDisplay(v.id, v.name, v.last_email_message_id, v.owner, v.email_message_ids, v.missing_refs, v.folder, v.timestamp_start, v.timestamp_last, v.summary, v.count);
+    }
+
+    static fromThreadsToRead(v: ThreadToRead[]): ThreadToDisplay[] {
+        const threads = new Array<ThreadToDisplay>(v.length)
+        for (let i = 0; i < v.length; i++) {
+            threads[i] = ThreadToDisplay.fromThreadToRead(v[i])
+        }
+        return threads
     }
 }
 
@@ -424,12 +477,21 @@ export class MissingRefsWrap {
 export class UpdateThreadAddEmail {
     last_email_message_id: i64 = 0
     email_message_ids: string = ""
+    timestamp_last: i64 = 0
+    summary: string = ""
+    count: i64 = 0
     constructor(
         last_email_message_id: i64,
-        email_message_ids: string
+        email_message_ids: string,
+        timestamp_last: i64,
+        summary: string,
+        count: i64,
     ) {
         this.last_email_message_id = last_email_message_id
-        this.email_message_ids = email_message_ids
+        this.email_message_ids = email_message_ids,
+        this.timestamp_last = timestamp_last
+        this.summary = summary
+        this.count = count
     }
 }
 

@@ -44,6 +44,7 @@ export function saveEmail(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTy
     // every email is part of a thread
 	// a thread can have >=1 emails
     if (refs.length == 0) {
+        const summary = getThreadSummary(dbemail)
         let dbthread = new ThreadToWrite(
             dbemail.name,
             emailId,
@@ -51,6 +52,10 @@ export function saveEmail(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTy
             JSON.stringify<string[]>([envelope.MessageID]),
             `[]`,
             folder,
+            dbemail.timestamp,
+            dbemail.timestamp,
+            summary,
+            1,
         );
 
         const _ids = saveThreadWithNode(dtype, ids.thread, dbthread);
@@ -94,7 +99,7 @@ export function saveEmail(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTy
                 if (lastThread.last_email_message_id == prevEmailId) {
                     messageIds.push(dbemail.envelope_MessageID)
                     const messageIdsStr = JSON.stringify<string[]>(messageIds)
-                    const q = JSON.stringify<UpdateThreadAddEmail>(new UpdateThreadAddEmail(emailId, messageIdsStr))
+                    const q = JSON.stringify<UpdateThreadAddEmail>(new UpdateThreadAddEmail(emailId, messageIdsStr, dbemail.timestamp, getThreadSummary(dbemail), lastThread.count + 1))
                     // we expand the thread with current email
                     dtype.Update(ids.thread, TableThreadName, q, `{"id":${lastThreadId}},"owner":"${owner}"`)
                     addEmailThreadRelation(dtype, ids, reltypeIds, lastThreadId, nodeIdEmail)
@@ -133,6 +138,10 @@ export function saveEmail(dtype: DTypeSdk, ids: TableIds, reltypeIds: RelationTy
             JSON.stringify<string[]>([envelope.MessageID]),
             JSON.stringify(refs),
             folder,
+            dbemail.timestamp,
+            dbemail.timestamp,
+            getThreadSummary(dbemail),
+            1,
         );
 
         const _ids = saveThreadWithNode(dtype, ids.thread, dbthread);
@@ -288,6 +297,10 @@ export function getThreadWithEmailsById(ids: TableIds, dtype: DTypeSdk, reltypeI
         thread.email_message_ids,
         thread.missing_refs,
         thread.folder,
+        thread.timestamp_start,
+        thread.timestamp_last,
+        thread.summary,
+        thread.count,
         resp,
     )
 }
@@ -356,4 +369,9 @@ export function getEmailSummary(email: Email): string {
 		name = email.envelope!.From[0].Mailbox
 	}
 	return `${name}: ${email.envelope!.Subject}`
+}
+
+// additional information to the name
+export function getThreadSummary(email: EmailToWrite): string {
+    return email.body.slice(0, 100);
 }

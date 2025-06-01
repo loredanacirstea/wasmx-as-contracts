@@ -44,7 +44,11 @@ export function getThreadFields(threadTableId: i64): string {
 {"table_id":${threadTableId},"name":"email_message_ids","order_index":4,"value_type":"TEXT","indexed":false,"sql_options":"NOT NULL DEFAULT '[]'","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
 {"table_id":${threadTableId},"name":"missing_refs","order_index":5,"value_type":"TEXT","indexed":false,"sql_options":"NOT NULL DEFAULT '[]'","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
 {"table_id":${threadTableId},"name":"name","order_index":6,"value_type":"VARCHAR","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
-{"table_id":${threadTableId},"name":"folder","order_index":7,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""}
+{"table_id":${threadTableId},"name":"folder","order_index":7,"value_type":"VARCHAR","indexed":true,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${threadTableId},"name":"timestamp_start","order_index":8,"value_type":"INTEGER","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${threadTableId},"name":"timestamp_last","order_index":9,"value_type":"INTEGER","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${threadTableId},"name":"summary","order_index":10,"value_type":"VARCHAR","indexed":false,"sql_options":"NOT NULL DEFAULT ''","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""},
+{"table_id":${threadTableId},"name":"count","order_index":11,"value_type":"INTEGER","indexed":false,"sql_options":"NOT NULL","foreign_key_table":"","foreign_key_field":"","foreign_key_sql_options":"","description":"","permissions":""}
 ]`
 }
 
