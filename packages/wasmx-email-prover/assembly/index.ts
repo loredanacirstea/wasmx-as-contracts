@@ -14,10 +14,10 @@ import { onlyRole } from "wasmx-env/assembly/utils";
 import { HttpRequestHandler } from "./http";
 
 export function wasmx_env_2(): void {}
-export function wasmx_sql_1(): void {}
+export function wasmx_sql_i32_1(): void {}
 export function wasmx_imap_i32_1(): void {}
 export function wasmx_smtp_i32_1(): void {}
-export function wasmx_oauth2client_1(): void {}
+export function wasmx_oauth2client_i32_1(): void {}
 // TODO remove, we need this for temporary JWT functions
 export function wasmx_httpserver_i32_1(): void {}
 

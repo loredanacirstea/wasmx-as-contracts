@@ -8,7 +8,7 @@ export function wasmx_env_2(): void {}
 
 export function instantiate(): void {}
 
-export function wasmx_sql_1(): void {}
+export function wasmx_sql_i32_1(): void {}
 
 export function main(): void {
   // TODO check allowed caller!! is an authority
