@@ -8,9 +8,9 @@ export function wasmx_env_2(): void {}
 
 export function instantiate(): void {}
 
-export function wasmx_httpclient_1(): void {}
+export function wasmx_httpclient_i32_1(): void {}
 
-export function wasmx_httpserver_1(): void {}
+export function wasmx_httpserver_i32_1(): void {}
 
 export function main(): void {
   let result: ArrayBuffer = new ArrayBuffer(0)
