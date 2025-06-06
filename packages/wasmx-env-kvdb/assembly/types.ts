@@ -64,10 +64,10 @@ export class KvGetRequest {
 @json
 export class KvGetResponse {
     error: string = ""
-    value: Base64String = ""
+    value: Base64String | null = null
     constructor(
         error: string,
-        value: Base64String,
+        value: Base64String | null,
     ) {
         this.error = error
         this.value = value

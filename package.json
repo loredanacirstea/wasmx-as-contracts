@@ -8,6 +8,7 @@
 
     },
     "scripts": {
-      "install-all": "npm install"
+      "install-all": "npm install",
+      "reinstall-all": "rm -rf node_modules packages/*/node_modules package-lock.json && npm install"
     }
 }

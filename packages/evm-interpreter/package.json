@@ -25,6 +25,6 @@
   },
   "dependencies": {
     "as-tally": "file:../as-tally",
-    "json-as": "github:loredanacirstea/as-json#nested-custom-serializer-fix"
+    "json-as": "1.0.8"
   }
 }

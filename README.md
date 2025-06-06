@@ -4,7 +4,8 @@
 
 * npm install for all packages
 ```
-npm install
+npm run install-all
+npm run reinstall-all
 ```
 
 ## dev

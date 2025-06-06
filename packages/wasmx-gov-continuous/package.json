@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "as-base64": "^0.2.0",
-    "json-as": "github:loredanacirstea/as-json#nested-custom-serializer-fix",
+    "json-as": "1.0.8",
     "wasmx-bank": "file:../wasmx-bank",
     "wasmx-consensus": "file:../wasmx-consensus",
     "wasmx-blocks": "file:../wasmx-blocks",

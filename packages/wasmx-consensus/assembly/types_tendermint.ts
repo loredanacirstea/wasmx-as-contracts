@@ -301,6 +301,7 @@ export class ResponsePrepareProposal {
     }
 }
 
+// @ts-ignores
 @json
 export enum BlockIDFlag {
     Unknown = 0,
@@ -364,6 +365,7 @@ export class RequestProcessProposal {
     }
 }
 
+// @ts-ignores
 @json
 export enum ProposalStatus {
     UNKNOWN = 0,
@@ -662,6 +664,7 @@ export class ResponseCommit {
     }
 }
 
+// @ts-ignores
 @json
 export enum CheckTxType {
     New = 0,

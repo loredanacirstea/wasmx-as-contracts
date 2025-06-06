@@ -4,6 +4,8 @@ import { BigInt } from "./bn";
 import { AnyWrap } from "./wasmx_types";
 
 export type HexString = string;
+// @ts-ignore
+@json
 export type Base64String = string;
 export type Bech32String = string;
 export type ConsensusAddressString = string;

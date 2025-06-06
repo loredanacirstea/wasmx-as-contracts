@@ -25,7 +25,7 @@
   "dependencies": {
     "@ark-us/as-sha256": "0.4.1-alpha.2",
     "as-base64": "^0.2.0",
-    "json-as": "github:loredanacirstea/as-json#nested-custom-serializer-fix",
+    "json-as": "1.0.8",
     "wasmx-env": "file:../wasmx-env",
     "wasmx-env-core": "file:../wasmx-env-core",
     "wasmx-utils": "file:../wasmx-utils"
