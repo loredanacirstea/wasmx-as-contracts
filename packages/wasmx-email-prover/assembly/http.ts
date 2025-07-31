@@ -785,10 +785,9 @@ export function handleEmailNew(req: HttpRequestIncoming): HttpResponseWrap {
         null,
         "",
     )
-    const header = new Map<string, Array<string>>()
     const email = new EmailToSend(
         envelope,
-        header,
+        [],
         emailPart.body,
         [], // TODO attachments
     )
@@ -862,14 +861,14 @@ export function handleEmailForward(req: HttpRequestIncoming): HttpResponseWrap {
     // emailFull.envelope!.To = to
 
     // change headers too
-    if (emailFull.header.has("From")) {
-        emailFull.header.set("From", Address.toStrings([fromAddress]))
+    if (emailFull.headers.has("From")) {
+        emailFull.headers.set("From", Address.toStrings([fromAddress]))
     }
-    if (emailFull.header.has("To")) {
-        emailFull.header.set("To", Address.toStrings(to))
+    if (emailFull.headers.has("To")) {
+        emailFull.headers.set("To", Address.toStrings(to))
     }
-    if (emailFull.header.has("Subject")) {
-        emailFull.header.set("Subject", [newsubject])
+    if (emailFull.headers.has("Subject")) {
+        emailFull.headers.set("Subject", [newsubject])
     }
     const serialized = serializeEmailMessage(emailFull, false);
 

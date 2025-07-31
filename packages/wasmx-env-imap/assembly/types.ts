@@ -456,6 +456,44 @@ export class Envelope {
     }
 }
 
+
+@json
+export class Header {
+    key: string = ""
+    value: string = ""
+    constructor(key: string, value: string) {
+        this.key = key
+        this.value = value
+    }
+}
+
+@json
+export class Headers {
+    headers: Header[] = []
+    constructor(headers: Header[] = []) {
+        this.headers = headers
+    }
+
+    @serializer
+    serializer(self: Headers): string {
+        return JSON.stringify<Header[]>(self.headers)
+    }
+
+    @deserializer
+    deserializer(data: string): Headers {
+        const headers = JSON.parse<Header[]>(data)
+        return new Headers(headers)
+    }
+
+    has(key: string): boolean {
+
+    }
+
+    set(key: string, value: string): void {
+
+    }
+}
+
 @json
 export class Email {
     uid: u32 = 0;
@@ -463,7 +501,7 @@ export class Email {
     internalDate: Date = new Date(0);
     rfc822Size: i64 = 0;
     envelope: Envelope | null = null;
-    header: Map<string, Array<string>> = new Map<string, Array<string>>();
+    headers: Headers = new Headers();
     body: string = "";
     attachments: Array<Attachment> = [];
     raw: string = "";
@@ -475,7 +513,7 @@ export class Email {
         internalDate: Date,
         rfc822Size: i64,
         envelope: Envelope | null,
-        header: Map<string, Array<string>>,
+        headers: Headers,
         body: string,
         attachments: Array<Attachment>,
         raw: string,
@@ -486,7 +524,7 @@ export class Email {
         this.internalDate = internalDate;
         this.rfc822Size = rfc822Size;
         this.envelope = envelope;
-        this.header = header;
+        this.headers = headers;
         this.body = body;
         this.attachments = attachments;
         this.raw = raw;
@@ -494,7 +532,7 @@ export class Email {
     }
 
     static empty(): Email {
-        return new Email(0, [], new Date(0), 0, Envelope.empty(), new Map<string, Array<string>>(), "", [], "", "");
+        return new Email(0, [], new Date(0), 0, Envelope.empty(), new Headers(), "", [], "", "");
     }
 }
 
@@ -509,7 +547,7 @@ export class EmailExtended extends Email {
         internalDate: Date,
         rfc822Size: i64,
         envelope: Envelope | null,
-        header: Map<string, Array<string>>,
+        headers: Headers,
         body: string,
         attachments: Array<Attachment>,
         raw: string,
@@ -517,18 +555,18 @@ export class EmailExtended extends Email {
         boundary: string,
         bh: string,
     ) {
-        super(uid, flags, internalDate, rfc822Size, envelope, header, body, attachments, raw, bh)
+        super(uid, flags, internalDate, rfc822Size, envelope, headers, body, attachments, raw, bh)
         this.rawBody = rawBody;
         this.boundary = boundary;
     }
 
     static empty(): EmailExtended {
-        return new EmailExtended(0, [], new Date(0), 0, Envelope.empty(), new Map<string, Array<string>>(), "", [], "", "", "", "");
+        return new EmailExtended(0, [], new Date(0), 0, Envelope.empty(), new Headers(), "", [], "", "", "", "");
     }
 
     static fromEmail(email: Email): EmailExtended {
         return new EmailExtended(
-            email.uid, email.flags, email.internalDate, email.rfc822Size, email.envelope, email.header, email.body, email.attachments, email.raw, "", "", email.bh,
+            email.uid, email.flags, email.internalDate, email.rfc822Size, email.envelope, email.headers, email.body, email.attachments, email.raw, "", "", email.bh,
         )
     }
 }
