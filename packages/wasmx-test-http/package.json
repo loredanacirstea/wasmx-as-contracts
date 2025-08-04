@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "as-base64": "^0.2.0",
-    "json-as": "1.0.8",
+    "json-as": "1.1.20",
     "wasmx-env": "file:../wasmx-env",
     "wasmx-env-httpclient": "file:../wasmx-env-httpclient",
     "wasmx-env-httpserver": "file:../wasmx-env-httpserver",

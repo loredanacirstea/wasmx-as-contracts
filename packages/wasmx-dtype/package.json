@@ -25,7 +25,7 @@
   "dependencies": {
     "as-base64": "^0.2.0",
     "assemblyscript-json": "file://../../../assemblyscript-json",
-    "json-as": "1.0.8",
+    "json-as": "1.1.20",
     "wasmx-env": "file:../wasmx-env",
     "wasmx-utils": "file:../wasmx-utils",
     "wasmx-env-sql": "file:../wasmx-env-sql"
