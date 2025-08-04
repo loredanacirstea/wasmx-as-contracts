@@ -13,7 +13,7 @@
   "license": "UNLICENSED",
   "description": "",
   "devDependencies": {
-    "assemblyscript": "^0.27.35"
+    "assemblyscript": "0.28.3"
   },
   "type": "module",
   "exports": {

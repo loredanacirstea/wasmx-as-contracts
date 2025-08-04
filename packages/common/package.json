@@ -20,7 +20,7 @@
     }
   },
   "devDependencies": {
-    "assemblyscript": "0.27.36"
+    "assemblyscript": "0.28.3"
   },
   "dependencies": {
     "as-bignum": "0.3.1",

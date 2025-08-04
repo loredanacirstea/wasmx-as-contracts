@@ -20,7 +20,7 @@
     }
   },
   "devDependencies": {
-    "assemblyscript": "^0.25.0",
+    "assemblyscript": "0.28.3",
     "wasmx": "file:./tests/wasmx"
   },
   "dependencies": {

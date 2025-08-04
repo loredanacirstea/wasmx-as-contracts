@@ -13,7 +13,7 @@
   "author": "Loredana Cirstea",
   "license": "UNLICENSED",
   "devDependencies": {
-    "assemblyscript": "^0.27.25"
+    "assemblyscript": "0.28.3"
   },
   "type": "module",
   "exports": {
