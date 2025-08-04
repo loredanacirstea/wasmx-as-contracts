@@ -414,7 +414,7 @@ export class RequestFinalizeBlock {
 @json
 export class WrapRequestFinalizeBlock {
     request: RequestFinalizeBlock
-    metainfo: Map<string, Base64String>
+    metainfo: Map<string, Base64String> = new Map<string, Base64String>()
     constructor(request: RequestFinalizeBlock, metainfo: Map<string, Base64String>) {
         this.request = request
         this.metainfo = metainfo;
@@ -425,7 +425,7 @@ export class WrapRequestFinalizeBlock {
 export class RequestProcessProposalWithMetaInfo {
     request: RequestProcessProposal // same content as RequestFinalizeBloc
     optimistic_execution: boolean
-    metainfo: Map<string, Base64String>
+    metainfo: Map<string, Base64String> = new Map<string, Base64String>()
     constructor(request: RequestProcessProposal, optimistic_execution: boolean, metainfo: Map<string, Base64String>) {
         this.request = request
         this.optimistic_execution = optimistic_execution

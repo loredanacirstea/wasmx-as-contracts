@@ -64,7 +64,6 @@ export class Mempool {
     }
 }
 
-@json
 export enum SignedMsgType {
     SIGNED_MSG_TYPE_UNKNOWN = 0,
     SIGNED_MSG_TYPE_PREVOTE = 1,

@@ -129,8 +129,8 @@ export class MempoolTx {
 
 @json
 export class Mempool {
-    map: Map<Base64String,MempoolTx>
-    temp: Map<Base64String,bool>
+    map: Map<Base64String,MempoolTx> = new Map<Base64String,MempoolTx>()
+    temp: Map<Base64String,bool> = new  Map<Base64String,bool>()
     constructor(map: Map<Base64String,MempoolTx>) {
         this.map = map;
         this.temp = new Map<Base64String,bool>()
