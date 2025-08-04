@@ -4,8 +4,6 @@ import { BigInt } from "./bn";
 import { AnyWrap } from "./wasmx_types";
 
 export type HexString = string;
-// @ts-ignore
-@json
 export type Base64String = string;
 export type Bech32String = string;
 export type ConsensusAddressString = string;
@@ -400,6 +398,9 @@ export class ModeInfoMulti {
 @json
 export class ModeInfo {
     single: ModeInfoSingle | null
+    // TODO fix recursive issue here
+    // json-as runs into issues for recursive types
+    @omit
     multi: ModeInfoMulti | null
     constructor(single: ModeInfoSingle | null, multi: ModeInfoMulti | null) {
         this.single = single
