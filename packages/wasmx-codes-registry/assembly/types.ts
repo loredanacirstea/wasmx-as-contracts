@@ -5,9 +5,9 @@ export const MODULE_NAME = "codes-registry"
 
 @json
 export class GenesisState {
-    code_infos: CodeInfo[]
-    contract_infos: MsgSetContractInfoRequest[]
-    constructor(code_infos: CodeInfo[], contract_infos: MsgSetContractInfoRequest[]) {
+    code_infos: CodeInfo[] = []
+    contract_infos: MsgSetContractInfoRequest[] = []
+    constructor(code_infos: CodeInfo[] = [], contract_infos: MsgSetContractInfoRequest[] = []) {
         this.code_infos = code_infos
         this.contract_infos = contract_infos
     }
@@ -33,8 +33,8 @@ export class MsgSetCodeInfoRequest {
 
 @json
 export class MsgSetContractInfoRequest {
-    address: Bech32String
-    contract_info: ContractInfo
+    address: Bech32String = ""
+    contract_info: ContractInfo = new ContractInfo(0, "", "", "", "", "", "")
     constructor(address: Bech32String, contract_info: ContractInfo) {
         this.address = address
         this.contract_info = contract_info

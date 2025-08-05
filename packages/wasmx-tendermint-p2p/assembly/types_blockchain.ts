@@ -4,6 +4,7 @@ import { Base64String, Bech32String} from 'wasmx-env/assembly/types';
 import { BlockIDFlag } from 'wasmx-consensus/assembly/types_tendermint';
 import * as staking from "wasmx-stake/assembly/types";
 import { ValidatorQueueEntry } from "wasmx-tendermint/assembly/types_blockchain";
+import { parseInt64 } from "wasmx-utils/assembly/utils";
 
 @json
 export class GetProposerResponse {
@@ -96,10 +97,10 @@ export class ValidatorProposalVote {
 @json
 export class ValidatorProposalVoteMap {
     nodeCount: i32
-    map: Map<i64,ValidatorProposalVote[]> = new Map<i64,ValidatorProposalVote[]>()
+    map: Map<string,ValidatorProposalVote[]> = new Map<string,ValidatorProposalVote[]>()
     constructor(nodeCount: i32) {
         this.nodeCount = nodeCount
-        this.map = new Map<i64,ValidatorProposalVote[]>()
+        this.map = new Map<string,ValidatorProposalVote[]>()
     }
 
     resize(validators: staking.ValidatorSimple[]): void {
@@ -131,7 +132,8 @@ export class ValidatorProposalVoteMap {
         const keys = this.map.keys()
         for (let i = 0; i < keys.length; i++) {
             const key = keys[i]
-            if (key <= height) {
+            const h = parseInt64(key)
+            if (h <= height) {
                 this.map.delete(key)
             }
         }
@@ -153,10 +155,10 @@ export class ValidatorCommitVote {
 @json
 export class ValidatorCommitVoteMap {
     nodeCount: i32
-    map: Map<i64,ValidatorCommitVote[]> = new Map<i64,ValidatorCommitVote[]>()
+    map: Map<string,ValidatorCommitVote[]> = new Map<string,ValidatorCommitVote[]>()
     constructor(nodeCount: i32) {
         this.nodeCount = nodeCount
-        this.map = new Map<i64,ValidatorCommitVote[]>()
+        this.map = new Map<string,ValidatorCommitVote[]>()
     }
     resize(validators: staking.ValidatorSimple[]): void {
         const newsize = validators.length;
@@ -187,7 +189,8 @@ export class ValidatorCommitVoteMap {
         const keys = this.map.keys()
         for (let i = 0; i < keys.length; i++) {
             const key = keys[i]
-            if (key <= height) {
+            const h = parseInt64(key)
+            if (h <= height) {
                 this.map.delete(key)
             }
         }

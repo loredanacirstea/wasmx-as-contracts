@@ -748,13 +748,13 @@ export class SystemContract {
 
 @json
 export class ContractInfo {
-    code_id: u64
-    creator: Bech32String
-    label: string
-    storage_type: string
-    init_message: Base64String
-    provenance: string
-    ibc_port_id: string
+    code_id: u64 = 0
+    creator: Bech32String = ""
+    label: string = ""
+    storage_type: string = ""
+    init_message: Base64String = ""
+    provenance: string = ""
+    ibc_port_id: string = ""
 
     constructor(
         code_id: u64,

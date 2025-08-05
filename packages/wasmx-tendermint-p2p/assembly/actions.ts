@@ -1709,13 +1709,13 @@ export function resetPrevotes(
     }
     // we may receive prevotes before this time, so an entry may already be created
     // prevotes for old termIds are not removed now
-    if (!map.map.has(nextIndex)) {
+    if (!map.map.has(nextIndex.toString())) {
         const emptyarr = getEmptyValidatorProposalVoteArray(count, nextIndex, termId, SignedMsgType.SIGNED_MSG_TYPE_PREVOTE);
         // we need to store the validator address
         for (let i = 0 ; i < emptyarr.length; i++) {
             emptyarr[i].validatorAddress = validators[i].operator_address;
         }
-        map.map.set(nextIndex, emptyarr)
+        map.map.set(nextIndex.toString(), emptyarr)
     }
     setPrevoteArrayMap(map);
 
@@ -1744,14 +1744,14 @@ export function resetPrecommits(
         map.resize(validators)
     }
     // we may receive precommits before this time, so an entry may already be created
-    if (!map.map.has(nextIndex)) {
+    if (!map.map.has(nextIndex.toString())) {
         const termId = getTermId()
         const emptyarr = getEmptyPrecommitArray(count, nextIndex, termId, SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT);
         // we need to store the validator address
         for (let i = 0 ; i < emptyarr.length; i++) {
             emptyarr[i].vote.validatorAddress = validators[i].operator_address;
         }
-        map.map.set(nextIndex, emptyarr)
+        map.map.set(nextIndex.toString(), emptyarr)
     }
     setPrecommitArrayMap(map);
 }

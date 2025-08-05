@@ -207,61 +207,67 @@ export function setSimpleNodesInfo(ips: Array<NodeInfo>): void {
 export function addToPrevoteArray(nodeId: i32, data: ValidatorProposalVote): void {
     const value = getPrevoteArrayMap()
     let arr: ValidatorProposalVote[] = [];
-    if (value.map.has(data.index)) {
-        arr = value.map.get(data.index)
+    const key = data.index.toString()
+    if (value.map.has(key)) {
+        arr = value.map.get(key)
     } else {
         arr = getEmptyValidatorProposalVoteArray(value.nodeCount, data.index, data.termId, SignedMsgType.SIGNED_MSG_TYPE_PREVOTE);
         // we've received a vote before we entered the new round ourselves, so we initialize the new block precommit array with the validator addresses from an earlier block.
-        if (value.map.get(data.index - 1)) {
-            const oldarr = value.map.get(data.index - 1);
+        if (value.map.get((data.index - 1).toString())) {
+            const oldarr = value.map.get((data.index - 1).toString());
             for (let i = 0 ; i < arr.length; i++) {
                 arr[i].validatorAddress = oldarr[i].validatorAddress;
             }
         }
     }
     arr[nodeId] = data;
-    value.map.set(data.index, arr);
+    value.map.set(data.index.toString(), arr);
     setPrevoteArrayMap(value);
 }
 
 export function getPrevoteArray(blockHeight: i64): Array<ValidatorProposalVote> {
     const value = getPrevoteArrayMap()
-    if (value.map.has(blockHeight)) {
-        return value.map.get(blockHeight)
+    const key = blockHeight.toString()
+    if (value.map.has(key)) {
+        return value.map.get(key)
     }
     return [];
 }
 
 export function setPrevoteArray(blockHeight: i64, arr: Array<ValidatorProposalVote>): void {
     const value = getPrevoteArrayMap()
-    value.map.set(blockHeight, arr)
+    const key = blockHeight.toString()
+    value.map.set(key, arr)
     setPrevoteArrayMap(value);
 }
 
 export function addToPrecommitArray(nodeId: i32, data: ValidatorCommitVote): void {
     const value = getPrecommitArrayMap()
     let arr: ValidatorCommitVote[] = [];
-    if (value.map.has(data.vote.index)) {
-        arr = value.map.get(data.vote.index)
+    const key = data.vote.index.toString()
+    if (value.map.has(key)) {
+        arr = value.map.get(key)
     } else {
         arr = getEmptyPrecommitArray(value.nodeCount, data.vote.index, data.vote.termId, SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT)
         // we've received a vote before we entered the new round ourselves, so we initialize the new block precommit array with the validator addresses from an earlier block.
-        if (value.map.get(data.vote.index - 1)) {
-            const oldarr = value.map.get(data.vote.index - 1);
+        const key2 = (data.vote.index - 1).toString()
+        if (value.map.get(key2)) {
+            const oldarr = value.map.get(key2);
             for (let i = 0 ; i < arr.length; i++) {
                 arr[i].vote.validatorAddress = oldarr[i].vote.validatorAddress;
             }
         }
     }
     arr[nodeId] = data;
-    value.map.set(data.vote.index, arr);
+    value.map.set(data.vote.index.toString(), arr);
     setPrecommitArrayMap(value);
 }
 
 export function resetPrecommitArray(blockHeight: i64, newtermId: i64): void {
     const value = getPrecommitArrayMap()
-    if (value.map.has(blockHeight)) {
-        const arr = value.map.get(blockHeight)
+    const h = blockHeight.toString()
+    if (value.map.has(h)) {
+        const arr = value.map.get(h)
         for (let i = 0 ; i < arr.length; i++) {
             arr[i].signature = ""
             arr[i].block_id_flag = typestnd.BlockIDFlag.Absent
@@ -274,15 +280,16 @@ export function resetPrecommitArray(blockHeight: i64, newtermId: i64): void {
 
 export function getPrecommitArray(blockHeight: i64): Array<ValidatorCommitVote> {
     const value = getPrecommitArrayMap()
-    if (value.map.has(blockHeight)) {
-        return value.map.get(blockHeight)
+    const h = blockHeight.toString()
+    if (value.map.has(h)) {
+        return value.map.get(h)
     }
     return [];
 }
 
 export function setPrecommitArray(blockHeight: i64, arr: Array<ValidatorCommitVote>): void {
     const value = getPrecommitArrayMap()
-    value.map.set(blockHeight, arr)
+    value.map.set(blockHeight.toString(), arr)
     setPrecommitArrayMap(value);
 }
 
