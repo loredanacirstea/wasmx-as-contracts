@@ -23,14 +23,24 @@ export class tally {
 
     @serializer
     serializer(self: tally): string {
-        return `"${self.toString(16)}"`;
+        return `"${self.toString(10)}"`;
     }
 
     @deserializer
     deserializer(data: string): tally {
+        if (data.length == 0 || (data.length <= 2 && data.substr(0) == `"`)) {
+            return tally.zero()
+        }
+        const quoteStart = data.substr(0, 1) == `"`
+        const quoteEnd = data.substr(data.length - 1) == `"`
+        if ((quoteStart && !quoteEnd) || (!quoteStart && quoteEnd)) {
+            throw new Error(`tally deserializer mismatch quotes: ${data}`)
+        }
+        if (quoteStart) {
+            data = data.slice(1, data.length - 1)
+        }
         const base = data.slice(0, 2) == "0x" ? 16 : 10
         return tally.fromString(data, base);
-
     }
 
     @operator('+')
