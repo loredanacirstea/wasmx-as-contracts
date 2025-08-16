@@ -24,7 +24,6 @@ export const MissedBlockBitmapChunkSize: i32 = 1024 // 2^10 bits
 
 export const ValidatorUpdateDelay: i64 = 1
 
-@json
 export enum Infraction {
     // UNSPECIFIED defines an empty infraction.
     INFRACTION_UNSPECIFIED = 0,

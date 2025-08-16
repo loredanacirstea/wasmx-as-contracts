@@ -42,7 +42,6 @@ export class Fraction {
     }
 }
 
-@json
 export type VoteOption = i32
 // VOTE_OPTION_UNSPECIFIED defines a no-op vote option.
 export const VOTE_OPTION_UNSPECIFIED = 0;
@@ -55,7 +54,6 @@ export const VOTE_OPTION_NO = 3;
 // VOTE_OPTION_NO_WITH_VETO defines a no with veto vote option.
 export const VOTE_OPTION_NO_WITH_VETO = 4;
 
-@json
 export type VoteOptionString = string
 export const OptionUnspecified = "VOTE_OPTION_UNSPECIFIED";
 export const OptionYes = "VOTE_OPTION_YES";
@@ -71,7 +69,6 @@ VoteOptionMap.set(OptionNo, VOTE_OPTION_NO)
 VoteOptionMap.set(OptionNoVeto, VOTE_OPTION_NO_WITH_VETO)
 
 // ProposalStatus enumerates the valid statuses of a proposal.
-@json
 export type ProposalStatus = i32
 // PROPOSAL_STATUS_UNSPECIFIED defines the default proposal status.
 export const PROPOSAL_STATUS_UNSPECIFIED = 0 // StatusNil

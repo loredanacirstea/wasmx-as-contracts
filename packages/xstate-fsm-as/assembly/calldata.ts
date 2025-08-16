@@ -13,6 +13,7 @@ import { MachineExternal } from './machine';
 import { Base64String, CallRequest, CallResponse } from "wasmx-env/assembly/types";
 import { LoggerDebug, LoggerDebugExtended } from "./utils";
 
+@json
 export class InterpreterCallData {
     config: MachineExternal;
     calldata: CallData;
@@ -38,8 +39,8 @@ export class CallData {
 
 @json
 export class CallDataInstantiate {
-    initialState: string;
-    context: Array<ContextParam>;
+    initialState: string = "";
+    context: Array<ContextParam> = [];
     constructor(state: string, context: Array<ContextParam>) {
         this.initialState = state;
         this.context = context;
@@ -70,17 +71,6 @@ export class CallDataExecuteAction {
     action: ActionObject
     constructor(action: ActionObject) {
         this.action = action;
-    }
-}
-
-@json
-export class WasmxLog {
-    type: string = 'fsmvm';
-    data: Uint8Array;
-    topics: Array<Uint8Array>;
-    constructor(data: Uint8Array, topics: Array<Uint8Array>) {
-        this.data = data;
-        this.topics = topics;
     }
 }
 

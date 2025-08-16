@@ -3,7 +3,6 @@ import { Base64String, Bech32String } from "wasmx-env/assembly/types";
 
 export const MODULE_NAME = "fsm"
 
-@json
 export enum InterpreterStatus {
   NotStarted = 0,
   Running = 1,
@@ -462,8 +461,8 @@ export class StateInfoClassExternal {
 
 @json
 export class ContextParam {
-  key: string;
-  value: string;
+  key: string = "";
+  value: string = "";
 
   constructor(key: string, value: string) {
     this.key = key;
@@ -472,8 +471,8 @@ export class ContextParam {
 }
 
 export class ContextParamRaw {
-  key: ArrayBuffer;
-  value: ArrayBuffer;
+  key: ArrayBuffer = new ArrayBuffer(0);
+  value: ArrayBuffer = new ArrayBuffer(0);
 
   constructor(key: ArrayBuffer, value: ArrayBuffer) {
     this.key = key;

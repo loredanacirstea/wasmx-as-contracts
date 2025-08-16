@@ -20,7 +20,8 @@
     ".": {
       "import": "./build/release.js",
       "types": "./build/release.d.ts"
-    }
+    },
+    "./tests/*.js": "./tests/*.js"
   },
   "dependencies": {
     "as-base64": "^0.2.0",
