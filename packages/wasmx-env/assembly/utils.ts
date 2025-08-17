@@ -103,9 +103,25 @@ export function onlyInternal(moduleName: string, message: string): void {
     if (hasRole(caller, moduleName)) return;
     if (isGoCoreModule(callerBz)) return;
 
+    const addrBz = wasmx.getAddress()
+    const addr = wasmxw.addr_humanize(addrBz)
+    // happens when host uses the same address for modules; e.g. "auth" module before being initialized
+    if (caller == addr) return;
+
     // caller does not have system role, we revert
-    const msg = `unauthorized caller: ${caller}: ${message}`
+    const msg = `${moduleName}: unauthorized caller: ${caller}: ${message}`
     wasmxw.LoggerDebug(moduleName, "revert", ["err", msg, "module", moduleName])
     wasmx.revert(String.UTF8.encode(msg));
     throw new Error(msg);
+}
+
+export function arrayBufferToU8Array(buffer: ArrayBuffer): u8[] {
+    const length = buffer.byteLength;
+    const uint8View = Uint8Array.wrap(buffer);
+    const u8Array: u8[] = [];
+
+    for (let i = 0; i < length; i++) {
+        u8Array[i] =  uint8View[i];
+    }
+    return u8Array;
 }
