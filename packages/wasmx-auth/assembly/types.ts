@@ -1,6 +1,7 @@
 import { JSON } from "json-as";
 import { Base64String, Bech32String, PublicKey } from 'wasmx-env/assembly/types';
 import { AnyWrap } from "wasmx-env/assembly/wasmx_types";
+import { parseInt64 } from "wasmx-utils/assembly/utils";
 
 export const MODULE_NAME = "auth"
 export const ModuleAccountTypeName = "ModuleAccount"
@@ -23,6 +24,20 @@ export class GenesisState {
 }
 
 @json
+export class BaseAccountExternal {
+    address: Bech32String
+    pub_key: PublicKey | null = null
+    account_number: string = ""
+    sequence: string = ""
+    constructor(address: Bech32String, pub_key: PublicKey | null, account_number: string, sequence: string) {
+        this.address = address
+        this.pub_key = pub_key
+        this.account_number = account_number
+        this.sequence = sequence
+    }
+}
+
+@json
 export class BaseAccount {
     address: Bech32String
     pub_key: PublicKey | null = null
@@ -37,6 +52,19 @@ export class BaseAccount {
 
     static New(addr: Bech32String): BaseAccount {
         return new BaseAccount(addr, null, 0, 0)
+    }
+
+    @serializer
+    serializer(self: BaseAccount): string {
+        return JSON.stringify<BaseAccountExternal>(new BaseAccountExternal(self.address, self.pub_key, self.account_number.toString(), self.sequence.toString()))
+    }
+
+    @deserializer
+    deserializer(data: string): BaseAccount {
+        const v = JSON.parse<BaseAccountExternal>(data)
+        const accountNo = u64(parseInt64(v.account_number))
+        const seq = u64(parseInt64(v.sequence))
+        return new BaseAccount(v.address, v.pub_key, accountNo, seq)
     }
 }
 
@@ -63,6 +91,22 @@ export class ModuleCredential {
 }
 
 @json
+export class ParamsExternal {
+    max_memo_characters: string = ""
+    tx_sig_limit: string = ""
+    tx_size_cost_per_byte: string = ""
+    sig_verify_cost_ed25519: string = ""
+    sig_verify_cost_secp256k1: string = ""
+    constructor(max_memo_characters: string, tx_sig_limit: string, tx_size_cost_per_byte: string, sig_verify_cost_ed25519: string, sig_verify_cost_secp256k1: string) {
+        this.max_memo_characters = max_memo_characters
+        this.tx_sig_limit = tx_sig_limit
+        this.tx_size_cost_per_byte = tx_size_cost_per_byte
+        this.sig_verify_cost_ed25519 = sig_verify_cost_ed25519
+        this.sig_verify_cost_secp256k1 = sig_verify_cost_secp256k1
+    }
+}
+
+@json
 export class Params {
     max_memo_characters: u64 = 0
     tx_sig_limit: u64 = 0
@@ -75,6 +119,22 @@ export class Params {
         this.tx_size_cost_per_byte = tx_size_cost_per_byte
         this.sig_verify_cost_ed25519 = sig_verify_cost_ed25519
         this.sig_verify_cost_secp256k1 = sig_verify_cost_secp256k1
+    }
+
+    @serializer
+    serializer(self: Params): string {
+        return JSON.stringify<ParamsExternal>(new ParamsExternal(self.max_memo_characters.toString(), self.tx_sig_limit.toString(), self.tx_size_cost_per_byte.toString(), self.sig_verify_cost_ed25519.toString(), self.sig_verify_cost_secp256k1.toString()))
+    }
+
+    @deserializer
+    deserializer(data: string): Params {
+        const v = JSON.parse<ParamsExternal>(data)
+        const mmc = u64(parseInt64(v.max_memo_characters))
+        const tsl = u64(parseInt64(v.tx_sig_limit))
+        const tscb = u64(parseInt64(v.tx_size_cost_per_byte))
+        const svced = u64(parseInt64(v.sig_verify_cost_ed25519))
+        const svcsecp = u64(parseInt64(v.sig_verify_cost_secp256k1))
+        return new Params(mmc, tsl, tscb, svced, svcsecp)
     }
 }
 

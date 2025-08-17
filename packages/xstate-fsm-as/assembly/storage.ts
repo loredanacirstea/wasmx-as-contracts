@@ -68,7 +68,7 @@ export function getContextValueInternal(key: string): ArrayBuffer {
 }
 
 export function setContextValue(key: string, value: string): void {
-    return setContextValueInternal(key, String.UTF8.encode(value));
+    setContextValueInternal(key, String.UTF8.encode(value));
 }
 
 export function setContextValueInternal(key: string, value: ArrayBuffer): void {

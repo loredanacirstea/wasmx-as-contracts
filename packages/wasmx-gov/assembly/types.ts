@@ -1,6 +1,7 @@
 import { JSON } from "json-as";
 import { Base64String, Bech32String, Coin } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn"
+import { parseInt64 } from "wasmx-utils/assembly/utils";
 
 export const MODULE_NAME = "gov"
 
@@ -369,6 +370,24 @@ export class Deposit {
 }
 
 @json
+export class GenesisStateExternal {
+    starting_proposal_id: string
+    deposits: Deposit[]
+    votes: Vote[]
+    proposals: Proposal[]
+    params: Params
+    constitution: string
+    constructor(starting_proposal_id: string, deposits: Deposit[], votes: Vote[], proposals: Proposal[], params: Params, constitution: string) {
+        this.starting_proposal_id = starting_proposal_id
+        this.deposits = deposits
+        this.votes = votes
+        this.proposals = proposals
+        this.params = params
+        this.constitution = constitution
+    }
+}
+
+@json
 export class GenesisState {
     starting_proposal_id: u64
     deposits: Deposit[]
@@ -383,6 +402,18 @@ export class GenesisState {
         this.proposals = proposals
         this.params = params
         this.constitution = constitution
+    }
+
+    @serializer
+    serializer(self: GenesisState): string {
+        return JSON.stringify<GenesisStateExternal>(new GenesisStateExternal(self.starting_proposal_id.toString(), self.deposits, self.votes, self.proposals, self.params, self.constitution))
+    }
+
+    @deserializer
+    deserializer(data: string): GenesisState {
+        const v = JSON.parse<GenesisStateExternal>(data)
+        const id = u64(parseInt64(v.starting_proposal_id))
+        return new GenesisState(id, v.deposits, v.votes, v.proposals, v.params, v.constitution)
     }
 }
 

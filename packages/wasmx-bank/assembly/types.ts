@@ -2,6 +2,7 @@ import { JSON } from "json-as";
 import { Base64String, Bech32String, HexString } from 'wasmx-env/assembly/types';
 import { BigInt } from "wasmx-env/assembly/bn";
 import { Coin } from "wasmx-env/assembly/types"
+import { parseInt64 } from "wasmx-utils/assembly/utils";
 
 export const MODULE_NAME = "bank"
 
@@ -190,6 +191,24 @@ export class GenesisState {
 }
 
 @json
+export class DenomDeploymentInfoExternal {
+    metadata: Metadata
+    code_id: string
+    admins: string[]
+    minters: string[]
+    contract: Bech32String
+    base_denom: string
+    constructor(metadata: Metadata, code_id: string, admins: string[], minters: string[], contract: Bech32String, base_denom: string) {
+        this.metadata = metadata
+        this.code_id = code_id
+        this.admins = admins
+        this.minters = minters
+        this.contract = contract
+        this.base_denom = base_denom
+    }
+}
+
+@json
 export class DenomDeploymentInfo {
     metadata: Metadata
     code_id: u64
@@ -204,6 +223,18 @@ export class DenomDeploymentInfo {
         this.minters = minters
         this.contract = contract
         this.base_denom = base_denom
+    }
+
+    @serializer
+    serializer(self: DenomDeploymentInfo): string {
+        return JSON.stringify<DenomDeploymentInfoExternal>(new DenomDeploymentInfoExternal(self.metadata, self.code_id.toString(), self.admins, self.minters, self.contract, self.base_denom))
+    }
+
+    @deserializer
+    deserializer(data: string): DenomDeploymentInfo {
+        const v = JSON.parse<DenomDeploymentInfoExternal>(data)
+        const codeId = u64(parseInt64(v.code_id))
+        return new DenomDeploymentInfo(v.metadata, codeId, v.admins, v.minters, v.contract, v.base_denom)
     }
 }
 

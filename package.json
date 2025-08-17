@@ -5,7 +5,7 @@
       "packages/*"
     ],
     "overrides": {
-
+      "json-as": "github:loredanacirstea/as-json#external-custom-alias2"
     },
     "scripts": {
       "install-all": "npm install",

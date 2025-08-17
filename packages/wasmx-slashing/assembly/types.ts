@@ -1,5 +1,6 @@
 import { JSON } from "json-as";
 import { Base64String, Bech32String, ConsensusAddressString, PageRequest, PageResponse } from "wasmx-env/assembly/types";
+import { parseInt64 } from "wasmx-utils/assembly/utils";
 
 export const MODULE_NAME = "slashing"
 
@@ -112,6 +113,22 @@ export class MissedBlock {
 }
 
 @json
+export class ParamsExternal {
+    signed_blocks_window: string
+    min_signed_per_window: string
+    downtime_jail_duration: string
+    slash_fraction_double_sign: string
+    slash_fraction_downtime: string
+    constructor(signed_blocks_window: string, min_signed_per_window: string, downtime_jail_duration: string, slash_fraction_double_sign: string, slash_fraction_downtime: string) {
+        this.signed_blocks_window = signed_blocks_window
+        this.min_signed_per_window = min_signed_per_window
+        this.downtime_jail_duration = downtime_jail_duration
+        this.slash_fraction_double_sign = slash_fraction_double_sign
+        this.slash_fraction_downtime = slash_fraction_downtime
+    }
+}
+
+@json
 export class Params {
     signed_blocks_window: i64
     min_signed_per_window: string
@@ -124,6 +141,18 @@ export class Params {
         this.downtime_jail_duration = downtime_jail_duration
         this.slash_fraction_double_sign = slash_fraction_double_sign
         this.slash_fraction_downtime = slash_fraction_downtime
+    }
+
+    @serializer
+    serializer(self: Params): string {
+        return JSON.stringify<ParamsExternal>(new ParamsExternal(self.signed_blocks_window.toString(), self.min_signed_per_window, self.downtime_jail_duration, self.slash_fraction_double_sign, self.slash_fraction_downtime))
+    }
+
+    @deserializer
+    deserializer(data: string): Params {
+        const v = JSON.parse<ParamsExternal>(data)
+        const blocksw = u64(parseInt64(v.signed_blocks_window))
+        return new Params(blocksw, v.min_signed_per_window, v.downtime_jail_duration, v.slash_fraction_double_sign, v.slash_fraction_downtime)
     }
 }
 

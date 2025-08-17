@@ -60,11 +60,10 @@ export function AfterValidatorBonded(req: MsgRunHook): void {
     LoggerDebug("AfterValidatorBonded", ["validator_address", vaddr])
     let signingInfo = getValidatorSigningInfo(vaddr);
     const block = wasmxw.getCurrentBlock();
-    const height = i64(block.height.toU64());
     if (!signingInfo) {
-        signingInfo = new ValidatorSigningInfo(vaddr, height, 0, new Date(0), false, 0);
+        signingInfo = new ValidatorSigningInfo(vaddr, block.height, 0, new Date(0), false, 0);
     } else {
-        signingInfo.start_height = height;
+        signingInfo.start_height = block.height;
     }
     setValidatorSigningInfo(vaddr, signingInfo);
 }

@@ -27,7 +27,7 @@ import {
     StorageDeleteRange,
 } from './types';
 import { u8ArrayToHex, uint8ArrayToHex } from "as-tally/assembly/tally";
-import { toUpperCase } from "./utils";
+import { arrayBufferToU8Array, toUpperCase } from "./utils";
 import { PrefixedAddress } from "./wasmx_types";
 
 export const MODULE_NAME = "wasmx-env"
@@ -142,7 +142,11 @@ export function log(
     data: Uint8Array,
     topics: Array<Uint8Array>,
 ): void {
-    const logs = new WasmxLog(data, topics)
+    const _topics = new Array<u8[]>(topics.length)
+    for (let i = 0; i < topics.length; i++) {
+        _topics[i] = arrayBufferToU8Array(topics[i].buffer)
+    }
+    const logs = new WasmxLog(arrayBufferToU8Array(data.buffer), _topics)
     const logstr = JSON.stringify<WasmxLog>(logs);
     wasmx.log(String.UTF8.encode(logstr));
 }

@@ -3,6 +3,7 @@ import * as base64 from "as-base64/assembly/index";
 import {HexString, Base64String, Bech32String, Event, PublicKey, MsgCrossChainCallRequest} from 'wasmx-env/assembly/types';
 import { AnyWrap } from "wasmx-env/assembly/wasmx_types";
 import { NodePorts } from "./types_multichain";
+import { parseInt64 } from "wasmx-utils/assembly/utils";
 
 // ABCISemVer is the semantic version of the ABCI protocol
 export const ABCISemVer  = "2.0.0"
@@ -434,15 +435,37 @@ export class RequestProcessProposalWithMetaInfo {
 }
 
 @json
+export class ExecTxResultExternal { // same as ResponseCheckTx
+    code: u32 = 0
+	data: Base64String = ""
+	log: string = ""
+	info: string = ""
+	gas_wanted: string = ""
+	gas_used: string = ""
+	events: Event[] = []
+	codespace: string = ""
+    constructor(code: u32, data: Base64String, log: string, info: string, gas_wanted: string, gas_used: string, events: Event[], codespace: string) {
+        this.code = code;
+        this.data = data;
+        this.log = log;
+        this.info = info;
+        this.gas_wanted = gas_wanted;
+        this.gas_used = gas_used;
+        this.events = events;
+        this.codespace = codespace;
+    }
+}
+
+@json
 export class ExecTxResult { // same as ResponseCheckTx
-    code: u32
-	data: Base64String
-	log: string
-	info: string
-	gas_wanted: i64
-	gas_used: i64
-	events: Event[]
-	codespace: string
+    code: u32 = 0
+	data: Base64String = ""
+	log: string = ""
+	info: string = ""
+	gas_wanted: i64 = 0
+	gas_used: i64 = 0
+	events: Event[] = []
+	codespace: string = ""
     constructor(code: u32, data: Base64String, log: string, info: string, gas_wanted: i64, gas_used: i64, events: Event[], codespace: string) {
         this.code = code;
         this.data = data;
@@ -452,6 +475,19 @@ export class ExecTxResult { // same as ResponseCheckTx
         this.gas_used = gas_used;
         this.events = events;
         this.codespace = codespace;
+    }
+
+    @serializer
+    serializer(self: ExecTxResult): string {
+        return JSON.stringify<ExecTxResultExternal>(new ExecTxResultExternal(self.code, self.data, self.log, self.info, self.gas_wanted.toString(), self.gas_used.toString(), self.events, self.codespace))
+    }
+
+    @deserializer
+    deserializer(data: string): ExecTxResult {
+        const v = JSON.parse<ExecTxResultExternal>(data)
+        const gw = u64(parseInt64(v.gas_wanted))
+        const gu = u64(parseInt64(v.gas_used))
+        return new ExecTxResult(v.code, v.data, v.log, v.info, gw, gu, v.events, v.codespace)
     }
 }
 

@@ -211,9 +211,9 @@ export class Create2AccountResponse {
 @json
 export class WasmxLog {
     type: string = 'fsmvm';
-    data: Uint8Array;
-    topics: Array<Uint8Array>;
-    constructor(data: Uint8Array, topics: Array<Uint8Array>) {
+    data: u8[]
+    topics: Array<u8[]>;
+    constructor(data: u8[], topics: Array<u8[]>) {
         this.data = data;
         this.topics = topics;
     }
@@ -541,13 +541,13 @@ export class VerifyCosmosTxResponse {
 
 @json
 export class BlockInfo {
-    height: BigInt;
-    timestamp: BigInt;
-    gasLimit: BigInt;
+    height: u64;
+    timestamp: u64;
+    gasLimit: u64;
     hash: Base64String;
     difficulty: BigInt = BigInt.empty();
     proposer: Bech32String;
-    constructor(height: BigInt, timestamp: BigInt, gasLimit: BigInt, hash: Base64String, proposer: Bech32String) {
+    constructor(height: u64, timestamp: u64, gasLimit: u64, hash: Base64String, proposer: Bech32String) {
         this.height = height;
         this.timestamp = timestamp;
         this.gasLimit = gasLimit;
@@ -555,7 +555,6 @@ export class BlockInfo {
         this.proposer = proposer;
     }
 }
-
 
 @json
 export class MsgCrossChainCallRequest {
@@ -653,8 +652,8 @@ export class CodeInfo {
 
 @json
 export class CodeOrigin {
-    chain_id: string
-    address: Bech32String
+    chain_id: string = ""
+    address: Bech32String = ""
     constructor(chain_id: string, address: Bech32String) {
         this.chain_id = chain_id
         this.address = address
@@ -680,7 +679,7 @@ export class CodeMetadata {
     site: string = ""
     abi: Base64String = ""
     json_schema: string = ""
-    origin: CodeOrigin | null
+    origin: CodeOrigin | null = new CodeOrigin("", "")
     constructor(
         name: string,
         categ: string[],
@@ -708,16 +707,16 @@ export class CodeMetadata {
 
 @json
 export class SystemContract {
-    address: string
-    label: string
-    storage_type: string
-    init_message: Base64String
-    pinned: boolean
-    metering_off: boolean
-    native: boolean
-    role: string
-    deps: string[]
-    metadata: CodeMetadata
+    address: string = ""
+    label: string = ""
+    storage_type: string = ""
+    init_message: Base64String = ""
+    pinned: boolean = false
+    metering_off: boolean = true
+    native: boolean = false
+    role: string = ""
+    deps: string[] = []
+    metadata: CodeMetadata = CodeMetadata.Empty()
     contract_state: ContractStorage[] = []
     constructor(
         address: string,

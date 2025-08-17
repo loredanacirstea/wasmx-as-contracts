@@ -4,7 +4,8 @@ import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import { callContract, isAuthorized } from "wasmx-env/assembly/utils";
 import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
 import { Bech32String } from "wasmx-utils/assembly/types";
-import { CallRequest, CallResponse, CreateAccountRequest, Coin } from 'wasmx-env/assembly/types';
+import { parseInt64 } from "wasmx-utils/assembly/utils";
+import { CallRequest, CallResponse, CreateAccountRequest, Coin, RoleChangeRequest, RoleChangedActionType } from 'wasmx-env/assembly/types';
 import * as erc20 from "wasmx-erc20/assembly/types";
 import * as authtypes from "wasmx-auth/assembly/types";
 import * as roles from "wasmx-env/assembly/roles";
@@ -369,10 +370,11 @@ export function isFromDenomContract(caller: Bech32String): boolean {
 }
 
 function registerDenomRole(label: string, addr: Bech32String): void {
-    const calldata = `{"SetContractForRole":{"role":"${roles.ROLE_DENOM}","label":"${label}","contract_address":"${addr}","action_type":1}}`
+    const msg = JSON.stringify<RoleChangeRequest>(new RoleChangeRequest(roles.ROLE_DENOM, label, addr, RoleChangedActionType.Add))
+    const calldata = `{"SetContractForRole":${msg}}`
     const resp = callContract(roles.ROLE_ROLES, calldata, false, MODULE_NAME)
     if (resp.success > 0) {
         // we do not fail, we want the chain to continue
-        revert(`call failed: could not register denom role for ${addr}`)
+        revert(`call failed: could not register denom role for ${addr}: ${resp.data}`)
     }
 }
