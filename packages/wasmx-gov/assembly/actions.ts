@@ -53,7 +53,9 @@ export function EndBlock(req: MsgEndBlock): ArrayBuffer {
     // if there are proposals here not promoted, the deposit was not enough
     // so we remove them and burn the deposit
     const activeDeposit = nextEndingDepositProposals(headerTime)
-    LoggerDebug(`gov proposals expired deposit`, ["count", activeDeposit.length.toString(), "block_time", headerTime.toISOString()])
+    if (activeDeposit.length > 0) {
+        LoggerDebug(`gov proposals expired deposit`, ["count", activeDeposit.length.toString(), "block_time", headerTime.toISOString()])
+    }
     for (let i = 0; i < activeDeposit.length; i++) {
         const proposal = activeDeposit[i]
         // TODO burn the deposit; now the deposit remains in the gov module
@@ -65,7 +67,9 @@ export function EndBlock(req: MsgEndBlock): ArrayBuffer {
     const params = getParams()
     // check voting period passed and finalize proposal
     const activeVoting = nextEndingVotingProposals(headerTime)
-    LoggerDebug(`gov proposals ending voting period`, ["count", activeVoting.length.toString()])
+    if (activeVoting.length > 0) {
+        LoggerDebug(`gov proposals ending voting period`, ["count", activeVoting.length.toString()])
+    }
     for (let i = 0; i < activeVoting.length; i++) {
         const proposal = activeVoting[i]
         removeActiveVotingProposal(proposal.id)
@@ -149,7 +153,7 @@ export function EndBlock(req: MsgEndBlock): ArrayBuffer {
 export function SubmitProposal(req: MsgSubmitProposal): ArrayBuffer {
     LoggerDebug("submit proposal", ["title", req.title])
     const params = getParams()
-    const submitTime = new Date(Date.now());
+    const submitTime = wasmxw.getTimestamp();
     const depositEndTime = new Date(submitTime.getTime() + params.max_deposit_period)
     let deposit = req.initial_deposit;
     if (req.initial_deposit.length == 0) {
@@ -180,7 +184,7 @@ export function SubmitProposal(req: MsgSubmitProposal): ArrayBuffer {
     // we only use one type of coin
     if (deposit[0].amount > params.getMinDepositAmount()) {
         proposal.status = PROPOSAL_STATUS_VOTING_PERIOD
-        proposal.voting_start_time = new Date(Date.now());
+        proposal.voting_start_time = wasmxw.getTimestamp();
         proposal.voting_end_time = new Date(proposal.voting_start_time.getTime() + params.voting_period)
     }
     const proposal_id = addProposal(proposal);
@@ -343,7 +347,7 @@ export function DoDeposit(req: MsgDeposit): ArrayBuffer {
     // we only use one type of coin
     if (proposal!.getDepositAmount() > params.getMinDepositAmount()) {
         proposal!.status = PROPOSAL_STATUS_VOTING_PERIOD
-        proposal!.voting_start_time = new Date(Date.now());
+        proposal!.voting_start_time = wasmxw.getTimestamp();
         proposal!.voting_end_time = new Date(proposal!.voting_start_time.getTime() + params.voting_period)
         addActiveVotingProposal(proposal!.id)
         removeActiveDepositProposal(proposal!.id)

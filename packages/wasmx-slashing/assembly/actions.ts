@@ -86,7 +86,7 @@ export function Unjail(req: stakingtypes.MsgUnjail): ArrayBuffer {
         revert(`unjail: validator info not found: ${consAddress}`);
         return new ArrayBuffer(0);
     }
-    if (info.jailed_until.getTime() > Date.now()) {
+    if (info.jailed_until.getTime() > wasmxw.getTimestamp().getTime()) {
         revert(`unjail: jailed downtime not finished: ${info.jailed_until.toISOString()}`)
     }
     // cannot be unjailed if tombstoned

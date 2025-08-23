@@ -81,7 +81,7 @@ export function SubmitProposalExtended(req: MsgSubmitProposalExtended): ArrayBuf
 }
 
 export function SubmitProposalInternal(req: MsgSubmitProposalExtended, localparams: Params): ArrayBuffer {
-    const submitTime = new Date(Date.now());
+    const submitTime = wasmxw.getTimestamp();
     const depositEndTime = submitTime;
     if (req.initial_deposit.length == 0) {
         revert(`proposal must contain a deposit`)
@@ -122,7 +122,7 @@ export function SubmitProposalInternal(req: MsgSubmitProposalExtended, localpara
         // [], // former tally
         submitTime,
         depositEndTime,
-        new Date(Date.now()),
+        wasmxw.getTimestamp(),
         new Date(31536000000000), // milliseconds
         metadata,
         req.title,

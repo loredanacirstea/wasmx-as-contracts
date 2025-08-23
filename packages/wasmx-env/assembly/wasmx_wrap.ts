@@ -329,3 +329,9 @@ export function ed25519PubToHex(pubKey: Base64String): HexString {
     const hexstr = uint8ArrayToHex(Uint8Array.wrap(bz));
     return toUpperCase(hexstr);
 }
+
+export function getTimestamp(): Date {
+    const data = getCurrentBlock()
+    // timestamp is in nanoseconds since unix epoch
+    return new Date(i64(data.timestamp / 1000000))
+}

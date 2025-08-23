@@ -402,7 +402,7 @@ export function buildDefaultSubChainGenesisInternal(params: Params, chainId: str
     const appStateBz = utils.stringToBase64(JSON.stringify<GenesisState>(genesisState))
 
     const initChainReq = new RequestInitChain(
-        new Date(Date.now()).toISOString(),
+        wasmxw.getTimestamp().toISOString(),
         chainId,
         consensusParams,
         [],
@@ -524,7 +524,7 @@ export function initSubChainInternal(chaindata: SubChainData, genTxs: Base64Stri
 
 export function initSubChainPrepareData(chaindata: SubChainData, genTxs: Base64String[], minValidatorCount: i32): SubChainData {
     // we emit a subchain event
-    chaindata.data.init_chain_request.time = new Date(Date.now()).toISOString()
+    chaindata.data.init_chain_request.time = wasmxw.getTimestamp().toISOString()
 
     const appstate = utils.base64ToString(chaindata.data.init_chain_request.app_state_bytes)
     let genesisState: GenesisState = JSON.parse<GenesisState>(appstate)
