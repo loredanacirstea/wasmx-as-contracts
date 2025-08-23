@@ -13,3 +13,5 @@ export declare function storageStoreGlobal(address: ArrayBuffer): void
 export declare function storageDeleteGlobal(address: ArrayBuffer): void
 export declare function storageHasGlobal(address: ArrayBuffer): i32
 export declare function storageResetGlobal(address: ArrayBuffer): ArrayBuffer
+
+export declare function updateSystemCache(req: ArrayBuffer): ArrayBuffer

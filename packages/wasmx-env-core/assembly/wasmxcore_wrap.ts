@@ -17,6 +17,8 @@ import {
     GlobalStorageResetRequest,
     GlobalStorageResetResponse,
     MigrateContractStateByAddressRequest,
+    UpdateSystemCacheRequest,
+    UpdateSystemCacheResponse,
 } from './types';
 import { LoggerDebugExtended } from "./utils";
 import { Base64String, Bech32String, ContractInfo } from "wasmx-env/assembly/types";
@@ -101,4 +103,10 @@ export function storageResetGlobal(req: GlobalStorageResetRequest): GlobalStorag
     const databuf = String.UTF8.encode(JSON.stringify<GlobalStorageResetRequest>(req))
     const resp = wasmxcore.storageResetGlobal(databuf)
     return JSON.parse<GlobalStorageResetResponse>(String.UTF8.decode(resp))
+}
+
+export function updateSystemCache(req: UpdateSystemCacheRequest): UpdateSystemCacheResponse {
+    const data = String.UTF8.encode(JSON.stringify<UpdateSystemCacheRequest>(req))
+    const resp = wasmxcore.updateSystemCache(data);
+    return JSON.parse<UpdateSystemCacheResponse>(String.UTF8.decode(resp))
 }

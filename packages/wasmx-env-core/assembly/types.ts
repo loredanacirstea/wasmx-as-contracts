@@ -1,6 +1,6 @@
 import { JSON } from "json-as";
 import * as base64 from "as-base64/assembly";
-import { Base64String, ContractStorageType } from "wasmx-env/assembly/types";
+import { Base64String, Bech32String, ContractStorageType } from "wasmx-env/assembly/types";
 
 export const MODULE_NAME = "wasmx-core-env"
 
@@ -170,6 +170,22 @@ export class GlobalStorageResetRequest {
 
 @json
 export class GlobalStorageResetResponse {
+    error: string
+    constructor(error: string) {
+        this.error = error
+    }
+}
+
+@json
+export class UpdateSystemCacheRequest {
+    code_registry_address: Bech32String
+    constructor(code_registry_address: Bech32String) {
+        this.code_registry_address = code_registry_address
+    }
+}
+
+@json
+export class UpdateSystemCacheResponse {
     error: string
     constructor(error: string) {
         this.error = error
