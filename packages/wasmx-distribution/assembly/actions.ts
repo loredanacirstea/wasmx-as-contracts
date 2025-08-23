@@ -1,6 +1,7 @@
 import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
+import * as roles from "wasmx-env/assembly/roles";
 import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
 import { MsgRunHook } from "wasmx-hooks/assembly/types";
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
@@ -275,7 +276,7 @@ export function callBank(calldata: string, isQuery: boolean): CallResponse {
 }
 
 export function callStaking(calldata: string, isQuery: boolean): CallResponse {
-    const req = new CallRequest("staking", calldata, BigInt.zero(), DEFAULT_GAS_TX, isQuery);
+    const req = new CallRequest(roles.ROLE_STAKING, calldata, BigInt.zero(), DEFAULT_GAS_TX, isQuery);
     const resp = wasmxw.call(req, MODULE_NAME);
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);

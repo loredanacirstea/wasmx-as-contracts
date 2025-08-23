@@ -88,9 +88,12 @@ export function setRole(role: Role): void {
     }
 }
 
-export function addRoleContract(role: Role, label: string, addr: Bech32String): void {
+export function addRoleContract(role: Role, label: string, addr: Bech32String, replacePrimary: boolean): void {
     role.labels.push(label)
     role.addresses.push(addr)
+    if (replacePrimary) {
+        role.primary = role.addresses.length - 1
+    }
     setRoleByRoleName(role);
     setRoleNameByLabel(role.role, label)
     setLabelByContractAddress(label, addr)

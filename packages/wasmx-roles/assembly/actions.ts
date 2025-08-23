@@ -76,8 +76,6 @@ export function EndBlock(req: MsgRunHook): void {
         evs = evs.concat(finalizeResp.tx_results[i].events)
     }
 
-    const migrationExceptions = st.getMigrationException();
-
     for (let i = 0; i < evs.length; i++) {
         const ev = evs[i];
         if (ev.type == wasmxevs.EventTypeRegisterRole) {
@@ -103,43 +101,12 @@ export function EndBlock(req: MsgRunHook): void {
                 if (!RoleChangedActionTypeByString.has(action)) {
                     LoggerError(`invalid action for role change`, ["role", roleName, "action", action])
                 }
-
                 const actionType = RoleChangedActionTypeByString.get(action)
                 if (actionType == RoleChangedActionType.NoOp) {
                     return;
                 }
 
-                // get old role
-                let prevAddress = ""
-                const role = st.getRoleByRoleName(roleName)
-                if (role != null && role.addresses.length > 0) {
-                    prevAddress = role.addresses[role.primary];
-                }
-
-                LoggerInfo("found new role change", ["role", roleName, "address", addr, "label", label, "action", action]);
-                if (role != null) {
-                    registerRoleEndBlock(role, roleName, label, addr, actionType, prevAddress)
-                } else {
-                    LoggerError(`previous role not found`, ["role", roleName]);
-                }
-
-                // some contracts handle their own role migration for action type Replace
-                if (!migrationExceptions.includes(roleName)) {
-                    triggerRoleChange(addr, prevAddress)
-                }
-
-                // we remove role from old contract after role migration is done
-                // to avoid authorization issues, we assign a previous role, so the old contract can finish actions
-                if (role != null && !role.multiple) {
-                    // not multiple
-                    const foundlabel = st.removeRoleContract(role, role.addresses[0])
-                    LoggerInfo("remove contract from role", ["role", roleName, "label", foundlabel, "contract_address", addr])
-
-                    // we assign a previous role to the contract
-                    const previousRole = new Role(ROLE_PREVIOUS + roleName, role.storage_type, i32(0), false, [foundlabel], [prevAddress]);
-                    LoggerInfo("setting previous role contract", ["role", previousRole.role, "label", foundlabel, "contract_address", prevAddress])
-                    st.setRole(previousRole)
-                }
+                endBlockActions(roleName, label, addr, action, actionType)
             }
         }
     }
@@ -152,7 +119,12 @@ export function SetRole(req: SetRoleRequest): ArrayBuffer {
 
 // we just emit an event here! and do the storage changes on EndBlock event
 export function SetContractForRole(req: RoleChangeRequest): ArrayBuffer {
-    setContractForRole(req);
+    setContractForRole(req, false);
+    return new ArrayBuffer(0);
+}
+
+export function SetContractForRoleGov(req: RoleChangeRequest): ArrayBuffer {
+    setContractForRole(req, true);
     return new ArrayBuffer(0);
 }
 
@@ -229,7 +201,7 @@ export function registerNewRole(role: Role): void {
 
 // do storage changes only for action Add, Remove
 // for Replace, we just emit an event here! and do the storage changes on EndBlock event
-export function setContractForRole(roleChanged: RoleChangeRequest): void {
+export function setContractForRole(roleChanged: RoleChangeRequest, executeNow: boolean): void {
     const roleName = roleChanged.role
     const label = roleChanged.label
     const addr = roleChanged.contract_address
@@ -272,7 +244,7 @@ export function setContractForRole(roleChanged: RoleChangeRequest): void {
         return;
     }
     if (action == RoleChangedActionType.Add) {
-        st.addRoleContract(role, label, addr)
+        st.addRoleContract(role, label, addr, false)
         registerRoleMigration(ContractStorageTypeByEnum.get(role.storage_type), addr);
 
         LoggerInfo("register contract for role", ["role", roleName, "label", label, "contract_address", addr])
@@ -284,6 +256,57 @@ export function setContractForRole(roleChanged: RoleChangeRequest): void {
 
         // we also call the hooks contract
         callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<RolesChangedHook>(msg))
+        return
+    }
+    // only for governance actions, which are executed in EndBlock
+    if (executeNow && action == RoleChangedActionType.Replace) {
+        const actionStr = RoleChangedActionTypeByEnum.get(action)
+        endBlockActions(roleName, label, addr, actionStr, action)
+    }
+}
+
+export function endBlockActions(roleName: string, label: string, addr: string, action: string, actionType: RoleChangedActionType): void {
+    const migrationExceptions = st.getMigrationException();
+
+    // get old role
+    let prevAddress = ""
+    const role = st.getRoleByRoleName(roleName)
+    if (role != null && role.addresses.length > 0) {
+        prevAddress = role.addresses[role.primary];
+    }
+
+    LoggerInfo("found new role change", ["role", roleName, "address", addr, "label", label, "action", action]);
+    if (role != null) {
+        registerRoleEndBlock(role, roleName, label, addr, actionType, prevAddress)
+    } else {
+        LoggerError(`previous role not found`, ["role", roleName]);
+    }
+
+    // some contracts handle their own role migration for action type Replace
+    if (!migrationExceptions.includes(roleName)) {
+        triggerRoleChange(addr, prevAddress)
+    }
+
+    // we remove role from old contract after role migration is done
+    // to avoid authorization issues, we assign a previous role, so the old contract can finish actions
+    if (role != null && !role.multiple) {
+        // not multiple
+        const foundlabel = st.removeRoleContract(role, role.addresses[0])
+        LoggerInfo("remove contract from role", ["role", roleName, "label", foundlabel, "contract_address", addr])
+
+        // we assign a previous role to the contract
+        const previousRole = new Role(ROLE_PREVIOUS + roleName, role.storage_type, i32(0), false, [foundlabel], [prevAddress]);
+        LoggerInfo("setting previous role contract", ["role", previousRole.role, "label", foundlabel, "contract_address", prevAddress])
+        st.setRole(previousRole)
+    }
+    if (role != null && role.multiple) {
+        // after migration we make the new contract primary contract
+        // address was added previously and we make the assumption that the last added address is primary
+        const updrole = st.getRoleByRoleName(roleName)
+        if (updrole == null) return
+        updrole.primary = updrole.addresses.length - 1
+        st.setRoleByRoleName(updrole);
+        LoggerInfo("roles: update primary contract", ["role", roleName, "label", label, "contract_address", addr, "primary_index", updrole.primary.toString(), "count", updrole.addresses.length.toString()])
     }
 }
 
@@ -294,7 +317,7 @@ export function registerRoleEndBlock(role: Role, roleName: string, label: string
     }
     const roleChanged = new RoleChanged(roleName, label, addr, action, prevAddress)
 
-    st.addRoleContract(role, label, addr)
+    st.addRoleContract(role, label, addr, false)
 
     LoggerInfo("register contract for role", ["role", roleName, "label", label, "contract_address", addr, "storage_type", ContractStorageTypeByEnum.get(role.storage_type)])
 
@@ -387,7 +410,9 @@ export function deregisterRole(): void {
 
 export function getAddressOrRole(addressOrRole: string): Bech32String {
     let role = st.getRoleByRoleName(addressOrRole)
-    if (role != null) return role.addresses[role.primary];
+    if (role != null) {
+        return role.addresses[role.primary];
+    }
 
     const addr = st.getContractAddressByLabel(addressOrRole);
     if (addr != "") {

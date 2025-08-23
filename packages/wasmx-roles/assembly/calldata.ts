@@ -18,6 +18,9 @@ export class CallData {
     SetRole: SetRoleRequest | null = null;
     SetContractForRole: RoleChangeRequest | null = null;
 
+    // for governance
+    SetContractForRoleGov: RoleChangeRequest | null = null;
+
     // query
     GetRoleNameByAddress: GetRoleNameByAddressRequest | null = null;
     GetRoleByRoleName: GetRoleByRoleNameRequest | null = null;

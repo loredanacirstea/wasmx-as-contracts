@@ -69,15 +69,17 @@ export function hasRole(addr: Bech32String, moduleName: string): boolean {
 }
 
 // check if caller is a host module
-export function isGoCoreModule(addr: ArrayBuffer): boolean {
+export function isGoCoreModule(addr: ArrayBuffer, moduleName: string): boolean {
     const callerhex = uint8ArrayToHex(Uint8Array.wrap(addr))
-    if(GOCORE_MODULE_ADDRESSES.has(callerhex)) return true;
+    const isModule = GOCORE_MODULE_ADDRESSES.has(callerhex)
+    if(moduleName == "" && isModule) return true;
+    if (GOCORE_MODULE_ADDRESSES.get(callerhex) == moduleName) return true;
     return false;
 }
 
 export function isInternalContract(moduleName: string, addr: Bech32String): boolean {
     if (hasRole(addr, moduleName)) return true;
-    if (isGoCoreModule(wasmxw.addr_canonicalize(addr))) return true;
+    if (isGoCoreModule(wasmxw.addr_canonicalize(addr), "")) return true;
     return false;
 }
 
@@ -101,7 +103,7 @@ export function onlyInternal(moduleName: string, message: string): void {
     const callerBz = wasmx.getCaller()
     const caller = wasmxw.addr_humanize(callerBz)
     if (hasRole(caller, moduleName)) return;
-    if (isGoCoreModule(callerBz)) return;
+    if (isGoCoreModule(callerBz, "")) return;
 
     const addrBz = wasmx.getAddress()
     const addr = wasmxw.addr_humanize(addrBz)
