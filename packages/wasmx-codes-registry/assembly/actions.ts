@@ -1,7 +1,13 @@
 import { JSON } from "json-as";
+import * as base64 from "as-base64/assembly";
+import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
+import * as roles from "wasmx-env/assembly/roles";
+import * as wasmxcorew from 'wasmx-env-core/assembly/wasmxcore_wrap';
+import * as wasmxcoret from "wasmx-env-core/assembly/types";
+import { ContractInfo, ContractStorageTypeByString } from "wasmx-env/assembly/types";
 import { GenesisState, MODULE_NAME, MsgSetCodeInfoRequest, MsgSetContractInfoRequest, MsgSetNewCodeInfoRequest, QueryCodeInfoRequest, QueryCodeInfoResponse, QueryContractInfoRequest, QueryContractInfoResponse, QueryContractInstanceRequest, QueryContractInstanceResponse, QueryLastCodeIdResponse } from "./types";
 import { autoIncrementID, getCodeId, getCodeInfo, getCodeRootKey, getContractAddressRootKey, getContractInfo, getLastCodeId, storeCodeInfo, storeContractInfo } from "./storage";
-import { LoggerInfo, revert } from "./utils";
+import { LoggerError, LoggerInfo, revert } from "./utils";
 import { Bech32String, CodeInfo, MsgSetup } from "wasmx-env/assembly/types";
 import { callContract } from "wasmx-env/assembly/utils";
 
@@ -18,9 +24,11 @@ export function InitGenesis(req: GenesisState): ArrayBuffer {
 }
 
 export function setup(req: MsgSetup): ArrayBuffer {
-    const prevContract = req.previous_address
-    // TODO migrate old data
-    return new ArrayBuffer(0);
+    const oldaddr = req.previous_address
+    if (oldaddr != "") {
+        setupStorageMigration(oldaddr)
+    }
+    return new ArrayBuffer(0)
 }
 
 export function NewCodeInfo(req: MsgSetNewCodeInfoRequest): ArrayBuffer {
@@ -106,4 +114,50 @@ export function setCodeInfo(codeId: u64, codeInfo: CodeInfo): u64 {
     // replacing existing code
     storeCodeInfo(codeId, codeInfo);
     return codeId;
+}
+
+export function setupStorageMigration(addr: Bech32String): void {
+    const sourceContractInfo = getContractInfoFromPrev(addr, addr);
+    if (sourceContractInfo == null) {
+        revert(`cannot find contract info for ${addr}`);
+        return
+    }
+    const ourAddr = wasmxw.getAddress()
+    const targetContractInfo = getContractInfoFromPrev(addr, ourAddr);
+    if (targetContractInfo == null) {
+        revert(`cannot find contract info for ${addr}`);
+        return
+    }
+
+    LoggerInfo("migrating contract storage", ["from_address", addr, "to_address", ourAddr, "source storage type", sourceContractInfo.storage_type, "target storage type", targetContractInfo.storage_type])
+
+    if (!ContractStorageTypeByString.has(sourceContractInfo.storage_type)) {
+        revert(`invalid source storage type ${sourceContractInfo.storage_type}`)
+    }
+    if (!ContractStorageTypeByString.has(targetContractInfo.storage_type)) {
+        revert(`invalid target storage type ${targetContractInfo.storage_type}`)
+    }
+
+    wasmxcorew.migrateContractStateByAddress(new wasmxcoret.MigrateContractStateByAddressRequest(addr, ourAddr, sourceContractInfo.storage_type, targetContractInfo.storage_type))
+
+    LoggerInfo("contract storage migrated", ["address", ourAddr, "target_storage_type", targetContractInfo.storage_type]);
+
+    // for codes, we need to update the cached information by the host!!
+    const resp = wasmxcorew.updateSystemCache(new wasmxcoret.UpdateSystemCacheRequest(ourAddr))
+    if (resp.error) {
+        LoggerError("system cache update error for codes registry; should restart...", ["error", resp.error])
+    }
+}
+
+// callding previous codes contract; make sure we use the correct types
+export function getContractInfoFromPrev(prevCodesAddr: Bech32String, addr: Bech32String): ContractInfo | null {
+    const addrb64 = base64.encode(Uint8Array.wrap(wasmxw.addr_canonicalize(addr)))
+    const calldatastr = `{"GetContractInfo":{"address":"${addrb64}"}}`;
+    const resp = callContract(prevCodesAddr, calldatastr, false, MODULE_NAME)
+    if (resp.success > 0) {
+        LoggerError(`get contract info failed`, ["error", resp.data])
+        return null;
+    }
+    const data = JSON.parse<QueryContractInfoResponse>(resp.data)
+    return data.contract_info
 }

@@ -445,6 +445,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, isretry: bo
     // or if a new validator was added
     const info = consutil.defaultFinalizeResponseEventsParse(finalizeResp.tx_results)
 
+    // EndBlock will execute passed governance proposals
     const respend = consensuswrap.EndBlock(blockData);
     if (respend.error.length > 0) {
         revert(`${respend.error}`);

@@ -492,7 +492,7 @@ export function triggerRoleChange(addr: Bech32String, prevAddress: Bech32String)
     }
 
     // call old contract stop()
-    resp = callContract(addr, `{"stop":{}}`, false, MODULE_NAME)
+    resp = callContract(prevAddress, `{"stop":{}}`, false, MODULE_NAME)
     if (resp.success > 0) {
         if (resp.data.includes("invalid function call data")) {
             LoggerDebug(`old contract does not have stop function, disregard error`, ["error", resp.data])
