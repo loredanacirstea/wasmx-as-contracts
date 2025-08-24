@@ -129,6 +129,12 @@ export function setupStorageMigration(addr: Bech32String): void {
         return
     }
 
+    const targetCodeInfo = getCodeInfoFromPrev(addr, targetContractInfo.code_id);
+    if (targetCodeInfo == null) {
+        revert(`cannot find code info for codeId ${targetContractInfo.code_id}`);
+        return
+    }
+
     LoggerInfo("migrating contract storage", ["from_address", addr, "to_address", ourAddr, "source storage type", sourceContractInfo.storage_type, "target storage type", targetContractInfo.storage_type])
 
     if (!ContractStorageTypeByString.has(sourceContractInfo.storage_type)) {
@@ -143,8 +149,8 @@ export function setupStorageMigration(addr: Bech32String): void {
     LoggerInfo("contract storage migrated", ["address", ourAddr, "target_storage_type", targetContractInfo.storage_type]);
 
     // for codes, we need to update the cached information by the host!!
-    const resp = wasmxcorew.updateSystemCache(new wasmxcoret.UpdateSystemCacheRequest(ourAddr))
-    if (resp.error) {
+    const resp = wasmxcorew.updateSystemCache(new wasmxcoret.UpdateSystemCacheRequest("", ourAddr, targetContractInfo.code_id, targetCodeInfo, targetContractInfo))
+    if (resp.error != "") {
         LoggerError("system cache update error for codes registry; should restart...", ["error", resp.error])
     }
 }
@@ -160,4 +166,17 @@ export function getContractInfoFromPrev(prevCodesAddr: Bech32String, addr: Bech3
     }
     const data = JSON.parse<QueryContractInfoResponse>(resp.data)
     return data.contract_info
+}
+
+
+// callding previous codes contract; make sure we use the correct types
+export function getCodeInfoFromPrev(prevCodesAddr: Bech32String, codeId: u64): CodeInfo | null {
+    const calldatastr = `{"GetCodeInfo":{"code_id":${codeId}}}`;
+    const resp = callContract(prevCodesAddr, calldatastr, false, MODULE_NAME)
+    if (resp.success > 0) {
+        LoggerError(`get code info failed`, ["error", resp.data])
+        return null;
+    }
+    const data = JSON.parse<QueryCodeInfoResponse>(resp.data)
+    return data.code_info
 }
