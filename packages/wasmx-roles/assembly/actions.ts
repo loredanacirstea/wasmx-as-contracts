@@ -24,9 +24,7 @@ export function initialize(rolesInitial: Role[], individualMigration: string[]):
         if (r.role == roles.ROLE_ROLES) {
             foundself = true;
             r.multiple = false;
-            if (r.labels.length == 0) {
-                r.labels = [defaultLabel]
-            }
+            r.labels = [defaultLabel]
             r.addresses = [wasmxw.getAddress()]
         }
         registerRoleInitial(r);
@@ -45,17 +43,10 @@ export function setup(req: MsgSetup): ArrayBuffer {
     // prevContract holds current role contract metadata, if exists
     if (prevContract != "") {
         // migrate from previous contract
-        const oldroles = getOldRoles(prevContract);
-        for (let i = 0; i < oldroles.length; i++) {
-            const r = oldroles[i]
-            if (r.role == roles.ROLE_ROLES) {
-                foundself = true;
-                r.multiple = false;
-                if (r.labels.length == 0) {
-                    r.labels = [defaultLabel]
-                }
-                r.addresses = [wasmxw.getAddress()]
-            }
+        const data = getOldRoles(prevContract);
+        st.setMigrationException(data.individual_migration);
+        for (let i = 0; i < data.roles.length; i++) {
+            const r = data.roles[i]
             registerRoleInitial(r);
         }
     }
@@ -163,13 +154,13 @@ export function GetRoleNameByAddress(req: GetRoleNameByAddressRequest): ArrayBuf
 // TODO replace the previous role? if a role cannot hold 2 contracts?
 // e.g. consensus
 export function registerRoleInitial(role: Role): void {
+    LoggerInfo("register role initial", ["role", role.role, "storage_type_enum", role.storage_type.toString(), "storage_type", ContractStorageTypeByEnum.get(role.storage_type), "labels", role.labels.join(","), "contract_address", role.addresses.join(",")])
     if (role.role == "") {
         revert(`cannot register empty role`)
     }
     if (role.labels.length != role.addresses.length) {
         revert(`cannot register role: labels count different than addresses count`)
     }
-    LoggerInfo("register role initial", ["role", role.role, "storage_type_enum", role.storage_type.toString(), "storage_type", ContractStorageTypeByEnum.get(role.storage_type), "labels", role.labels.join(","), "contract_address", role.addresses.join(",")])
     st.setRole(role)
     // we do not call the hooks contract here, as it may not be initialized yet
     // we use genesis data directly if we need other contracts to know about the roles
@@ -504,11 +495,10 @@ export function triggerRoleChange(addr: Bech32String, prevAddress: Bech32String)
     }
 }
 
-export function getOldRoles(addr: Bech32String): Role[] {
+export function getOldRoles(addr: Bech32String): RolesGenesis {
     const resp = callContract(addr, `{"GetRoles":{}}`, true, MODULE_NAME)
     if (resp.success > 0) {
         revert(`get contract info failed: ${resp.data}`)
     }
-    const roles = JSON.parse<RolesGenesis>(resp.data)
-    return roles.roles;
+    return JSON.parse<RolesGenesis>(resp.data)
 }

@@ -63,7 +63,8 @@ export function getLabelKeyByAddress(addr: Bech32String): Uint8Array {
 export function getRoles(): Role[] {
     const roles = new Array<Role>(0)
     const startKey = base64.encode(getRoleKey())
-    const values = wasmxw.sloadRange(startKey, "", false)
+    const endKey =  base64.encode(getRoleNameKey())
+    const values = wasmxw.sloadRange(startKey, endKey, false)
     for (let i = 0; i < values.length; i++) {
         const value = JSON.parse<Role>(base64ToString(values[i]))
         roles.push(value);
