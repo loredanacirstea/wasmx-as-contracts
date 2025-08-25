@@ -12,10 +12,9 @@ import { GOCORE_MODULE_ADDRESSES } from "./modules";
 export function isAuthorized(caller: Bech32String, authorities: Bech32String[]): boolean {
     let authorized = authorities.includes(caller);
     if (authorized) return true;
-    for (let i = 0; i < authorities.length; i++) {
-        const addr = wasmxw.getAddressByRole(authorities[i])
-        if (addr == caller) return true;
-    }
+    const role = wasmxw.getRoleByAddress(caller)
+    if (role == "") return false;
+    if (authorities.includes(role)) return true;
     return false;
 }
 
