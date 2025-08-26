@@ -71,6 +71,7 @@ export function hasRole(addr: Bech32String, moduleName: string): boolean {
 export function isGoCoreModule(addr: ArrayBuffer, moduleName: string): boolean {
     const callerhex = uint8ArrayToHex(Uint8Array.wrap(addr))
     const isModule = GOCORE_MODULE_ADDRESSES.has(callerhex)
+    if (!isModule) return false;
     if(moduleName == "" && isModule) return true;
     if (GOCORE_MODULE_ADDRESSES.get(callerhex) == moduleName) return true;
     return false;
