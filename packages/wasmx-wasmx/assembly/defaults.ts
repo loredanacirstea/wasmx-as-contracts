@@ -4,7 +4,8 @@ import * as hooks from "wasmx-env/assembly/hooks";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import { stringToBase64, hexToUint8Array, strip0x } from "wasmx-utils/assembly/utils";
 import { GenesisState, Params } from "./types";
-import { Base64String, CodeMetadata, Role, RolesGenesis, StorageCoreConsensus, StorageMetaConsensus, StorageSingleConsensus, SystemContract } from "wasmx-env/assembly/types";
+import { Base64String, CodeMetadata, Role, RolesGenesis, StorageCoreConsensus, StorageMetaConsensus, StorageSingleConsensus, SystemContract, ContractStorageTypeByString, ContractStorageType, SystemContractRole } from "wasmx-env/assembly/types";
+import * as modules from "wasmx-env/assembly/modules";
 
 export const ADDR_ECRECOVER = "0x0000000000000000000000000000000000000001"
 export const ADDR_ECRECOVERETH = "0x000000000000000000000000000000000000001f"
@@ -62,6 +63,9 @@ var ADDR_LEVEL0_ONDEMAND = "0x0000000000000000000000000000000000000051"
 var ADDR_LEVEL0_ONDEMAND_LIBRARY = "0x0000000000000000000000000000000000000052"
 
 var ADDR_ROLES = "0x0000000000000000000000000000000000000060"
+var ADDR_STORAGE_CONTRACTS = "0x0000000000000000000000000000000000000061"
+var ADDR_DTYPE = "0x0000000000000000000000000000000000000062"
+var ADDR_EMAIL_HANDLER = "0x0000000000000000000000000000000000000063"
 
 export const ADDR_SYS_PROXY = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 
@@ -123,6 +127,10 @@ export const MULTICHAIN_REGISTRY_v001 = "multichain_registry_0.0.1"
 export const MULTICHAIN_REGISTRY_LOCAL_v001 = "multichain_registry_local_0.0.1"
 export const LOBBY_v001 = "lobby_json_0.0.1"
 export const METAREGISTRY_v001 = "metaregistry_json_0.0.1"
+var DTYPE_v001 = "dtype_0.0.1"
+var EMAIL_v001 = "email_0.0.1"
+var HTTPSERVER_REGISTRY_v001 = "httpserver_registry_0.0.1"
+var STORAGE_CONTRACTS_v001 = "storage_contracts_0.0.1"
 
 export const WASMX_MEMORY_DEFAULT = "memory_default_1"
 export const WASMX_MEMORY_ASSEMBLYSCRIPT = "memory_assemblyscript_1"
@@ -143,7 +151,10 @@ export function BuildDep(addr: string, deptype: string): string {
 }
 
 export const storageInitMsg = wasmxExecMsg(`{"initialBlockIndex":1}`)
-export const govInitMsg = wasmxExecMsg(`{"arbitrationDenom":"aarb","coefs":[1048576, 3, 100, 2000, 1500, 10, 4, 8, 10000, 1531, 1000],"defaultX":1531,"defaultY":1000}`)
+export function govInitMsg(bondBaseDenom: string): Base64String {
+    return wasmxExecMsg(`{"bond_base_denom":"${bondBaseDenom}"}`)
+}
+export const govContInitMsg = wasmxExecMsg(`{"arbitrationDenom":"aarb","coefs":[1048576, 3, 100, 2000, 1500, 10, 4, 8, 10000, 1531, 1000],"defaultX":1531,"defaultY":1000}`)
 export const raftInitMsg = wasmxExecMsg(`{"instantiate":{"context":[{"key":"log","value":""},{"key":"validatorNodesInfo","value":"[]"},{"key":"votedFor","value":"0"},{"key":"nextIndex","value":"[]"},{"key":"matchIndex","value":"[]"},{"key":"commitIndex","value":"0"},{"key":"currentTerm","value":"0"},{"key":"lastApplied","value":"0"},{"key":"blockTimeout","value":"heartbeatTimeout"},{"key":"max_tx_bytes","value":"65536"},{"key":"prevLogIndex","value":"0"},{"key":"currentNodeId","value":"0"},{"key":"electionReset","value":"0"},{"key":"max_block_gas","value":"20000000"},{"key":"electionTimeout","value":"0"},{"key":"maxElectionTime","value":"20000"},{"key":"minElectionTime","value":"10000"},{"key":"heartbeatTimeout","value":"5000"}],"initialState":"uninitialized"}}`)
 export const tendermintInitMsg = wasmxExecMsg(`{"instantiate":{"context":[{"key":"log","value":""},{"key":"votedFor","value":"0"},{"key":"nextIndex","value":"[]"},{"key":"currentTerm","value":"0"},{"key":"blockTimeout","value":"roundTimeout"},{"key":"max_tx_bytes","value":"65536"},{"key":"roundTimeout","value":15000},{"key":"currentNodeId","value":"0"},{"key":"max_block_gas","value":"20000000"}],"initialState":"uninitialized"}}`)
 export const tendermintP2PInitMsg = wasmxExecMsg(`{"instantiate":{"context":[{"key":"log","value":""},{"key":"votedFor","value":"0"},{"key":"nextIndex","value":"[]"},{"key":"currentTerm","value":"0"},{"key":"blockTimeout","value":"roundTimeout"},{"key":"max_tx_bytes","value":"65536"},{"key":"roundTimeout","value":"5000"},{"key":"currentNodeId","value":"0"},{"key":"max_block_gas","value":"60000000"},{"key":"timeoutPropose","value":20000},{"key":"timeoutPrevote","value":20000},{"key":"timeoutPrecommit","value":20000}],"initialState":"uninitialized"}}`)
@@ -181,7 +192,7 @@ export const sc_auth = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_AUTH,
+    new SystemContractRole(roles.ROLE_AUTH, AUTH_v001, true),
     [],
     CodeMetadata.Empty(),
 )
@@ -194,7 +205,7 @@ export const sc_roles = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_ROLES,
+    new SystemContractRole(roles.ROLE_ROLES, ROLES_v001, true),
     [],
     CodeMetadata.Empty(),
 )
@@ -207,7 +218,7 @@ export const sc_ecrecover = new SystemContract(
     false,
     false,
     true,
-    EMPTY_ROLE,
+    null,
     [],
     CodeMetadata.Empty(),
 )
@@ -220,7 +231,7 @@ export const sc_ecrecovereth = new SystemContract(
     true,
     true,
     false,
-    EMPTY_ROLE,
+    null,
     [],
     CodeMetadata.Empty(),
 )
@@ -233,7 +244,7 @@ export const sc_sha2_256 = new SystemContract(
     true,
     true,
     false,
-    EMPTY_ROLE,
+    null,
     [],
     CodeMetadata.Empty(),
 )
@@ -246,7 +257,7 @@ export const sc_ripmd160 = new SystemContract(
     true,
     true,
     false,
-    EMPTY_ROLE,
+    null,
     [],
     CodeMetadata.Empty(),
 )
@@ -259,7 +270,7 @@ export const sc_identity = new SystemContract(
     true,
     true,
     false,
-    EMPTY_ROLE,
+    null,
     [],
     CodeMetadata.Empty(),
 )
@@ -272,7 +283,7 @@ export const sc_modexp = new SystemContract(
     true,
     true,
     false,
-    EMPTY_ROLE,
+    null,
     [],
     CodeMetadata.Empty(),
 )
@@ -285,7 +296,7 @@ export const sc_ecadd = new SystemContract(
     true,
     true,
     false,
-    EMPTY_ROLE,
+    null,
     [],
     CodeMetadata.Empty(),
 )
@@ -298,7 +309,7 @@ export const sc_ecmul = new SystemContract(
     true,
     true,
     false,
-    EMPTY_ROLE,
+    null,
     [],
     CodeMetadata.Empty(),
 )
@@ -311,7 +322,7 @@ export const sc_ecpairings = new SystemContract(
     true,
     true,
     false,
-    EMPTY_ROLE,
+    null,
     [],
     CodeMetadata.Empty(),
 )
@@ -324,7 +335,7 @@ export const sc_blake2f = new SystemContract(
     true,
     true,
     false,
-    EMPTY_ROLE,
+    null,
     [],
     CodeMetadata.Empty(),
 )
@@ -337,7 +348,7 @@ export const sc_secp384r1 = new SystemContract(
     true,
     true,
     false,
-    EMPTY_ROLE,
+    null,
     [],
     CodeMetadata.Empty(),
 )
@@ -350,7 +361,7 @@ export const sc_secp384r1_registry = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_EID_REGISTRY,
+    new SystemContractRole(roles.ROLE_EID_REGISTRY, SECP384R1_REGISTRY, true),
     [],
     CodeMetadata.Empty(),
 )
@@ -363,7 +374,7 @@ export const sc_secret_sharing = new SystemContract(
     false,
     false,
     true,
-    roles.ROLE_SECRET_SHARING,
+    new SystemContractRole(roles.ROLE_SECRET_SHARING, SECRET_SHARING, true),
     [],
     CodeMetadata.Empty(),
 )
@@ -376,7 +387,7 @@ export const sc_interpreter_evm = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_INTERPRETER,
+    new SystemContractRole(roles.ROLE_INTERPRETER, INTERPRETER_EVM_SHANGHAI, true),
     [],
     CodeMetadata.Empty(),
 )
@@ -389,7 +400,7 @@ export const sc_interpreter_py = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_INTERPRETER,
+    new SystemContractRole(roles.ROLE_INTERPRETER, INTERPRETER_PYTHON, false),
     [],
     CodeMetadata.Empty(),
 )
@@ -402,7 +413,7 @@ export const sc_interpreter_js = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_INTERPRETER,
+    new SystemContractRole(roles.ROLE_INTERPRETER, INTERPRETER_JS, false),
     [],
     CodeMetadata.Empty(),
 )
@@ -415,7 +426,7 @@ export const sc_interpreter_fsm = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_INTERPRETER,
+    new SystemContractRole(roles.ROLE_INTERPRETER, INTERPRETER_FSM, false),
     [],
     CodeMetadata.Empty(),
 )
@@ -428,7 +439,7 @@ export const sc_interpreter_tay = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_INTERPRETER,
+    new SystemContractRole(roles.ROLE_INTERPRETER, INTERPRETER_TAY, false),
     [WASMX_MEMORY_TAYLOR],
     CodeMetadata.Empty(),
 )
@@ -441,7 +452,7 @@ export const sc_aliaseth = new SystemContract(
     false,
     false,
     false,
-    roles.ROLE_ALIAS,
+    new SystemContractRole(roles.ROLE_ALIAS, ALIAS_ETH, true),
     [],
     CodeMetadata.Empty(),
 )
@@ -454,12 +465,25 @@ export const sc_proxy_interfaces = new SystemContract(
     false,
     false,
     true,
-    roles.ROLE_ALIAS,
+    null,
     [],
     CodeMetadata.Empty(),
 )
 
-export const sc_storage = new SystemContract(
+export const sc_storage_codes = new SystemContract(
+    ADDR_STORAGE_CONTRACTS,
+    STORAGE_CONTRACTS_v001,
+    StorageCoreConsensus,
+    EMPTY_INIT_MSG,
+    true,
+    true,
+    false,
+    new SystemContractRole(roles.ROLE_STORAGE_CONTRACTS, STORAGE_CONTRACTS_v001, true),
+    [],
+    CodeMetadata.Empty(),
+)
+
+export const sc_storage_chain = new SystemContract(
     ADDR_STORAGE_CHAIN,
     STORAGE_CHAIN,
     StorageMetaConsensus,
@@ -467,7 +491,7 @@ export const sc_storage = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_STORAGE,
+    new SystemContractRole(roles.ROLE_STORAGE, STORAGE_CHAIN, true),
     [],
     CodeMetadata.Empty(),
 )
@@ -480,7 +504,7 @@ export const sc_raft_library = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_LIBRARY,
+    new SystemContractRole(roles.ROLE_LIBRARY, RAFT_LIBRARY, false),
     [],
     CodeMetadata.Empty(),
 )
@@ -493,7 +517,7 @@ export const sc_raftp2p_library = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_LIBRARY,
+    new SystemContractRole(roles.ROLE_LIBRARY, RAFTP2P_LIBRARY, false),
     [],
     CodeMetadata.Empty(),
 )
@@ -506,7 +530,7 @@ export const sc_tendermint_library = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_LIBRARY,
+    new SystemContractRole(roles.ROLE_LIBRARY, TENDERMINT_LIBRARY, false),
     [],
     CodeMetadata.Empty(),
 )
@@ -519,7 +543,7 @@ export const sc_tendermintp2p_library = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_LIBRARY,
+    new SystemContractRole(roles.ROLE_LIBRARY, TENDERMINTP2P_LIBRARY, false),
     [],
     CodeMetadata.Empty(),
 )
@@ -532,7 +556,7 @@ export const sc_raft = new SystemContract(
     false,
     false,
     false,
-    EMPTY_ROLE, // roles.ROLE_CONSENSUS,
+    new SystemContractRole(roles.ROLE_CONSENSUS, CONSENSUS_RAFT, false),
     [INTERPRETER_FSM, BuildDep(ADDR_CONSENSUS_RAFT_LIBRARY, roles.ROLE_LIBRARY)],
     CodeMetadata.Empty(),
 )
@@ -545,7 +569,7 @@ export const sc_raftp2p = new SystemContract(
     false,
     false,
     false,
-    EMPTY_ROLE, // roles.ROLE_CONSENSUS,
+    new SystemContractRole(roles.ROLE_CONSENSUS, CONSENSUS_RAFTP2P, false),
     [INTERPRETER_FSM, BuildDep(ADDR_CONSENSUS_RAFTP2P_LIBRARY, roles.ROLE_LIBRARY)],
     CodeMetadata.Empty(),
 )
@@ -558,7 +582,7 @@ export const sc_tendermint = new SystemContract(
     false,
     false,
     false,
-    EMPTY_ROLE, // roles.ROLE_CONSENSUS,
+    new SystemContractRole(roles.ROLE_CONSENSUS, CONSENSUS_TENDERMINT, false),
     [INTERPRETER_FSM, BuildDep(ADDR_CONSENSUS_TENDERMINT_LIBRARY, roles.ROLE_LIBRARY)],
     CodeMetadata.Empty(),
 )
@@ -571,7 +595,7 @@ export const sc_tendermintp2p = new SystemContract(
     false,
     false,
     false,
-    EMPTY_ROLE, // roles.ROLE_CONSENSUS,
+    new SystemContractRole(roles.ROLE_CONSENSUS, CONSENSUS_TENDERMINTP2P, false),
     [INTERPRETER_FSM, BuildDep(ADDR_CONSENSUS_TENDERMINTP2P_LIBRARY, roles.ROLE_LIBRARY)],
     CodeMetadata.Empty(),
 )
@@ -584,7 +608,7 @@ export const sc_ava_snowman_library = new SystemContract(
     true,
     true,
     false,
-    EMPTY_ROLE, // roles.ROLE_CONSENSUS,
+    new SystemContractRole(roles.ROLE_CONSENSUS, AVA_SNOWMAN_LIBRARY, false),
     [],
     CodeMetadata.Empty(),
 )
@@ -597,7 +621,7 @@ export const sc_ava_snowman = new SystemContract(
     false,
     false,
     false,
-    EMPTY_ROLE, // roles.ROLE_CONSENSUS,
+    new SystemContractRole(roles.ROLE_CONSENSUS, CONSENSUS_TENDERMINTP2P, false),
     [INTERPRETER_FSM, BuildDep(ADDR_CONSENSUS_TENDERMINTP2P_LIBRARY, roles.ROLE_LIBRARY)],
     CodeMetadata.Empty(),
 )
@@ -610,7 +634,7 @@ export const sc_staking = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_STAKING,
+    new SystemContractRole(roles.ROLE_STAKING, STAKING_v001, true),
     [],
     CodeMetadata.Empty(),
 )
@@ -624,7 +648,7 @@ export function sc_bank(feeCollectorBech32: string, mintBech32: string): SystemC
         true,
         true,
         false,
-        roles.ROLE_BANK,
+        new SystemContractRole(roles.ROLE_BANK, BANK_v001, true),
         [],
         CodeMetadata.Empty(),
     )
@@ -639,7 +663,7 @@ export const sc_erc20 = new SystemContract(
     true,
     true,
     false,
-    EMPTY_ROLE,
+    null,
     [],
     CodeMetadata.Empty(),
 )
@@ -653,7 +677,7 @@ export const sc_derc20 = new SystemContract(
     true,
     true,
     false,
-    EMPTY_ROLE,
+    null,
     [],
     CodeMetadata.Empty(),
 )
@@ -666,7 +690,7 @@ export const sc_slashing = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_SLASHING,
+    new SystemContractRole(roles.ROLE_SLASHING, SLASHING_v001, true),
     [],
     CodeMetadata.Empty(),
 )
@@ -679,33 +703,35 @@ export const sc_distribution = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_DISTRIBUTION,
+    new SystemContractRole(roles.ROLE_DISTRIBUTION, DISTRIBUTION_v001, true),
     [],
     CodeMetadata.Empty(),
 )
 
-export const sc_gov = new SystemContract(
-    ADDR_GOV,
-    GOV_v001,
-    StorageCoreConsensus,
-    EMPTY_INIT_MSG,
-    true,
-    true,
-    false,
-    roles.ROLE_GOVERNANCE,
-    [],
-    CodeMetadata.Empty(),
-)
+export function sc_gov(bondBaseDenom: string): SystemContract {
+    return new SystemContract(
+        ADDR_GOV,
+        GOV_v001,
+        StorageCoreConsensus,
+        govInitMsg(bondBaseDenom),
+        true,
+        true,
+        false,
+        new SystemContractRole(roles.ROLE_GOVERNANCE, GOV_v001, true),
+        [],
+        CodeMetadata.Empty(),
+    )
+}
 
 export const sc_gov_cont = new SystemContract(
     ADDR_GOV_CONT,
     GOV_CONT_v001,
     StorageCoreConsensus,
-    govInitMsg,
+    govContInitMsg,
     true,
     true,
     false,
-    roles.ROLE_GOVERNANCE,
+    new SystemContractRole(roles.ROLE_GOVERNANCE, GOV_CONT_v001, false),
     [],
     CodeMetadata.Empty(),
 )
@@ -718,7 +744,7 @@ export const sc_chat = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_CHAT,
+    new SystemContractRole(roles.ROLE_CHAT, CHAT_v001, true),
     [],
     CodeMetadata.Empty(),
 )
@@ -731,7 +757,7 @@ export const sc_chat_verifier = new SystemContract(
     true,
     true,
     false,
-    EMPTY_ROLE,
+    null,
     [],
     CodeMetadata.Empty(),
 )
@@ -744,7 +770,7 @@ export const sc_time = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_TIME,
+    new SystemContractRole(roles.ROLE_TIME, TIME_v001, true),
     [],
     CodeMetadata.Empty(),
 )
@@ -757,7 +783,7 @@ export const sc_level0_library = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_LIBRARY,
+    new SystemContractRole(roles.ROLE_LIBRARY, LEVEL0_LIBRARY, false),
     [],
     CodeMetadata.Empty(),
 )
@@ -770,7 +796,7 @@ export const sc_level0 = new SystemContract(
     false,
     false,
     false,
-    roles.ROLE_CONSENSUS,
+    new SystemContractRole(roles.ROLE_CONSENSUS, LEVEL0_v001, false),
     [INTERPRETER_FSM, BuildDep(ADDR_LEVEL0_LIBRARY, roles.ROLE_LIBRARY)],
     CodeMetadata.Empty(),
 )
@@ -783,7 +809,7 @@ export const sc_level0_ondemand_library = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_LIBRARY,
+    new SystemContractRole(roles.ROLE_LIBRARY, LEVEL0_ONDEMAND_LIBRARY, false),
     [],
     CodeMetadata.Empty(),
 )
@@ -796,7 +822,7 @@ export const sc_level0_ondemand = new SystemContract(
     false,
     false,
     false,
-    EMPTY_ROLE, // roles.ROLE_CONSENSUS,
+    new SystemContractRole(roles.ROLE_CONSENSUS, LEVEL0_ONDEMAND_v001, false),
     [INTERPRETER_FSM, BuildDep(ADDR_LEVEL0_ONDEMAND_LIBRARY, roles.ROLE_LIBRARY)],
     CodeMetadata.Empty(),
 )
@@ -810,7 +836,7 @@ export function sc_multichain_registry(minValidatorCount: i32, enableEIDCheck: b
         true,
         true,
         false,
-        roles.ROLE_MULTICHAIN_REGISTRY,
+        new SystemContractRole(roles.ROLE_MULTICHAIN_REGISTRY, MULTICHAIN_REGISTRY_v001, true),
         [],
         CodeMetadata.Empty(),
     )
@@ -825,7 +851,7 @@ export function sc_multichain_registry_local(initialPorts: string): SystemContra
         true,
         true,
         false,
-        roles.ROLE_MULTICHAIN_REGISTRY_LOCAL,
+        new SystemContractRole(roles.ROLE_MULTICHAIN_REGISTRY_LOCAL, MULTICHAIN_REGISTRY_LOCAL_v001, true),
         [],
         CodeMetadata.Empty(),
     )
@@ -839,7 +865,7 @@ export const sc_lobby_library = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_LIBRARY,
+    new SystemContractRole(roles.ROLE_LIBRARY, LOBBY_LIBRARY, false),
     [],
     CodeMetadata.Empty(),
 )
@@ -853,7 +879,7 @@ export function sc_lobby(minValidatorCount: i32, enableEIDCheck: boolean, curren
         false,
         false,
         false,
-        roles.ROLE_LOBBY,
+        new SystemContractRole(roles.ROLE_LOBBY, LOBBY_v001, true),
         [INTERPRETER_FSM, BuildDep(ADDR_LOBBY_LIBRARY, roles.ROLE_LIBRARY)],
         CodeMetadata.Empty(),
     )
@@ -868,7 +894,7 @@ export function sc_metaregistry(currentLevel: i32): SystemContract {
         true,
         true,
         false,
-        roles.ROLE_METAREGISTRY,
+        new SystemContractRole(roles.ROLE_METAREGISTRY, METAREGISTRY_v001, true),
         [],
         CodeMetadata.Empty(),
     )
@@ -882,7 +908,7 @@ export const sc_sys_proxy = new SystemContract(
     false,
     false,
     false,
-    EMPTY_ROLE,
+    null,
     [],
     CodeMetadata.Empty(),
 )
@@ -895,7 +921,7 @@ export const sc_hooks = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_HOOKS,
+    new SystemContractRole(roles.ROLE_HOOKS, roles.ROLE_HOOKS + "_" + HOOKS_v001, true),
     [],
     CodeMetadata.Empty(),
 )
@@ -908,20 +934,22 @@ export const sc_hooks_nonc = new SystemContract(
     true,
     true,
     false,
-    roles.ROLE_HOOKS_NONC,
+    new SystemContractRole(roles.ROLE_HOOKS_NONC, roles.ROLE_HOOKS_NONC + "_" + HOOKS_v001, true),
     [],
     CodeMetadata.Empty(),
 )
 
-export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32: string, minValidatorCount: i32, enableEIDCheck: boolean, currentLevel: i32, initialPorts: string, bech32PrefixAccAddr: string): SystemContract[] {
+export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32: string, minValidatorCount: i32, enableEIDCheck: boolean, currentLevel: i32, initialPorts: string, bech32PrefixAccAddr: string, bondBaseDenom: string): SystemContract[] {
     let precompiles = [
-        // auth must be first
-        sc_auth,
+        // StarterPrecompiles
+        // contract storage needs to be initialized first, roles second, auth third
+        sc_storage_codes,
         sc_roles,
+        sc_auth,
 
+        // SimplePrecompiles
         sc_ecrecover,
         sc_ecrecovereth,
-
         sc_sha2_256,
         sc_ripmd160,
         sc_identity,
@@ -931,24 +959,29 @@ export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32
         sc_ecpairings,
         sc_blake2f,
 
+        // InterpreterPrecompiles
         sc_interpreter_evm,
         sc_interpreter_py,
         sc_interpreter_js,
         sc_interpreter_fsm,
         sc_interpreter_tay,
 
-        sc_storage,
+        // BasePrecompiles
+        sc_storage_chain,
         sc_aliaseth,
         sc_proxy_interfaces,
         sc_sys_proxy,
 
+        // EIDPrecompiles
         sc_secp384r1,
         sc_secp384r1_registry,
         sc_secret_sharing,
 
+        // HookPrecompiles
         sc_hooks,
         sc_hooks_nonc,
 
+        // CosmosPrecompiles
         sc_staking,
         sc_bank(feeCollectorBech32, mintBech32),
         sc_erc20, // leave last for erc20CodeId
@@ -958,11 +991,13 @@ export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32
     const erc20CodeId = precompiles.length - 1;
     const derc20CodeId = precompiles.length;
     precompiles = precompiles.concat([
+        // CosmosPrecompiles cont
         sc_slashing,
         sc_distribution,
-        sc_gov,
+        sc_gov(bondBaseDenom),
         sc_gov_cont,
 
+        // ConsensusPrecompiles
         sc_raft_library,
         sc_raftp2p_library,
         sc_tendermint_library,
@@ -983,17 +1018,23 @@ export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32
         sc_level0_ondemand_library,
         sc_level0_ondemand,
 
+        // MultiChainPrecompiles
         sc_multichain_registry(minValidatorCount, enableEIDCheck, erc20CodeId, derc20CodeId),
 
+        // ChatPrecompiles
         sc_chat,
         sc_chat_verifier,
+
+        // SpecialPrecompiles
+        // sc_dtype,
+        // sc_email_handler,
     ])
-    precompiles = fillRoles(precompiles, bech32PrefixAccAddr)
+    precompiles = fillRoles(precompiles, bech32PrefixAccAddr, feeCollectorBech32)
     return precompiles;
 }
 
-export function getDefaultGenesis(bootstrapAccountBech32: string, feeCollectorBech32: string, mintBech32: string, minValidatorCount: i32, enableEIDCheck: boolean, currentLevel: i32, initialPorts: string, bech32PrefixAccAddr: string): GenesisState {
-    const systemContracts = getDefaultSystemContracts(feeCollectorBech32, mintBech32, minValidatorCount, enableEIDCheck, currentLevel, initialPorts, bech32PrefixAccAddr)
+export function getDefaultGenesis(bootstrapAccountBech32: string, feeCollectorBech32: string, mintBech32: string, minValidatorCount: i32, enableEIDCheck: boolean, currentLevel: i32, initialPorts: string, bech32PrefixAccAddr: string, bondBaseDenom: string): GenesisState {
+    const systemContracts = getDefaultSystemContracts(feeCollectorBech32, mintBech32, minValidatorCount, enableEIDCheck, currentLevel, initialPorts, bech32PrefixAccAddr, bondBaseDenom)
     return new GenesisState(
         new Params(),
         bootstrapAccountBech32,
@@ -1005,32 +1046,108 @@ export function getDefaultGenesis(bootstrapAccountBech32: string, feeCollectorBe
     )
 }
 
-export function fillRoles(precompiles: SystemContract[], bech32PrefixAccAddr: string): SystemContract[] {
-    const rolesarr = new Array<Role>();
+// Helper: get bech32 address from hex
+function toBech32(bech32PrefixAccAddr: string, hex: string): string {
+    return wasmxw.addr_humanize_mc(hexToUint8Array(strip0x(hex)).buffer, bech32PrefixAccAddr);
+}
 
+export function fillRoles(precompiles: SystemContract[], bech32PrefixAccAddr: string, feeCollectorBech32: string): SystemContract[] {
+    // Map role -> Role entry (collect primary first, then others)
+    // keys ordered by insertion
+    const roleMap = new Map<string, Role>();
+
+    // First pass: collect roles and set primary as the first seen contract for that role
     for (let i = 0; i < precompiles.length; i++) {
-      const precompile = precompiles[i];
-      if (precompile.role != "") {
-        if (precompile.label == "") {
-          throw new Error(`Label cannot be empty for role ${precompile.role}`);
+        const precompile = precompiles[i];
+        if (precompile.role == null) continue;
+        const role = precompile.role!.role;
+
+        let roleObj: Role
+
+        // Initialize a RoleJSON entry if it doesn't exist
+        if (!roleMap.has(role)) {
+            if (!ContractStorageTypeByString.has(precompile.storage_type)) {
+                throw new Error("storage type does not exist: " + precompile.storage_type)
+            }
+            let st = ContractStorageTypeByString.get(precompile.storage_type);
+
+            roleObj = new Role(
+                role,
+                st as ContractStorageType,
+                0, // primary
+                false,           // multiple
+                new Array<string>(),
+                new Array<string>(),
+            )
+        } else {
+            roleObj = roleMap.get(role)
         }
-        const addrbech32 = wasmxw.addr_humanize_mc(hexToUint8Array(strip0x(precompile.address)).buffer, bech32PrefixAccAddr)
-        rolesarr.push(new Role(precompile.role, precompile.label, addrbech32));
-      }
+
+        if (precompile.role!.primary) {
+            const prefixedAddr = toBech32(bech32PrefixAccAddr, precompile.address)
+            roleObj.primary = i32(roleObj.addresses.length)
+            roleObj.labels = roleObj.labels.concat([precompile.role!.label])
+            roleObj.addresses = roleObj.addresses.concat([prefixedAddr])
+        }
+        roleMap.set(role, roleObj);
     }
 
-    const msgInit = new RolesGenesis(rolesarr);
-    const msgInitBz = JSON.stringify(msgInit);
-    if (msgInitBz == null) {
-        throw new Error("json stringify err");
-    }
-
+    // Second pass: add additional contracts for roles and mark multiple=true
     for (let i = 0; i < precompiles.length; i++) {
-      const precompile = precompiles[i];
-      if (precompile.role == roles.ROLE_ROLES) {
-        precompile.init_message = wasmxExecMsg(msgInitBz);
-      }
+        const precompile = precompiles[i];
+        if (precompile.role == null) continue;
+        const role = precompile.role!.role;
+
+        if (roleMap.has(role)) {
+            const entry = roleMap.get(role);
+            // Check if the contract has already been added
+            const prefixedAddr = toBech32(bech32PrefixAccAddr, precompile.address)
+            if (!entry.addresses.includes(prefixedAddr)) {
+                entry.multiple = true
+                entry.labels.push(precompile.role!.label)
+                entry.addresses.push(prefixedAddr)
+                roleMap.set(role, entry);
+            }
+        }
     }
 
+    // Ensure denom role exists
+    if (!roleMap.has(roles.ROLE_DENOM)) {
+        roleMap.set(roles.ROLE_DENOM, new Role(
+            roles.ROLE_DENOM,
+            ContractStorageType.CoreConsensus,
+            0,
+            true,
+            new Array<string>(),
+            new Array<string>(),
+        ));
+    }
+
+    // Ensure fee collector role exists
+    if (!roleMap.has(roles.ROLE_FEE_COLLECTOR)) {
+        const feeCollectorBech32 = toBech32(bech32PrefixAccAddr, modules.ADDR_FEE_COLLECTOR);
+        roleMap.set(roles.ROLE_FEE_COLLECTOR, new Role(
+            roles.ROLE_FEE_COLLECTOR,
+            ContractStorageType.CoreConsensus,
+            0,
+            false,
+            [roles.ROLE_FEE_COLLECTOR],
+            [feeCollectorBech32],
+        ));
+    }
+
+    // Prepare RolesGenesis message
+    const rolesArr = roleMap.values();
+    const msgInit = new RolesGenesis(rolesArr, [roles.ROLE_CONSENSUS]);
+    const msgInitStr = JSON.stringify(msgInit);
+    const msgbz = wasmxExecMsg(msgInitStr);
+
+    // Update the init message for the roles contract
+    for (let i = 0; i < precompiles.length; i++) {
+        const precompile = precompiles[i];
+        if (precompile.role != null && precompile.role!.role == roles.ROLE_ROLES) {
+            precompiles[i].init_message = msgbz
+        }
+    }
     return precompiles;
 }

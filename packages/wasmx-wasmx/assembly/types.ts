@@ -1,5 +1,5 @@
 import { JSON } from "json-as";
-import { Base64String, Bech32String, CodeInfo, ContractInfo, ContractStorage, HexString, SystemContract } from "wasmx-env/assembly/types";
+import { Base64String, Bech32String, CodeInfo, ContractInfo, ContractStorage, SystemContract } from "wasmx-env/assembly/types";
 
 @json
 export class Params {}
@@ -74,7 +74,6 @@ export class GenesisState {
     }
 }
 
-@json
 export enum ContractStorageType {
     CoreConsensus = 0,
     MetaConsensus = 1,

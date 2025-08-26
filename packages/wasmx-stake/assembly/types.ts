@@ -9,7 +9,6 @@ export const MODULE_NAME = "staking"
 export const AfterValidatorCreated = "AfterValidatorCreated"
 export const AfterValidatorBonded = "AfterValidatorBonded"
 
-@json
 export type BondStatusNumber = i32
 // UNSPECIFIED defines an invalid validator status.
 export const Unspecified = 0;
@@ -20,7 +19,6 @@ export const Unbonding = 2;
 // BONDED defines a validator that is bonded.
 export const Bonded = 3;
 
-@json
 export type BondStatusString = string
 // UNSPECIFIED defines an invalid validator status.
 export const UnspecifiedS = "BOND_STATUS_UNSPECIFIED"; // Unspecified

@@ -706,6 +706,22 @@ export class CodeMetadata {
 }
 
 @json
+export class SystemContractRole {
+    role: string = ""
+    label: string = ""
+    primary: bool = false
+    constructor(
+        role: string,
+        label: string,
+        primary: bool,
+    ) {
+        this.role = role
+        this.label = label
+        this.primary = primary
+    }
+}
+
+@json
 export class SystemContract {
     address: string = ""
     label: string = ""
@@ -714,7 +730,7 @@ export class SystemContract {
     pinned: boolean = false
     metering_off: boolean = true
     native: boolean = false
-    role: string = ""
+    role: SystemContractRole | null = null
     deps: string[] = []
     metadata: CodeMetadata = CodeMetadata.Empty()
     contract_state: ContractStorage[] = []
@@ -726,7 +742,7 @@ export class SystemContract {
         pinned: boolean,
         metering_off: boolean,
         native: boolean,
-        role: string,
+        role: SystemContractRole | null,
         deps: string[],
         metadata: CodeMetadata,
     ) {

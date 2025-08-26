@@ -395,7 +395,7 @@ export function buildDefaultSubChainGenesisInternal(params: Params, chainId: str
 
     const bootstrapAccountBech32 = wasmxw.addr_humanize_mc(utils.hexToUint8Array(modnames.ADDR_BOOTSTRAP_ACCOUNT).buffer, chainConfig.Bech32PrefixAccAddr)
     const feeCollectorBech32 =  wasmxw.addr_humanize_mc(utils.hexToUint8Array(modnames.ADDR_FEE_COLLECTOR).buffer, chainConfig.Bech32PrefixAccAddr)
-    const mintBech32 =  wasmxw.addr_humanize_mc(utils.hexToUint8Array(modnames.ADDR_MINT).buffer, chainConfig.Bech32PrefixAccAddr)
+    const mintBech32 =  wasmxw.addr_humanize_mc(utils.hexToUint8Array(modnames.GOCORE_ADDR_MINT).buffer, chainConfig.Bech32PrefixAccAddr)
 
     const genesisState = buildGenesisData(params, req.denom_unit, req.base_denom_unit, bootstrapAccountBech32, feeCollectorBech32, mintBech32, currentLevel, wasmxContractState, initialPorts, chainConfig.Bech32PrefixAccAddr)
 
@@ -704,7 +704,7 @@ export function buildGenesisData(params: Params, denomUnit: string, baseDenomUni
     const upgradeGenesis = upgradedefaults.getDefaultGenesis()
     const upgradeGenesisBz = utils.stringToBase64(JSON.stringify<upgradedefaults.GenesisState>(upgradeGenesis))
 
-    const wasmxGenesis = wasmxdefaults.getDefaultGenesis(bootstrapAccountBech32, feeCollectorBech32, mintBech32, params.min_validators_count, params.enable_eid_check, currentLevel, JSON.stringify<NodePorts>(initialPorts), bech32PrefixAccAddr)
+    const wasmxGenesis = wasmxdefaults.getDefaultGenesis(bootstrapAccountBech32, feeCollectorBech32, mintBech32, params.min_validators_count, params.enable_eid_check, currentLevel, JSON.stringify<NodePorts>(initialPorts), bech32PrefixAccAddr, stakingBaseDenom)
 
     // set any contract storage key-value pairs
     for (let i = 0; i < wasmxGenesis.system_contracts.length; i++) {
