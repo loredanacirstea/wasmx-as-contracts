@@ -95,7 +95,7 @@ export const AVA_SNOWMAN_LIBRARY = "ava_snowman_library"
 export const LEVEL0_LIBRARY = "level0_library"
 export const LEVEL0_ONDEMAND_LIBRARY = "level0_ondemand_library"
 export const LOBBY_LIBRARY = "lobby_library"
-export const INTERPRETER_EVM_SHANGHAI = "interpreter_evm_shanghai"
+export const INTERPRETER_EVM_SHANGHAI = "interpreter_evm_shanghai_bz_1.0.0"
 // https://github.com/RustPython/RustPython version
 export const INTERPRETER_PYTHON = "interpreter_python_utf8_0.2.0"
 export const INTERPRETER_JS = "interpreter_javascript_utf8_0.1.0"
