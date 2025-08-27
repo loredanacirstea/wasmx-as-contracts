@@ -27,7 +27,7 @@
     "assemblyscript": "0.28.3"
   },
   "dependencies": {
-    "json-as": "1.1.20"
+    "json-as": "github:loredanacirstea/as-json#wasmx"
   },
   "type": "module",
   "exports": {

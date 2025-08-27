@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "as-base64": "^0.2.0",
-    "json-as": "1.1.20",
+    "json-as": "github:loredanacirstea/as-json#wasmx",
     "wasmx-blocks": "file:../wasmx-blocks",
     "wasmx-env": "file:../wasmx-env",
     "wasmx-consensus": "file:../wasmx-consensus",

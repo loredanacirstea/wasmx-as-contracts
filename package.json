@@ -5,7 +5,9 @@
       "packages/*"
     ],
     "overrides": {
-      "json-as": "github:loredanacirstea/as-json#external-custom-alias2"
+    },
+    "dependencies": {
+      "visitor-as": "0.11.4"
     },
     "scripts": {
       "install-all": "npm install",
