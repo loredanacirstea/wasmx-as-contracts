@@ -636,7 +636,7 @@ export function isEIDActive(addr: Bech32String): boolean {
     const padded = new Uint8Array(32);
     padded.set(addrbz, 32 - addrbz.length);
     const calldatastr = "0x" + signature + utils.uint8ArrayToHex(padded)
-    const resp = callEvmContract(roles.ROLE_EID_REGISTRY, calldatastr, false)
+    const resp = callEvmContract(roles.ROLE_EID_REGISTRY, calldatastr, true)
     if (resp.success > 0) {
         return false;
     }

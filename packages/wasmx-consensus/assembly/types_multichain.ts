@@ -5,9 +5,7 @@ import { Bech32String } from "wasmx-env/assembly/types";
 
 const START_EVM_ID = 1000;
 
-@json
 export type HexString = string;
-@json
 export type Base64String = string;
 
 @json
@@ -72,7 +70,6 @@ export class InitSubChainDeterministicRequest {
     }
 }
 
-@json
 export type GenesisState = Map<string,Base64String>
 
 @json

@@ -6,7 +6,7 @@ import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as stakingtypes from "wasmx-stake/assembly/types";
 import { ActionParam, EventObject } from "xstate-fsm-as/assembly/types";
 import { actionParamsToMap, getParamsOrEventParams } from "xstate-fsm-as/assembly/utils";
-import { revert } from "./utils";
+import { LoggerDebug, LoggerError, revert } from "./utils";
 import { ChainConfig } from "wasmx-consensus/assembly/types_multichain";
 import { BaseAccount, QueryAccountResponse } from "wasmx-auth/assembly/types";
 import { NodeInfo } from "wasmx-p2p/assembly/types";
@@ -93,10 +93,14 @@ export function getSubChainConfig(chainId: string): ChainConfig | null {
     const calldatastr = `{"GetSubChainConfigById":{"chainId":"${chainId}"}}`;
     const resp = callContract(roles.ROLE_MULTICHAIN_REGISTRY, calldatastr, true, MODULE_NAME);
     if (resp.success > 0) {
+        LoggerError("subchain config is null", ["error", resp.data, "code", resp.success.toString(), "chainId", chainId])
         // we do not fail, we want the chain to continue
         return null
     }
-    if (resp.data == "") return null;
+    if (resp.data == "") {
+        LoggerError("subchain config is null", ["data", resp.data, "chainId", chainId])
+        return null;
+    }
     return JSON.parse<ChainConfig>(resp.data);
 }
 
