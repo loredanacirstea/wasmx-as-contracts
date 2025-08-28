@@ -595,7 +595,7 @@ export const sc_tendermintp2p = new SystemContract(
     false,
     false,
     false,
-    new SystemContractRole(roles.ROLE_CONSENSUS, CONSENSUS_TENDERMINTP2P, false),
+    new SystemContractRole(roles.ROLE_CONSENSUS, CONSENSUS_TENDERMINTP2P, true),
     [INTERPRETER_FSM, BuildDep(ADDR_CONSENSUS_TENDERMINTP2P_LIBRARY, roles.ROLE_LIBRARY)],
     CodeMetadata.Empty(),
 )
