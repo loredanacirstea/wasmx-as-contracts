@@ -36,7 +36,7 @@ export function buildChainConfig(denom_unit: string, base_denom_unit: u32, chain
 export function getDefaultConsensusParams(): tnd.ConsensusParams {
     const BlockParams = new tnd.BlockParams(
         22020096,
-        30000000, // -1 no limit
+        3000000000, // -1 no limit
     )
     const EvidenceParams = new tnd.EvidenceParams(
         100000,

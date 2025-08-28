@@ -615,14 +615,14 @@ export const sc_ava_snowman_library = new SystemContract(
 
 export const sc_ava_snowman = new SystemContract(
     ADDR_CONSENSUS_AVA_SNOWMAN,
-    CONSENSUS_TENDERMINTP2P,
+    CONSENSUS_AVA_SNOWMAN,
     StorageSingleConsensus,
-    tendermintP2PInitMsg,
+    avaInitMsg,
     false,
     false,
     false,
-    new SystemContractRole(roles.ROLE_CONSENSUS, CONSENSUS_TENDERMINTP2P, false),
-    [INTERPRETER_FSM, BuildDep(ADDR_CONSENSUS_TENDERMINTP2P_LIBRARY, roles.ROLE_LIBRARY)],
+    new SystemContractRole(roles.ROLE_CONSENSUS, CONSENSUS_AVA_SNOWMAN, false),
+    [INTERPRETER_FSM, BuildDep(ADDR_CONSENSUS_AVA_SNOWMAN_LIBRARY, roles.ROLE_LIBRARY)],
     CodeMetadata.Empty(),
 )
 

@@ -154,7 +154,7 @@ export function GetRoleNameByAddress(req: GetRoleNameByAddressRequest): ArrayBuf
 // TODO replace the previous role? if a role cannot hold 2 contracts?
 // e.g. consensus
 export function registerRoleInitial(role: Role): void {
-    LoggerInfo("register role initial", ["role", role.role, "storage_type_enum", role.storage_type.toString(), "storage_type", ContractStorageTypeByEnum.get(role.storage_type), "labels", role.labels.join(","), "contract_address", role.addresses.join(",")])
+    LoggerInfo("register role initial", ["role", role.role, "storage_type_enum", role.storage_type.toString(), "storage_type", ContractStorageTypeByEnum.get(role.storage_type), "labels", role.labels.join(","), "contract_address", role.addresses.join(","), "primary", role.primary.toString()])
     if (role.role == "") {
         revert(`cannot register empty role`)
     }
