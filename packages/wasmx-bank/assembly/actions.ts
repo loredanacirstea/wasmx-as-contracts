@@ -91,6 +91,7 @@ export function MultiSend(req: MsgMultiSend): ArrayBuffer {
     if (req.inputs.length != 1) {
         revert("multisend must have 1 input");
     }
+    requireOwnerOrAuthorization(req.inputs[0].address, "MultiSend")
     LoggerDebug(`multisend`, ["from_address", req.inputs[0].address, "outputs", req.outputs.length.toString()])
     const input = req.inputs[0];
     const coinMap = new Map<string,BigInt>()
@@ -349,7 +350,6 @@ export function callToken(address: Bech32String, calldata: string, isQuery: bool
 }
 
 export function checkOwnerOrAuthorization(owner: Bech32String): boolean {
-    // caller is always an address
     const caller = wasmxw.getCaller()
     if (caller == owner) return true;
     if(isFromDenomContract(caller)) return true

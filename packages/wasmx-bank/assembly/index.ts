@@ -59,14 +59,15 @@ export function main(): void {
     result = DenomOwners(calld.GetDenomOwners!);
   } else if (calld.GetSendEnabled !== null) {
     result = SendEnabled(calld.GetSendEnabled!);
+  } else if (calld.SendCoins !== null) {
+    Send(calld.SendCoins!);
+    result = new ArrayBuffer(0)
+  } else if (calld.MultiSend !== null) {
+    result = MultiSend(calld.MultiSend!);
   }
 
   // internal operations
-  else if (calld.SendCoins !== null) {
-    onlyInternal(MODULE_NAME, "SendCoins");
-    Send(calld.SendCoins!);
-    result = new ArrayBuffer(0)
-  } else if (calld.SendCoinsFromModuleToAccount !== null) {
+  else if (calld.SendCoinsFromModuleToAccount !== null) {
     onlyInternal(MODULE_NAME, "SendCoinsFromModuleToAccount");
     result = SendCoinsFromModuleToAccount(calld.SendCoinsFromModuleToAccount!);
   } else if (calld.SendCoinsFromModuleToModule !== null) {
@@ -75,9 +76,6 @@ export function main(): void {
   } else if (calld.SendCoinsFromAccountToModule !== null) {
     onlyInternal(MODULE_NAME, "SendCoinsFromAccountToModule");
     result = SendCoinsFromAccountToModule(calld.SendCoinsFromAccountToModule!);
-  } else if (calld.MultiSend !== null) {
-    onlyInternal(MODULE_NAME, "MultiSend");
-    result = MultiSend(calld.MultiSend!);
   } else if (calld.UpdateParams !== null) {
     onlyInternal(MODULE_NAME, "UpdateParams");
     result = UpdateParams(calld.UpdateParams!);
