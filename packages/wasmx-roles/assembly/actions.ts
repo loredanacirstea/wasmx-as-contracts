@@ -241,10 +241,13 @@ export function setContractForRole(roleChanged: RoleChangeRequest, executeNow: b
 
         LoggerInfo("register contract for role", ["role", roleName, "label", label, "contract_address", addr])
 
-        const errMsg = callTargetContractIfHasActivate(addr, msg)
-        if (errMsg != "") {
-            LoggerError(`set contract for role: cannot activate contract ${addr} for role ${roleName}`, ["error", errMsg]);
-            revert(`set contract for role: cannot activate contract ${addr} for role ${roleName}: ${errMsg}`);
+        const migrationExceptions = st.getMigrationException();
+        if (!migrationExceptions.includes(roleName)) {
+            const errMsg = callTargetContractIfHasActivate(addr, msg)
+            if (errMsg != "") {
+                LoggerError(`set contract for role: cannot activate contract ${addr} for role ${roleName}`, ["error", errMsg]);
+                revert(`set contract for role: cannot activate contract ${addr} for role ${roleName}: ${errMsg}`);
+            }
         }
 
         // we also call the hooks contract

@@ -31,7 +31,15 @@ const EVENT_TYPE_INIT_SUBCHAIN = "init_subchain"
 
 const EVENT_TYPE_INIT_SUBCHAIN_ATTR = "init_subchain_request"
 
-export function defaultFinalizeResponseEventsParse(txResults: ExecTxResult[]): FinalizedCoreEventsInfo {
+export function aggregateEvents(txResults: ExecTxResult[], events: Event[]): Event[] {
+    let res = events.slice()
+    for (let x = 0; x < txResults.length; x++) {
+        res = res.concat(txResults[x].events);
+    }
+    return res;
+}
+
+export function defaultFinalizeResponseEventsParse(txResults: ExecTxResult[], endBlockEvents: Event[]): FinalizedCoreEventsInfo {
     let roleConsensus = false;
     let consensusContract = ""
     let consensusLabel = ""
@@ -45,26 +53,7 @@ export function defaultFinalizeResponseEventsParse(txResults: ExecTxResult[]): F
         const evs = txResults[x].events
         for (let i = 0; i < evs.length; i++) {
             const ev = evs[i];
-            if (ev.type == wasmxevs.EventTypeRegisterRole) {
-                for (let j = 0; j < ev.attributes.length; j++) {
-                    if (ev.attributes[j].key == wasmxevs.AttributeKeyRole) {
-                        roleConsensus = ev.attributes[j].value == "consensus"
-                    }
-                    if (ev.attributes[j].key == wasmxevs.AttributeKeyContractAddress) {
-                        consensusContract = ev.attributes[j].value;
-                    }
-                    if (ev.attributes[j].key == wasmxevs.AttributeKeyRoleLabel) {
-                        consensusLabel = ev.attributes[j].value;
-                    }
-                }
-                if (roleConsensus) {
-                    LoggerInfo("found new consensus contract", ["address", consensusContract, "label", consensusLabel])
-                    break;
-                } else {
-                    consensusContract = ""
-                    consensusLabel = ""
-                }
-            } else if (ev.type == EVENT_TYPE_CREATE_VALIDATOR) {
+            if (ev.type == EVENT_TYPE_CREATE_VALIDATOR) {
                 for (let j = 0; j < ev.attributes.length; j++) {
                     if (ev.attributes[j].key == "validator") {
                         const val = new CreatedValidator(ev.attributes[j].value, x)
@@ -77,6 +66,29 @@ export function defaultFinalizeResponseEventsParse(txResults: ExecTxResult[]): F
                         initChainRequests.push(ev.attributes[j].value)
                     }
                 }
+            }
+        }
+    }
+    for (let i = 0; i < endBlockEvents.length; i++) {
+        const ev = endBlockEvents[i];
+        if (ev.type == wasmxevs.EventTypeRegisterRole) {
+            for (let j = 0; j < ev.attributes.length; j++) {
+                if (ev.attributes[j].key == wasmxevs.AttributeKeyRole) {
+                    roleConsensus = ev.attributes[j].value == "consensus"
+                }
+                if (ev.attributes[j].key == wasmxevs.AttributeKeyContractAddress) {
+                    consensusContract = ev.attributes[j].value;
+                }
+                if (ev.attributes[j].key == wasmxevs.AttributeKeyRoleLabel) {
+                    consensusLabel = ev.attributes[j].value;
+                }
+            }
+            if (roleConsensus) {
+                LoggerInfo("found new consensus contract", ["address", consensusContract, "label", consensusLabel])
+                break;
+            } else {
+                consensusContract = ""
+                consensusLabel = ""
             }
         }
     }

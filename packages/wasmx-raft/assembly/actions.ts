@@ -1218,15 +1218,18 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     // remove temporary block data
     removeLogEntry(entryobj.index);
 
-    // before commiting, we check if consensus contract was changed
-    // or if a new validator was added
-    const info = consutil.defaultFinalizeResponseEventsParse(finalizeResp.tx_results)
-
-     // EndBlock will execute passed governance proposals
+    // EndBlock will execute passed governance proposals
     const respend = consensuswrap.EndBlock(blockData);
     if (respend.error.length > 0) {
         revert(`${respend.error}`);
     }
+
+    // before commiting, we check if consensus contract was changed
+    // or if a new validator was added
+    const info = consutil.defaultFinalizeResponseEventsParse(
+        finalizeResp.tx_results,
+        consutil.aggregateEvents(respend.data!.tx_results, respend.data!.events),
+    )
 
     // we need to store the latest AppHash after EndBlock! and before Commit
     // this is the true end of block finalization
