@@ -184,7 +184,8 @@ export function registerNewRole(role: Role): void {
     for (let i = 0; i < role.addresses.length; i++) {
         const errMsg = callTargetContractIfHasActivate(role.addresses[i], msg)
         if (errMsg != "") {
-            revert(`cannot activate contract ${role.addresses[i]} for role ${role.role}`);
+            LoggerError(`register new role: cannot activate contract ${role.addresses[i]} for role ${role.role}: ${errMsg}`, ["error", errMsg]);
+            revert(`register new role: cannot activate contract ${role.addresses[i]} for role ${role.role}`);
         }
     }
     callHookContract(hooks.HOOK_ROLE_CHANGED, JSON.stringify<RolesChangedHook>(msg))
@@ -242,7 +243,8 @@ export function setContractForRole(roleChanged: RoleChangeRequest, executeNow: b
 
         const errMsg = callTargetContractIfHasActivate(addr, msg)
         if (errMsg != "") {
-            revert(`cannot activate contract ${addr} for role ${roleName}`);
+            LoggerError(`set contract for role: cannot activate contract ${addr} for role ${roleName}`, ["error", errMsg]);
+            revert(`set contract for role: cannot activate contract ${addr} for role ${roleName}: ${errMsg}`);
         }
 
         // we also call the hooks contract
@@ -310,7 +312,7 @@ export function registerRoleEndBlock(role: Role, roleName: string, label: string
 
     st.addRoleContract(role, label, addr, false)
 
-    LoggerInfo("register contract for role", ["role", roleName, "label", label, "contract_address", addr, "storage_type", ContractStorageTypeByEnum.get(role.storage_type)])
+    LoggerInfo("EndBlock: register contract for role", ["role", roleName, "label", label, "contract_address", addr, "storage_type", ContractStorageTypeByEnum.get(role.storage_type)])
 
     // either we replace or add a contract
     // TODO role migration for sql/kv
@@ -320,7 +322,7 @@ export function registerRoleEndBlock(role: Role, roleName: string, label: string
 
     const errMsg = callTargetContractIfHasActivate(addr, msg)
     if (errMsg != "") {
-        LoggerError(`cannot activate contract ${addr} for role ${roleName}`, []);
+        LoggerError(`EndBlock: cannot activate contract ${addr} for role ${roleName}`, ["error", errMsg]);
         // TODO we should revert the replace here! and return to previous contract
     }
 
