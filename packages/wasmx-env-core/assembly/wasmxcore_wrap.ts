@@ -20,7 +20,7 @@ import {
     UpdateSystemCacheRequest,
     UpdateSystemCacheResponse,
 } from './types';
-import { LoggerDebugExtended } from "./utils";
+import { LoggerDebugExtended, LoggerInfo } from "./utils";
 import { Base64String, Bech32String, ContractInfo } from "wasmx-env/assembly/types";
 import { addr_canonicalize } from "wasmx-env/assembly/wasmx_wrap";
 
@@ -106,7 +106,11 @@ export function storageResetGlobal(req: GlobalStorageResetRequest): GlobalStorag
 }
 
 export function updateSystemCache(req: UpdateSystemCacheRequest): UpdateSystemCacheResponse {
-    const data = String.UTF8.encode(JSON.stringify<UpdateSystemCacheRequest>(req))
+    const datastr = JSON.stringify<UpdateSystemCacheRequest>(req)
+    const data = String.UTF8.encode(datastr)
+    LoggerInfo("update system cache: ", ["data", datastr]);
     const resp = wasmxcore.updateSystemCache(data);
-    return JSON.parse<UpdateSystemCacheResponse>(String.UTF8.decode(resp))
+    const respstr = String.UTF8.decode(resp)
+    LoggerInfo("update system cache: ", ["data", datastr, "host_response", respstr]);
+    return JSON.parse<UpdateSystemCacheResponse>(respstr)
 }

@@ -291,6 +291,15 @@ export function endBlockActions(roleName: string, label: string, addr: string, a
         const previousRole = new Role(ROLE_PREVIOUS + roleName, role.storage_type, i32(0), false, [foundlabel], [prevAddress]);
         LoggerInfo("setting previous role contract", ["role", previousRole.role, "label", foundlabel, "contract_address", prevAddress])
         st.setRole(previousRole)
+
+        // this must be last action in EndBlock
+        if (roleName == roles.ROLE_ROLES) {
+            // for codes and roles, we need to update the cached information by the host!!
+            const resp = wasmxcorew.updateSystemCache(new wasmxcoret.UpdateSystemCacheRequest(addr, "", 0, null, null))
+            if (resp.error != "") {
+                LoggerError("system cache update error for roles contract; should restart...", ["error", resp.error])
+            }
+        }
     }
     if (role != null && role.multiple) {
         // after migration we make the new contract primary contract
