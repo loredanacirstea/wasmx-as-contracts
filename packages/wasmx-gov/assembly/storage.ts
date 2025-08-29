@@ -18,6 +18,7 @@ export const PROPOSAL_DEPOSIT_KEY = "proposal_deposit."
 export const PROPOSAL_DEPOSITOR_KEY = "proposal_depositer."
 export const PROPOSAL_ACTIVE_DEPOSIT_KEY = "proposal_active_deposit"
 export const PROPOSAL_ACTIVE_VOTING_KEY = "proposal_active_voting"
+export const BOND_BASE_DENOM = "bond_base_denom"
 
 export function getProposalVoterKey(proposal_id: u64, voter: Bech32String): string {
     return PROPOSAL_VOTER_KEY + proposal_id.toString() + SPLIT + voter
@@ -279,4 +280,12 @@ export function getParamsInternal(): string {
 
 export function setParams(params: Params): void {
     return wasmxw.sstore(PARAM_KEY, JSON.stringify<Params>(params));
+}
+
+export function getVotingDenom(): string {
+	return wasmxw.sload(BOND_BASE_DENOM)
+}
+
+export function setVotingDenom(denom: string): void {
+	wasmxw.sstore(BOND_BASE_DENOM, denom)
 }

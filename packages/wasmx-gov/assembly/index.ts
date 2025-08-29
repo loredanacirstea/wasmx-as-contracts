@@ -1,14 +1,18 @@
 import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { CallData, getCallDataWrap } from './calldata';
+import { CallData, getCallDataInstantiate, getCallDataWrap } from './calldata';
 import { EndBlock, DoDeposit, InitGenesis, SubmitProposal, VoteWeighted, GetProposal, GetParams, DoVote, GetProposals, GetTallyResult } from "./actions";
 import { revert } from "./utils";
 import { onlyInternal } from "wasmx-env/assembly/utils";
 import { MODULE_NAME } from "./types";
+import { setVotingDenom } from "./storage";
 
 export function wasmx_env_2(): void {}
 
-export function instantiate(): void {}
+export function instantiate(): void {
+  const calld = getCallDataInstantiate();
+  setVotingDenom(calld.bond_base_denom);
+}
 
 export function main(): void {
   let result: ArrayBuffer = new ArrayBuffer(0)

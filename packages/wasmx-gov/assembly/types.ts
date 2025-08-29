@@ -709,3 +709,11 @@ export class Response {
         this.data = data
     }
 }
+
+@json
+export class MsgInitialize {
+	bond_base_denom: string = ""
+    constructor(bond_base_denom: string) {
+        this.bond_base_denom = bond_base_denom
+    }
+}

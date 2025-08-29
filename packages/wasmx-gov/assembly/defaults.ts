@@ -20,9 +20,9 @@ export const burn_proposal_deposit_prevote = false
 export const burn_vote_veto = true
 export const min_deposit_ratio = "0.010000000000000000"
 
-export function getDefaultParams(defaultBondDenom: string): Params {
+export function getDefaultParams(deposit_denom: string): Params {
     return new Params(
-        [new Coin(defaultBondDenom, BigInt.fromString(DefaultMinDepositTokens, 10))],
+        [new Coin(deposit_denom, BigInt.fromString(DefaultMinDepositTokens, 10))],
         DefaultDepositPeriod,
         DefaultVotingPeriod,
         DefaultQuorum,
@@ -33,7 +33,7 @@ export function getDefaultParams(defaultBondDenom: string): Params {
         proposal_cancel_dest,
         DefaultVotingExpedited,
         expedited_threshold,
-        [new Coin(defaultBondDenom, BigInt.fromString(DefaultMinDepositTokens, 10).mul(BigInt.fromU32(DefaultMinExpeditedDepositTokensRatio)))],
+        [new Coin(deposit_denom, BigInt.fromString(DefaultMinDepositTokens, 10).mul(BigInt.fromU32(DefaultMinExpeditedDepositTokensRatio)))],
         burn_vote_quorum,
         burn_proposal_deposit_prevote,
         burn_vote_veto,
@@ -42,7 +42,7 @@ export function getDefaultParams(defaultBondDenom: string): Params {
 }
 
 export function getDefaultGenesis(baseDenom: string, defaultBondDenom: string, rewardsBaseDenom: string): GenesisState {
-    const params = getDefaultParams(defaultBondDenom)
+    const params = getDefaultParams(baseDenom)
     return new GenesisState(
         DefaultStartingProposalID,
         [],

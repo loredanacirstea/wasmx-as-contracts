@@ -1,6 +1,6 @@
 import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
-import { MsgDeposit, MsgEndBlock, GenesisState, MsgSubmitProposal, MsgVote, MsgVoteWeighted, QueryDepositRequest, QueryDepositsRequest, QueryParamsRequest, QueryProposalRequest, QueryProposalsRequest, QueryTallyResultRequest, QueryVoteRequest, QueryVotesRequest } from './types';
+import { MsgDeposit, MsgEndBlock, GenesisState, MsgSubmitProposal, MsgVote, MsgVoteWeighted, QueryDepositRequest, QueryDepositsRequest, QueryParamsRequest, QueryProposalRequest, QueryProposalsRequest, QueryTallyResultRequest, QueryVoteRequest, QueryVotesRequest, MsgInitialize } from './types';
 
 @json
 export class MsgEmpty {}
@@ -33,4 +33,10 @@ export function getCallDataWrap(): CallData {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)
     return JSON.parse<CallData>(calldstr);
+}
+
+export function getCallDataInstantiate(): MsgInitialize {
+    const calldraw = wasmx.getCallData();
+    let calldstr = String.UTF8.decode(calldraw)
+    return JSON.parse<MsgInitialize>(calldstr);
 }
