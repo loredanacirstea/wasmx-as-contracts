@@ -168,7 +168,7 @@ export function forwardTxsToLeader(
     // look in the mempool to see if we have user transactions left
     // and send to leader
     const mempool = getMempool();
-    if (mempool.txs.length == 0) {
+    if (mempool.map.keys().length == 0) {
         return;
     }
 
@@ -181,27 +181,29 @@ export function forwardTxsToLeader(
     const nodeIps = getNodeIPs();
     const nodeInfo = nodeIps[nodeId];
 
-    let limit = mempool.txs.length;
+    let limit = mempool.map.keys().length;
     if (limit > 5) {
         limit = 5;
     }
-    const txs = mempool.txs.slice(0, limit);
+    const txs = mempool.map.values().slice(0, limit);
+    const txhs = mempool.map.keys().slice(0, limit);
     LoggerDebug("forwarding txs to leader", ["nodeId", nodeId.toString(), "nodeIp", nodeInfo.node.ip, "count", limit.toString()])
     const contract = wasmxw.getAddress();
     const protocolId = getProtocolId(getCurrentState())
 
     for (let i = 0; i < limit; i++) {
-        const tx = txs[0];
-        const msgstr = `{"run":{"event":{"type":"newTransaction","params":[{"key": "transaction","value":"${tx}"}]}}}`
+        const tx = txs[i];
+        const msgstr = `{"run":{"event":{"type":"newTransaction","params":[{"key": "transaction","value":"${tx.tx}"}]}}}`
         const peers = [getP2PAddress(nodeInfo)]
         LoggerDebug("forwarding tx to leader", ["nodeId", nodeId.toString(), "nodeIp", nodeInfo.node.ip, "tx_batch_index", i.toString()])
         p2pw.SendMessageToPeers(new p2ptypes.SendMessageToPeersRequest(contract, contract, msgstr, protocolId, peers))
+
+        // TODO we will remove the tx from mempool now
+        // if it is an invalid transaction (it can happen), then the leader will
+        // reject it, so this node will continue to send it to the Leader
+        // we should remove it only if found invalid
+        mempool.remove(txhs[i])
     }
-    // TODO we will remove the tx from mempool now
-    // if it is an invalid transaction (it can happen), then the leader will
-    // reject it, so this node will continue to send it to the Leader
-    // we should remove it only if found invalid
-    mempool.txs.splice(0, limit);
     setMempool(mempool);
 }
 

@@ -2,7 +2,7 @@ import { JSON } from "json-as";
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wblocks from "wasmx-blocks/assembly/types";
 import { LoggerDebug, LoggerDebugExtended, revert } from "./utils";
-import { CurrentState, Mempool } from "./types_blockchain";
+import { CurrentState, Mempool, MempoolTx } from "./types_blockchain";
 import * as fsm from 'xstate-fsm-as/assembly/storage';
 import { parseInt32, parseInt64 } from "wasmx-utils/assembly/utils";
 import { NodeInfo } from "wasmx-p2p/assembly/types";
@@ -253,7 +253,7 @@ export function setVoteIndexArray(arr: Array<i32>): void {
 
 export function getMempool(): Mempool {
     const mempool = fsm.getContextValue(cfg.MEMPOOL_KEY);
-    if (mempool === "") return  new Mempool(new Array<string>(0), new Array<i32>(0));
+    if (mempool === "") return  new Mempool(new Map<string, MempoolTx>());
     return JSON.parse<Mempool>(mempool);
 }
 

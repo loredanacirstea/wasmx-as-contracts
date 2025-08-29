@@ -1,6 +1,8 @@
 import { JSON } from "json-as";
-import {HexString, Base64String, Bech32String} from 'wasmx-env/assembly/types';
+import * as consw from "wasmx-env/assembly/crosschain_wrap";
+import {HexString, Base64String, Bech32String, MsgIsAtomicTxInExecutionRequest} from 'wasmx-env/assembly/types';
 import { Version, BlockID } from 'wasmx-consensus/assembly/types_tendermint';
+import { LoggerDebug } from "./utils";
 
 @json
 export class CurrentState {
@@ -34,48 +36,122 @@ export class CurrentState {
 class MempoolBatch {
     txs: Base64String[];
     cummulatedGas: i64;
-    constructor(txs: Base64String[] = [], cummulatedGas: i64 = 0) {
+    isAtomicTx: boolean
+    isLeader: boolean
+    full: boolean = false
+    constructor(txs: Base64String[] = [], cummulatedGas: i64 = 0, isAtomicTx: boolean = false, isLeader: boolean = false) {
         this.txs = txs;
         this.cummulatedGas = cummulatedGas;
+        this.isAtomicTx = isAtomicTx;
+        this.isLeader = isLeader;
+        this.full = false;
+    }
+}
+
+@json
+export class MempoolTx {
+    tx: Base64String
+    gas: u64
+    leader: string = ""
+    constructor(
+        tx: Base64String,
+        gas: u64,
+        leader: string = "",
+    ) {
+        this.tx = tx
+        this.gas = gas
+        this.leader = leader
     }
 }
 
 @json
 export class Mempool {
-    txs: Base64String[];
-    gas: i32[];
-    constructor(txs: Base64String[] = [], gas: i32[] = []) {
-        this.txs = txs;
-        this.gas = gas;
+    map: Map<Base64String,MempoolTx> = new Map<Base64String,MempoolTx>()
+    temp: Map<Base64String,bool> = new  Map<Base64String,bool>()
+    constructor(map: Map<Base64String,MempoolTx>) {
+        this.map = map;
+        this.temp = new Map<Base64String,bool>()
     }
 
-    add(tx: Base64String, gas: i32): void {
-        this.gas = this.gas.concat([gas]);
-        this.txs = this.txs.concat([tx]);
+    seen(txhash: Base64String): void {
+        this.temp.set(txhash, true);
     }
 
-    batch(maxGas: i64, maxBytes: i64): MempoolBatch {
-        let batch: MempoolBatch = new MempoolBatch([], 0);
+    add(txhash: Base64String, tx: Base64String, gas: u64, leaderChainId: string): void {
+        this.map.set(txhash, new MempoolTx(tx, gas, leaderChainId))
+    }
+
+    remove(txhash: Base64String): void {
+        this.map.delete(txhash)
+
+        // clear out temporary txhashes too
+        this.temp = new Map<Base64String,bool>()
+    }
+
+    batch(maxGas: i64, maxBytes: i64, ourchain: string): MempoolBatch {
+        let batch: MempoolBatch = new MempoolBatch([], 0, false, false);
         let cummulatedBytes: i64 = 0;
-        for (let i = 0; i < this.txs.length; i++) {
-            if (maxGas > -1 && maxGas < (batch.cummulatedGas + this.gas[i])) {
+        const txhashes = this.map.keys();
+        for (let i = 0; i < txhashes.length; i++) {
+            const tx = this.map.get(txhashes[i])
+            let atomicInExec = false
+            if (tx.leader != "") {
+                if (
+                    tx.leader == ourchain ||
+                    consw.isAtomicTxInExecution(new MsgIsAtomicTxInExecutionRequest(tx.leader, txhashes[i]))
+                ) {
+                    atomicInExec = true
+                    if (tx.leader == ourchain) {
+                        LoggerDebug("adding atomic tx to block proposal", ["leader", tx.leader, "txhash", txhashes[i]])
+                        batch.isLeader = true
+                    } else {
+                        LoggerDebug("atomic tx is in execution on leader chain", ["leader", tx.leader, "txhash", txhashes[i]])
+                    }
+                    batch.txs = []
+                    batch.cummulatedGas = 0;
+                    batch.isAtomicTx = true;
+                } else {
+                    LoggerDebug("atomic tx is not in execution on leader chain, skipping...", ["leader", tx.leader, "txhash", txhashes[i]])
+                    continue;
+                }
+            }
+            if (maxGas > -1 && maxGas < (batch.cummulatedGas + tx.gas)) {
                 break;
             }
-            const bytelen = base64Len(this.txs[i]);
+            const bytelen = base64Len(tx.tx);
             if (maxBytes < (cummulatedBytes + bytelen)) {
                 break;
             }
-            batch.txs = batch.txs.concat([this.txs[i]]);
-            batch.cummulatedGas += this.gas[i];
+            batch.txs = batch.txs.concat([tx.tx]);
+            batch.cummulatedGas += tx.gas;
             cummulatedBytes += bytelen;
+            // only one atomic transaction per batch
+            if (atomicInExec) return batch;
         }
-        this.txs.splice(0, batch.txs.length);
-        this.gas.splice(0, batch.txs.length);
         return batch;
     }
 
-    spliceTxs(limit: i32): Base64String[] {
-        return this.txs.splice(0, limit);
+    // quick check to see if we have enough tx in mempool
+    isBatchFull(maxGas: i64, maxBytes: i64): boolean {
+        if (maxGas == -1) return false;
+        let cummulatedGas: i64 = 0;
+        let cummulatedBytes: i64 = 0;
+        const txhashes = this.map.keys();
+        for (let i = 0; i < txhashes.length; i++) {
+            const tx = this.map.get(txhashes[i])
+            if (maxGas < (cummulatedGas + tx.gas)) {
+                return true;
+            }
+            const bytelen = base64Len(tx.tx);
+            if (maxBytes < (cummulatedBytes + bytelen)) {
+                return true;
+            }
+            cummulatedGas += tx.gas;
+            cummulatedBytes += bytelen;
+        }
+        if ((maxGas - cummulatedGas) < 50000) return true;
+        if ((maxBytes - cummulatedBytes) < 1000) return true;
+        return false;
     }
 }
 

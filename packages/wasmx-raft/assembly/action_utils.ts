@@ -1,26 +1,36 @@
 import { JSON } from "json-as";
+import * as base64 from "as-base64/assembly"
 import { encode as encodeBase64, decode as decodeBase64 } from "as-base64/assembly";
 import * as wblockscalld from "wasmx-blocks/assembly/calldata";
 import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import { DEFAULT_GAS_TX } from "wasmx-env/assembly/const";
-import { LoggerDebug, LoggerDebugExtended, LoggerError, revert } from "./utils";
+import * as mctypes from "wasmx-consensus/assembly/types_multichain";
+import * as hooks from "wasmx-env/assembly/hooks";
+import * as roles from "wasmx-env/assembly/roles";
+import * as p2ptypes from "wasmx-p2p/assembly/types";
+import { LoggerDebug, LoggerDebugExtended, LoggerError, LoggerInfo, revert } from "./utils";
 import {
   Base64String,
   Bech32String,
   CallRequest,
   CallResponse,
+  HexString,
   PublicKey,
+  SignedTransaction,
 } from 'wasmx-env/assembly/types';
 import * as typestnd from "wasmx-consensus/assembly/types_tendermint";
 import * as staking from "wasmx-stake/assembly/types";
 import { NodeInfo } from "wasmx-p2p/assembly/types";
+import * as modnames from "wasmx-env/assembly/modules";
+import * as stakingutils from "wasmx-stake/assembly/msg_utils";
 import { LogEntry, MODULE_NAME } from "./types_raft";
 import { BigInt } from "wasmx-env/assembly/bn";
 import { getCurrentState, getLastLogIndex, getLogEntryObj, getNodeIPs, setCurrentState, setMatchIndexArray, setNextIndexArray } from "./storage";
 import * as cfg from "./config";
 import { CurrentState } from "./types_blockchain";
-import { base64ToHex } from "wasmx-utils/assembly/utils";
+import { base64ToHex, base64ToString } from "wasmx-utils/assembly/utils";
 import { callContract } from "wasmx-env/assembly/utils";
+import { CosmosmodGenesisState, IsNodeValidator } from "./types";
 
 export function getBlockID(hash: Base64String): typestnd.BlockID {
     const hexhash = base64ToHex(hash)
@@ -208,6 +218,20 @@ export function updateValidators(updates: typestnd.ValidatorUpdate[]): void {
     }
 }
 
+export function getValidatorByHexAddr(addr: HexString): staking.Validator {
+    const calldata = `{"ValidatorByHexAddr":{"validator_addr":"${addr}"}}`
+    const resp = callStaking(calldata, true);
+    if (resp.success > 0) {
+        revert(resp.data);
+    }
+    if (resp.data === "") {
+        revert(`validator not found: ${addr}`)
+    }
+    LoggerDebug("ValidatorByHexAddr", ["addr", addr, "data", resp.data])
+    const result = JSON.parse<staking.QueryValidatorResponse>(resp.data);
+    return result.validator;
+}
+
 export function getAllValidators(): staking.Validator[] {
     const calldata = `{"GetAllValidators":{}}`
     const resp = callStaking(calldata, true);
@@ -234,16 +258,6 @@ export function callStaking(calldata: string, isQuery: boolean): CallResponse {
     // result or error
     resp.data = String.UTF8.decode(decodeBase64(resp.data).buffer);
     return resp;
-}
-
-export function callHookContract(hookName: string, data: string): void {
-    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(data)))
-    const calldatastr = `{"RunHook":{"hook":"${hookName}","data":"${dataBase64}"}}`;
-    const resp = callContract("hooks", calldatastr, false, MODULE_NAME)
-    if (resp.success > 0) {
-        // we do not fail, we want the chain to continue
-        LoggerError(`hooks failed`, ["error", resp.data])
-    }
 }
 
 export function getCurrentValidator(): typestnd.ValidatorInfo {
@@ -307,4 +321,138 @@ export function initChain(req: typestnd.InitChainSetup): void {
 export function getLastLog(): LogEntry {
     const index = getLastLogIndex();
     return getLogEntryObj(index);
+}
+
+
+export function initSubChain(
+    req: mctypes.InitSubChainDeterministicRequest,
+    validatorPublicKey: Base64String,
+    validatorHexAddr: HexString,
+    validatorPrivateKey: Base64String,
+): void {
+    const chainId = req.init_chain_request.chain_id
+    LoggerInfo("new subchain created", ["subchain_id", chainId])
+
+    // we initialize only if we are a validator here
+    const appstate = base64ToString(req.init_chain_request.app_state_bytes)
+    const genesisState: mctypes.GenesisState = JSON.parse<mctypes.GenesisState>(appstate)
+    const weAreValidator = isNodeValidator(genesisState, validatorPublicKey)
+
+    if (!weAreValidator.isvalidator) {
+        LoggerInfo("node is not validating the new subchain; not initializing", ["subchain_id", chainId])
+        return;
+    }
+    LoggerInfo("node is validating the new subchain", ["subchain_id", chainId])
+
+    // initialize the chain
+    const msg = new mctypes.InitSubChainMsg(
+        req.init_chain_request,
+        req.chain_config,
+        validatorHexAddr,
+        validatorPrivateKey,
+        validatorPublicKey,
+        req.peers,
+        weAreValidator.nodeIndex,
+        // multichain local registry will fill in the ports
+        new mctypes.NodePorts(),
+    )
+
+    // pass the data to the metaregistry contract on this chain
+    // the metaregistry contract will forward the data to level0 metaregistry
+    // level0 metaregistry will call the local registry, which will assign ports so the subchain is started
+    callHookNonCContract(hooks.HOOK_NEW_SUBCHAIN, JSON.stringify<mctypes.InitSubChainMsg>(msg));
+}
+
+export function isNodeValidator(genesisState: mctypes.GenesisState, ourPublicKey: string): IsNodeValidator {
+    if (!genesisState.has(modnames.MODULE_GENUTIL)) {
+        revert(`genesis state missing field: ${modnames.MODULE_GENUTIL}`)
+    }
+    const genutilGenesisStr = base64ToString(genesisState.get(modnames.MODULE_GENUTIL))
+    const genutilGenesis = JSON.parse<mctypes.GenutilGenesis>(genutilGenesisStr)
+    let weAreValidator = false;
+    let currentNodeId = 0;
+    for (let i = 0; i < genutilGenesis.gen_txs.length; i++) {
+        const gentx = String.UTF8.decode(base64.decode(genutilGenesis.gen_txs[i]).buffer)
+        const tx = JSON.parse<SignedTransaction>(gentx);
+        const msg = stakingutils.extractCreateValidatorMsg(tx)
+        if (msg == null) continue;
+        const consKey = msg.pubkey
+        if (consKey == null) continue;
+        if (consKey.getKey().key == ourPublicKey) {
+            weAreValidator = true;
+            // NOTE: requires req.peers order is the same as gentx
+            currentNodeId = i;
+            break;
+        }
+    }
+    if (genutilGenesis.gen_txs.length > 0) {
+        return new IsNodeValidator(weAreValidator, currentNodeId)
+    }
+
+    // look into staking data
+    if (!genesisState.has(modnames.MODULE_COSMOSMOD)) {
+        revert(`genesis state missing field: ${modnames.MODULE_COSMOSMOD}`)
+    }
+    const cosmosmodGenesisStr = base64ToString(genesisState.get(modnames.MODULE_COSMOSMOD))
+    const cosmosmodGenesis = JSON.parse<CosmosmodGenesisState>(cosmosmodGenesisStr)
+    for (let i = 0; i < cosmosmodGenesis.staking.validators.length; i++) {
+        const v = cosmosmodGenesis.staking.validators[i]
+        const consKey = v.consensus_pubkey
+        if (consKey == null) continue;
+        if (consKey.getKey().key == ourPublicKey) {
+            weAreValidator = true;
+            // NOTE: requires req.peers order is the same as gentx
+            currentNodeId = i;
+            break;
+        }
+    }
+    return new IsNodeValidator(weAreValidator, currentNodeId)
+}
+
+export function callHookContract(hookName: string, data: string): void {
+    callHookContractInternal(roles.ROLE_HOOKS, hookName, data)
+}
+
+export function callHookNonCContract(hookName: string, data: string): void {
+    callHookContractInternal(roles.ROLE_HOOKS_NONC, hookName, data)
+}
+
+export function callHookContractInternal(contractRole: string, hookName: string, data: string): void {
+    const dataBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(data)))
+    const calldatastr = `{"RunHook":{"hook":"${hookName}","data":"${dataBase64}"}}`;
+    const resp = callContract(contractRole, calldatastr, false, MODULE_NAME)
+    if (resp.success > 0) {
+        // we do not fail, we want the chain to continue
+        LoggerError(`hooks failed`, ["error", resp.data])
+    }
+}
+
+export function decodeTx(tx: Base64String): SignedTransaction {
+    return wasmxw.decodeCosmosTxToJson(decodeBase64(tx).buffer);
+}
+
+// <address>@/ip4/127.0.0.1/tcp/5001/p2p/12D3KooWMWpac4Qp74N2SNkcYfbZf2AWHz7cjv69EM5kejbXwBZF
+// TODO for raft GRPC upgrade the node address to be compatible with P2P
+// TODO <address>@/ip4/127.0.0.1/tcp/5001/grpc/ID
+// from 6efc12ab37fc0e096d8618872f6930df53972879@0.0.0.0:26757
+// to mythos1..@/ip4/127.0.0.1/tcp/5001/grpc/6efc12ab37fc0e096d8618872f6930df53972879
+export function parseNodeAddress(peeraddr: string): p2ptypes.NodeInfoResponse {
+    const resp = new p2ptypes.NodeInfoResponse()
+    const parts1 = peeraddr.split("@");
+    if (parts1.length != 2) {
+        resp.error = `invalid node format; found: ${peeraddr}`
+        return resp;
+    }
+    // <address>@/ip4/127.0.0.1/tcp/5001/p2p/12D3KooWMWpac4Qp74N2SNkcYfbZf2AWHz7cjv69EM5kejbXwBZF
+    const addr = parts1[0]
+    const parts2 = parts1[1].split("/")
+    if (parts2.length != 7) {
+        resp.error = `invalid node format; found: ${peeraddr}`
+        return resp;
+    }
+    const host = parts2[2]
+    const port = parts2[4]
+    const p2pid = parts2[6]
+    resp.node_info = new NodeInfo(addr, new p2ptypes.NetworkNode(p2pid, host, port, parts1[1]), false);
+    return resp;
 }
