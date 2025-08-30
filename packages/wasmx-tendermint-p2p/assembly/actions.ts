@@ -1861,6 +1861,9 @@ export function sendCommit(
     params: ActionParam[],
     event: EventObject,
 ): void {
+    if (getCurrentState().nextHash == "") {
+        return
+    }
     // get the current proposal & vote on the block hash
     const data = buildCommitMessage();
     if (data == null) return;
@@ -1895,6 +1898,9 @@ export function receiveCommit(
 
     const datastr = base64ToString(entry)
     const data = JSON.parse<Commit>(datastr)
+    if (data.hash == "") {
+        revert("commit with empty data hash");
+    }
     LoggerDebug("commit received", ["index", data.index.toString(), "hash", data.hash])
 
     const lastIndex = getLastBlockIndex()
