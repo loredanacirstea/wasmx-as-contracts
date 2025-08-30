@@ -332,10 +332,13 @@ export function registerRoleEndBlock(role: Role, roleName: string, label: string
 
     const msg = new RolesChangedHook(null, roleChanged)
 
-    const errMsg = callTargetContractIfHasActivate(addr, msg)
-    if (errMsg != "") {
-        LoggerError(`EndBlock: cannot activate contract ${addr} for role ${roleName}`, ["error", errMsg]);
-        // TODO we should revert the replace here! and return to previous contract
+    const migrationExceptions = st.getMigrationException();
+    if (!migrationExceptions.includes(roleName)) {
+        const errMsg = callTargetContractIfHasActivate(addr, msg)
+        if (errMsg != "") {
+            LoggerError(`EndBlock: cannot activate contract ${addr} for role ${roleName}`, ["error", errMsg]);
+            // TODO we should revert the replace here! and return to previous contract
+        }
     }
 
     // we also call the hooks contract
