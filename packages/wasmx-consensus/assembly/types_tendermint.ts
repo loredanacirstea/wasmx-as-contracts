@@ -384,8 +384,10 @@ export class ResponseProcessProposal {
 
 @json
 export class ResponseOptimisticExecution {
+    response: ResponseFinalizeBlock | null = null
     metainfo: Map<string,Base64String> = new Map<string,Base64String>()
-    constructor(metainfo: Map<string,Base64String>) {
+    constructor(response: ResponseFinalizeBlock | null, metainfo: Map<string,Base64String>) {
+        this.response = response
         this.metainfo = metainfo
     }
 }

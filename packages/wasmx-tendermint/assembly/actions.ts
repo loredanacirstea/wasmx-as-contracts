@@ -1172,6 +1172,7 @@ export function buildBlockProposal(txs: string[], optimisticExecution: boolean, 
     if (optimisticExecution) {
         const oeresp = doOptimisticExecution(processReq, processResp);
         metainfo = oeresp.metainfo;
+        // TODO oeresp.response - if we do not want to re-execute in FinalizeBlock
     }
     // We have a valid proposal to propagate to other nodes
     const entry = buildLogEntryAggregate(processReq, header, sortedBlockCommits, optimisticExecution, metainfo, validatorSet);
@@ -1242,7 +1243,10 @@ export function doOptimisticExecution(processReq: typestnd.RequestProcessProposa
     if (resbegin.error.length > 0) {
         revert(`${resbegin.error}`);
     }
-
+    // TODO what to do with resbegin ?? and result of OptimisticExecution ?? (finalize block result)
+    // we only use optimistic execution now for atomic transactions
+    // but we also re-execute on FinalizeBlock
+    // TODO: see if reexecution is needed and cache the full optimistic execution result + BeginBlock events
     return consensuswrap.OptimisticExecution(processReq, processResp);
 }
 
@@ -1458,7 +1462,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     )
 
     // TODO optimistic execution?
-    // TODO endblock
+    // TODO endblock events ? should we add them to finalizeBlock.events?
     const resbegin = consensuswrap.BeginBlock(finalizeReq);
     if (resbegin.error.length > 0) {
         revert(`${resbegin.error}`);

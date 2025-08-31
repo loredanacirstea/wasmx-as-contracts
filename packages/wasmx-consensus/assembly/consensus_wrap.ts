@@ -66,7 +66,7 @@ export function ProcessProposal(req: RequestProcessProposal): ResponseProcessPro
 export function OptimisticExecution(req: RequestProcessProposal, resp: ResponseProcessProposal): ResponseOptimisticExecution {
     const reqstr = JSON.stringify<RequestProcessProposal>(req);
     const respstr = JSON.stringify<ResponseProcessProposal>(resp);
-    LoggerDebugExtended("OptimisticExecution", []);
+    LoggerDebugExtended("OptimisticExecution", ["request", reqstr, "response", respstr]);
     const respbz = consensus.OptimisticExecution(String.UTF8.encode(reqstr), String.UTF8.encode(respstr));
     const responsestr = String.UTF8.decode(respbz);
     LoggerDebugExtended("OptimisticExecution", ["response", responsestr]);
