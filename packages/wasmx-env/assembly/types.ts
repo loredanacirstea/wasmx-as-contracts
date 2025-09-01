@@ -627,6 +627,8 @@ export class CodeInfo {
     interpreted_bytecode_deployment: Base64String = ""
     interpreted_bytecode_runtime: Base64String = ""
     runtime_hash: Base64String = ""
+    source: Base64String = ""
+    source_verified: bool = false
     constructor(
         code_hash: Base64String,
         creator: Bech32String,
@@ -637,6 +639,8 @@ export class CodeInfo {
         interpreted_bytecode_deployment: Base64String,
         interpreted_bytecode_runtime: Base64String,
         runtime_hash: Base64String,
+        source: Base64String,
+        source_verified: bool,
     ) {
         this.code_hash = code_hash
         this.creator = creator
@@ -647,6 +651,8 @@ export class CodeInfo {
         this.interpreted_bytecode_deployment = interpreted_bytecode_deployment
         this.interpreted_bytecode_runtime = interpreted_bytecode_runtime
         this.runtime_hash = runtime_hash
+        this.source = source
+        this.source_verified = source_verified
     }
 }
 
