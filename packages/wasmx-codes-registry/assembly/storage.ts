@@ -4,7 +4,10 @@ import { Base64String, CodeInfo, ContractInfo } from "wasmx-env/assembly/types";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
 import { u64ToUint8ArrayBE, bytes, concatBytes, stringToBytes, u64FromBuffer, base64ToHex } from "wasmx-utils/assembly/utils";
 
+// we need to hardcode the codePrefix in both host and contracts,
+// otherwise we cannot apply state sync snapshots
 export const codePrefix: u8 = 1
+
 export const codeHashPrefix: u8 = 2
 export const contractPrefix: u8 = 3
 export const contractStorePrefix: u8 = 4

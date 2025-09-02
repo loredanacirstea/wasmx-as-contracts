@@ -378,6 +378,14 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, isretry: bo
     const resultstr = JSON.stringify<typestnd.ResponseFinalizeBlock>(finalizeResp);
     const resultBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(resultstr)));
 
+    // TODO if this is a synced block, received through receiveCommit, we may want to assert that our results match their results
+    // right now consensus over blocks fails anyway if this does not match, by results hash, but a block later
+    // if (entryobj.data.result.length > 0) {
+    //     if (entryobj.data.result != resultBase64) {
+    //         revert(`FinalizeBlock results mismatch`)
+    //     }
+    // }
+
     entryobj.data.result = resultBase64;
 
     const commitBz = String.UTF8.decode(decodeBase64(entryobj.data.last_commit).buffer);
@@ -402,7 +410,8 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, isretry: bo
     // sometimes we dont get to reset these states from the diagram
     state.validValue = 0;
     state.validRound = 0;
-    state.nextHash = "";
+    // don't reset nextHash, because it is used in sendCommit
+    // state.nextHash = "";
     state.lockedValue = 0;
     state.lockedRound = 0;
 
@@ -839,13 +848,13 @@ export function getAllValidatorInfos(): staking.ValidatorSimple[] {
     return result.validators;
 }
 
-export function weAreNotAlone(): boolean {
-    return weAreNotAloneInternal(getValidatorNodesInfo())
+export function weAreNotAlone(state: CurrentState): boolean {
+    return weAreNotAloneInternal(getValidatorNodesInfo(), state)
 }
 
-export function weAreNotAloneInternal(nodes: Array<NodeInfo>): boolean {
+export function weAreNotAloneInternal(nodes: Array<NodeInfo>, state: CurrentState): boolean {
     if (nodes.length > 1) return true;
-    return false
+    return state.wearenotalone;
 }
 
 export function nodeInfoComplete(): boolean {

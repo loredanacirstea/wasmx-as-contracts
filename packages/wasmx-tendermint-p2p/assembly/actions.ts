@@ -140,7 +140,7 @@ export function requestValidatorNodeInfoIfSynced(
 
 export function sendNodeSyncRequest(protocolId: string): void {
     const ips = getValidatorNodesInfo();
-    if (!weAreNotAloneInternal(ips)) {
+    if (!weAreNotAloneInternal(ips, getCurrentState())) {
         return;
     }
     const nodeId = getCurrentNodeId();
@@ -176,7 +176,7 @@ export function registerValidatorWithNetwork(
 
 export function announceValidatorNodeWithNetwork(protocolId: string, topic: string): void {
     const ips = getValidatorNodesInfo();
-    if (!weAreNotAloneInternal(ips)) {
+    if (!weAreNotAloneInternal(ips, getCurrentState())) {
         return;
     }
     const nodeId = getCurrentNodeId();
@@ -349,7 +349,7 @@ export function receiveUpdateNodeResponseInternal(
 // TODO if out of sync > 1000 blocks -> state sync
 export function sendStateSyncRequest(protocolId: string, nodeId: i32): void {
     const nodes = getValidatorNodesInfo();
-    if (!weAreNotAloneInternal(nodes)) {
+    if (!weAreNotAloneInternal(nodes, getCurrentState())) {
         return;
     }
     const lastIndex = getLastBlockIndex();
@@ -616,7 +616,8 @@ export function forwardMsgToChat(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    if (!weAreNotAlone()) {
+    const state = getCurrentState()
+    if (!weAreNotAlone(state)) {
         return;
     }
     const p = getParamsOrEventParams(params, event);
@@ -625,20 +626,28 @@ export function forwardMsgToChat(
         revert("no transaction found");
     }
     const transaction = ctx.get("transaction") // base64
+
+    const txhash = wasmxw.sha256(transaction);
+    const mempool = tnd.getMempool();
+    if (!mempool.mustbesent(txhash)) {
+        return;
+    }
+    // mustbesent mutates state
+    tnd.setMempool(mempool);
+
     const msgstr = `{"run":{"event":{"type":"newTransaction","params":[{"key":"transaction", "value":"${transaction}"}]}}}`
 
     // TODO protocolId as param for what chat room to send it too
     const contract = wasmxw.getAddress();
-    const state = getCurrentState()
     const protocolId = getProtocolId(state)
     const topic = getTopic(state, cfg.CHAT_ROOM_MEMPOOL)
-    LoggerDebug("forwarding transaction to other nodes", ["topic", topic, "protocolId", protocolId])
+    LoggerDebug("forwarding transaction to other nodes", ["topic", topic, "protocolId", protocolId, "hash", txhash])
     p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, contract, msgstr, protocolId, topic))
 }
 
 // TODO
 export function forwardMsgToOtherChains(transaction: Base64String, chainIds: string[]): void {
-    if (!weAreNotAlone()) {
+    if (!weAreNotAlone(getCurrentState())) {
         return;
     }
     const msgstr = `{"run":{"event":{"type":"newTransaction","params":[{"key":"transaction", "value":"${transaction}"}]}}}`
@@ -674,7 +683,6 @@ export function addToMempool(
     if (transaction === "") {
         revert("no transaction found");
     }
-    LoggerDebug("new transaction received", ["transaction", transaction])
     addTransactionToMempool(transaction)
 }
 
@@ -682,7 +690,12 @@ export function addTransactionToMempool(
     transaction: Base64String,
 ): string {
     const txhash = wasmxw.sha256(transaction);
+    LoggerDebug("new transaction received", ["transaction", transaction, "hash", txhash])
     const mempool = tnd.getMempool();
+    if (mempool.hasseen(txhash)) {
+        LoggerDebug("transaction already processed", ["hash", txhash])
+        return "";
+    }
     mempool.seen(txhash);
     setMempool(mempool);
 
@@ -748,7 +761,9 @@ export function addTransactionToMempool(
         }
     }
 
-    // check that tx is valid
+    // only the AnteHandler is executed in CheckTx (check that tx has valid form)
+    // State is persisted to the BaseApp's internal CheckTx state if the AnteHandler passes.
+    // successful CheckTx increases account sequence!
     // we run CheckTx last, because it persists temporary state between tx checks and if CheckTx passes, but the tx is not included in the mempool,
     // cosmos-sdk still believes the tx has passed, so the account sequence is increased in the temporary context
     const checktx = new typestnd.RequestCheckTx(transaction, typestnd.CheckTxType.New);
@@ -756,7 +771,10 @@ export function addTransactionToMempool(
     // we only check the code type; CheckTx should be stateless, just form checking
     if (checkResp.code !== typestnd.CodeType.Ok) {
         // transaction is not valid, we should finish; we use this error to check forwarded txs to leader
-        revert(`${cfg.ERROR_INVALID_TX}; code ${checkResp.code}; ${checkResp.log}; txhash: ${txhash}`);
+        // revert(`${cfg.ERROR_INVALID_TX}; code ${checkResp.code}; ${checkResp.log}; txhash: ${txhash}`);
+        // we cannot revert here, because we need the tx to be added to mempool.seen and CheckTx will revert context if it fails
+        // we just return
+        LoggerDebug("CheckTx:", ["code", checkResp.code.toString(), "hash", txhash, "error", cfg.ERROR_INVALID_TX])
         return "";
     }
 
@@ -852,10 +870,10 @@ export function sendBlockProposal(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    if (!weAreNotAlone()) {
+    const state = getCurrentState();
+    if (!weAreNotAlone(state)) {
         return;
     }
-    const state = getCurrentState();
     const data = prepareAppendEntry(state.nextHeight);
     if (data == null) return;
 
@@ -906,6 +924,13 @@ export function receiveStateSyncRequest(
     const peers = [resp.peer_address]
 
     LoggerInfo("received statesync request", ["sender", resp.peer_address, "startIndex", resp.start_index.toString(), "lastIndex", lastIndex.toString()])
+    const state = getCurrentState()
+    if (!state.wearenotalone) {
+        LoggerInfo("we are not alone anymore", [])
+        // so we start sending chat room messages even if we are the only validator
+        state.wearenotalone = true;
+        setCurrentState(state);
+    }
 
     if (lastIndex < resp.start_index) {
         // we nontheless send an empty batch response, because it is used to trigger a node list update
@@ -1377,7 +1402,7 @@ export function sendPrevote(
 
     addToPrevoteArray(getCurrentNodeId(), data);
 
-    if (!weAreNotAloneInternal(nodeIps)) {
+    if (!weAreNotAloneInternal(nodeIps, state)) {
         return;
     }
 
@@ -1412,7 +1437,7 @@ export function sendPrevoteNil(
 
     addToPrevoteArray(getCurrentNodeId(), data);
 
-    if (!weAreNotAloneInternal(nodeIps)) {
+    if (!weAreNotAloneInternal(nodeIps, state)) {
         return;
     }
 
@@ -1448,7 +1473,8 @@ export function sendPrecommit(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    if (getCurrentState().nextHash == "") {
+    const state = getCurrentState()
+    if (state.nextHash == "") {
         return
     }
     if (!nodeInfoComplete()) {
@@ -1465,12 +1491,11 @@ export function sendPrecommit(
     const precommit = new ValidatorCommitVote(data, typestnd.BlockIDFlag.Commit, signature)
     addToPrecommitArray(getCurrentNodeId(), precommit)
 
-    if (!weAreNotAlone()) {
+    if (!weAreNotAlone(state)) {
         return;
     }
 
     const contract = wasmxw.getAddress();
-    const state = getCurrentState()
     const protocolId = getProtocolId(state)
     const topic = getTopic(state, cfg.CHAT_ROOM_PRECOMMIT)
     p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, contract, msgstr, protocolId, topic))
@@ -1503,7 +1528,7 @@ export function sendPrecommitNil(
     const precommit = new ValidatorCommitVote(data, typestnd.BlockIDFlag.Nil, signature)
     addToPrecommitArray(getCurrentNodeId(), precommit)
 
-    if (!weAreNotAlone()) {
+    if (!weAreNotAlone(state)) {
         return;
     }
 
@@ -1861,7 +1886,8 @@ export function sendCommit(
     params: ActionParam[],
     event: EventObject,
 ): void {
-    if (getCurrentState().nextHash == "") {
+    const state = getCurrentState()
+    if (state.nextHash == "") {
         return
     }
     // get the current proposal & vote on the block hash
@@ -1874,10 +1900,12 @@ export function sendCommit(
     LoggerDebug("sending commit", ["index", data.index.toString(), "hash", data.hash])
 
     const contract = wasmxw.getAddress();
-    const state = getCurrentState()
     const protocolId = getProtocolId(state)
     const topic = getTopic(state, cfg.CHAT_ROOM_PROTOCOL)
     p2pw.SendMessageToChatRoom(new p2ptypes.SendMessageToChatRoomRequest(contract, contract, msgstr, protocolId, topic))
+    // we reset it here, so we are sure it is reset
+    state.nextHash = "";
+    setCurrentState(state);
 }
 
 export function receiveCommit(

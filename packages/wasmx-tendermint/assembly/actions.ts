@@ -535,6 +535,9 @@ export function addTransactionToMempool(
 ): string {
     const txhash = wasmxw.sha256(transaction);
     const mempool = getMempool();
+    if (mempool.hasseen(txhash)) {
+        return "";
+    }
     mempool.seen(txhash);
     setMempool(mempool);
 
