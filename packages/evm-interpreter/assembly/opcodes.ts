@@ -534,7 +534,7 @@ export function handleDup (ctx: Context, code: u8): void {
 
 export function jump (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('jump');
-    const newpos = inputs[0].toInt32();
+    const newpos = inputs[0].toI32();
     if (!newpos && newpos !== 0) {
         throw new Error(`Invalid JUMP ${newpos}`);
     }
@@ -546,7 +546,7 @@ export function jump (ctx: Context, inputs: BigInt[]): void {
 
 export function jumpi (ctx: Context, inputs: BigInt[]): void {
     ctx.gasmeter.useOpcodeGas('jumpi');
-    const newpos = inputs[0].toInt32();
+    const newpos = inputs[0].toI32();
     // EVM allows any uint256 except from 0 to be interpreted as true
     const condition = inputs[1].gt(BigInt.fromU32(0));
     if (condition) ctx.pc = newpos;

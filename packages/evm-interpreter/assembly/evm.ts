@@ -266,7 +266,7 @@ export function xor(a: BigInt, b: BigInt): BigInt {
 
 export function byte(a: BigInt, b: BigInt): BigInt {
     const arr: u8[] = bigIntToU8Array32(b);
-    const ind = a.toInt32();
+    const ind = a.toI32();
     return u8ArrayToBigInt(arr.slice(ind, ind + 1));
 }
 
