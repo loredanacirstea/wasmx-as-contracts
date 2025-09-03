@@ -10,6 +10,11 @@ npm run install-all
 npm run reinstall-all
 ```
 
+* build all packages
+```
+npm run build
+```
+
 ## dev
 
 ```
