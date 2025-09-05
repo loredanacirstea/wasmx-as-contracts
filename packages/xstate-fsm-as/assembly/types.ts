@@ -1,7 +1,8 @@
 import { JSON } from "json-as";
 import { Base64String, Bech32String } from "wasmx-env/assembly/types";
+import { RAISE_ACTION_TYPE } from "./config";
 
-export const MODULE_NAME = "fsm"
+export const MODULE_NAME = "fsm_as"
 
 export enum InterpreterStatus {
   NotStarted = 0,
@@ -142,11 +143,9 @@ export class ActionObject {
   }
 }
 
-export const RaiseActionType = "xstate.raise";
-
 @json
 export class RaiseAction extends ActionObject{
-  type: string = RaiseActionType;
+  type: string = RAISE_ACTION_TYPE;
   params: Array<ActionParam> = [];
   event: EventObject;
 

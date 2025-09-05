@@ -1,6 +1,5 @@
-import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as wasmxcorew from 'wasmx-env-core/assembly/wasmxcore_wrap';
-import { parseInt32, parseInt64 } from 'wasmx-utils/assembly/utils';
+import { parseInt64 } from 'wasmx-utils/assembly/utils';
 import {INTERVAL_ID_KEY} from './config';
 import * as storage from './storage';
 import { LoggerDebug, revert } from "./utils";
@@ -15,7 +14,7 @@ import {
 export function getLastIntervalId(): i64 {
   const value = storage.getContextValue(INTERVAL_ID_KEY);
   if (value === "") return i64(0);
-  return parseInt32(value);
+  return parseInt64(value);
 }
 
 export function setLastIntervalId(value: i64): void {

@@ -18,7 +18,6 @@ import {
   ActionParam,
   ContextParam,
   StateInfoClassExternal,
-  RaiseActionType,
   TimerArgs,
   AssignAction,
   Transition,
@@ -29,7 +28,7 @@ import { getAddressHex, parseInt32, parseInt64 } from 'wasmx-utils/assembly/util
 import * as storage from './storage';
 import * as actionsCounter from "./actions_counter";
 import * as actionsErc20 from "./actions_erc20";
-import { INIT_EVENT, ASSIGN_ACTION, REVERT_IF_UNEXPECTED_STATE, WILDCARD, VARIABLE_SYMBOL } from './config';
+import { INIT_EVENT, ASSIGN_ACTION, REVERT_IF_UNEXPECTED_STATE, WILDCARD, VARIABLE_SYMBOL, RAISE_ACTION_TYPE } from './config';
 import {
   getLastIntervalId,
   setLastIntervalId,
@@ -255,7 +254,7 @@ function executeStateAction(
     const actionType = action.type;
     LoggerDebug("execute action", ["action", actionType]);
 
-    if (actionType === RaiseActionType) {
+    if (actionType === RAISE_ACTION_TYPE) {
         const ev = action.event;
         LoggerDebug("execute action: raise", ["event", ev!.type]);
         if (ev === null) {
@@ -728,7 +727,7 @@ function processActions(actions: ActionObject[], event: EventObject): ActionObje
   let allActions: ActionObject[] = [];
   for (let i = 0; i < actions.length; i++) {
     const act = actions[i];
-    if (act.type === RaiseActionType) {
+    if (act.type === RAISE_ACTION_TYPE) {
         // We are looking through parameters of the current event
         // and adding them in the raised event if the key values match
         // TODO - another way?
