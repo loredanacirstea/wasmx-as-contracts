@@ -200,7 +200,8 @@ export function getValidatorDelegations(addr: Bech32String): stakingtypes.Delega
     const calldata = `{"GetValidatorDelegations":${msg}}`
     const resp = callStaking(calldata, true);
     if (resp.success > 0 || resp.data === "") {
-        revert(`could not get validator delegations: ${addr}`);
+        LoggerError(`could not get validator delegations`, ["address", addr, "error", resp.data])
+        revert(`could not get validator delegations: ${addr}: ${resp.data}`);
     }
     LoggerDebug("GetValidatorDelegations", ["address", addr, "data", resp.data])
     const result = JSON.parse<stakingtypes.QueryValidatorDelegationsResponse>(resp.data);
@@ -212,7 +213,7 @@ export function getDelegation(delegator: Bech32String, validator: ValidatorAddre
     const calldata = `{"GetDelegation":${msg}}`
     const resp = callStaking(calldata, true);
     if (resp.success > 0 || resp.data === "") {
-        revert(`could not get delegation: ${delegator} - ${validator}`);
+        revert(`could not get delegation: ${delegator} - ${validator}: ${resp.data}`);
     }
     LoggerDebug("GetDelegation", ["delegator", delegator, "validator", validator])
     const result = JSON.parse<stakingtypes.QueryDelegationResponse>(resp.data);
@@ -224,7 +225,7 @@ export function getDelegatorValidatorAddresses(delegator: Bech32String): Bech32S
     const calldata = `{"GetDelegatorValidatorAddresses":${msg}}`
     const resp = callStaking(calldata, true);
     if (resp.success > 0 || resp.data === "") {
-        revert(`could not get validators for: ${delegator}`);
+        revert(`could not get validators for: ${delegator}: ${resp.data}`);
     }
     LoggerDebug("GetDelegatorValidatorAddresses", ["delegator", delegator])
     const result = JSON.parse<derc20types.DelegatorValidatorsResponse>(resp.data);
@@ -236,7 +237,7 @@ export function getValidator(addr: Bech32String): stakingtypes.Validator {
     const calldata = `{"GetValidator":${msg}}`
     const resp = callStaking(calldata, true);
     if (resp.success > 0 || resp.data === "") {
-        revert(`could not get validator: ${addr}`);
+        revert(`could not get validator: ${addr}: ${resp.data}`);
     }
     LoggerDebugExtended("GetValidator", ["address", addr, "data", resp.data])
     const result = JSON.parse<stakingtypes.QueryValidatorResponse>(resp.data);
@@ -248,7 +249,7 @@ export function getValidatorByConsAddr(addr: ValidatorAddressString): stakingtyp
     const calldata = `{"ValidatorByConsAddr":${msg}}`
     const resp = callStaking(calldata, true);
     if (resp.success > 0 || resp.data === "") {
-        revert(`could not get validator: ${addr}`);
+        revert(`could not get validator: ${addr}: ${resp.data}`);
     }
     LoggerDebugExtended("GetValidator", ["address", addr, "data", resp.data])
     const result = JSON.parse<stakingtypes.QueryValidatorResponse>(resp.data);
@@ -345,7 +346,7 @@ export function callMintToken(tokenAddress: Bech32String, to: Bech32String, valu
     const calldatastr = `{"mint":${JSON.stringify<erc20types.MsgMint>(calldata)}}`;
     const resp = callContract(tokenAddress, calldatastr, false, MODULE_NAME)
     if (resp.success > 0) {
-        revert(`could not mint token: ${tokenAddress}`)
+        revert(`could not mint token: ${tokenAddress}: ${resp.data}`)
     }
 }
 
@@ -363,7 +364,7 @@ export function getTokenAmount(tokenAddress: Bech32String, addr: Bech32String): 
     const calldatastr = `{"balanceOf":${JSON.stringify<erc20types.MsgBalanceOf>(calldata)}}`;
     const resp = callContract(tokenAddress, calldatastr, true, MODULE_NAME)
     if (resp.success > 0) {
-        revert(`could not burn rewards`)
+        revert(`could not burn rewards: ${resp.data}`)
     }
     const result = JSON.parse<erc20types.MsgBalanceOfResponse>(resp.data);
     return result.balance.amount
