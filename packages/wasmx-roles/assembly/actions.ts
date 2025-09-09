@@ -13,7 +13,7 @@ import * as codesregt from "wasmx-codes-registry/assembly/types";
 import * as st from "./storage";
 import { AttributeKeyRoleMultipleLabels, AttributeKeyRoleStorageType, ENTRY_POINT_ROLE_CHANGED, GetAddressOrRoleRequest, GetRoleByLabelRequest, GetRoleByRoleNameRequest, GetRoleLabelByContractRequest, GetRoleNameByAddressRequest, MODULE_NAME, MsgRunHook, ROLE_PREVIOUS, RolesChangedCalldata, RolesChangedHook, SetRoleRequest } from "./types";
 import { LoggerDebug, LoggerError, LoggerInfo, revert } from "./utils";
-import { callContract } from "wasmx-env/assembly/utils";
+import { callContract, isGoCoreModule } from "wasmx-env/assembly/utils";
 
 const defaultLabel = roles.ROLE_ROLES + "_" + "rolesv0.0.1";
 
@@ -128,6 +128,13 @@ export function GetRoles(): ArrayBuffer {
     const exceptions = st.getMigrationException();
     const data = new RolesGenesis(roles, exceptions);
     return String.UTF8.encode(JSON.stringify<RolesGenesis>(data));
+}
+
+export function IsInternalContract(req: GetAddressOrRoleRequest): ArrayBuffer {
+    const resp = new Uint8Array(1)
+    const isInternal = isInternalContract(req.addressOrRole);
+    resp[0] = isInternal ? 1 : 0;
+    return resp.buffer;
 }
 
 export function GetAddressOrRole(req: GetAddressOrRoleRequest): ArrayBuffer {
@@ -414,6 +421,29 @@ export function registerRoleEvent(role: Role, label: string, addr: Bech32String,
 
 export function deregisterRole(): void {
     // TODO
+}
+
+export function isInternalContract(addressOrRole: string): boolean {
+    // role name
+    let role = st.getRoleByRoleName(addressOrRole)
+    if (role != null) {
+        return true;
+    }
+    // role label
+    let roleName = st.getRoleNameByLabel(addressOrRole)
+    if (roleName != "") {
+        return true;
+    }
+
+    // address
+    const valid = wasmxw.validate_bech32_address(addressOrRole)
+    if (!valid) return false;
+    roleName = st.getRoleByContractAddress(addressOrRole)
+    if (roleName != "") {
+        return true;
+    }
+    if (isGoCoreModule(wasmxw.addr_canonicalize(addressOrRole), "")) return true;
+    return false;
 }
 
 export function getAddressOrRole(addressOrRole: string): Bech32String {

@@ -28,6 +28,7 @@ export class CallData {
     GetRoleLabelByContract: GetRoleLabelByContractRequest | null = null;
     GetRoleByLabel: GetRoleByLabelRequest | null = null;
     GetRoles: GetRolesRequest | null = null;
+    IsInternalContract: GetAddressOrRoleRequest | null = null;
 }
 
 export function getCallDataWrap(): CallData {

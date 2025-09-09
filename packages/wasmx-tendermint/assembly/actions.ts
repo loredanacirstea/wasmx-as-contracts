@@ -1350,7 +1350,7 @@ export function setConsensusParams(height: i64, value: typestnd.ConsensusParams 
     const calldata = `{"setConsensusParams":{"height":${height},"params":"${params}"}}`
     const resp = callStorage(calldata, false);
     if (resp.success > 0) {
-        revert("could not set consensus params");
+        revert("could not set consensus params: " + resp.data);
     }
 }
 
@@ -1358,7 +1358,7 @@ function getConsensusParams(height: i64): typestnd.ConsensusParams {
     const calldata = `{"getConsensusParams":{"height":${height}}}`
     const resp = callStorage(calldata, true);
     if (resp.success > 0) {
-        revert("could not get consensus params");
+        revert("could not get consensus params: " + resp.data);
     }
     if (resp.data === "") return new typestnd.ConsensusParams(
         new typestnd.BlockParams(0, 0),

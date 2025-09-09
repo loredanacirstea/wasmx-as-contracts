@@ -4,7 +4,7 @@ import * as roles from "wasmx-env/assembly/roles";
 import * as modules from "wasmx-env/assembly/modules";
 import { RolesGenesis } from "wasmx-env/assembly/types";
 import { getCallDataWrap } from './calldata';
-import { GetAddressOrRole, GetRoleByLabel, GetRoleLabelByContract, GetRoles, initialize, SetRole, SetContractForRole, setup, EndBlock, GetRoleByRoleName, GetRoleNameByAddress, SetContractForRoleGov } from "./actions";
+import { GetAddressOrRole, GetRoleByLabel, GetRoleLabelByContract, GetRoles, initialize, SetRole, SetContractForRole, setup, EndBlock, GetRoleByRoleName, GetRoleNameByAddress, SetContractForRoleGov, IsInternalContract } from "./actions";
 import { revert } from "./utils";
 import { onlyInternal, onlyRole, isGoCoreModule } from "wasmx-env/assembly/utils";
 import { MODULE_NAME } from "./types";
@@ -36,7 +36,9 @@ export function main(): void {
     result = GetRoleLabelByContract(calld.GetRoleLabelByContract!);
   } else if (calld.GetRoleByLabel != null) {
     result = GetRoleByLabel(calld.GetRoleByLabel!);
-  } else if (calld.GetRoles != null) {
+  } else if (calld.IsInternalContract != null) {
+    result = IsInternalContract(calld.IsInternalContract!);
+  }else if (calld.GetRoles != null) {
     result = GetRoles();
   }
 
