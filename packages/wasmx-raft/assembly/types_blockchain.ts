@@ -66,11 +66,18 @@ export class MempoolTx {
 
 @json
 export class Mempool {
+    tempsize: i32 = 200
     map: Map<Base64String,MempoolTx> = new Map<Base64String,MempoolTx>()
     temp: Map<Base64String,bool> = new  Map<Base64String,bool>()
-    constructor(map: Map<Base64String,MempoolTx>) {
+    tobesent: Map<Base64String,bool> = new  Map<Base64String,bool>()
+    constructor(map: Map<Base64String,MempoolTx>, tempsize: i32 = 200) {
+        this.tempsize = tempsize
         this.map = map;
         this.temp = new Map<Base64String,bool>()
+    }
+
+    hasseen(txhash: Base64String): bool {
+        return this.temp.has(txhash) || this.map.has(txhash);
     }
 
     seen(txhash: Base64String): void {
@@ -79,13 +86,37 @@ export class Mempool {
 
     add(txhash: Base64String, tx: Base64String, gas: u64, leaderChainId: string): void {
         this.map.set(txhash, new MempoolTx(tx, gas, leaderChainId))
+        this.tobesent.set(txhash, true)
     }
 
     remove(txhash: Base64String): void {
         this.map.delete(txhash)
+        this.dropseen()
+        // should be cleared by now; remove happens in finalize block
+        // so by then we should have already sent the tx to other nodes
+        this.tobesent.delete(txhash);
+    }
 
-        // clear out temporary txhashes too
-        this.temp = new Map<Base64String,bool>()
+    mustbesent(txhash: Base64String): boolean {
+        if (!this.tobesent.has(txhash)) return false;
+        this.tobesent.delete(txhash);
+        return true;
+    }
+
+    clearmustbesent(): void {
+        this.tobesent.clear()
+    }
+
+    dropseen(): void {
+        // clear out temporary txhashes too if they get > 200
+        // this.temp = new Map<Base64String,bool>()
+        const todelete = this.temp.size - this.tempsize
+        if (todelete < 1) return;
+        const keys = this.temp.keys();
+        // AS orders by insertion time, so we delete the first ones
+        for (let i = 0; i < todelete; i++) {
+            this.temp.delete(keys[i])
+        }
     }
 
     batch(maxGas: i64, maxBytes: i64, ourchain: string): MempoolBatch {
