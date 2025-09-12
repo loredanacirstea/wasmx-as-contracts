@@ -1501,7 +1501,6 @@ function appendLogInternalVerified(processReq: typestnd.RequestProcessProposal, 
     appendLogEntry(entry);
 }
 
-
 // https://github.com/cometbft/cometbft/blob/f4a803f14a2f5bc5c17d75fcd1131b9249bba133/state/validation.go
 export function verifyBlockProposal(data: wblocks.BlockEntry, processReq: typestnd.RequestProcessProposal): string {
     // TODO? verify:

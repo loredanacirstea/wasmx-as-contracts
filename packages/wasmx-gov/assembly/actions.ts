@@ -53,9 +53,7 @@ export function EndBlock(req: MsgEndBlock): ArrayBuffer {
     // if there are proposals here not promoted, the deposit was not enough
     // so we remove them and burn the deposit
     const activeDeposit = nextEndingDepositProposals(headerTime)
-    if (activeDeposit.length > 0) {
-        LoggerDebug(`gov proposals expired deposit`, ["count", activeDeposit.length.toString(), "block_time", headerTime.toISOString()])
-    }
+    LoggerDebug(`gov proposals expired deposit`, ["count", activeDeposit.length.toString(), "block_time", headerTime.toISOString()])
     for (let i = 0; i < activeDeposit.length; i++) {
         const proposal = activeDeposit[i]
         // TODO burn the deposit; now the deposit remains in the gov module
@@ -67,9 +65,7 @@ export function EndBlock(req: MsgEndBlock): ArrayBuffer {
     const params = getParams()
     // check voting period passed and finalize proposal
     const activeVoting = nextEndingVotingProposals(headerTime)
-    if (activeVoting.length > 0) {
-        LoggerDebug(`gov proposals ending voting period`, ["count", activeVoting.length.toString()])
-    }
+    LoggerDebug(`gov proposals ending voting period`, ["count", activeVoting.length.toString(), "block_time", headerTime.toISOString()])
     for (let i = 0; i < activeVoting.length; i++) {
         const proposal = activeVoting[i]
         removeActiveVotingProposal(proposal.id)

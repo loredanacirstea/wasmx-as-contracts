@@ -313,7 +313,7 @@ export enum BlockIDFlag {
 
 @json
 export class Validator {
-	address: Base64String
+	address: Base64String // ConsAddress operator address in bytes
 	power: i64
     constructor(address: Bech32String, power: i64) {
         this.address = address
