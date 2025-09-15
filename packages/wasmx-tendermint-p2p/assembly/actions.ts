@@ -1038,7 +1038,7 @@ export function receiveStateSyncResponse(
             peers.push(nodeIps[i].node.ip)
         }
 
-        const chainId = wasmxw.chainId()
+        const chainId = wasmxw.getChainId()
         const contractAddress = wasmxw.getAddress()
 
         const response = p2pw.StartStateSyncRequest(new p2ptypes.StartStateSyncReqRequest(lastIndex, resp.trusted_log_index, resp.trusted_log_hash, resp.peer_address, protocolId, peers, currentNodeid, chainId, contractAddress))

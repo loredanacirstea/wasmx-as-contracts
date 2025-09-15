@@ -362,7 +362,8 @@ export const machine = createMachine({
                     active: {
                       on: {
                         start: {
-                          target: "active",
+                          target:
+                            "#RAFT-P2P-2.initialized.started.Validator.Follower",
                           actions: [
                             {
                               type: "connectPeers",
