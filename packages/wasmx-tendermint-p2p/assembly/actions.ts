@@ -1038,7 +1038,10 @@ export function receiveStateSyncResponse(
             peers.push(nodeIps[i].node.ip)
         }
 
-        const response = p2pw.StartStateSyncRequest(new p2ptypes.StartStateSyncReqRequest(lastIndex, resp.trusted_log_index, resp.trusted_log_hash, resp.peer_address, protocolId, peers, currentNodeid))
+        const chainId = wasmxw.chainId()
+        const contractAddress = wasmxw.getAddress()
+
+        const response = p2pw.StartStateSyncRequest(new p2ptypes.StartStateSyncReqRequest(lastIndex, resp.trusted_log_index, resp.trusted_log_hash, resp.peer_address, protocolId, peers, currentNodeid, chainId, contractAddress))
         if (response.error.length > 0) {
             LoggerError("failed to start state sync as receiver", ["error", response.error]);
         }
@@ -1908,6 +1911,7 @@ export function sendCommit(
     setCurrentState(state);
 }
 
+// TODO signature verification
 export function receiveCommit(
     params: ActionParam[],
     event: EventObject,

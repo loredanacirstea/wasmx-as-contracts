@@ -22,6 +22,55 @@ import {
 } from './data.js';
 
 let currentState, value;
+
+async function parseConfigs() {
+    let machineConfig
+    // RAFTLogReplication
+    machineConfig = parseMachine(RAFTLogReplication);
+    console.log("==RAFTLogReplication==");
+    console.log(JSON.stringify(machineConfig));
+
+    // RAFT_Full
+    machineConfig = parseMachine(RAFT_Full);
+    console.log("==RAFT_Full==");
+    console.log(JSON.stringify(machineConfig));
+
+    // TENDERMINT_1
+    machineConfig = parseMachine(TENDERMINT_1);
+    console.log("==TENDERMINT_1==");
+    console.log(JSON.stringify(machineConfig));
+
+    // AVA_SNOWMAN
+    machineConfig = parseMachine(AVA_SNOWMAN);
+    console.log("==AVA_SNOWMAN==");
+    console.log(JSON.stringify(machineConfig));
+
+    // RAFTP2P
+    machineConfig = parseMachine(RAFT_P2P);
+    console.log("==RAFTP2P==");
+    console.log(JSON.stringify(machineConfig));
+
+    // TendermintP2P
+    machineConfig = parseMachine(TendermintP2P);
+    console.log("==TendermintP2P==");
+    console.log(JSON.stringify(machineConfig));
+
+    // Level0
+    machineConfig = parseMachine(Level0);
+    console.log("==Level0==");
+    console.log(JSON.stringify(machineConfig));
+
+    // Lobby
+    machineConfig = parseMachine(Lobby);
+    console.log("==Lobby==");
+    console.log(JSON.stringify(machineConfig));
+
+    // Level0OnDemand
+    machineConfig = parseMachine(Level0OnDemand);
+    console.log("==Level0OnDemand==");
+    console.log(JSON.stringify(machineConfig));
+}
+
 async function runTests() {
 
     let machineConfig, machineConfigStr, implementationsStr;
@@ -384,5 +433,5 @@ async function runTests() {
     console.log("==Level0OnDemand==");
     console.log(JSON.stringify(machineConfig));
 }
-
+parseConfigs();
 runTests();

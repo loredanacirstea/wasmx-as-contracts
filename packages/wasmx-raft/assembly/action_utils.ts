@@ -296,7 +296,7 @@ export function initChain(req: typestnd.InitChainSetup): void {
     LoggerDebug("start chain init", [])
 
     // TODO what are the correct empty value?
-    const emptyBlockId = new typestnd.BlockID("", new typestnd.PartSetHeader(0, ""))
+    const emptyBlockId = new typestnd.BlockID(base64ToHex(req.app_hash), new typestnd.PartSetHeader(0, ""))
     const last_commit_hash = ""
     const currentState = new CurrentState(
         req.chain_id,

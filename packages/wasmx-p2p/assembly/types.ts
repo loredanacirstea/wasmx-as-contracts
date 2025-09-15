@@ -195,6 +195,8 @@ export class StartStateSyncReqRequest {
     protocol_id: string
     peers: string[]
     current_node_id: i32
+    verification_chain_id: string
+    verification_contract_address: Bech32String
     constructor(
         start_height: i64,
         trust_height: i64,
@@ -203,6 +205,8 @@ export class StartStateSyncReqRequest {
         protocolId: string,
         peers: string[],
         current_node_id: i32,
+        verification_chain_id: string,
+        verification_contract_address: Bech32String,
     ) {
         this.start_height = start_height
         this.trust_height = trust_height
@@ -211,6 +215,8 @@ export class StartStateSyncReqRequest {
         this.protocol_id = protocolId
         this.peers = peers
         this.current_node_id = current_node_id
+        this.verification_chain_id = verification_chain_id
+        this.verification_contract_address = verification_contract_address
     }
 }
 

@@ -1,6 +1,7 @@
 async function instantiate(module, imports = {}) {
   const __module0 = imports.wasmx;
   const __module1 = imports.consensus;
+  const __module2 = imports.wasmxcore;
   const adaptedImports = {
     env: Object.assign(Object.create(globalThis), imports.env || {}, {
       abort(message, fileName, lineNumber, columnNumber) {
@@ -188,6 +189,23 @@ async function instantiate(module, imports = {}) {
         return __lowerBuffer(__module1.PrepareProposal(value)) || __notnull();
       },
     }),
+   wasmxcore:  Object.assign(Object.create(__module2), {
+      grpcRequest(data) {
+        // ~lib/wasmx-env-core/assembly/wasmxcore/grpcRequest(~lib/arraybuffer/ArrayBuffer) => ~lib/arraybuffer/ArrayBuffer
+        data = __liftBuffer(data >>> 0);
+        return __lowerBuffer(__module2.grpcRequest(data)) || __notnull();
+      },
+      cancelTimeout(req) {
+        // ~lib/wasmx-env-core/assembly/wasmxcore/cancelTimeout(~lib/arraybuffer/ArrayBuffer) => void
+        req = __liftBuffer(req >>> 0);
+        __module2.cancelTimeout(req);
+      },
+      startTimeout(req) {
+        // ~lib/wasmx-env-core/assembly/wasmxcore/startTimeout(~lib/arraybuffer/ArrayBuffer) => void
+        req = __liftBuffer(req >>> 0);
+        __module2.startTimeout(req);
+      },
+    }, __module2),
   };
   const { exports } = await WebAssembly.instantiate(module, adaptedImports);
   const memory = exports.memory || imports.env.memory;
@@ -267,7 +285,7 @@ async function instantiate(module, imports = {}) {
   return adaptedExports;
 }
 
-export async function getExports(wasmxImport, consensusImport) {
+export async function getExports(wasmxImport, consensusImport, coreImport) {
   const exports = await (async url => instantiate(
       await (async () => {
         try { return await globalThis.WebAssembly.compileStreaming(globalThis.fetch(url)); }
@@ -275,6 +293,7 @@ export async function getExports(wasmxImport, consensusImport) {
       })(), {
         wasmx: __maybeDefault(wasmxImport),
         consensus: __maybeDefault(consensusImport),
+        wasmxcore: __maybeDefault(coreImport),
       },
   ))(new URL("../build/debug.wasm", import.meta.url));
   return exports

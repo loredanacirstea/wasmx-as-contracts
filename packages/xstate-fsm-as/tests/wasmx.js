@@ -7,7 +7,7 @@ export const LOG = {
 }
 
 export async function load(storage = {}, env = {}, logType = LOG.debug) {
-    const inst = await getExports(wasmx(storage, env, logType), consensus(storage, env, logType));
+    const inst = await getExports(wasmx(storage, env, logType), consensus(storage, env, logType), wasmxcore(storage, env, logType));
     return inst
 }
 
@@ -255,6 +255,36 @@ export function consensus(storageMap, env, logType = LOG.error) {
         FinalizeBlock,
         Commit,
         CheckTx,
+    }
+}
+
+
+export function wasmxcore(storageMap, env, logType = LOG.error) {
+    function grpcRequest(keybuf) {
+        if (logType > 1) {
+            console.log('-host-grpcRequest', [...new Uint8Array(keybuf)]);
+        }
+        const resp = {data: "", error: ""};
+        return encodeToUtf8Array(JSON.stringify(resp));
+    }
+    function cancelTimeout(buf) {
+        if (logType > 0) {
+            console.log('-host-cancelTimeout', [...new Uint8Array(buf)]);
+        }
+        const resp = {data: "", error: ""};
+        return encodeToUtf8Array(JSON.stringify(resp));
+    }
+    function startTimeout(buf) {
+        if (logType > 0) {
+            console.log('-host-startTimeout', [...new Uint8Array(buf)]);
+        }
+        const resp = {data: "", error: ""};
+        return encodeToUtf8Array(JSON.stringify(resp));
+    }
+    return {
+        grpcRequest,
+        cancelTimeout,
+        startTimeout,
     }
 }
 
