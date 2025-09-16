@@ -80,16 +80,16 @@ export function getSortedBlockCommits(lastBlockCommit: typestnd.BlockCommit, act
     const sigsmap = new Map<string,typestnd.CommitSig>();
     for (let i = 0; i < lastBlockCommit.signatures.length; i++) {
         const s = lastBlockCommit.signatures[i];
-        sigsmap.set(s.validator_address, s)
+        sigsmap.set(s.validator_address.toLowerCase(), s)
     }
     for (let i = 0; i < activeSortedVals.length; i++) {
         const v = activeSortedVals[i];
-        if (!sigsmap.has(v.hex_address)) {
+        if (!sigsmap.has(v.hex_address.toLowerCase())) {
             // this can happen in the first block after a new validator has been added
             // we have a new validator, but signatures
             wasmxw.revert(`sorted validator address not found in array of CommitSig: ${v.hex_address} - ${v.operator_address}`)
         }
-        sigs[i] = sigsmap.get(v.hex_address)
+        sigs[i] = sigsmap.get(v.hex_address.toLowerCase())
     }
     return new typestnd.BlockCommit(
         lastBlockCommit.height,

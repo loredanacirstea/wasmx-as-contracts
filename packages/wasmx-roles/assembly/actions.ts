@@ -315,7 +315,7 @@ export function endBlockActions(roleName: string, label: string, addr: string, a
         const ndx = updrole.addresses.indexOf(addr)
         updrole.primary = ndx
         st.setRoleByRoleName(updrole);
-        LoggerInfo("roles: update primary contract", ["role", roleName, "label", updrole.labels[ndx], "contract_address", updrole.addresses[ndx], "primary_index", updrole.primary.toString(), "count", updrole.addresses.length.toString()])
+        LoggerInfo("roles: update primary contract", ["role", roleName, "label", updrole.labels[ndx], "contract_address", updrole.addresses[ndx], "primary_index", updrole.primary.toString(), "addresses", updrole.addresses.join(","), "labels", updrole.labels.join(",")])
     }
 }
 
