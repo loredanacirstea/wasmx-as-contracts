@@ -1061,9 +1061,6 @@ export function buildBlockProposal(txs: string[], optimisticExecution: boolean, 
     const validatorInfos = sortTendermintValidators(getActiveValidatorInfo(validators))
     const validatorSet = new typestnd.TendermintValidators(validatorInfos)
 
-    // get signatures only from active validators, sort in the same way as above validator set
-    const signatures = filterAndSortCommitSignatures(lastBlockCommit.signatures, validatorInfos)
-
     // we get the previous block validators for the last block commit signatures
     const previousBlock = getLogEntryAggregate(height - 1);
     let previousValidatorSet: typestnd.TendermintValidators;
@@ -1073,14 +1070,17 @@ export function buildBlockProposal(txs: string[], optimisticExecution: boolean, 
         previousValidatorSet = validatorSet;
     }
 
+    // get signatures only from active validators, sort in the same way as above validator set
+    const signatures = filterAndSortCommitSignatures(lastBlockCommit.signatures, previousValidatorSet.validators)
+
     // we skip if the validator does not have the commit signatures for the previous block (unless this is the first block under consensus)
     if (signatures.length == 0 && height > (cfg.LOG_START+1)) {
         LoggerDebug("no commit signatures found for previous block ... skipping block proposal", ["height", height.toString()])
         return null;
     }
 
-    if (signatures.length > previousValidatorSet.validators.length) {
-        revert(`last block validator set smaller than signature list: expected ${signatures.length}, got ${previousValidatorSet.validators.length}`)
+    if (signatures.length != previousValidatorSet.validators.length && height > (cfg.LOG_START + 1)) {
+        revert(`last block validator set length mismatch with signature list: expected ${signatures.length}, got ${previousValidatorSet.validators.length}`)
     }
 
     const lastCommit = new typestnd.CommitInfo(lastBlockCommit.round, []); // TODO for the last block

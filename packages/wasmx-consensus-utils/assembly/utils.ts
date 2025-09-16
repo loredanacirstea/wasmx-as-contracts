@@ -128,11 +128,11 @@ export function filterAndSortCommitSignatures(signatures: typestnd.CommitSig[], 
     const sigs = new Array<typestnd.CommitSig>(0);
 
     for (let i = 0; i < validatorInfos.length; i++) {
-        activeVals.set(validatorInfos[i].hex_address, true);
+        activeVals.set(validatorInfos[i].hex_address.toLowerCase(), true);
     }
     for (let i = 0; i < signatures.length; i++) {
         const sig = signatures[i]
-        if (activeVals.has(sig.validator_address)) {
+        if (activeVals.has(sig.validator_address.toLowerCase())) {
             sigs.push(sig)
         }
     }
