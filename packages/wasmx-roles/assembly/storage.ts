@@ -90,12 +90,25 @@ export function setRole(role: Role): void {
 }
 
 export function addRoleContract(role: Role, label: string, addr: Bech32String, replacePrimary: boolean): void {
-    role.labels.push(label)
-    role.addresses.push(addr)
-    if (replacePrimary) {
-        role.primary = role.addresses.length - 1
+    const ndx = role.addresses.indexOf(addr)
+    if (ndx < 0) {
+        role.labels.push(label)
+        role.addresses.push(addr)
+        if (replacePrimary) {
+            role.primary = role.addresses.length - 1
+        }
+        setRoleByRoleName(role);
+        setRoleNameByLabel(role.role, label)
+        setLabelByContractAddress(label, addr)
+        return
     }
-    setRoleByRoleName(role);
+    // if address exists already, we just update the label
+    const oldlabel = role.labels[ndx]
+    role.labels[ndx] = label
+    if (replacePrimary) {
+        role.primary = ndx
+    }
+    deleteRoleNameByLabel(oldlabel);
     setRoleNameByLabel(role.role, label)
     setLabelByContractAddress(label, addr)
 }

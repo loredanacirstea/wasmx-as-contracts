@@ -228,10 +228,6 @@ export function setContractForRole(roleChanged: RoleChangeRequest, executeNow: b
         revert(`cannot remove non-multiple role, use replace action type`)
     }
 
-    if (action == RoleChangedActionType.Replace && role.multiple) {
-        revert(`cannot replace multiple role, use remove and add action type`)
-    }
-
     registerRoleEvent(role, label, addr, action);
 
     const msg = new RolesChangedHook(null, new RoleChanged(roleChanged.role, roleChanged.label, roleChanged.contract_address, roleChanged.action_type, ""))
@@ -313,12 +309,13 @@ export function endBlockActions(roleName: string, label: string, addr: string, a
     }
     if (role != null && role.multiple) {
         // after migration we make the new contract primary contract
-        // address was added previously and we make the assumption that the last added address is primary
+        // address was added previously
         const updrole = st.getRoleByRoleName(roleName)
         if (updrole == null) return
-        updrole.primary = updrole.addresses.length - 1
+        const ndx = updrole.addresses.indexOf(addr)
+        updrole.primary = ndx
         st.setRoleByRoleName(updrole);
-        LoggerInfo("roles: update primary contract", ["role", roleName, "label", label, "contract_address", addr, "primary_index", updrole.primary.toString(), "count", updrole.addresses.length.toString()])
+        LoggerInfo("roles: update primary contract", ["role", roleName, "label", updrole.labels[ndx], "contract_address", updrole.addresses[ndx], "primary_index", updrole.primary.toString(), "count", updrole.addresses.length.toString()])
     }
 }
 
