@@ -1,5 +1,5 @@
 import { JSON } from "json-as";
-import { Bech32String, CodeInfo, ContractInfo } from "wasmx-env/assembly/types";
+import { Bech32String, Base64String, CodeInfo, ContractInfo } from "wasmx-env/assembly/types";
 
 export const MODULE_NAME = "codes-registry"
 
@@ -83,8 +83,8 @@ export class QueryContractInfoResponse {
 
 @json
 export class QueryContractInstanceRequest {
-    address: Bech32String
-    constructor(address: Bech32String) {
+    address: Base64String
+    constructor(address: Base64String) {
         this.address = address
     }
 }

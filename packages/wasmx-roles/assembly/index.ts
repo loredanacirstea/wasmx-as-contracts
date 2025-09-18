@@ -1,12 +1,14 @@
 import { JSON } from "json-as";
 import * as wasmx from 'wasmx-env/assembly/wasmx';
+import * as wasmxw from 'wasmx-env/assembly/wasmx_wrap';
 import * as roles from "wasmx-env/assembly/roles";
 import * as modules from "wasmx-env/assembly/modules";
-import { RolesGenesis } from "wasmx-env/assembly/types";
+import { RolesGenesis, Bech32String } from "wasmx-env/assembly/types";
+import * as st from "./storage";
 import { getCallDataWrap } from './calldata';
 import { GetAddressOrRole, GetRoleByLabel, GetRoleLabelByContract, GetRoles, initialize, SetRole, SetContractForRole, setup, EndBlock, GetRoleByRoleName, GetRoleNameByAddress, SetContractForRoleGov, IsInternalContract } from "./actions";
 import { revert } from "./utils";
-import { onlyInternal, onlyRole, isGoCoreModule } from "wasmx-env/assembly/utils";
+import { onlyRole, isGoCoreModule } from "wasmx-env/assembly/utils";
 import { MODULE_NAME } from "./types";
 
 export function memory_assemblyscript_1(): void {}
@@ -69,4 +71,30 @@ export function main(): void {
     revert(`invalid function call data: ${calldstr}`);
   }
   wasmx.finish(result);
+}
+
+// used to restrict EOA calls to internal/core contract functions
+export function onlyInternal(moduleName: string, message: string): void {
+    // 32 bytes
+    const callerBz = wasmx.getCaller()
+    const caller = wasmxw.addr_humanize(callerBz)
+    if (hasRole(caller)) return;
+    if (isGoCoreModule(callerBz, "")) return;
+
+    const addrBz = wasmx.getAddress()
+    const addr = wasmxw.addr_humanize(addrBz)
+    // happens when host uses the same address for modules; e.g. "auth" module before being initialized
+    if (caller == addr) return;
+
+    // caller does not have system role, we revert
+    const msg = `${moduleName}: unauthorized caller: ${caller}: ${message}`
+    wasmxw.LoggerDebug(moduleName, "revert", ["err", msg, "module", moduleName])
+    wasmx.revert(String.UTF8.encode(msg));
+    throw new Error(msg);
+}
+
+export function hasRole(addr: Bech32String): bool {
+    const role = st.getRoleByContractAddress(addr)
+    if (role.length > 0) return true;
+    return false;
 }
