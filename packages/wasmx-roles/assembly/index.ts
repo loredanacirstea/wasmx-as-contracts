@@ -9,6 +9,7 @@ import { getCallDataWrap } from './calldata';
 import { GetAddressOrRole, GetRoleByLabel, GetRoleLabelByContract, GetRoles, initialize, SetRole, SetContractForRole, setup, EndBlock, GetRoleByRoleName, GetRoleNameByAddress, SetContractForRoleGov, IsInternalContract } from "./actions";
 import { revert } from "./utils";
 import { onlyRole, isGoCoreModule } from "wasmx-env/assembly/utils";
+import { onlyInternal as onlyInternalExternal } from "wasmx-env/assembly/utils";
 import { MODULE_NAME } from "./types";
 
 export function memory_assemblyscript_1(): void {}
@@ -60,7 +61,9 @@ export function main(): void {
     onlyInternal(MODULE_NAME, "SetRole");
     result = SetRole(calld.SetRole!);
   } else if (calld.setup != null) {
-    onlyInternal(MODULE_NAME, "setup");
+    // in the setup phase, we need to use the previous roles contract in order to determine if
+    // the caller has a role
+    onlyInternalExternal(MODULE_NAME, "setup");
     result = setup(calld.setup!);
   } else if (calld.EndBlock !== null) {
     onlyInternal(MODULE_NAME, "EndBlock");
