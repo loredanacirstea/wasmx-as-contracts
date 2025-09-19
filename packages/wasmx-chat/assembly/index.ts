@@ -14,6 +14,8 @@ export function wasmx_env_2(): void {}
 
 export function wasmx_p2p_1(): void {}
 
+export function wasmx_nondeterministic_1(): void {}
+
 export function instantiate(): void {}
 
 // we receive encoded transactions

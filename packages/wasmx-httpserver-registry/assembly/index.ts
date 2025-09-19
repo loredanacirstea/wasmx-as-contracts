@@ -14,6 +14,7 @@ export function wasmx_env_2(): void {}
 export function wasmx_httpserver_i32_1(): void {}
 export function wasmx_sql_i32_1(): void {}
 export function wasmx_oauth2client_i32_1(): void {}
+export function wasmx_nondeterministic_1(): void {}
 
 export function instantiate(): void {}
 

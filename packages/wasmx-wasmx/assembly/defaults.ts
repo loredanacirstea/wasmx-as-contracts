@@ -970,7 +970,7 @@ export function getDefaultSystemContracts(feeCollectorBech32: string, mintBech32
         sc_storage_chain,
         sc_aliaseth,
         sc_proxy_interfaces,
-        sc_sys_proxy,
+        // sc_sys_proxy, // removed until it is added the nondeterminism export
 
         // EIDPrecompiles
         sc_secp384r1,

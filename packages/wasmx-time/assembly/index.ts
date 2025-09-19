@@ -12,6 +12,7 @@ import { onlyInternal } from "wasmx-env/assembly/utils";
 export function memory_assemblyscript_1(): void {}
 export function wasmx_env_i32_2(): void {}
 export function wasmx_env_core_i32_1(): void {}
+export function wasmx_nondeterministic_1(): void {}
 
 export function instantiate(): void {
   const calld = getCallDataInitialize()
