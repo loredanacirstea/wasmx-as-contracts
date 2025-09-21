@@ -325,7 +325,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, isretry: bo
     // callHookContract("BeginBlock", blockDataBeginBlock);
 
     // if we have done optimisting execution, BeginBlock was already ran
-    const oeran = processReqWithMeta.optimistic_execution && processReq.proposer_address == getSelfNodeInfo().address
+    const oeran = processReqWithMeta.optimistic_execution && (entryobj.data.proposer_address == getSelfNodeInfo().address)
     if (!oeran) {
         const resbegin = consensuswrap.BeginBlock(finalizeReq);
         if (resbegin.error.length > 0 && !isretry) {
@@ -378,13 +378,13 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, isretry: bo
     const resultstr = JSON.stringify<typestnd.ResponseFinalizeBlock>(finalizeResp);
     const resultBase64 = encodeBase64(Uint8Array.wrap(String.UTF8.encode(resultstr)));
 
-    // TODO if this is a synced block, received through receiveCommit, we may want to assert that our results match their results
-    // right now consensus over blocks fails anyway if this does not match, by results hash, but a block later
-    // if (entryobj.data.result.length > 0) {
-    //     if (entryobj.data.result != resultBase64) {
-    //         revert(`FinalizeBlock results mismatch`)
-    //     }
-    // }
+    // we do not commit this block if our results differ from the proposer's results
+    // TODO: we roll back the block
+    if (entryobj.data.result.length > 0) {
+        if (entryobj.data.result != resultBase64) {
+            LoggerError(`FinalizeBlock result mismatch`, ["received_result", entryobj.data.result, "our_result", resultBase64])
+        }
+    }
 
     entryobj.data.result = resultBase64;
 

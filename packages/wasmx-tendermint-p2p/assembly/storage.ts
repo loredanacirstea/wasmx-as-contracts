@@ -213,7 +213,7 @@ export function addToPrevoteArray(nodeId: i32, data: ValidatorProposalVote): voi
     } else {
         arr = getEmptyValidatorProposalVoteArray(value.nodeCount, data.index, data.termId, SignedMsgType.SIGNED_MSG_TYPE_PREVOTE);
         // we've received a vote before we entered the new round ourselves, so we initialize the new block precommit array with the validator addresses from an earlier block.
-        if (value.map.get((data.index - 1).toString())) {
+        if (value.map.has((data.index - 1).toString())) {
             const oldarr = value.map.get((data.index - 1).toString());
             for (let i = 0 ; i < arr.length; i++) {
                 arr[i].validatorAddress = oldarr[i].validatorAddress;
@@ -251,7 +251,7 @@ export function addToPrecommitArray(nodeId: i32, data: ValidatorCommitVote): voi
         arr = getEmptyPrecommitArray(value.nodeCount, data.vote.index, data.vote.termId, SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT)
         // we've received a vote before we entered the new round ourselves, so we initialize the new block precommit array with the validator addresses from an earlier block.
         const key2 = (data.vote.index - 1).toString()
-        if (value.map.get(key2)) {
+        if (value.map.has(key2)) {
             const oldarr = value.map.get(key2);
             for (let i = 0 ; i < arr.length; i++) {
                 arr[i].vote.validatorAddress = oldarr[i].vote.validatorAddress;
