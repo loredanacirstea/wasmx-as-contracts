@@ -157,6 +157,10 @@ export function main(): void {
     actions.VerifyCommitLight(calld.params, calld.event);
     wasmx.finish(wasmx.getFinishData());
     return;
+  } else if (calld.method === "rollback") {
+    tnd2.rollback(calld.params, calld.event);
+    wasmx.finish(new ArrayBuffer(0));
+    return;
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)
