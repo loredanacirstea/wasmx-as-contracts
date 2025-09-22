@@ -19,8 +19,11 @@ import {
     getConsensusParamsLastIndex,
     setConsensusParams,
     setLastBlockIndex,
+    rollbackBlock,
+    removeTopic,
+    rollbackConsensusParams,
   } from './storage';
-import { revert } from "./utils";
+import { LoggerDebug, LoggerInfo, revert } from "./utils";
 
 @json
 export class CallData {
@@ -29,6 +32,7 @@ export class CallData {
     setConsensusParams: CallDataSetConsensusParams | null = null;
     setIndexedTransactionByHash: CallDataSetIndexedTransactionByHash | null = null;
     bootstrapAfterStateSync: CallDataBootstrap | null = null;
+    rollback: CalldataRollback | null = null;
 
     getIndexedData: CallDataGetIndexedData | null = null;
     getLastBlockIndex: CallDataGetLastBlockIndex | null = null;
@@ -175,6 +179,25 @@ export class CallDataBootstrap {
     }
 }
 
+@json
+export class CalldataRollback {
+    height: i64
+    hash: string
+    txhashes: string[]
+    indexed_topics: IndexedTopic[]
+    constructor(
+        height: i64,
+        hash: string,
+        txhashes: string[],
+        indexed_topics: IndexedTopic[],
+    ) {
+        this.height = height
+        this.hash = hash
+        this.txhashes = txhashes
+        this.indexed_topics = indexed_topics
+    }
+}
+
 export function getCallDataWrap(): CallData {
     const calldraw = wasmx.getCallData();
     return JSON.parse<CallData>(String.UTF8.decode(calldraw));
@@ -255,5 +278,16 @@ export function bootstrapAfterStateSync(req: CallDataBootstrap): ArrayBuffer {
     const info = new ConsensusParamsInfo(req.last_block_height, req.last_block_height, req.params)
     setConsensusParams(info);
     setLastBlockIndex(req.last_block_height);
+    return new ArrayBuffer(0);
+}
+
+export function rollback(req: CalldataRollback): ArrayBuffer {
+    rollbackBlock(req.height, req.hash, req.txhashes)
+    LoggerDebug("rolling back indexed topics", ["height", req.height.toString(), "hash", req.hash, "indexed_topics", req.indexed_topics.length.toString(), "txs", req.txhashes.length.toString()])
+    for (let i = 0; i < req.indexed_topics.length; i++) {
+        removeTopic(req.indexed_topics[i])
+    }
+    LoggerDebug("rolling back consensus params", ["height", req.height.toString()])
+    rollbackConsensusParams(req.height);
     return new ArrayBuffer(0);
 }

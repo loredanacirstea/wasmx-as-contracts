@@ -49,12 +49,26 @@ export function setTopic(indexedTopic: IndexedTopic): void {
     setIndexedData(indexedTopic.topic, JSON.stringify<string[]>(values))
 }
 
+// only for a rolledback block
+export function removeTopic(indexedTopic: IndexedTopic): void {
+    const value = getIndexedData(indexedTopic.topic);
+    if (value == "") return;
+    let values = JSON.parse<string[]>(value);
+    const count = indexedTopic.values.length;
+    values.splice(values.length - 1 - count, count);
+    setIndexedData(indexedTopic.topic, JSON.stringify<string[]>(values))
+}
+
 export function getIndexedData(key: string): string {
     return wasmxwrap.sload(keyIndexedData(key));
 }
 
 export function setIndexedData(key: string, value: string): void {
     wasmxwrap.sstore(keyIndexedData(key), value);
+}
+
+export function removeIndexedData(key: string): void {
+    wasmxwrap.sstore(keyIndexedData(key), "");
 }
 
 export function getLastBlockIndex(): i64 {
@@ -109,6 +123,23 @@ export function setBlock(value: string, hash: string, txhashes: string[]): void 
     setLastBlockIndex(index);
 }
 
+export function rollbackBlock(height: i64, hash: string, txhashes: string[]): void {
+    const index = getLastBlockIndex();
+    if (index != height) revert(`must rollback only the last block: ${index}`)
+    const newindex = index -1;
+    const value = getBlockByIndex(index);
+    if (value == "") return;
+
+    wasmxwrap.sstore(getBlockKey(index), "");
+    wasmxwrap.sstore(getBlockHashKey(hash), index.toString());
+
+    for (let i = 0; i < txhashes.length; i++) {
+        const data = new types.IndexedTransaction(index, i);
+        removeIndexedTransactionByHash(height, i, txhashes[i]);
+    }
+    setLastBlockIndex(newindex);
+}
+
 export function setIndexedTransactionByHash(hash: Base64String, data: types.IndexedTransaction): void {
     const datastr = JSON.stringify<types.IndexedTransaction>(data);
     wasmxwrap.sstore(keyIndexedTransaction(hash), datastr);
@@ -117,6 +148,11 @@ export function setIndexedTransactionByHash(hash: Base64String, data: types.Inde
 
 export function getIndexedTransactionByHash(hash: Base64String): string {
     return wasmxwrap.sload(keyIndexedTransaction(hash));
+}
+
+export function removeIndexedTransactionByHash(height: i64, index: i64, hash: Base64String): void {
+    wasmxwrap.sstore(keyIndexedTransaction(hash), "");
+    LoggerInfo("rolled back indexed transaction", ["height", height.toString(), "index", index.toString(), "hash", hash, "hashhex", base64ToHex(hash)])
 }
 
 export function getConsensusParams(height: i64): types.ConsensusParamsInfo | null {
@@ -157,6 +193,14 @@ export function setConsensusParams(info: types.ConsensusParamsInfo): void {
     const value = JSON.stringify<types.ConsensusParamsInfo>(info)
     wasmxwrap.sstore(getConsensusParamsKey(info.height), value);
     setConsensusParamsLastIndex(info.height)
+}
+
+export function rollbackConsensusParams(height: i64): void {
+    // last height should be height+1 - we store params for next block
+    const lastHeight = getConsensusParamsLastIndex()
+    if (height != (lastHeight -1)) revert(`consensus params rollback failed, must rollback last height: ${lastHeight-1}`);
+    wasmxwrap.sstore(getConsensusParamsKey(lastHeight), "");
+    setConsensusParamsLastIndex(height);
 }
 
 export function getConsensusParamsLastIndex(): i64 {

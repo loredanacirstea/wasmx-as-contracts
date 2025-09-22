@@ -24,14 +24,15 @@ import {
 } from 'xstate-fsm-as/assembly/types';
 import { parseInt32, stringToBase64, base64ToString, hex64ToBase64, base64ToHex } from "wasmx-utils/assembly/utils";
 import { BigInt } from "wasmx-env/assembly/bn";
+import * as wblocks from "wasmx-blocks/assembly/types";
 import { StateSyncRequest, StateSyncResponse } from "./sync_types";
-import { getCurrentNodeId, getCurrentState, getValidatorNodesInfo, setValidatorNodesInfo, setTermId, appendLogEntry, setLogEntryAggregate, setCurrentState, setLastLogIndex, getLogEntryObj, addToPrevoteArray, addToPrecommitArray, setPrevoteArrayMap, getPrevoteArrayMap, getPrecommitArrayMap, setPrecommitArrayMap, resetPrecommitArray } from "./storage";
+import { getCurrentNodeId, getCurrentState, getValidatorNodesInfo, setValidatorNodesInfo, setTermId, appendLogEntry, setLogEntryAggregate, setCurrentState, setLastLogIndex, getLogEntryObj, addToPrevoteArray, addToPrecommitArray, setPrevoteArrayMap, getPrevoteArrayMap, getPrecommitArrayMap, setPrecommitArrayMap, resetPrecommitArray, removeLogEntry } from "./storage";
 import * as raftp2pactions from "wasmx-raft-p2p/assembly/actions";
 import { setMempool, signMessage } from "wasmx-tendermint/assembly/actions"
 import { CurrentState, Mempool, ValidatorQueueEntry } from "wasmx-tendermint/assembly/types_blockchain";
 import * as cfg from "./config";
 import { AppendEntry, LogEntryAggregate, NodeInfoRequest, ProcessBlockResponse, UpdateNodeRequest, UpdateNodeResponse } from "./types";
-import { getAllValidatorInfos, getTendermintVote, getCurrentProposer, getLastBlockCommit, getLastBlockIndex, getLogEntryAggregate, getNextProposer, getProtocolId, getProtocolIdInternal, getTopic, getTopicInternal, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal, storageBootstrapAfterStateSync, getConsensusParams, weAreNotAlone, weAreNotAloneInternal, parseNodeAddress, updateNodeEntry, nodeInfoComplete, nodeInfoCompleteInternal } from "./action_utils";
+import { getAllValidatorInfos, getTendermintVote, getCurrentProposer, getLastBlockCommit, getLastBlockIndex, getLogEntryAggregate, getNextProposer, getProtocolId, getProtocolIdInternal, getTopic, getTopicInternal, initChain, isNodeActive, isPrecommitAcceptThreshold, isPrecommitAnyThreshold, isPrevoteAcceptThreshold, isPrevoteAnyThreshold, prepareAppendEntry, prepareAppendEntryMessage, startBlockFinalizationFollower, startBlockFinalizationFollowerInternal, storageBootstrapAfterStateSync, getConsensusParams, weAreNotAlone, weAreNotAloneInternal, parseNodeAddress, updateNodeEntry, nodeInfoComplete, nodeInfoCompleteInternal, rollbackBlockData, getFinalBlock } from "./action_utils";
 import { extractUpdateNodeEntryAndVerify, removeNode } from "wasmx-raft/assembly/actions";
 import { getLastLogIndex, getTermId, setCurrentNodeId } from "wasmx-raft/assembly/storage";
 import { getAllValidators, getNodeIdByAddress, verifyMessageByAddr, verifyMessageBytesByAddr } from "wasmx-raft/assembly/action_utils";
@@ -40,9 +41,9 @@ import { Commit, getEmptyPrecommitArray, getEmptyValidatorProposalVoteArray, Sig
 import { NodePorts } from "wasmx-consensus/assembly/types_multichain";
 import * as roles from "wasmx-env/assembly/roles";
 import * as mcwrap from 'wasmx-consensus/assembly/multichain_wrap';
-import { decodeTx } from "wasmx-tendermint/assembly/action_utils";
+import { decodeTx, getBlockID } from "wasmx-tendermint/assembly/action_utils";
 import { getLeaderChain } from "wasmx-consensus/assembly/multichain_utils";
-import { cleanAbsentCommits, getActiveValidatorInfo, getSortedBlockCommits, sortTendermintValidators } from "wasmx-consensus-utils/assembly/utils";
+import { cleanAbsentCommits, getActiveValidatorInfo, getSortedBlockCommits, sortTendermintValidators, extractIndexedTopics, getHeaderHash } from "wasmx-consensus-utils/assembly/utils";
 import { callContract } from "wasmx-env/assembly/utils";
 
 // TODO add delta to timeouts each failed round
@@ -2004,4 +2005,61 @@ export function signMessageExternal(
     const signatureBase64 = base64.encode(Uint8Array.wrap(signature));
     LoggerDebug("ed25519Sign", ["signature", signatureBase64])
     wasmx.setFinishData(signature)
+}
+
+// rolls back the last block
+export function rollback(): void {
+    const height = getLastBlockIndex();
+    const newHeight = height - 1;
+    LoggerInfo("rolling back block", ["height", height.toString()])
+    const data = getFinalBlock(height);
+    if (data == "") return;
+    const blockData = JSON.parse<wblocks.BlockEntry>(data);
+
+    const processReqStr = String.UTF8.decode(decodeBase64(blockData.data).buffer);
+    const processReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(processReqStr);
+    const processReq = processReqWithMeta.request
+    const finalizeRespStr = String.UTF8.decode(decodeBase64(blockData.result).buffer);
+    const finalizeResp = JSON.parse<typestnd.ResponseFinalizeBlock>(finalizeRespStr);
+
+    const blockCommitStr = String.UTF8.decode(decodeBase64(blockData.last_commit).buffer);
+    const blockCommit = JSON.parse<typestnd.BlockCommit>(blockCommitStr);
+
+    const header = JSON.parse<typestnd.Header>(base64ToString(blockData.header));
+    const hash = getHeaderHash(header);
+
+    // rollback block from storage
+    const txhashes: string[] = [];
+    for (let i = 0; i < processReq.txs.length; i++) {
+        const hash = wasmxw.sha256(processReq.txs[i]);
+        txhashes.push(hash);
+    }
+    const indexedTopics = extractIndexedTopics(finalizeResp.tx_results, txhashes)
+
+    rollbackBlockData(height, hash, txhashes, indexedTopics)
+    LoggerInfo("rolled back block data", ["height", height.toString()])
+
+    // reset our indexes
+    removeLogEntry(height);
+    setLastLogIndex(newHeight);
+    LoggerInfo("rolled back consensus data", ["new_height", newHeight.toString()])
+
+    // update state
+    const state = getCurrentState()
+    state.nextHeight = height
+    state.nextHash = ""
+    state.app_hash = finalizeResp.app_hash;
+    state.last_block_id = getBlockID(hash)
+    state.last_commit_hash = header.last_commit_hash
+    state.last_results_hash = header.last_results_hash
+    state.last_time = processReq.time
+    state.validValue = 0;
+    state.validRound = 0;
+    state.lockedValue = 0;
+    state.lockedRound = 0;
+    // these are already sorted and cleaned up
+    state.last_block_signatures = blockCommit.signatures;
+    setCurrentState(state)
+    LoggerInfo("rollback consensus state", ["new_height", newHeight.toString()])
+    LoggerInfo("rollback consensus completed", ["new_height", newHeight.toString()])
 }

@@ -12,6 +12,7 @@ import {
   setConsensusParamsWrap,
   setIndexedDataWrap,
   setIndexedTransactionByHashWrap,
+  rollback,
 } from './calldata';
 import { setLastBlockIndex, getContextValue } from "./storage";
 import { revert } from "./utils";
@@ -63,6 +64,9 @@ export function main(): void {
   } else if (calld.bootstrapAfterStateSync !== null) {
     onlyInternal(MODULE_NAME, "bootstrapAfterStateSync");
     result = bootstrapAfterStateSync(calld.bootstrapAfterStateSync!);
+  } else if (calld.rollback !== null) {
+    onlyInternal(MODULE_NAME, "rollback");
+    result = rollback(calld.rollback!);
   } else {
     const calldraw = wasmx.getCallData();
     let calldstr = String.UTF8.decode(calldraw)

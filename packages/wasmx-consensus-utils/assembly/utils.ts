@@ -248,11 +248,11 @@ export function getEventTopic(eventName: string, eventAttribute: string, eventVa
     return `${eventName}.${eventAttribute}='${eventValue}'`
 }
 
-export function extractIndexedTopics(finalizeResp: typestnd.ResponseFinalizeBlock, txhashes: string[]): wblockscalld.IndexedTopic[] {
+export function extractIndexedTopics(txResults: typestnd.ExecTxResult[], txhashes: string[]): wblockscalld.IndexedTopic[] {
     const topicMap = new Map<string,string[]>()
     const indexed: wblockscalld.IndexedTopic[] = []
-    for (let i = 0; i < finalizeResp.tx_results.length; i++) {
-        const res = finalizeResp.tx_results[i]
+    for (let i = 0; i < txResults.length; i++) {
+        const res = txResults[i]
         for (let j = 0; j < res.events.length; j++) {
             const ev = res.events[j]
             for (let n = 0; n < ev.attributes.length; n++) {

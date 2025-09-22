@@ -444,7 +444,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, isretry: bo
     const blockData = JSON.stringify<wblocks.BlockEntry>(entryobj.data)
     // also indexes transactions
     // index events: eventTopic => txhash[]
-    const indexedTopics = extractIndexedTopics(finalizeResp, txhashes)
+    const indexedTopics = extractIndexedTopics(finalizeResp.tx_results, txhashes)
     setFinalizedBlock(blockData, finalizeReq.hash, txhashes, indexedTopics);
 
     // remove temporary block data
@@ -611,6 +611,15 @@ export function setFinalizedBlock(blockData: string, hash: string, txhashes: str
     const resp = callStorage(calldatastr, false);
     if (resp.success > 0) {
         revert(`could not set finalized block: ${resp.data}`);
+    }
+}
+
+export function rollbackBlockData(height: i64, hash: string, txhashes: string[], indexedTopics: wblockscalld.IndexedTopic[]): void {
+    const calldata = new wblockscalld.CalldataRollback(height, hash, txhashes, indexedTopics);
+    const calldatastr = `{"rollback":${JSON.stringify<wblockscalld.CalldataRollback>(calldata)}}`;
+    const resp = callStorage(calldatastr, false);
+    if (resp.success > 0) {
+        revert(`could not rollback finalized block: ${resp.data}`);
     }
 }
 

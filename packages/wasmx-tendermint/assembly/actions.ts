@@ -1541,7 +1541,7 @@ function startBlockFinalizationInternal(entryobj: LogEntryAggregate, retry: bool
     const blockData = JSON.stringify<wblocks.BlockEntry>(entryobj.data)
     // also indexes transactions
     // index events: eventTopic => txhash[]
-    const indexedTopics = extractIndexedTopics(finalizeResp, txhashes)
+    const indexedTopics = extractIndexedTopics(finalizeResp.tx_results, txhashes)
     setFinalizedBlock(blockData, finalizeReq.hash, txhashes, indexedTopics);
 
     // remove temporary block data
