@@ -178,7 +178,7 @@ export function main(): void {
     actions.signMessageExternal(calld.params, calld.event);
     return;
   } else if (calld.method === "rollback") {
-    actions.rollback();
+    actions.rollback(calld.params, calld.event);
     wasmx.finish(new ArrayBuffer(0));
     return;
   }

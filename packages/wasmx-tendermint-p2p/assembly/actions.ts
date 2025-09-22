@@ -22,7 +22,7 @@ import {
     EventObject,
     ActionParam,
 } from 'xstate-fsm-as/assembly/types';
-import { parseInt32, stringToBase64, base64ToString, hex64ToBase64, base64ToHex } from "wasmx-utils/assembly/utils";
+import { parseInt32, parseInt64, stringToBase64, base64ToString, hex64ToBase64, base64ToHex } from "wasmx-utils/assembly/utils";
 import { BigInt } from "wasmx-env/assembly/bn";
 import * as wblocks from "wasmx-blocks/assembly/types";
 import { StateSyncRequest, StateSyncResponse } from "./sync_types";
@@ -2008,58 +2008,80 @@ export function signMessageExternal(
 }
 
 // rolls back the last block
-export function rollback(): void {
-    const height = getLastBlockIndex();
-    const newHeight = height - 1;
-    LoggerInfo("rolling back block", ["height", height.toString()])
-    const data = getFinalBlock(height);
-    if (data == "") return;
-    const blockData = JSON.parse<wblocks.BlockEntry>(data);
-
-    const processReqStr = String.UTF8.decode(decodeBase64(blockData.data).buffer);
-    const processReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(processReqStr);
-    const processReq = processReqWithMeta.request
-    const finalizeRespStr = String.UTF8.decode(decodeBase64(blockData.result).buffer);
-    const finalizeResp = JSON.parse<typestnd.ResponseFinalizeBlock>(finalizeRespStr);
-
-    const blockCommitStr = String.UTF8.decode(decodeBase64(blockData.last_commit).buffer);
-    const blockCommit = JSON.parse<typestnd.BlockCommit>(blockCommitStr);
-
-    const header = JSON.parse<typestnd.Header>(base64ToString(blockData.header));
-    const hash = getHeaderHash(header);
-
-    // rollback block from storage
-    const txhashes: string[] = [];
-    for (let i = 0; i < processReq.txs.length; i++) {
-        const hash = wasmxw.sha256(processReq.txs[i]);
-        txhashes.push(hash);
+export function rollback(
+    params: ActionParam[],
+    event: EventObject,
+): void {
+    const p = getParamsOrEventParams(params, event);
+    const ctx = actionParamsToMap(p);
+    let height = i64(0);
+    const lastCommited = getLastBlockIndex();
+    if (ctx.has("height")) {
+        const heightstr = ctx.get("height")
+        height = parseInt64(heightstr)
+    } else {
+        height = lastCommited
     }
-    const indexedTopics = extractIndexedTopics(finalizeResp.tx_results, txhashes)
+    LoggerInfo("rolling back block", ["height", height.toString(), "lastCommited", lastCommited.toString()])
 
-    rollbackBlockData(height, hash, txhashes, indexedTopics)
-    LoggerInfo("rolled back block data", ["height", height.toString()])
+    if (height > lastCommited+1) {
+        return;
+    }
+    if (height < lastCommited) {
+        revert(`must roll back last block first: ${height}`)
+    }
+    let newHeight = height - 1;
+    if (height == lastCommited) {
+        LoggerInfo("rolling back block", ["height", height.toString()])
+        const data = getFinalBlock(height);
+        if (data == "") return;
+        const blockData = JSON.parse<wblocks.BlockEntry>(data);
+
+        const processReqStr = String.UTF8.decode(decodeBase64(blockData.data).buffer);
+        const processReqWithMeta = JSON.parse<typestnd.RequestProcessProposalWithMetaInfo>(processReqStr);
+        const processReq = processReqWithMeta.request
+        const finalizeRespStr = String.UTF8.decode(decodeBase64(blockData.result).buffer);
+        const finalizeResp = JSON.parse<typestnd.ResponseFinalizeBlock>(finalizeRespStr);
+
+        const blockCommitStr = String.UTF8.decode(decodeBase64(blockData.last_commit).buffer);
+        const blockCommit = JSON.parse<typestnd.BlockCommit>(blockCommitStr);
+
+        const header = JSON.parse<typestnd.Header>(base64ToString(blockData.header));
+        const hash = getHeaderHash(header);
+
+        // rollback block from storage
+        const txhashes: string[] = [];
+        for (let i = 0; i < processReq.txs.length; i++) {
+            const hash = wasmxw.sha256(processReq.txs[i]);
+            txhashes.push(hash);
+        }
+        const indexedTopics = extractIndexedTopics(finalizeResp.tx_results, txhashes)
+
+        rollbackBlockData(height, hash, txhashes, indexedTopics)
+        LoggerInfo("rolled back block data", ["height", height.toString()])
+
+        // update state
+        const state = getCurrentState()
+        state.nextHeight = height
+        state.nextHash = ""
+        state.app_hash = finalizeResp.app_hash;
+        state.last_block_id = getBlockID(hash)
+        state.last_commit_hash = header.last_commit_hash
+        state.last_results_hash = header.last_results_hash
+        state.last_time = processReq.time
+        state.validValue = 0;
+        state.validRound = 0;
+        state.lockedValue = 0;
+        state.lockedRound = 0;
+        // these are already sorted and cleaned up
+        state.last_block_signatures = blockCommit.signatures;
+        setCurrentState(state)
+        LoggerInfo("rollback consensus state", ["new_height", newHeight.toString()])
+    }
 
     // reset our indexes
     removeLogEntry(height);
     setLastLogIndex(newHeight);
-    LoggerInfo("rolled back consensus data", ["new_height", newHeight.toString()])
-
-    // update state
-    const state = getCurrentState()
-    state.nextHeight = height
-    state.nextHash = ""
-    state.app_hash = finalizeResp.app_hash;
-    state.last_block_id = getBlockID(hash)
-    state.last_commit_hash = header.last_commit_hash
-    state.last_results_hash = header.last_results_hash
-    state.last_time = processReq.time
-    state.validValue = 0;
-    state.validRound = 0;
-    state.lockedValue = 0;
-    state.lockedRound = 0;
-    // these are already sorted and cleaned up
-    state.last_block_signatures = blockCommit.signatures;
-    setCurrentState(state)
-    LoggerInfo("rollback consensus state", ["new_height", newHeight.toString()])
+    LoggerInfo("rolled back temporary consensus data", ["new_height", newHeight.toString()])
     LoggerInfo("rollback consensus completed", ["new_height", newHeight.toString()])
 }
