@@ -6,9 +6,9 @@ type Base64String = string;
 
 @json
 export class MsgConnectRequest {
-    driver: string
-    connection: string
-    id: string
+    driver: string = ""
+    connection: string = ""
+    id: string = ""
     constructor(
         driver: string,
         connection: string,
@@ -16,6 +16,22 @@ export class MsgConnectRequest {
     ) {
         this.driver = driver
         this.connection = connection
+        this.id = id
+    }
+}
+
+@json
+export class MsgConnectRequestPostgresql {
+    connection: string = ""
+    db_name: string = ""
+    id: string = ""
+    constructor(
+        connection: string,
+        db_name: string,
+        id: string,
+    ) {
+        this.connection = connection
+        this.db_name = db_name
         this.id = id
     }
 }
@@ -120,6 +136,30 @@ export class MsgExecuteResponse {
     }
 }
 
+
+@json
+export class MsgExecuteResponsePostgreSql {
+    error: string
+    rows_affected: i64
+    constructor(
+        error: string,
+        rows_affected: i64,
+    ) {
+        this.error = error
+        this.rows_affected = rows_affected
+    }
+}
+
+@json
+export class MsgExecuteBatchResponsePostgreSql {
+    error: string = ""
+    responses: MsgExecuteResponsePostgreSql[] = []
+    constructor(error: string, responses: MsgExecuteResponsePostgreSql[]) {
+        this.error = error
+        this.responses = responses
+    }
+}
+
 @json
 export class MsgQueryRequest {
     id: string = ""
@@ -159,6 +199,27 @@ export class MsgPingRequest {
 
 @json
 export class MsgPingResponse {
+    error: string
+    constructor(error: string) {
+        this.error = error
+    }
+}
+
+@json
+export class MsgCreateDatabaseRequest {
+    connection: string = ""
+    db_name: string = ""
+    constructor(
+        connection: string,
+        db_name: string,
+    ) {
+        this.connection = connection
+        this.db_name = db_name
+    }
+}
+
+@json
+export class MsgCreateDatabaseResponse {
     error: string
     constructor(error: string) {
         this.error = error

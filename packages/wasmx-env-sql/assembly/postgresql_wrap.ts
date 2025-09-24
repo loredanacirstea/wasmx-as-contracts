@@ -1,10 +1,12 @@
 import { JSON } from "json-as";
 import { LoggerDebugExtended } from "wasmx-env/assembly/wasmx_wrap";
-import * as sql from './sql';
-import { MODULE_NAME, MsgCloseRequest, MsgCloseResponse, MsgConnectRequest, MsgConnectResponse, MsgExecuteBatchRequest, MsgExecuteBatchResponse, MsgExecuteRequest, MsgExecuteResponse, MsgPingRequest, MsgPingResponse, MsgQueryRequest, MsgQueryResponse } from "./types";
+import * as sql from './postgresql';
+import { MsgCloseRequest, MsgCloseResponse, MsgConnectRequestPostgresql, MsgConnectResponse, MsgExecuteBatchRequest, MsgExecuteBatchResponsePostgreSql, MsgExecuteRequest, MsgExecuteResponsePostgreSql, MsgPingRequest, MsgPingResponse, MsgQueryRequest, MsgQueryResponse, MsgCreateDatabaseRequest, MsgCreateDatabaseResponse } from "./types";
 
-export function Connect(req: MsgConnectRequest, moduleName: string = ""): MsgConnectResponse {
-    const requestStr = JSON.stringify<MsgConnectRequest>(req);
+const MODULE_NAME = "wasmx-env-postgresql"
+
+export function Connect(req: MsgConnectRequestPostgresql, moduleName: string = ""): MsgConnectResponse {
+    const requestStr = JSON.stringify<MsgConnectRequestPostgresql>(req);
     LoggerDebugExtended(`${moduleName}:${MODULE_NAME}`, "Connect", ["request", requestStr])
     const responsebz = sql.Connect(String.UTF8.encode(requestStr));
     const resp = JSON.parse<MsgConnectResponse>(String.UTF8.decode(responsebz));
@@ -19,19 +21,19 @@ export function Close(req: MsgCloseRequest, moduleName: string = ""): MsgCloseRe
     return resp
 }
 
-export function Execute(req: MsgExecuteRequest, moduleName: string = ""): MsgExecuteResponse {
+export function Execute(req: MsgExecuteRequest, moduleName: string = ""): MsgExecuteResponsePostgreSql {
     const requestStr = JSON.stringify<MsgExecuteRequest>(req);
     LoggerDebugExtended(`${moduleName}:${MODULE_NAME}`, "Execute", ["request", requestStr])
     const responsebz = sql.Execute(String.UTF8.encode(requestStr));
-    const resp = JSON.parse<MsgExecuteResponse>(String.UTF8.decode(responsebz));
+    const resp = JSON.parse<MsgExecuteResponsePostgreSql>(String.UTF8.decode(responsebz));
     return resp
 }
 
-export function BatchAtomic(req: MsgExecuteBatchRequest, moduleName: string = ""): MsgExecuteBatchResponse {
+export function BatchAtomic(req: MsgExecuteBatchRequest, moduleName: string = ""): MsgExecuteBatchResponsePostgreSql {
     const requestStr = JSON.stringify<MsgExecuteBatchRequest>(req);
     LoggerDebugExtended(`${moduleName}:${MODULE_NAME}`, "Batch", ["request", requestStr])
     const responsebz = sql.BatchAtomic(String.UTF8.encode(requestStr));
-    const resp = JSON.parse<MsgExecuteBatchResponse>(String.UTF8.decode(responsebz));
+    const resp = JSON.parse<MsgExecuteBatchResponsePostgreSql>(String.UTF8.decode(responsebz));
     return resp
 }
 
@@ -48,5 +50,13 @@ export function Ping(req: MsgPingRequest, moduleName: string = ""): MsgPingRespo
     LoggerDebugExtended(`${moduleName}:${MODULE_NAME}`, "Ping", ["request", requestStr])
     const responsebz = sql.Ping(String.UTF8.encode(requestStr));
     const resp = JSON.parse<MsgPingResponse>(String.UTF8.decode(responsebz));
+    return resp
+}
+
+export function CreateDatabase(req: MsgCreateDatabaseRequest, moduleName: string = ""): MsgCreateDatabaseResponse {
+    const requestStr = JSON.stringify<MsgCreateDatabaseRequest>(req);
+    LoggerDebugExtended(`${moduleName}:${MODULE_NAME}`, "CreateDatabase", ["request", requestStr])
+    const responsebz = sql.CreateDatabase(String.UTF8.encode(requestStr));
+    const resp = JSON.parse<MsgCreateDatabaseResponse>(String.UTF8.decode(responsebz));
     return resp
 }
