@@ -1120,6 +1120,12 @@ export function buildBlockProposal(txs: string[], optimisticExecution: boolean, 
     const nextValidatorsHash = getValidatorsHash(validators);
     const misbehavior: typestnd.Misbehavior[] = []; // block.Evidence.Evidence.ToABCI()
     const time = new Date(Date.now())
+    // protect against the machine recalibrating time, make sure this time is > than state.last_time
+    if (Date.fromString(currentState.last_time).getTime() >= time.getTime()) {
+        // we just revert here and let somebody else propose the block
+        revert(`last block time ${currentState.last_time} higher than current time ${time.toISOString()}, revert and skip round`);
+    }
+
     const prepareReq = new typestnd.RequestPrepareProposal(
         maxDataBytes,
         txs,
