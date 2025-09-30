@@ -55,8 +55,9 @@ export function deleteMissedBlockBitmap(addr: ConsensusAddressString): void {
 }
 
 export function getValidatorSigningInfos(): ValidatorSigningInfo[] {
-    const startKey = getValidatorSigningInfoKey("");
-    const values = wasmxw.sloadRange(base64.encode(startKey), "", false);
+    const startKey = base64.encode(getValidatorSigningInfoKey(""));
+    const endKey = base64.encode(KeyMissedBlocksBitmap);
+    const values = wasmxw.sloadRange(startKey, endKey, false);
     const msgs: ValidatorSigningInfo[] = [];
     for (let i = 0; i < values.length; i++) {
         const msgstr = base64ToString(values[i])
