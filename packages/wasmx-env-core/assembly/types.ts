@@ -179,18 +179,27 @@ export class GlobalStorageResetResponse {
 @json
 export class UpdateSystemCacheRequest {
     role_address: Bech32String = ""
+    role_registry_id: u64 = 0
+    role_registry_code_info: CodeInfo | null = null
+    role_registry_contract_info: ContractInfo | null = null
     code_registry_address: Bech32String = ""
     code_registry_id: u64 = 0
     code_registry_code_info: CodeInfo | null = null
     code_registry_contract_info: ContractInfo | null = null
     constructor(
         role_address: Bech32String = "",
+        role_registry_id: u64 = 0,
+        role_registry_code_info: CodeInfo | null = null,
+        role_registry_contract_info: ContractInfo | null = null,
         code_registry_address: Bech32String = "",
         code_registry_id: u64 = 0,
         code_registry_code_info: CodeInfo | null = null,
         code_registry_contract_info: ContractInfo | null = null,
     ) {
         this.role_address = role_address
+        this.role_registry_id = role_registry_id
+        this.role_registry_code_info = role_registry_code_info
+        this.role_registry_contract_info = role_registry_contract_info
         this.code_registry_address = code_registry_address
         this.code_registry_id = code_registry_id
         this.code_registry_code_info = code_registry_code_info

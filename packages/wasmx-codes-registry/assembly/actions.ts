@@ -149,7 +149,7 @@ export function setupStorageMigration(addr: Bech32String): void {
     LoggerInfo("contract storage migrated", ["address", ourAddr, "target_storage_type", targetContractInfo.storage_type]);
 
     // for codes, we need to update the cached information by the host!!
-    const resp = wasmxcorew.updateSystemCache(new wasmxcoret.UpdateSystemCacheRequest("", ourAddr, targetContractInfo.code_id, targetCodeInfo, targetContractInfo))
+    const resp = wasmxcorew.updateSystemCache(new wasmxcoret.UpdateSystemCacheRequest("", 0, null, null, ourAddr, targetContractInfo.code_id, targetCodeInfo, targetContractInfo))
     if (resp.error != "") {
         LoggerError("system cache update error for codes registry; should restart...", ["error", resp.error])
     }

@@ -221,7 +221,8 @@ export function HandleValidatorSignature(blockHeight: i64, blockTime: Date, vote
         ]);
         LoggerDebug("absent validator", [
             "height", blockHeight.toString(),
-			"validator", consaddr,
+            "operator", vaddr,
+			"consaddr", consaddr,
 			"missed", info.missed_blocks_counter.toString(),
 			"threshold", params.min_signed_per_window,
             "block_window", signedBlocksWindow.toString(),

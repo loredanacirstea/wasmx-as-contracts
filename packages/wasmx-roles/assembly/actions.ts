@@ -1,6 +1,6 @@
 import { JSON } from "json-as";
 import * as base64 from "as-base64/assembly";
-import { Base64String, Bech32String, ContractInfo, ContractStorageType, ContractStorageTypeByEnum, ContractStorageTypeByString, Event, EventAttribute, MsgSetup, Role, RoleChangeRequest, RoleChanged, RoleChangedActionType, RoleChangedActionTypeByEnum, RoleChangedActionTypeByString, RolesGenesis } from "wasmx-env/assembly/types";
+import { Base64String, Bech32String, ContractInfo, CodeInfo, ContractStorageType, ContractStorageTypeByEnum, ContractStorageTypeByString, Event, EventAttribute, MsgSetup, Role, RoleChangeRequest, RoleChanged, RoleChangedActionType, RoleChangedActionTypeByEnum, RoleChangedActionTypeByString, RolesGenesis } from "wasmx-env/assembly/types";
 import * as wasmxw from "wasmx-env/assembly/wasmx_wrap";
 import * as roles from "wasmx-env/assembly/roles";
 import * as hooks from "wasmx-env/assembly/hooks";
@@ -301,7 +301,10 @@ export function endBlockActions(roleName: string, label: string, addr: string, a
         // this must be last action in EndBlock
         if (roleName == roles.ROLE_ROLES) {
             // for codes and roles, we need to update the cached information by the host!!
-            const resp = wasmxcorew.updateSystemCache(new wasmxcoret.UpdateSystemCacheRequest(addr, "", 0, null, null))
+            const contractInfo = getContractInfo(addr)
+            const codeId = contractInfo ? contractInfo.code_id : 0
+            const codeInfo = getCodeInfo(codeId);
+            const resp = wasmxcorew.updateSystemCache(new wasmxcoret.UpdateSystemCacheRequest(addr, codeId, codeInfo, contractInfo, "", 0, null, null))
             if (resp.error != "") {
                 LoggerError("system cache update error for roles contract; should restart...", ["error", resp.error])
             }
@@ -488,6 +491,17 @@ export function callTargetContract(addr: Bech32String, data: RolesChangedHook): 
         return `target contract failed to activate: ${resp.data}`
     }
     return "";
+}
+
+export function getCodeInfo(codeId: u64): CodeInfo | null {
+    const calldatastr = `{"GetCodeInfo":{"code_id":${codeId}}}`;
+    const resp = callContract(roles.ROLE_STORAGE_CONTRACTS, calldatastr, false, MODULE_NAME)
+    if (resp.success > 0) {
+        LoggerError(`get code info failed`, ["error", resp.data])
+        return null;
+    }
+    const data = JSON.parse<codesregt.QueryCodeInfoResponse>(resp.data)
+    return data.code_info
 }
 
 export function getContractInfo(addr: Bech32String): ContractInfo | null {
