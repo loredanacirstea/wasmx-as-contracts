@@ -152,6 +152,7 @@ export function getRoleByContractAddress(addr: Bech32String): string {
 }
 
 export function getContractAddressByLabel(label: string): Bech32String {
+    if (label == "") return "";
     const role = getRoleByLabel(label)
     if (role == null) return ""
     for (let i = 0; i < role.labels.length; i++) {
@@ -181,6 +182,7 @@ export function getRoleByRoleName(roleName: string): Role | null {
 }
 
 export function getRoleByRoleNameInner(roleName: string): ArrayBuffer {
+    if (roleName == "") return new ArrayBuffer(0)
     const key = getRoleKeyByRoleName(roleName)
     return wasmx.storageLoad(key.buffer);
 }
@@ -201,6 +203,7 @@ export function setRoleNameByLabel(role: string, label: string): void {
 }
 
 export function getRoleNameByLabel(label: string): string {
+    if (label == "") return ""
     const key = getRoleNameKeyByLabel(label)
     const value = wasmx.storageLoad(key.buffer);
     return String.UTF8.decode(value);

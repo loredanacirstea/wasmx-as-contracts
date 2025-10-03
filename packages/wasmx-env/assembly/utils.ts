@@ -102,13 +102,15 @@ export function onlyInternal(moduleName: string, message: string): void {
     // 32 bytes
     const callerBz = wasmx.getCaller()
     const caller = wasmxw.addr_humanize(callerBz)
-    if (hasRole(caller, moduleName)) return;
-    if (isGoCoreModule(callerBz, "")) return;
 
     const addrBz = wasmx.getAddress()
     const addr = wasmxw.addr_humanize(addrBz)
     // happens when host uses the same address for modules; e.g. "auth" module before being initialized
+    // or interpreter calls
     if (caller == addr) return;
+
+    if (isGoCoreModule(callerBz, "")) return;
+    if (hasRole(caller, moduleName)) return;
 
     // caller does not have system role, we revert
     const msg = `${moduleName}: unauthorized caller: ${caller}: ${message}`

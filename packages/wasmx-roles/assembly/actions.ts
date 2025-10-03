@@ -447,6 +447,7 @@ export function isInternalContract(addressOrRole: string): boolean {
 }
 
 export function getAddressOrRole(addressOrRole: string): Bech32String {
+    if (addressOrRole == "") revert(`getAddressOrRole: empty address`)
     let role = st.getRoleByRoleName(addressOrRole)
     if (role != null) {
         return role.addresses[role.primary];
@@ -457,7 +458,7 @@ export function getAddressOrRole(addressOrRole: string): Bech32String {
         return addr
     }
     const valid = wasmxw.validate_bech32_address(addressOrRole);
-    if (!valid) revert(`invalid address: ${addressOrRole}`);
+    if (!valid) revert(`getAddressOrRole: invalid address: ${addressOrRole}`);
     return addressOrRole;
 }
 
